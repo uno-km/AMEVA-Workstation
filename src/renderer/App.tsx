@@ -43,10 +43,11 @@ function convertJupyterToCodeBlocks(blocks: any[]): any[] {
       const lang = copy.props?.language || 'javascript'
       
       // 코드 텍스트를 그대로 전달하며 언어 지정을 props.language에 실어 표준 마크다운 펜스로 저장합니다.
+      // BlockNote가 가져오기 시 인식할 수 있도록 javascript/typescript를 js/ts 단축어로 매핑하여 내보냅니다.
       const finalCodeText = copy.props?.code || ''
       copy.content = [{ type: 'text', text: finalCodeText, styles: {} }]
       copy.props = {
-        language: lang
+        language: lang === 'javascript' ? 'js' : lang === 'typescript' ? 'ts' : lang
       }
     } else if (copy.children) {
       copy.children = convertJupyterToCodeBlocks(copy.children)
@@ -76,7 +77,12 @@ function normalizeMarkdown(raw: string): string {
   content = parts.join('```')
   
   // opening fence 정밀 매칭 (뒤에 알파벳/숫자 언어명이 오고 개행이 오는 경우)
-  content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, '\n\n```$1\n')
+  // BlockNote가 fence 언어를 정확히 해석할 수 있도록 javascript/typescript를 js/ts 단축어로 매핑합니다.
+  content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, (match, lang) => {
+    const l = lang.toLowerCase()
+    const mapped = l === 'javascript' ? 'js' : l === 'typescript' ? 'ts' : l
+    return `\n\n\`\`\`${mapped}\n`
+  })
   // closing fence 또는 언어가 없는 fence 정밀 매칭
   content = content.replace(/\n*```[^\n]*\n+/g, '\n```\n\n')
   
@@ -117,9 +123,10 @@ function cleanCodeBlocks(blocks: any[]) {
         }
         finalCode = lines.slice(1).join('\n')
       } 
-      // 3단계: 기본 block.props.language 매칭 시도
+      // 3단계: 기본 block.props.language 매칭 시도 (js, ts, py 단축어 매핑 포함)
       else {
-        lang = (block.props?.language || 'javascript').toLowerCase()
+        const rawLang = (block.props?.language || 'javascript').toLowerCase()
+        lang = rawLang === 'js' ? 'javascript' : rawLang === 'ts' ? 'typescript' : rawLang === 'py' ? 'python' : rawLang
       }
       
       block.type = 'jupyter'
