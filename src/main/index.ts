@@ -390,6 +390,7 @@ ipcMain.handle('runtime:runPython', async (_event, code: string) => {
 // llama-cli 실행 파일 경로 탐색 헬퍼
 function findLlamaCli(): string | null {
   const candidates = [
+    'C:\\Users\\ATSAdmin\\.docker\\bin\\inference\\llama-server.exe',
     'C:\\ameva\\llama\\llama-cli.exe',
     'C:\\ameva\\llama\\llama.exe',
     'C:\\ameva\\llama\\main.exe',
@@ -423,6 +424,9 @@ ipcMain.handle('llm:generate', async (event, payload: {
   maxTokens?: number
   temperature?: number
   contextSize?: number
+  apiType?: 'local' | 'api'
+  apiKey?: string
+  gpuOnly?: boolean
 }) => {
   // 기존 프로세스 kill
   if (activeLLMProcess) {
@@ -520,6 +524,227 @@ ipcMain.handle('llm:generate', async (event, payload: {
 
   // Qwen 2.5 채팅 형식으로 프롬프트 구성
   const fullPrompt = `<|im_start|>system\n${systemPrompt}<|im_end|>\n<|im_start|>user\n${payload.prompt}<|im_end|>\n<|im_start|>assistant\n`
+
+  if (payload.apiType === 'api') {
+    // ── 💡 OpenAI/Claude 호환 클라우드 API 모드 ──
+    return new Promise<{ success: boolean; error?: string }>(async (resolve) => {
+      try {
+        const https = require('https')
+        const postData = JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: payload.prompt }
+          ],
+          temperature: temperature,
+          max_tokens: maxTokens,
+          stream: true
+        })
+
+        const reqOptions = {
+          hostname: 'api.openai.com',
+          port: 443,
+          path: '/v1/chat/completions',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${payload.apiKey || ''}`
+          }
+        }
+
+        let resolved = false
+        const req = https.request(reqOptions, (res: any) => {
+          let buffer = ''
+          res.on('data', (chunk: Buffer) => {
+            const chunkText = chunk.toString()
+            const lines = chunkText.split('\n')
+            for (const line of lines) {
+              const cleaned = line.trim()
+              if (cleaned.startsWith('data:')) {
+                try {
+                  const dataStr = cleaned.slice(5).trim()
+                  if (dataStr === '[DONE]') continue
+                  const parsed = JSON.parse(dataStr)
+                  const token = parsed.choices[0]?.delta?.content
+                  if (token) {
+                    buffer += token
+                    if (!event.sender.isDestroyed()) {
+                      event.sender.send('llm:token', { token })
+                    }
+                  }
+                } catch {}
+              }
+            }
+          })
+
+          res.on('end', () => {
+            if (!resolved) {
+              resolved = true
+              if (!event.sender.isDestroyed()) {
+                event.sender.send('llm:done', { success: true, fullText: buffer })
+              }
+              resolve({ success: true })
+            }
+          })
+        })
+
+        req.on('error', (err: any) => {
+          if (!resolved) {
+            resolved = true
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:done', { success: false, error: err.message })
+            }
+            resolve({ success: false, error: `API 호출 실패: ${err.message}` })
+          }
+        })
+
+        const abortListener = () => {
+          req.destroy()
+          if (!resolved) {
+            resolved = true
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:done', { success: false, error: '사용자에 의해 중단됨' })
+            }
+            resolve({ success: false, error: 'Aborted' })
+          }
+        }
+        ipcMain.once('llm:abort', abortListener)
+
+        req.write(postData)
+        req.end()
+
+      } catch (err: any) {
+        resolve({ success: false, error: err.message })
+      }
+    })
+  }
+
+  const isServer = llamaPath && llamaPath.toLowerCase().includes('llama-server')
+
+  if (isServer) {
+    // ── 💡 llama-server API 백그라운드 가상 래퍼 모드 구동 ──
+    const serverPort = 12345
+    return new Promise<{ success: boolean; error?: string }>(async (resolve) => {
+      try {
+        const sArgs = [
+          '-m', modelPath,
+          '-c', String(contextSize),
+          '--port', String(serverPort),
+          '--host', '127.0.0.1',
+          '--log-disable',
+          '-ngl', payload.gpuOnly !== false ? '99' : '0' // GPU Only 분기 처리
+        ]
+
+        if (payload.gpuOnly === false) {
+          sArgs.push('-t', '4') // CPU 모드 시 스레드 분산 지정
+        }
+        
+        const proc = spawn(llamaPath!, sArgs, { windowsHide: true })
+        activeLLMProcess = proc
+
+        let resolved = false
+        const cleanUp = () => {
+          if (activeLLMProcess) {
+            activeLLMProcess.kill('SIGKILL')
+            activeLLMProcess = null
+          }
+        }
+
+        // 서버 기동에 필요한 대기
+        await new Promise(r => setTimeout(r, 1800))
+
+        const http = require('http')
+        const postData = JSON.stringify({
+          prompt: fullPrompt,
+          n_predict: maxTokens,
+          temperature: temperature,
+          stream: true
+        })
+
+        const reqOptions = {
+          hostname: '127.0.0.1',
+          port: serverPort,
+          path: '/completion',
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+          }
+        }
+
+        const req = http.request(reqOptions, (res: any) => {
+          let buffer = ''
+          res.on('data', (chunk: Buffer) => {
+            const chunkText = chunk.toString()
+            const lines = chunkText.split('\n')
+            for (const line of lines) {
+              const cleaned = line.trim()
+              if (cleaned.startsWith('data:')) {
+                try {
+                  const dataStr = cleaned.slice(5).trim()
+                  if (dataStr === '[DONE]') continue
+                  const parsed = JSON.parse(dataStr)
+                  const token = parsed.content
+                  if (token) {
+                    buffer += token
+                    if (!event.sender.isDestroyed()) {
+                      event.sender.send('llm:token', { token })
+                    }
+                  }
+                } catch {}
+              }
+            }
+          })
+
+          res.on('end', () => {
+            cleanUp()
+            if (!resolved) {
+              resolved = true
+              if (!event.sender.isDestroyed()) {
+                event.sender.send('llm:done', { success: true, fullText: buffer })
+              }
+              resolve({ success: true })
+            }
+          })
+        })
+
+        req.on('error', (err: any) => {
+          cleanUp()
+          if (!resolved) {
+            resolved = true
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:done', { success: false, error: err.message })
+            }
+            resolve({ success: false, error: `llama-server 통신 실패: ${err.message}` })
+          }
+        })
+
+        // 사용자 중단 리스너 바인딩
+        const abortListener = () => {
+          req.destroy()
+          cleanUp()
+          if (!resolved) {
+            resolved = true
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:done', { success: false, error: '사용자에 의해 중단됨' })
+            }
+            resolve({ success: false, error: 'Aborted' })
+          }
+        }
+        ipcMain.once('llm:abort', abortListener)
+
+        req.write(postData)
+        req.end()
+
+      } catch (err: any) {
+        if (activeLLMProcess) {
+          activeLLMProcess.kill('SIGKILL')
+          activeLLMProcess = null
+        }
+        resolve({ success: false, error: err.message })
+      }
+    })
+  }
 
   const args = [
     '-m', modelPath,
@@ -623,6 +848,125 @@ ipcMain.handle('llm:listModels', async () => {
     return filtered.length > 0 ? filtered : defaultList
   } catch {
     return defaultList
+  }
+})
+
+let activeDownloadRequest: any = null
+
+ipcMain.handle('llm:downloadModel', async (event, payload: {
+  url: string
+  filename: string
+}) => {
+  const llmDir = 'C:\\ameva\\models\\llm'
+  const { mkdir } = await import('fs/promises')
+  const { createWriteStream } = require('fs')
+  const https = require('https')
+  const http = require('http')
+
+  try {
+    if (!existsSync(llmDir)) {
+      await mkdir(llmDir, { recursive: true })
+    }
+
+    const targetPath = join(llmDir, payload.filename)
+    const fileStream = createWriteStream(targetPath)
+
+    return new Promise<{ success: boolean; error?: string }>((resolve) => {
+      const client = payload.url.startsWith('https') ? https : http
+
+      let downloadedBytes = 0
+      let totalBytes = 0
+      let startTime = Date.now()
+      let lastTime = Date.now()
+      let lastBytes = 0
+
+      const requestUrl = (targetUrl: string) => {
+        const req = client.get(targetUrl, (res: any) => {
+          // 리다이렉트 (301, 302, 307 등) 핸들링
+          if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+            requestUrl(res.headers.location)
+            return
+          }
+
+          if (res.statusCode !== 200) {
+            fileStream.close()
+            resolve({ success: false, error: `서버 응답 코드 오류: ${res.statusCode}` })
+            return
+          }
+
+          totalBytes = parseInt(res.headers['content-length'] || '0', 10)
+
+          res.on('data', (chunk: Buffer) => {
+            downloadedBytes += chunk.length
+            fileStream.write(chunk)
+
+            const now = Date.now()
+            if (now - lastTime > 500) {
+              const chunkTime = (now - lastTime) / 1000
+              const chunkBytes = downloadedBytes - lastBytes
+              const speed = chunkBytes / chunkTime / (1024 * 1024) // MB/s
+
+              const progress = totalBytes > 0 ? (downloadedBytes / totalBytes) * 100 : 0
+              const bytesRemaining = totalBytes - downloadedBytes
+              const speedBytesPerSec = chunkBytes / chunkTime
+              const timeRemaining = speedBytesPerSec > 0 ? bytesRemaining / speedBytesPerSec : 9999
+
+              if (!event.sender.isDestroyed()) {
+                event.sender.send('llm:download-progress', {
+                  filename: payload.filename,
+                  progress: Math.min(100, Number(progress.toFixed(1))),
+                  speed: Number(speed.toFixed(1)),
+                  downloadedBytes,
+                  totalBytes,
+                  timeRemaining: Math.max(0, Math.round(timeRemaining))
+                })
+              }
+
+              lastTime = now
+              lastBytes = downloadedBytes
+            }
+          })
+
+          res.on('end', () => {
+            fileStream.end()
+            activeDownloadRequest = null
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:download-progress', {
+                filename: payload.filename,
+                progress: 100,
+                speed: 0,
+                downloadedBytes: totalBytes,
+                totalBytes,
+                timeRemaining: 0
+              })
+            }
+            resolve({ success: true })
+          })
+        })
+
+        activeDownloadRequest = req
+
+        req.on('error', (err: any) => {
+          fileStream.close()
+          activeDownloadRequest = null
+          resolve({ success: false, error: err.message })
+        })
+      }
+
+      requestUrl(payload.url)
+    })
+
+  } catch (err: any) {
+    activeDownloadRequest = null
+    return { success: false, error: err.message }
+  }
+})
+
+// 다운로드 취소
+ipcMain.on('llm:cancelDownload', () => {
+  if (activeDownloadRequest) {
+    activeDownloadRequest.destroy()
+    activeDownloadRequest = null
   }
 })
 

@@ -45,6 +45,9 @@ export interface IElectronAPI {
     maxTokens?: number
     temperature?: number
     contextSize?: number
+    apiType?: 'local' | 'api'
+    apiKey?: string
+    gpuOnly?: boolean
   }) => Promise<{ success: boolean; error?: string }>
 
   llmAbort: () => void

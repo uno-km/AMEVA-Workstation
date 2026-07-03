@@ -55,6 +55,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     maxTokens?: number
     temperature?: number
     contextSize?: number
+    apiType?: 'local' | 'api'
+    apiKey?: string
+    gpuOnly?: boolean
   }) => ipcRenderer.invoke('llm:generate', payload),
 
   llmAbort: () => ipcRenderer.send('llm:abort'),

@@ -401,6 +401,25 @@ export function AIPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // 🤖 다중 AI 모드 및 다운로더 전용 로컬 상태
+  const [apiType, setApiType] = useState<'wasm' | 'local' | 'api'>('local')
+  const [gpuOnly, setGpuOnly] = useState(true)
+  const [apiKey, setApiKey] = useState('')
+  const [downloadStatus, setDownloadStatus] = useState<any>(null)
+  const [showDownloadDetail, setShowDownloadDetail] = useState(false)
+
+  useEffect(() => {
+    if ((window as any).electron) {
+      const handleProgress = (_event: any, status: any) => {
+        setDownloadStatus(status)
+      };
+      (window as any).electron.on('llm:download-progress', handleProgress)
+      return () => {
+        (window as any).electron.off('llm:download-progress', handleProgress)
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
@@ -524,25 +543,37 @@ export function AIPanel({
           display: 'flex', flexDirection: 'column', gap: '10px',
           flexShrink: 0,
         }}>
-          {/* 모델 선택 */}
-          <div>
-            <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-              모델 선택
-            </label>
-            {models.length === 0 ? (
-              <div style={{
-                padding: '8px', borderRadius: '6px',
-                background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                fontSize: '11px', color: '#f87171',
-                display: 'flex', alignItems: 'center', gap: '6px',
-              }}>
-                <AlertCircle size={12} />
-                C:\ameva\models\llm 에 .gguf 모델 없음
-              </div>
-            ) : (
-              <select
-                value={settings.modelPath}
-                onChange={e => onUpdateSettings({ modelPath: e.target.value })}
+          {/* AI 실행 유형 선택 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI 실행 유형</label>
+            <select
+              value={apiType}
+              onChange={e => setApiType(e.target.value as any)}
+              style={{
+                width: '100%',
+                background: 'var(--bg-glass)',
+                border: '1px solid var(--border-muted)',
+                borderRadius: '6px',
+                padding: '5px 8px',
+                color: 'var(--text-main)',
+                fontSize: '11px',
+              }}
+            >
+              <option value="wasm">로컬 WebGPU 가속 (무설치)</option>
+              <option value="local">로컬 고성능 엔진 (llama-server)</option>
+              <option value="api">클라우드 외부 API (OpenAI 등)</option>
+            </select>
+          </div>
+
+          {/* API Key 입력란 */}
+          {apiType === 'api' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>OpenAI API Key</label>
+              <input
+                type="password"
+                value={apiKey}
+                onChange={e => setApiKey(e.target.value)}
+                placeholder="sk-..."
                 style={{
                   width: '100%',
                   background: 'var(--bg-glass)',
@@ -551,16 +582,67 @@ export function AIPanel({
                   padding: '5px 8px',
                   color: 'var(--text-main)',
                   fontSize: '11px',
+                  outline: 'none',
                 }}
-              >
-                {models.map(m => (
-                  <option key={m.path} value={m.path} style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
-                    {m.name} ({formatBytes(m.size)})
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
+              />
+            </div>
+          )}
+
+          {/* 모델 선택 */}
+          {apiType !== 'api' && (
+            <div>
+              <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+                모델 선택
+              </label>
+              {models.length === 0 ? (
+                <div style={{
+                  padding: '8px', borderRadius: '6px',
+                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+                  fontSize: '11px', color: '#f87171',
+                  display: 'flex', alignItems: 'center', gap: '6px',
+                }}>
+                  <AlertCircle size={12} />
+                  C:\ameva\models\llm 에 .gguf 모델 없음
+                </div>
+              ) : (
+                <select
+                  value={settings.modelPath}
+                  onChange={e => onUpdateSettings({ modelPath: e.target.value })}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-glass)',
+                    border: '1px solid var(--border-muted)',
+                    borderRadius: '6px',
+                    padding: '5px 8px',
+                    color: 'var(--text-main)',
+                    fontSize: '11px',
+                  }}
+                >
+                  {models.map(m => (
+                    <option key={m.path} value={m.path} style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
+                      {m.name} ({formatBytes(m.size)})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {/* 하드웨어 가속 옵션 */}
+          {apiType !== 'api' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
+              <input
+                type="checkbox"
+                id="gpuOnly-checkbox"
+                checked={gpuOnly}
+                onChange={e => setGpuOnly(e.target.checked)}
+                style={{ accentColor: 'var(--primary)' }}
+              />
+              <label htmlFor="gpuOnly-checkbox" style={{ fontSize: '11px', color: 'var(--text-main)', cursor: 'pointer' }}>
+                GPU 전용 가속 활성화 (해제 시 CPU 모드로 기동)
+              </label>
+            </div>
+          )}
 
           {/* Temperature */}
           <div>
@@ -588,6 +670,55 @@ export function AIPanel({
               onChange={e => onUpdateSettings({ maxTokens: parseInt(e.target.value) })}
               style={{ width: '100%', accentColor: 'var(--primary)' }}
             />
+          </div>
+
+          {/* Hugging Face 추천 모델 다운로드 마켓플레이스 */}
+          <div style={{ marginTop: '10px', borderTop: '1px solid var(--border-muted)', paddingTop: '10px' }}>
+            <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+              Hugging Face 추천 모델 원클릭 다운로드
+            </label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {[
+                { name: 'Qwen 2.5 1.5B (GGUF)', file: 'qwen2.5-1.5b-instruct-q4_k_m.gguf', url: 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf' },
+                { name: 'Qwen 2.5 3B (GGUF)', file: 'qwen2.5-3b-instruct-q4_k_m.gguf', url: 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf' },
+                { name: 'Llama 3.1 8B (GGUF)', file: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf', url: 'https://huggingface.co/QuantFactory/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf' }
+              ].map(m => {
+                const isDownloading = downloadStatus && downloadStatus.filename === m.file && downloadStatus.progress < 100
+                return (
+                  <div key={m.file} style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    background: 'rgba(255,255,255,0.02)', padding: '6px 8px', borderRadius: '6px',
+                    border: '1px solid var(--border-muted)'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>{m.name}</span>
+                      <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{m.file}</span>
+                    </div>
+                    <button
+                      disabled={!!isDownloading}
+                      onClick={async () => {
+                        if ((window as any).electron) {
+                          setDownloadStatus({ filename: m.file, progress: 0, speed: 0, downloadedBytes: 0, totalBytes: 0, timeRemaining: 0 })
+                          const res = await (window as any).electron.invoke('llm:downloadModel', { url: m.url, filename: m.file })
+                          if (res.success) {
+                            alert('다운로드 완료! AI 모델이 활성화되었습니다.')
+                          } else {
+                            alert(`다운로드 실패: ${res.error}`)
+                          }
+                        }
+                      }}
+                      style={{
+                        background: isDownloading ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                        border: 'none', color: '#fff', fontSize: '10px', padding: '4px 10px',
+                        borderRadius: '4px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 700
+                      }}
+                    >
+                      {isDownloading ? `${downloadStatus.progress}%` : '설치'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
           </div>
 
           {/* llama.cpp 설치 안내 */}
@@ -693,6 +824,101 @@ export function AIPanel({
             />
           ))}
           <div ref={messagesEndRef} />
+        </div>
+      )}
+
+      {/* 📥 하단 다운로드 진행률 및 모달 레이저 */}
+      {downloadStatus && downloadStatus.progress < 100 && (
+        <div 
+          onClick={() => setShowDownloadDetail(true)}
+          style={{
+            padding: '8px 12px',
+            background: 'rgba(16,185,129,0.08)',
+            borderTop: '1px solid rgba(16,185,129,0.15)',
+            display: 'flex', alignItems: 'center', gap: '8px',
+            cursor: 'pointer', flexShrink: 0,
+            transition: 'background 0.2s'
+          }}
+        >
+          <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>
+            <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#10b981', animation: 'pulse 1.5s infinite' }} />
+          </div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#10b981', fontWeight: 700 }}>
+              <span>모델 파일 다운로드 중...</span>
+              <span>{downloadStatus.progress}%</span>
+            </div>
+            <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ width: `${downloadStatus.progress}%`, height: '100%', background: '#10b981', transition: 'width 0.2s' }} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 📥 다운로드 세부 진행 상황 팝업 모달 */}
+      {showDownloadDetail && downloadStatus && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(15,23,42,0.85)', backdropFilter: 'blur(8px)',
+          zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border-muted)',
+            borderRadius: '12px', padding: '20px', width: '100%', maxWidth: '300px',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', gap: '12px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', fontWeight: 800, color: '#f8fafc' }}>다운로드 세부 정보</span>
+              <button 
+                onClick={() => setShowDownloadDetail(false)}
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+              >
+                <X size={14} />
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '11px', color: 'var(--text-muted)' }}>
+              <div><strong>파일명:</strong> <span style={{ color: 'var(--text-main)' }}>{downloadStatus.filename}</span></div>
+              <div><strong>진행률:</strong> <span style={{ color: '#10b981', fontWeight: 700 }}>{downloadStatus.progress}%</span></div>
+              <div><strong>받은 용량:</strong> <span style={{ color: 'var(--text-main)' }}>{(downloadStatus.downloadedBytes / (1024 * 1024)).toFixed(1)} MB / {(downloadStatus.totalBytes / (1024 * 1024)).toFixed(1)} MB</span></div>
+              <div><strong>현재 속도:</strong> <span style={{ color: 'var(--secondary)', fontWeight: 700 }}>{downloadStatus.speed} MB/s</span></div>
+              <div><strong>남은 시간:</strong> <span style={{ color: 'var(--accent)' }}>{downloadStatus.timeRemaining}초</span></div>
+            </div>
+
+            <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
+              <div style={{ width: `${downloadStatus.progress}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary), var(--secondary))', transition: 'width 0.2s' }} />
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+              <button
+                onClick={() => {
+                  if ((window as any).electron) {
+                    (window as any).electron.send('llm:cancelDownload')
+                  }
+                  setDownloadStatus(null)
+                  setShowDownloadDetail(false)
+                }}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: '6px', background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(239,68,68,0.2)', color: '#f87171', fontSize: '11px',
+                  fontWeight: 700, cursor: 'pointer', textAlign: 'center'
+                }}
+              >
+                다운로드 취소
+              </button>
+              <button
+                onClick={() => setShowDownloadDetail(false)}
+                style={{
+                  flex: 1, padding: '8px', borderRadius: '6px', background: 'var(--bg-glass-active)',
+                  border: '1px solid var(--border-muted)', color: 'var(--text-main)', fontSize: '11px',
+                  fontWeight: 600, cursor: 'pointer', textAlign: 'center'
+                }}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

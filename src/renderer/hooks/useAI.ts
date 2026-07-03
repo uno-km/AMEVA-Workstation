@@ -19,6 +19,9 @@ export interface AISettings {
   temperature: number
   maxTokens: number
   systemPrompt: string
+  apiType?: 'local' | 'api' | 'wasm'
+  apiKey?: string
+  gpuOnly?: boolean
 }
 
 const DEFAULT_SETTINGS: AISettings = {
@@ -30,6 +33,9 @@ const DEFAULT_SETTINGS: AISettings = {
 - 간결하고 명확하게 답하세요
 - 문서 내용 분석, 요약, 번역, 교정, 확장에 특화되어 있습니다
 - 코드 설명, 표 분석, 다이어그램 설명도 가능합니다`,
+  apiType: 'local',
+  apiKey: '',
+  gpuOnly: true,
 }
 
 export function useAI() {
@@ -162,6 +168,9 @@ export function useAI() {
       systemPrompt: settings.systemPrompt,
       maxTokens: settings.maxTokens,
       temperature: settings.temperature,
+      apiType: settings.apiType === 'wasm' ? 'local' : settings.apiType, // WASM 모드도 로컬 추론 기반 스태프
+      apiKey: settings.apiKey,
+      gpuOnly: settings.gpuOnly,
     })
 
     // 에러면 즉시 처리
@@ -211,6 +220,9 @@ export function useAI() {
         systemPrompt: 'You are a document editing assistant. Output only the requested content without any explanation or preamble.',
         maxTokens: 512,
         temperature: 0.5,
+        apiType: settings.apiType === 'wasm' ? 'local' : settings.apiType,
+        apiKey: settings.apiKey,
+        gpuOnly: settings.gpuOnly,
       })
     })
   }, [settings.modelPath])
