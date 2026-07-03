@@ -1081,4 +1081,20 @@ body.is-resizing webview {
   box-shadow: none !important;
 }
 
+/* 파일 이동 시 순간 깜박임 하이라이트 애니메이션 */
+.bn-block-outer[data-highlighted-temp="true"] {
+  animation: tempHighlightPulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-radius: 4px;
+}
+@keyframes tempHighlightPulse {
+  0% {
+    background-color: rgba(139, 92, 246, 0.35);
+    box-shadow: 0 0 16px rgba(139, 92, 246, 0.4);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
 

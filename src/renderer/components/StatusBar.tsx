@@ -25,9 +25,10 @@ export function StatusBar({
   onToggleWordWrap,
   onOpenSettings,
 }: StatusBarProps) {
-  // 글자 수 및 단어 수 계산
+  // 글자 수, 단어 수, 줄 수 계산
   const charCount = currentContent.length
   const wordCount = currentContent.trim() ? currentContent.trim().split(/\s+/).length : 0
+  const lineCount = currentContent ? currentContent.split('\n').length : 0
   
   // zoomLevel은 이제 CSS zoom 배율 (1.0 = 100%, 0.5 = 50%, 2.0 = 200%)
   const zoomPercent = Math.round(zoomLevel * 100)
@@ -64,7 +65,7 @@ export function StatusBar({
         </span>
         <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />
         <span>
-          공백 포함: <strong>{charCount}</strong>자 | 단어: <strong>{wordCount}</strong>개
+          줄 수: <strong>{lineCount}</strong>줄 | 공백 포함: <strong>{charCount}</strong>자 | 단어: <strong>{wordCount}</strong>개
         </span>
       </div>
 

@@ -36,6 +36,16 @@ interface SidebarProps {
   collaborationLink: string
   isConnected: boolean
 
+  // 파일 오픈 모드 및 다중 파일 관리
+  fileOpenMode: 'replace' | 'append' | 'tab'
+  setFileOpenMode: (mode: 'replace' | 'append' | 'tab') => void
+  appendedFiles: Array<{ id: string; filePath: string; startBlockId: string }>
+  onSelectAppendedFile: (startBlockId: string) => void
+  tabs: Array<{ id: string; filePath: string | null; content: string; blocks: any[] }>
+  activeTabId: string | null
+  onSelectTab: (id: string) => void
+  onCloseTab: (id: string) => void
+
   // AI 패널 토글
   showAIPanel: boolean
   onToggleAI: () => void
@@ -74,6 +84,9 @@ export function Sidebar({
   peers, serverRunning, serverPort, setServerPort, serverHost, setServerHost,
   useLocalServer, setUseLocalServer,
   onToggleServer, collaborationLink, isConnected,
+  fileOpenMode, setFileOpenMode,
+  appendedFiles, onSelectAppendedFile,
+  tabs, activeTabId, onSelectTab, onCloseTab,
   showAIPanel, onToggleAI,
   chatMessages, onChatSend, onChatClear, username, userColor,
 }: SidebarProps) {
@@ -241,6 +254,126 @@ export function Sidebar({
                 )}
               </div>
             </div>
+
+            {/* 파일 열기 모드 */}
+            <div>
+              {sectionLabel('파일 열기 모드')}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="fileOpenMode"
+                    checked={fileOpenMode === 'replace'}
+                    onChange={() => setFileOpenMode('replace')}
+                    style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
+                  />
+                  <span style={{ color: fileOpenMode === 'replace' ? 'var(--text-main)' : 'var(--text-muted)' }}>덮어쓰기 (기본)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="fileOpenMode"
+                    checked={fileOpenMode === 'append'}
+                    onChange={() => setFileOpenMode('append')}
+                    style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
+                  />
+                  <span style={{ color: fileOpenMode === 'append' ? 'var(--text-main)' : 'var(--text-muted)' }}>이어서 열기 (본문 추가)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                  <input
+                    type="radio"
+                    name="fileOpenMode"
+                    checked={fileOpenMode === 'tab'}
+                    onChange={() => setFileOpenMode('tab')}
+                    style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
+                  />
+                  <span style={{ color: fileOpenMode === 'tab' ? 'var(--text-main)' : 'var(--text-muted)' }}>탭별 열기 (다중 탭)</span>
+                </label>
+              </div>
+            </div>
+
+            {/* 열린 파일 목록 */}
+            {((fileOpenMode === 'append' && appendedFiles.length > 0) || (fileOpenMode === 'tab' && tabs.length > 0)) && (
+              <div>
+                {sectionLabel('열린 파일 목록')}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
+                  {fileOpenMode === 'append' && appendedFiles.map((file, idx) => (
+                    <button
+                      key={file.id}
+                      onClick={() => onSelectAppendedFile(file.startBlockId)}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '6px',
+                        width: '100%', padding: '6px 8px', borderRadius: '6px',
+                        background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                        color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer',
+                        textAlign: 'left', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--primary)'
+                        e.currentTarget.style.backgroundColor = 'var(--bg-glass-active)'
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = 'var(--border-muted)'
+                        e.currentTarget.style.backgroundColor = 'var(--bg-glass)'
+                      }}
+                    >
+                      <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>#{idx + 1}</span>
+                      <span>{file.filePath}</span>
+                    </button>
+                  ))}
+
+                  {fileOpenMode === 'tab' && tabs.map((tab, idx) => {
+                    const isActive = activeTabId === tab.id
+                    return (
+                      <div
+                        key={tab.id}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px',
+                          width: '100%', padding: '5px 8px', borderRadius: '6px',
+                          background: isActive ? 'var(--bg-glass-active)' : 'var(--bg-glass)',
+                          border: `1px solid ${isActive ? 'var(--primary)' : 'var(--border-muted)'}`,
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        <button
+                          onClick={() => onSelectTab(tab.id)}
+                          style={{
+                            flex: 1, display: 'flex', alignItems: 'center', gap: '6px',
+                            background: 'transparent', border: 'none',
+                            color: isActive ? 'var(--primary)' : 'var(--text-main)',
+                            fontSize: '11px', cursor: 'pointer', textAlign: 'left',
+                            textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', padding: 0
+                          }}
+                        >
+                          <span style={{ fontWeight: 'bold' }}>T{idx + 1}</span>
+                          <span>{tab.filePath ? tab.filePath.split(/[\\/]/).pop() : '무제 문서'}</span>
+                        </button>
+                        <button
+                          onClick={() => onCloseTab(tab.id)}
+                          style={{
+                            background: 'transparent', border: 'none',
+                            color: 'var(--text-muted)', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: '2px', borderRadius: '4px', transition: 'all 0.15s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.color = 'var(--danger)'
+                            e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.color = 'var(--text-muted)'
+                            e.currentTarget.style.backgroundColor = 'transparent'
+                          }}
+                        >
+                          <X size={10} />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* 내보내기 */}
             <div>
