@@ -19,6 +19,11 @@ export function useCollaborationHighlight(
     let selectionTimer: ReturnType<typeof setTimeout> | null = null
     let isCurrentlyEditing = false
 
+    const isEditorMounted = () => {
+      const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
+      return !!(view && view.dom && document.body.contains(view.dom))
+    }
+
     const clearActive = () => {
       document.querySelectorAll('[data-bn-active]').forEach(el =>
         el.removeAttribute('data-bn-active')
@@ -34,6 +39,7 @@ export function useCollaborationHighlight(
     }
 
     const markActive = () => {
+      if (!isEditorMounted()) return
       try {
         const selection = editor.selection
         if (!selection) {
@@ -77,6 +83,7 @@ export function useCollaborationHighlight(
 
     // 200ms 디바운스 처리된 타이핑 변경 리스너
     const handleChange = () => {
+      if (!isEditorMounted()) return
       try {
         const pos = editor.getTextCursorPosition()
         if (!pos) {
@@ -106,6 +113,7 @@ export function useCollaborationHighlight(
 
     // 200ms 디바운스 처리된 커서 이동 리스너
     const handleSelectionChange = () => {
+      if (!isEditorMounted()) return
       try {
         const pos = editor.getTextCursorPosition()
         if (!pos) return
@@ -120,6 +128,7 @@ export function useCollaborationHighlight(
     }
 
     const handleBlur = () => {
+      if (!isEditorMounted()) return
       if (editingTimer) clearTimeout(editingTimer)
       if (selectionTimer) clearTimeout(selectionTimer)
       isCurrentlyEditing = false
