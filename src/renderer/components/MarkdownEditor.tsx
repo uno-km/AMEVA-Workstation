@@ -8,6 +8,18 @@ import type { PeerState } from '../../shared/types'
 import { ImageLightbox } from './ImageLightbox'
 import { Terminal, Code2, Eye, Globe, X } from 'lucide-react'
 import { marked } from 'marked'
+import mermaid from 'mermaid'
+
+// Mermaid 초기화
+try {
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'dark',
+    securityLevel: 'loose',
+  })
+} catch (e) {
+  console.error('Failed to initialize mermaid:', e)
+}
 
 // ─── 기능별 이원화 컴포넌트 및 커스텀 훅 임포트 ─────────────────────
 import { JupyterCodeViewer, getLangMeta } from './JupyterCodeViewer'
@@ -277,6 +289,53 @@ function buildPreviewSegments(markdown: string) {
   return segments
 }
 
+// Mermaid Diagram 렌더러
+function InlineMermaidRenderer({ code }: { code: string }) {
+  const [svg, setSvg] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+  const elementId = useRef(`mermaid-preview-${Math.random().toString(36).substr(2, 9)}`)
+
+  useEffect(() => {
+    let active = true
+    const renderDiagram = async () => {
+      try {
+        const cleanCode = code.replace(/^(\s*)end([가-힣a-zA-Z]+)/gm, '$1end\n$1$2')
+        const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanCode)
+        if (active) {
+          setSvg(renderedSvg)
+          setError(null)
+        }
+      } catch (err: any) {
+        if (active) {
+          setError(err.message || 'Mermaid 렌더링에 실패했습니다.')
+        }
+      }
+    }
+    renderDiagram()
+    return () => { active = false }
+  }, [code])
+
+  if (error) {
+    return (
+      <div style={{
+        padding: '12px 16px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)',
+        border: '1.5px solid rgba(239,68,68,0.25)', color: '#f87171', fontSize: '12px', textAlign: 'left'
+      }}>
+        <strong>[Mermaid Syntax Error]</strong>
+        <pre style={{ margin: '6px 0 0 0', overflowX: 'auto', fontSize: '11px', opacity: 0.85 }}>{error}</pre>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="mermaid-svg-container"
+      style={{ display: 'flex', justifyContent: 'center', background: '#12121e', borderRadius: '8px', padding: '16px', overflowX: 'auto' }}
+      dangerouslySetInnerHTML={{ __html: svg || '<span style="color:#6b7280; font-size:12px;">Mermaid 로딩 중...</span>' }}
+    />
+  )
+}
+
 function MarkdownPreview({ markdown, editor }: { markdown: string; editor: BlockNoteEditor | null }) {
   const segments = React.useMemo(() => buildPreviewSegments(markdown), [markdown])
   return (
@@ -288,16 +347,9 @@ function MarkdownPreview({ markdown, editor }: { markdown: string; editor: Block
       )}
       {segments.map((seg, idx) => {
         if (seg.type === 'mermaid') {
-          // 뷰어 모드 전용으로 롤백 복원
           return (
             <div key={idx} style={{ margin: '16px 0' }}>
-              <div
-                className="mermaid-svg-container"
-                style={{ display: 'flex', justifyContent: 'center', background: '#12121e', borderRadius: '8px', padding: '16px', overflowX: 'auto' }}
-                dangerouslySetInnerHTML={{
-                  __html: `<div id="mermaid-rendered-${idx}">${marked.parse('```mermaid\n' + seg.code + '\n```')}</div>`
-                }}
-              />
+              <InlineMermaidRenderer code={seg.code} />
             </div>
           )
         }

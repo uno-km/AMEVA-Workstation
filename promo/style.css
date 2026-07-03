@@ -19,6 +19,15 @@
   --secondary: #06b6d4;
   --secondary-glow: rgba(6, 182, 212, 0.35);
   --accent: #ec4899;
+
+  /* 🎨 동적 테마 교정 변수 신설 */
+  --bg-textarea: #090a0f;
+  --text-textarea: #a7f3d0;
+  --bg-console: #050608;
+  --text-console: #38bdf8;
+  --bg-diff: #050608;
+  --text-collab-textarea: #f3f4f6;
+  --bg-chat-bubble: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme="light"] {
@@ -39,6 +48,15 @@
   --primary-glow: rgba(124, 58, 237, 0.15);
   --secondary: #0891b2;
   --secondary-glow: rgba(8, 145, 178, 0.15);
+
+  /* 🎨 라이트 테마 변수 매핑 오버라이드 */
+  --bg-textarea: #f3f4f6;
+  --text-textarea: #047857;
+  --bg-console: #e2e8f0;
+  --text-console: #0369a1;
+  --bg-diff: #f1f5f9;
+  --text-collab-textarea: #1f2937;
+  --bg-chat-bubble: #ffffff;
 }
 
 * {
@@ -280,7 +298,7 @@ header {
 
 /* ── 3D 입체적 히어로 프리뷰 카드 ───────────────────────────────── */
 .hero-preview-card {
-  background: rgba(255, 255, 255, 0.015);
+  background: var(--bg-main);
   border: 1px solid var(--border-muted);
   border-radius: 16px;
   padding: 24px;
@@ -379,12 +397,12 @@ header {
   padding-top: 12px;
 }
 
-/* ── 3대 가상 런타임 맛보기 체험관 ─────────────────────────────── */
+/* ── 3대 가상 런타임 맛보기 체험관 (CSS 변수 적용) ─────────────────── */
 .simulator-box {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 24px;
-  background: var(--bg-card);
+  background: var(--bg-main);
   border: 1px solid var(--border-muted);
   border-radius: 16px;
   padding: 24px;
@@ -411,11 +429,11 @@ header {
 
 .sim-textarea {
   flex: 1;
-  background: #090a0f;
+  background: var(--bg-textarea);
   border: 1px solid var(--border-muted);
   border-radius: 8px;
   padding: 12px;
-  color: #a7f3d0;
+  color: var(--text-textarea);
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   resize: none;
@@ -429,11 +447,11 @@ header {
 
 .sim-console {
   flex: 1;
-  background: #050608;
+  background: var(--bg-console);
   border: 1px solid var(--border-muted);
   border-radius: 8px;
   padding: 12px;
-  color: #38bdf8;
+  color: var(--text-console);
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   overflow-y: auto;
@@ -481,11 +499,11 @@ header {
 }
 
 .promo-sql-table th {
-  background: rgba(255,255,255,0.02);
+  background: var(--bg-card);
   color: var(--secondary);
 }
 
-/* ── AI 가상 시뮬레이터 카드 ────────────────────────────────────── */
+/* ── AI 가상 시뮬레이터 카드 (CSS 변수 적용) ──────────────────────── */
 .ai-sim-card {
   border-radius: 8px;
   padding: 12px;
@@ -500,16 +518,18 @@ header {
 }
 
 .sim-diff-box {
-  background: #050608;
+  background: var(--bg-diff);
   padding: 8px;
   border-radius: 6px;
   margin-top: 6px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
+  color: var(--text-main);
 }
 
 .sim-diff-removed { color: #f87171; text-decoration: line-through; }
 .sim-diff-added { color: #4ade80; }
+.sim-diff-normal { color: var(--text-muted); }
 
 /* ── 3대 솔루션 탭 구조 ────────────────────────────────────────── */
 .solutions-tabs {
@@ -540,7 +560,7 @@ header {
 
 .solution-tab-content {
   display: none;
-  background: var(--bg-card);
+  background: var(--bg-main);
   border: 1px solid var(--border-muted);
   border-radius: 16px;
   padding: 30px;
@@ -610,7 +630,7 @@ input:checked + .slider:before {
 }
 
 .price-card {
-  background: var(--bg-card);
+  background: var(--bg-main);
   border: 1px solid var(--border-muted);
   border-radius: 16px;
   padding: 32px;
@@ -647,7 +667,7 @@ input:checked + .slider:before {
 }
 
 .promo-toast {
-  background: rgba(10, 12, 16, 0.85);
+  background: var(--bg-main);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border-muted);
   border-radius: 8px;
@@ -759,7 +779,7 @@ input:checked + .slider:before {
   padding: 0 10px;
 }
 
-/* 👥 가상 협업 에뮬레이터 전용 CSS */
+/* 👥 가상 협업 에뮬레이터 전용 CSS (테마 변수 매핑 보강) */
 .collab-layout {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -769,7 +789,7 @@ input:checked + .slider:before {
 
 .collab-editor-container {
   position: relative;
-  background: #090a0f;
+  background: var(--bg-textarea);
   border: 1px solid var(--border-muted);
   border-radius: 12px;
   padding: 16px;
@@ -781,7 +801,7 @@ input:checked + .slider:before {
   height: 220px;
   background: transparent;
   border: none;
-  color: var(--text-main);
+  color: var(--text-collab-textarea);
   font-family: 'JetBrains Mono', monospace;
   font-size: 13px;
   line-height: 1.6;
@@ -798,6 +818,7 @@ input:checked + .slider:before {
   animation: cursor-blink 0.8s step-end infinite;
   pointer-events: none;
   display: none;
+  transition: left 0.1s linear, top 0.1s linear;
 }
 
 .collab-cursor-label {
@@ -814,7 +835,7 @@ input:checked + .slider:before {
 }
 
 .collab-chat-panel {
-  background: var(--bg-card);
+  background: var(--bg-main);
   border: 1px solid var(--border-muted);
   border-radius: 12px;
   display: flex;
@@ -843,12 +864,13 @@ input:checked + .slider:before {
 }
 
 .collab-chat-bubble {
-  background: var(--bg-glass);
+  background: var(--bg-chat-bubble);
   border: 1px solid var(--border-muted);
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 12px;
   max-width: 90%;
+  color: var(--text-main);
   animation: fadeIn 0.25s ease-out;
 }
 
@@ -863,4 +885,51 @@ input:checked + .slider:before {
   font-weight: 700;
   color: var(--secondary);
   margin-bottom: 2px;
+}
+
+/* 📊 3대 도구 대체 비교 인포그래픽 테이블 스타일 */
+.comparison-container {
+  margin-top: 60px;
+  text-align: center;
+}
+
+.comparison-table {
+  width: 100%;
+  max-width: 900px;
+  margin: 30px auto 0;
+  border-collapse: collapse;
+  background: var(--bg-main);
+  border: 1px solid var(--border-muted);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.comparison-table th, .comparison-table td {
+  padding: 18px 24px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-muted);
+}
+
+.comparison-table th {
+  background: var(--bg-card);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main);
+  text-transform: uppercase;
+}
+
+.comparison-table td {
+  font-size: 13px;
+}
+
+.comparison-column-legacy {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.comparison-column-ameva {
+  color: #10b981;
+  font-weight: 700;
+  background: rgba(16, 185, 129, 0.02);
 }
