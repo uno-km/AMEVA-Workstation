@@ -3,7 +3,7 @@ import {
   FileText, Save, Download, History, Users, Share2,
   Plus, Trash2, RefreshCw, Eye, Terminal,
   MessageCircle, Sparkles, ChevronDown, ChevronRight,
-  Wifi, WifiOff, Server,
+  Wifi, WifiOff, Server, X,
 } from 'lucide-react'
 import type { EditorMode, ExportFormat, DocumentSnapshot, PeerState } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useChat'
