@@ -6,6 +6,82 @@
   <title>Live Collaboration Demo | AMEVA Workstation</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* 💎 프리미엄 Vercel/Linear 스타일 수락 및 거절 단추 정의 */
+    .btn-action-accept {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      border: none;
+      padding: 8px 18px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.25);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .btn-action-accept:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+    }
+    .btn-action-reject {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border-muted);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-action-reject:hover {
+      border-color: #ef4444;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.05);
+    }
+
+    /* 📊 3대 도구 대체 비교 인포그래픽 테이블 스타일 */
+    .comparison-container {
+      margin-top: 60px;
+      text-align: center;
+    }
+    .comparison-table {
+      width: 100%;
+      max-width: 900px;
+      margin: 30px auto 0;
+      border-collapse: collapse;
+      background: var(--bg-main);
+      border: 1px solid var(--border-muted);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .comparison-table th, .comparison-table td {
+      padding: 18px 24px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-muted);
+    }
+    .comparison-table th {
+      background: var(--bg-card);
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      text-transform: uppercase;
+    }
+    .comparison-table td {
+      font-size: 13px;
+    }
+    .comparison-column-legacy {
+      color: #ef4444;
+      font-weight: 600;
+    }
+    .comparison-column-ameva {
+      color: #10b981;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.02);
+    }
+  </style>
 </head>
 <body>
 
@@ -34,7 +110,7 @@
       <div class="badge-tag"><i class="fas fa-users"></i> 실시간 협업 동기화</div>
       <h2 style="font-size:32px; font-weight:800;">다자간 실시간 협업 & AI 병합 시뮬레이션관</h2>
       <p style="color:var(--text-muted); font-size:14px; margin-top:6px;">
-        기존의 페이퍼, 이메일, 깃허브를 완전히 대체하는 AMEVA만의 초지연 동시 협업 솔루션을 가상 체험해 보세요.
+        기존의 문서 작성, 소통, 협업 단계를 완전히 통합한 AMEVA만의 초지연 동시 협업 솔루션을 가상 체험해 보세요.
       </p>
     </section>
 
@@ -64,11 +140,9 @@
           <div class="collab-cursor-label">Ameva-Chan</div>
         </div>
 
-        <textarea id="collab-textarea" class="collab-textarea" placeholder="[라이브 데모 시작] 버튼을 누르면 협업 시뮬레이터가 기동됩니다." readonly>// 실시간 협업 에디터 맛보기
-const teamGoals = {
-  project: 'AMEVA Workstation',
-  status: 'Ready'
-};
+        <textarea id="collab-textarea" class="collab-textarea" placeholder="[라이브 데모 시작] 버튼을 누르면 협업 시뮬레이터가 기동됩니다." readonly># 하반기 신제품 공동 마케팅 기획안
+- 주력 채널: 온라인 비디오 및 글로벌 소셜 미디어
+- 기대 효과: 브랜드 선호도 400% 상승 기대
 </textarea>
 
         <!-- AI 인라인 수정 수락 제안 영역 -->
@@ -126,8 +200,7 @@ const teamGoals = {
     import { initTheme } from './js/common/theme.js';
     import { initNavigation } from './js/common/navigation.js';
     import { showToast } from './js/utils/toast.js';
-    import { simulateTyping } from './js/utils/editor-sim.js';
-    import { runAISimulation } from './js/utils/ai-sim.js';
+    import { calculateSimpleDiff } from './js/utils/diff-engine.js';
 
     initTheme();
     initNavigation();
@@ -139,6 +212,46 @@ const teamGoals = {
     const vCursor = document.getElementById('virtual-cursor');
     const aiBox = document.getElementById('collab-ai-box');
 
+    // 🎯 네온 가상 커서의 정밀 X, Y 트래킹 타이핑 시뮬레이터 함수
+    function runPreciseTyping(element, textToAdd, speed, onComplete) {
+      const origLength = element.value.length;
+      let i = 0;
+      vCursor.style.display = 'block';
+
+      // 초기 줄바꿈과 X좌표 세팅
+      function updateCursorPosition() {
+        const textUpToCursor = element.value;
+        const lines = textUpToCursor.split('\n');
+        const currentLineIdx = lines.length - 1;
+        const currentLineText = lines[currentLineIdx] || '';
+
+        // 줄간격 24px, 기점 상단 48px
+        const topPos = 48 + (currentLineIdx * 24);
+        
+        // 한글 13px, 영문/특문/공백 약 8px 계산
+        let xOffset = 24;
+        for (let char of currentLineText) {
+          xOffset += /[ㄱ-ㅎ|ㅏ-ㅣ|가-힣]/.test(char) ? 13 : 8.5;
+        }
+
+        vCursor.style.top = `${topPos}px`;
+        vCursor.style.left = `${xOffset}px`;
+      }
+
+      function step() {
+        if (i < textToAdd.length) {
+          element.value += textToAdd[i++];
+          updateCursorPosition();
+          element.scrollTop = element.scrollHeight;
+          setTimeout(step, speed);
+        } else {
+          vCursor.style.display = 'none';
+          if (onComplete) onComplete();
+        }
+      }
+      step();
+    }
+
     if (startBtn) {
       startBtn.addEventListener('click', () => {
         startBtn.disabled = true;
@@ -146,57 +259,106 @@ const teamGoals = {
         chatMsg.innerHTML = '';
 
         setTimeout(() => {
-          showToast('✓ 로컬 P2P CRDT 채널이 형성되었습니다.', 'success');
+          showToast('로컬 P2P CRDT 채널이 형성되었습니다.', 'success');
           startBtn.style.display = 'none';
 
-          // 1. Ameva-Chan 접속
+          // 1. Ameva-Chan 접속 대화
           chatMsg.innerHTML = `
             <div class="collab-chat-bubble">
               <div class="collab-chat-sender" style="color:#ec4899;">Ameva-Chan</div>
-              반갑습니다! 이번 마케팅 홍보 시나리오 파일 다 같이 손보고 보강해 두시죠!
+              반갑습니다! 이번 신제품 기획안 문구 다 같이 손보시죠! 기획안 아래에 기획 참여팀 문장 덧붙이겠습니다.
             </div>
           `;
           usersList.innerHTML += `<span class="collab-user-badge" style="border-color:#ec4899; color:#ec4899;">Ameva-Chan</span>`;
 
-          // 2. 가상 커서 보이기 및 타이핑 에뮬레이션 (20ms 스피드 최적화)
+          // 2. 가상 커서 X, Y 정밀 타이핑 시동
           setTimeout(() => {
-            vCursor.style.display = 'block';
-            vCursor.style.top = '120px';
-            vCursor.style.left = '40px';
+            const addedText = '\n- 기획 참여: 홍보팀, 마케팅팀, 글로벌 개발팀 공동 참여';
+            runPreciseTyping(textarea, addedText, 50, () => {
+              showToast('Ameva-Chan 님이 입력을 완료했습니다.', 'info');
 
-            simulateTyping(
-              textarea,
-              textarea.value + '\n\n// Ameva-Chan의 수정분\nteamGoals.status = "In Progress";\nconsole.log("팀 협업 가동율 500% 돌파!");',
-              20,
-              () => {
-                vCursor.style.display = 'none';
-                showToast('✓ Ameva-Chan 님이 입력을 완료했습니다.', 'info');
+              // 3. 채팅창에 Ameva-Chan의 수정 요청 전송
+              setTimeout(() => {
+                chatMsg.innerHTML += `
+                  <div class="collab-chat-bubble">
+                    <div class="collab-chat-sender" style="color:#ec4899;">Ameva-Chan</div>
+                    3번째 줄 기대 효과 부분 내용 좀 더 구체적이고 신뢰감 있게 수정해 주세요!
+                  </div>
+                `;
+                chatMsg.scrollTop = chatMsg.scrollHeight;
 
-                // 3. Antigravity-Bot 접속 및 대화
+                // 4. AI 비서의 친근한 대답
                 setTimeout(() => {
                   chatMsg.innerHTML += `
                     <div class="collab-chat-bubble">
-                      <div class="collab-chat-sender" style="color:#a855f7;">Antigravity (AI)</div>
-                      Ameva-Chan 님, 6번 라인 코드를 기업 도입 실증용 최적화 구조로 다듬어 드릴까요?
+                      <div class="collab-chat-sender" style="color:#a855f7;">AI 비서</div>
+                      네, 기대 효과 부분을 글로벌 브랜드 가치 제고 관점을 추가하여 더 매끄럽게 다듬으면 좋을 것 같아요. 교정안을 추천해 드렸으니 확인해 보세요!
                     </div>
                   `;
                   chatMsg.scrollTop = chatMsg.scrollHeight;
 
-                  // 4. AI 제안 카드 노출 시뮬레이션
+                  // 5. 우아한 AI Diff 제안창 기동 (Vercel/Linear 수락/거절 단추 매핑)
                   setTimeout(() => {
-                    runAISimulation(
-                      '기업 최적화 구조로 교정해줘',
-                      textarea.value,
-                      aiBox,
-                      (newText) => {
-                        textarea.value = newText;
+                    const originalText = textarea.value;
+                    const proposedText = originalText.replace('브랜드 선호도 400% 상승 기대', '글로벌 유력 유통 채널과의 독점 파트너십 구축 및 전년 대비 브랜드 신뢰성 650% 향상 목표 확보');
+                    
+                    const diffs = calculateSimpleDiff(originalText, proposedText);
+                    
+                    let diffHtml = '<div class="sim-diff-box">';
+                    diffs.forEach(item => {
+                      if (item.type === 'removed') {
+                        diffHtml += `<div class="sim-diff-removed">- ${item.text}</div>`;
+                      } else if (item.type === 'added') {
+                        diffHtml += `<div class="sim-diff-added">+ ${item.text}</div>`;
+                      } else {
+                        diffHtml += `<div class="sim-diff-normal">  ${item.text}</div>`;
                       }
-                    );
+                    });
+                    diffHtml += '</div>';
+
+                    aiBox.innerHTML = `
+                      <div class="ai-sim-card pending">
+                        <div class="ai-sim-header" style="margin-bottom:8px;">
+                          <i class="fas fa-sparkles" style="color:var(--primary);"></i> <strong>AI 비서의 실시간 추천 제안</strong>
+                        </div>
+                        <div class="ai-sim-body">
+                          ${diffHtml}
+                          <div class="ai-sim-actions" style="margin-top:12px; display:flex; gap:8px;">
+                            <button class="btn-action-accept" id="collab-accept-btn">수락 (Accept)</button>
+                            <button class="btn-action-reject" id="collab-reject-btn">거절</button>
+                          </div>
+                        </div>
+                      </div>
+                    `;
+
+                    // 수락 버튼 이벤트
+                    document.getElementById('collab-accept-btn').addEventListener('click', () => {
+                      textarea.value = proposedText;
+                      aiBox.innerHTML = `
+                        <div class="ai-sim-card accepted" style="background:rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); color:#10b981; padding:10px; border-radius:6px; font-size:12px;">
+                          <i class="fas fa-check-circle"></i> AI 실시간 추천 제안을 수락하여 문서에 적용했습니다.
+                        </div>
+                      `;
+                      showToast('AI 추천 수정안 적용 완료!', 'success');
+                    });
+
+                    // 거절 버튼 이벤트
+                    document.getElementById('collab-reject-btn').addEventListener('click', () => {
+                      aiBox.innerHTML = `
+                        <div class="ai-sim-card rejected" style="background:rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); color:#ef4444; padding:10px; border-radius:6px; font-size:12px;">
+                          <i class="fas fa-times-circle"></i> 제안을 거절했습니다.
+                        </div>
+                      `;
+                      showToast('AI 제안이 기각되었습니다.', 'info');
+                    });
+
                   }, 1200);
 
-                }, 1000);
-              }
-            );
+                }, 1800);
+
+              }, 1200);
+
+            });
           }, 1500);
 
         }, 1200);
