@@ -171,6 +171,31 @@ export default function App() {
   const [filePath, setFilePath] = useState<string | null>(null)
   const [currentContent, setCurrentContent] = useState('')
 
+  // ── 파일 오픈 모드 및 다중 파일 관리 상태 ──
+  const [fileOpenMode, setFileOpenMode] = useState<'replace' | 'append' | 'tab'>('replace')
+  const [appendedFiles, setAppendedFiles] = useState<{ id: string; filePath: string; startBlockId: string }[]>([])
+  const [tabs, setTabs] = useState<{ id: string; filePath: string | null; content: string; blocks: any[] }[]>([
+    { id: 'default', filePath: null, content: '', blocks: [] }
+  ])
+  const [activeTabId, setActiveTabId] = useState<string | null>('default')
+  const currentContentRef = useRef('')
+
+  useEffect(() => {
+    currentContentRef.current = currentContent
+  }, [currentContent])
+
+  // 탭별 작성 내용 실시간 동기화
+  useEffect(() => {
+    if (fileOpenMode === 'tab' && activeTabId) {
+      setTabs(prev => prev.map(t => {
+        if (t.id === activeTabId) {
+          return { ...t, content: currentContent }
+        }
+        return t
+      }))
+    }
+  }, [currentContent, activeTabId, fileOpenMode])
+
   // 에디터 영역 CSS zoom (1.0 = 100%, Electron 네이티브 줄 미사용)
   const [editorZoom, setEditorZoom] = useState(1.0)
 
@@ -568,7 +593,7 @@ graph TD
 
         try {
           const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
-          if (markdown.trim() !== currentContent.trim()) setCurrentContent(markdown)
+          if (markdown.trim() !== currentContentRef.current.trim()) setCurrentContent(markdown)
         } catch (err) {
           console.error('Markdown sync failed:', err)
         } finally {
@@ -761,6 +786,178 @@ graph TD
       setCurrentContent(rawContent)
     }
   }
+
+  // 아래로 계속 이어서 열기 (Append Mode)
+  const appendMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, fileName: string) => {
+    const normalized = normalizeMarkdown(rawContent)
+    const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
+    cleanCodeBlocks(newBlocks)
+    
+    const headerBlockId = 'file-header-' + Math.random().toString(36).substr(2, 9)
+    const headerBlock = {
+      id: headerBlockId,
+      type: 'heading' as const,
+      props: { level: 2 },
+      content: [{ type: 'text' as const, text: `파일: ${fileName}`, styles: {} }],
+      children: []
+    }
+    
+    const currentBlocks = [...targetEditor.document]
+    const updatedBlocks = [...currentBlocks, headerBlock, ...newBlocks]
+    
+    targetEditor.replaceBlocks(targetEditor.document, updatedBlocks)
+    
+    const fileId = 'appended-' + Math.random().toString(36).substr(2, 9)
+    setAppendedFiles(prev => [...prev, { id: fileId, filePath: fileName, startBlockId: headerBlockId }])
+    
+    setTimeout(() => {
+      const el = document.querySelector(`[data-id="${headerBlockId}"], [data-block-id="${headerBlockId}"]`)
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const outer = el?.closest('.bn-block-outer') || el
+      if (outer) {
+        outer.setAttribute('data-highlighted-temp', 'true')
+        setTimeout(() => {
+          outer.removeAttribute('data-highlighted-temp')
+        }, 1800)
+      }
+    }, 150)
+    
+    try {
+      const derived = await targetEditor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(targetEditor.document))
+      setCurrentContent(derived)
+    } catch {
+      setCurrentContent(rawContent)
+    }
+  }
+
+  // 탭으로 새로 열기 (Tab Mode)
+  const openFileInTab = async (targetEditor: BlockNoteEditor, fileContent: string, path: string) => {
+    const currentBlocks = [...targetEditor.document]
+    const currentActiveId = activeTabId
+    
+    const normalized = normalizeMarkdown(fileContent)
+    const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
+    cleanCodeBlocks(newBlocks)
+    
+    const newTabId = 'tab-' + Math.random().toString(36).substr(2, 9)
+    const newTab = {
+      id: newTabId,
+      filePath: path,
+      content: fileContent,
+      blocks: newBlocks
+    }
+    
+    setTabs(prev => {
+      const updated = prev.map(t => {
+        if (t.id === currentActiveId) {
+          return { ...t, filePath: filePath, content: currentContent, blocks: currentBlocks }
+        }
+        return t
+      })
+      return [...updated, newTab]
+    })
+    
+    setActiveTabId(newTabId)
+    setFilePath(path)
+    setCurrentContent(fileContent)
+    
+    targetEditor.replaceBlocks(targetEditor.document, newBlocks)
+  }
+
+  // 탭 직접 선택 전환
+  const handleSelectTab = useCallback(async (tabId: string) => {
+    if (!editor) return
+    const currentBlocks = [...editor.document]
+    const activeId = activeTabId
+    
+    setTabs(prev => {
+      const updated = prev.map(t => {
+        if (t.id === activeId) {
+          return { ...t, filePath: filePath, content: currentContent, blocks: currentBlocks }
+        }
+        return t
+      })
+      
+      const targetTab = updated.find(t => t.id === tabId)
+      if (targetTab) {
+        setTimeout(async () => {
+          setFilePath(targetTab.filePath)
+          setCurrentContent(targetTab.content)
+          
+          if (targetTab.blocks && targetTab.blocks.length > 0) {
+            editor.replaceBlocks(editor.document, targetTab.blocks)
+          } else {
+            const normalized = normalizeMarkdown(targetTab.content || '')
+            const parsed = await editor.tryParseMarkdownToBlocks(normalized)
+            cleanCodeBlocks(parsed)
+            editor.replaceBlocks(editor.document, parsed)
+          }
+        }, 0)
+      }
+      
+      return updated
+    })
+    
+    setActiveTabId(tabId)
+  }, [editor, activeTabId, filePath, currentContent])
+
+  // 탭 닫기
+  const handleCloseTab = useCallback((tabId: string) => {
+    setTabs(prev => {
+      const remaining = prev.filter(t => t.id !== tabId)
+      if (remaining.length === 0) {
+        const defaultTab = { id: 'default', filePath: null, content: '', blocks: [] }
+        if (editor) {
+          editor.replaceBlocks(editor.document, [])
+        }
+        setFilePath(null)
+        setCurrentContent('')
+        setActiveTabId('default')
+        return [defaultTab]
+      }
+      
+      if (activeTabId === tabId) {
+        const nextTab = remaining[0]
+        setActiveTabId(nextTab.id)
+        setFilePath(nextTab.filePath)
+        setCurrentContent(nextTab.content)
+        if (editor) {
+          if (nextTab.blocks && nextTab.blocks.length > 0) {
+            editor.replaceBlocks(editor.document, nextTab.blocks)
+          } else {
+            editor.replaceBlocks(editor.document, [])
+          }
+        }
+      }
+      return remaining
+    })
+  }, [editor, activeTabId])
+
+  // 열기 모드 변경 핸들러
+  const handleSwitchOpenMode = (mode: 'replace' | 'append' | 'tab') => {
+    setFileOpenMode(mode)
+    if (mode === 'replace') {
+      setAppendedFiles([])
+      setTabs([{ id: 'default', filePath: filePath, content: currentContent, blocks: [] }])
+      setActiveTabId('default')
+    } else if (mode === 'tab') {
+      setTabs([{ id: 'default', filePath: filePath, content: currentContent, blocks: [] }])
+      setActiveTabId('default')
+    }
+  }
+
+  // 이어서 열린 특정 파일 위치로 이동
+  const handleSelectAppendedFile = useCallback((startBlockId: string) => {
+    const el = document.querySelector(`[data-id="${startBlockId}"], [data-block-id="${startBlockId}"]`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const outer = el.closest('.bn-block-outer') || el
+      outer.setAttribute('data-highlighted-temp', 'true')
+      setTimeout(() => {
+        outer.removeAttribute('data-highlighted-temp')
+      }, 1800)
+    }
+  }, [])
 
   // ── 파일 관리 ──────────────────────────────────────────────
   const handleOpenFile = async () => {
