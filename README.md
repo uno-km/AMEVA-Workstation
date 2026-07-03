@@ -7,9 +7,10 @@
 >   * 마크다운 파서를 기반으로 로컬 LLM AI 추론 패널, 다국어 샌드박스 런타임, 리치 미디어(오디오/비디오/이미지) 저작 도구를 융합한 엔터프라이즈 데스크톱 에디터
 >   * Y.js CRDT 기반의 듀얼 네트워크 모델(로컬 P2P 서버 및 공용 클라우드 릴레이)을 적용하여 동시 문서 공동 편집 및 인스턴트 채팅 채널 설계
 >   * 격리된 iframe 환경을 활용하여 HTML/CSS 샌드박스 라이브 미리보기와 모달 뷰어를 통해 웹 컴포넌트 실시간 개발 및 렌더링 지원
+>   * 확장 템플릿/블록 플러그인 생태계를 위한 **인앱 마켓플레이스(Marketplace)** 및 대용량 문서 시각적 길잡이를 위한 **실시간 문서 미니맵(Minimap)** 통합 탑재
 > * **③ 내용요지:**
 >   * **사용 기술:** Electron, React, BlockNote Editor, Y.js (CRDT), Node.js WebSocketServer, Vite, Vanilla CSS
->   * **주요 구성 요소:** AI Chat & Prompt Panel, Multi-Language Code Block Runner, Y.js Dual WebSocket Engine, Media Streaming Player
+>   * **주요 구성 요소:** AI Chat & Prompt Panel, Multi-Language Code Block Runner, Y.js Dual WebSocket Engine, Media Streaming Player, **Plugin & Template Marketplace**, **Real-time Document Outline Minimap**
 >   * **핵심 아키텍처:** Electron Main IPC -> Node WebSocket Server (Port 1234) -> React Client CRDT sync (Y.js WebSockets Provider) -> ProseMirror/BlockNote state merge
 > * **④ 기여도:** 단독 개발 (100% - 아키텍처 설계 및 코어 기능 구현 전담)
 
@@ -25,10 +26,12 @@
 
 ## 2. 주요 기능 및 연구 목표
 
-* **인터랙티브 샌드박스 런타임**: JS, Python, SQL, HTML 코드를 별도 외부 컴파일러 없이 문서 내부 셀에서 직접 실행하고 결과를 가시화합니다.
-* **CRDT 기반의 협업 아키텍처**: P2P 로컬 소켓 모드와 공용 클라우드 중계 릴레이 모드를 제공하여, 어떠한 방화벽이나 외부망 차단 환경에서도 문서를 실시간으로 동기화합니다.
-* **리치 멀티미디어 저작 허브**: 이미지 크기 동적 조절 및 오디오/비디오 파일의 원활한 탑재 및 스트리밍 플레이어를 제공합니다.
-* **Mermaid 다이어그램 엔진**: 텍스트 정의 기반 다이어그램(Flow, Sequence, ERD)의 실시간 렌더링 동기화를 보장합니다.
+* 인터랙티브 샌드박스 런타임: JS, Python, SQL, HTML 코드를 별도 외부 컴파일러 없이 문서 내부 셀에서 직접 실행하고 결과를 가시화합니다.
+* CRDT 기반의 협업 아키텍처: P2P 로컬 소켓 모드와 공용 클라우드 중계 릴레이 모드를 제공하여, 어떠한 방화벽이나 외부망 차단 환경에서도 문서를 실시간으로 동기화합니다.
+* 리치 멀티미디어 저작 허브: 이미지 크기 동적 조절 및 오디오/비디오 파일의 원활한 탑재 및 스트리밍 플레이어를 제공합니다.
+* Mermaid 다이어그램 엔진: 텍스트 정의 기반 다이어그램(Flow, Sequence, ERD)의 실시간 렌더링 동기화를 보장합니다.
+* 통합 플러그인 마켓플레이스: 다양한 사용자 정의 템플릿, 커스텀 확장 블록, 생산성 플러그인 생태계를 조회하고 원클릭으로 주입 마운트합니다.
+* 실시간 문서 구조 미니맵: 대용량의 긴 문서 작성 시 흐름을 쉽게 짚을 수 있는 문서 아웃라인 및 레이아웃 미리보기 미니맵을 에디터 우측에 실시간 렌더링합니다.
 
 ---
 
@@ -46,12 +49,15 @@ graph TD
         A[Rich Text Editor] -- "CRDT State Sync" --> B(Y.js Provider)
         A -- "Run Code" --> C[WASM Sandbox Runner]
         A -- "Query AI" --> D[LLM Panel]
+        A -- "Outline Sync" --> H[Outline Minimap]
+        A -- "Load Extensions" --> I[Marketplace Hub]
     end
 
     subgraph "Electron Application Sandbox"
         B -- "Local WS Connection (Port 1234)" --> E[Node.js WSS Server]
         B -- "Cloud Relay (Port 443)" --> F[Public Yjs Relay]
         D -- "IPC Request" --> G[Local LLM / STT Service]
+        I -- "Fetch Plugins" --> J[GitHub / Registry API]
     end
 ```
 
@@ -74,6 +80,9 @@ npm run dev
 ---
 
 ## 6. 로드맵 및 다가올 기능 (Roadmap)
-- [ ] LLM 채팅 기능 고도화: 대화 내용 스레드 관리 및 프롬프트 템플릿
-- [ ] 멀티미디어 블록 강화: 이미지 크기 조절, 인라인 비디오/오디오 커스텀 플레이어 탑재
-- [ ] Mermaid 렌더링 안정화: 복잡한 다이어그램의 실시간 편집 시 싱크 렉 박멸
+- [x] LLM 채팅 기능 고도화: 대화 내용 스레드 관리 및 프롬프트 템플릿
+- [x] 멀티미디어 블록 강화: 이미지 크기 조절, 인라인 비디오/오디오 커스텀 플레이어 탑재
+- [x] Mermaid 렌더링 안정화: 복잡한 다이어그램의 실시간 편집 시 싱크 렉 박멸
+- [x] 확장 플러그인 및 템플릿 인앱 마켓플레이스 빌드 완료
+- [x] 에디터 우측 실시간 가로 탐색 문서 미니맵 연동 완료
+- [ ] 오프라인 RAG 로컬 지식 데이터베이스 통합 탐색 지원
