@@ -10,8 +10,12 @@ export function useNativeUploadIntercept(
     const container = editorContainerRef.current
 
     const isEditorMounted = () => {
-      const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
-      return !!(view && view.dom && document.body.contains(view.dom))
+      try {
+        const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
+        return !!(view && view.dom && document.body.contains(view.dom))
+      } catch {
+        return false
+      }
     }
 
     const handleFileUploadIntercept = async (e: MouseEvent) => {

@@ -42,19 +42,8 @@ function convertJupyterToCodeBlocks(blocks: any[]): any[] {
       copy.type = 'codeBlock'
       const lang = copy.props?.language || 'javascript'
       
-      // 코드 텍스트 맨 첫 줄에 언어 메타데이터 주석을 심어 저장합니다.
-      let prefix = ''
-      if (['python', 'py', 'bash', 'sh', 'mermaid'].includes(lang)) {
-        prefix = `# [AMEVA_LANG:${lang}]\n`
-      } else if (['sql'].includes(lang)) {
-        prefix = `-- [AMEVA_LANG:${lang}]\n`
-      } else if (['html', 'xml'].includes(lang)) {
-        prefix = `<!-- [AMEVA_LANG:${lang}] -->\n`
-      } else {
-        prefix = `// [AMEVA_LANG:${lang}]\n`
-      }
-      
-      const finalCodeText = prefix + (copy.props?.code || '')
+      // 코드 텍스트를 그대로 전달하며 언어 지정을 props.language에 실어 표준 마크다운 펜스로 저장합니다.
+      const finalCodeText = copy.props?.code || ''
       copy.content = [{ type: 'text', text: finalCodeText, styles: {} }]
       copy.props = {
         language: lang
@@ -85,8 +74,12 @@ function normalizeMarkdown(raw: string): string {
     }
   }
   content = parts.join('```')
-  content = content.replace(/\n*```(javascript|js|python|py|c|cpp|java|html|css|xml|json|sh|bash|mermaid|text|txt)?\n*/g, '\n\n```$1\n')
-  content = content.replace(/\n*```\n*/g, '\n```\n\n')
+  
+  // opening fence 정밀 매칭 (뒤에 알파벳/숫자 언어명이 오고 개행이 오는 경우)
+  content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, '\n\n```$1\n')
+  // closing fence 또는 언어가 없는 fence 정밀 매칭
+  content = content.replace(/\n*```[^\n]*\n+/g, '\n```\n\n')
+  
   content = content.replace(/\n{3,}/g, '\n\n')
   return content.trim()
 }

@@ -20,8 +20,12 @@ export function useCollaborationHighlight(
     let isCurrentlyEditing = false
 
     const isEditorMounted = () => {
-      const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
-      return !!(view && view.dom && document.body.contains(view.dom))
+      try {
+        const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
+        return !!(view && view.dom && document.body.contains(view.dom))
+      } catch {
+        return false
+      }
     }
 
     const clearActive = () => {
