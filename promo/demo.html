@@ -74,7 +74,7 @@ console.log('생산성 400% 향상 시동 완료');
           <div class="simulator-box" style="margin-top:0;">
             <div class="sim-input-panel">
               <div class="sim-label"><i class="fab fa-python" style="color:#38bdf8;"></i> Python Kernel</div>
-              <textarea id="py-code-input" class="sim-textarea" style="color: #a5f3fc;"># Python 데이터 분석 시뮬레이션
+              <textarea id="py-code-input" class="sim-textarea"># Python 데이터 분석 시뮬레이션
 users = ["Manager", "Developer", "Researcher"]
 for u in users:
     print(f"User role: {u} is active")
@@ -94,7 +94,7 @@ print("Python WASM 가동률 100%")
           <div class="simulator-box" style="margin-top:0;">
             <div class="sim-input-panel">
               <div class="sim-label"><i class="fab fa-html5" style="color:#f97316;"></i> HTML Live Engine</div>
-              <textarea id="html-code-input" class="sim-textarea" style="color:#fed7aa;"><div style="padding: 20px; font-family: sans-serif; text-align: center; background: linear-gradient(135deg, #a855f7, #06b6d4); color: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(139,92,246,0.35);">
+              <textarea id="html-code-input" class="sim-textarea"><div style="padding: 20px; font-family: sans-serif; text-align: center; background: linear-gradient(135deg, #a855f7, #06b6d4); color: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(139,92,246,0.35);">
   <h3 style="margin:0 0 10px 0;">🎉 AMEVA Live Canvas</h3>
   <p style="margin:0; opacity: 0.9; font-size:12px;">코드를 실시간 수정해 실시간 물리 렌더를 확인해 보세요!</p>
 </div></textarea>
@@ -112,7 +112,7 @@ print("Python WASM 가동률 100%")
           <div class="simulator-box" style="margin-top:0;">
             <div class="sim-input-panel">
               <div class="sim-label"><i class="fas fa-database" style="color:#10b981;"></i> WASM SQLite DB</div>
-              <textarea id="sql-code-input" class="sim-textarea" style="color:#a7f3d0;">-- SQLite WASM developers 조회
+              <textarea id="sql-code-input" class="sim-textarea">-- SQLite WASM developers 조회
 SELECT * FROM developers;</textarea>
               <button id="run-sql-btn" class="run-btn" style="background:var(--accent);"><i class="fas fa-database"></i> Execute SQL</button>
             </div>
@@ -135,7 +135,7 @@ SELECT * FROM developers;</textarea>
         원하는 언어 카드를 띄운 뒤 아래 프롬프트에 "성능 개선해줘" 또는 "주석 추가해줘"를 넣고 요청해 보세요. Diff 카드를 수락하면 해당 카드의 텍스트가 AI 제안안으로 바로 업데이트됩니다!
       </p>
       <div style="display:flex; gap:10px; margin-bottom: 14px;">
-        <input type="text" id="ai-sim-prompt" placeholder="예: 구동율 100% 문구를 가속 구동으로 변경하고 개선해줘" style="flex:1; background:#090a0f; border:1px solid var(--border-muted); border-radius:6px; padding:8px 12px; color:white; font-size:12px;">
+        <input type="text" id="ai-sim-prompt" class="sim-prompt-input" placeholder="예: 구동율 100% 문구를 가속 구동으로 변경하고 개선해줘">
         <button id="ai-sim-btn" class="run-btn" style="margin:0; background: var(--primary);"><i class="fas fa-sparkles"></i> AI 제안 요청</button>
       </div>
       <div id="ai-sim-output-container"></div>
