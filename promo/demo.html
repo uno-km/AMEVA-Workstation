@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Playground | AMEVA Workstation</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <div class="brand-icon"><i class="fas fa-cubes"></i></div>
+      <span>AMEVA Workstation</span>
+    </a>
+    <nav class="nav-menu">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="features.html" class="nav-link">Features</a>
+      <a href="solutions-enterprise.html" class="nav-link">Solutions</a>
+      <a href="pricing.html" class="nav-link">Pricing</a>
+      <a href="contact.html" class="nav-link">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <button id="theme-toggle" class="btn-theme"><i class="fas fa-sun"></i></button>
+      <a href="contact.html" class="btn-primary" style="padding: 8px 16px; font-size: 11px;">Request Demo</a>
+    </div>
+  </header>
+
+  <main class="promo-container">
+    <section style="text-align: center; margin-bottom: 30px;">
+      <div class="badge-tag"><i class="fas fa-terminal"></i> Multi-Runtime Playground</div>
+      <h2 style="font-size:32px; font-weight:800;">4대 언어 실시간 가상 맛보기 체험관</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin-top:6px;">
+        상단 탭을 눌러 카드를 휙휙 넘겨보세요. 각 언어별 실시간 코드 작동과 AI 피드백을 가상 샌드박스로 완벽 체감할 수 있습니다.
+      </p>
+    </section>
+
+    <!-- 🎪 캐러셀 컨트롤용 탭 메뉴 -->
+    <div class="solutions-tabs" style="margin-bottom: 20px;">
+      <button class="solution-tab-btn active" data-slide="0"><i class="fab fa-js"></i> JavaScript</button>
+      <button class="solution-tab-btn" data-slide="1"><i class="fab fa-python"></i> Python</button>
+      <button class="solution-tab-btn" data-slide="2"><i class="fab fa-html5"></i> HTML Live</button>
+      <button class="solution-tab-btn" data-slide="3"><i class="fas fa-database"></i> WASM SQL</button>
+    </div>
+
+    <!-- 🎪 캐러셀 오버플로우 트랙 -->
+    <div class="carousel-wrapper">
+      <div class="carousel-track" id="playground-track">
+        
+        <!-- 슬라이드 1: JavaScript -->
+        <div class="carousel-slide">
+          <div class="simulator-box" style="margin-top:0;">
+            <div class="sim-input-panel">
+              <div class="sim-label"><i class="fab fa-js" style="color:#f59e0b;"></i> JavaScript Compiler</div>
+              <textarea id="js-code-input" class="sim-textarea">// JavaScript 가상 런타임
+const welcome = ['AMEVA', 'Workstation'].join(' ');
+console.log(`Hello, welcome to ${welcome}!`);
+console.log('생산성 400% 향상 시동 완료');
+</textarea>
+              <button id="run-js-btn" class="run-btn"><i class="fas fa-play"></i> Run JavaScript</button>
+            </div>
+            <div class="sim-output-panel">
+              <div class="sim-label"><i class="fas fa-terminal"></i> Console Output</div>
+              <div id="js-console-output" class="sim-console">결과 로그가 여기에 표출됩니다.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 슬라이드 2: Python -->
+        <div class="carousel-slide">
+          <div class="simulator-box" style="margin-top:0;">
+            <div class="sim-input-panel">
+              <div class="sim-label"><i class="fab fa-python" style="color:#38bdf8;"></i> Python Kernel</div>
+              <textarea id="py-code-input" class="sim-textarea" style="color: #a5f3fc;"># Python 데이터 분석 시뮬레이션
+users = ["Manager", "Developer", "Researcher"]
+for u in users:
+    print(f"User role: {u} is active")
+print("Python WASM 가동률 100%")
+</textarea>
+              <button id="run-py-btn" class="run-btn" style="background:#0284c7;"><i class="fas fa-play"></i> Run Python</button>
+            </div>
+            <div class="sim-output-panel">
+              <div class="sim-label"><i class="fas fa-terminal"></i> Console Output</div>
+              <div id="py-console-output" class="sim-console">결과 로그가 여기에 표출됩니다.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 슬라이드 3: HTML Live -->
+        <div class="carousel-slide">
+          <div class="simulator-box" style="margin-top:0;">
+            <div class="sim-input-panel">
+              <div class="sim-label"><i class="fab fa-html5" style="color:#f97316;"></i> HTML Live Engine</div>
+              <textarea id="html-code-input" class="sim-textarea" style="color:#fed7aa;"><div style="padding: 20px; font-family: sans-serif; text-align: center; background: linear-gradient(135deg, #a855f7, #06b6d4); color: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(139,92,246,0.35);">
+  <h3 style="margin:0 0 10px 0;">🎉 AMEVA Live Canvas</h3>
+  <p style="margin:0; opacity: 0.9; font-size:12px;">코드를 실시간 수정해 실시간 물리 렌더를 확인해 보세요!</p>
+</div></textarea>
+              <button id="apply-html-sample-btn" class="run-btn" style="background:var(--primary);"><i class="fas fa-magic"></i> Load Premium Sample</button>
+            </div>
+            <div class="sim-output-panel">
+              <div class="sim-label"><i class="fas fa-eye"></i> Live Sandbox Preview</div>
+              <iframe id="html-preview-frame" style="flex:1; border: 1px solid var(--border-muted); border-radius:8px; background:white; min-height:180px; width:100%;"></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- 슬라이드 4: WASM SQL -->
+        <div class="carousel-slide">
+          <div class="simulator-box" style="margin-top:0;">
+            <div class="sim-input-panel">
+              <div class="sim-label"><i class="fas fa-database" style="color:#10b981;"></i> WASM SQLite DB</div>
+              <textarea id="sql-code-input" class="sim-textarea" style="color:#a7f3d0;">-- SQLite WASM developers 조회
+SELECT * FROM developers;</textarea>
+              <button id="run-sql-btn" class="run-btn" style="background:var(--accent);"><i class="fas fa-database"></i> Execute SQL</button>
+            </div>
+            <div class="sim-output-panel">
+              <div class="sim-label"><i class="fas fa-table"></i> Database Grid</div>
+              <div id="sql-table-output" class="sim-console" style="background: #0f172a; padding: 20px;">결과 표가 여기에 표출됩니다.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- AI 인라인 수락/거절 체험판 -->
+    <section style="margin-top: 30px; padding: 20px; border: 1px dashed var(--border-glow); border-radius: 12px; background: rgba(139,92,246,0.02);">
+      <h4 style="font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+        <i class="fas fa-sparkles"></i> AI 인라인 승인/거절(Accept/Reject) 모션 시뮬레이션
+      </h4>
+      <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 14px;">
+        원하는 언어 카드를 띄운 뒤 아래 프롬프트에 "성능 개선해줘" 또는 "주석 추가해줘"를 넣고 요청해 보세요. Diff 카드를 수락하면 해당 카드의 텍스트가 AI 제안안으로 바로 업데이트됩니다!
+      </p>
+      <div style="display:flex; gap:10px; margin-bottom: 14px;">
+        <input type="text" id="ai-sim-prompt" placeholder="예: 구동율 100% 문구를 가속 구동으로 변경하고 개선해줘" style="flex:1; background:#090a0f; border:1px solid var(--border-muted); border-radius:6px; padding:8px 12px; color:white; font-size:12px;">
+        <button id="ai-sim-btn" class="run-btn" style="margin:0; background: var(--primary);"><i class="fas fa-sparkles"></i> AI 제안 요청</button>
+      </div>
+      <div id="ai-sim-output-container"></div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initTheme } from './js/common/theme.js';
+    import { initNavigation } from './js/common/navigation.js';
+    import { initDemoJS } from './js/pages/demo-js.js';
+    import { initDemoPy } from './js/pages/demo-py.js';
+    import { initDemoHTML } from './js/pages/demo-html.js';
+    import { initDemoSQL } from './js/pages/demo-sql.js';
+    import { runAISimulation } from './js/utils/ai-sim.js';
+
+    initTheme();
+    initNavigation();
+    
+    // 4대 언어 비즈니스 로직 초기화
+    initDemoJS();
+    initDemoPy();
+    initDemoHTML();
+    initDemoSQL();
+
+    // 🎪 캐러셀 제어 로직
+    const track = document.getElementById('playground-track');
+    const tabs = document.querySelectorAll('.solution-tab-btn[data-slide]');
+    let activeSlideIndex = 0;
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const slideIdx = parseInt(tab.getAttribute('data-slide'));
+        activeSlideIndex = slideIdx;
+        
+        // 탭 버튼 active 클래스 제어
+        tabs.forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        // 트랙 휙휙 미끄러지는 transform 연출
+        track.style.transform = `translateX(-${slideIdx * 25}%)`;
+      });
+    });
+
+    // AI 시뮬레이터 연계
+    document.getElementById('ai-sim-btn').addEventListener('click', () => {
+      const prompt = document.getElementById('ai-sim-prompt').value;
+      const container = document.getElementById('ai-sim-output-container');
+      
+      // 현재 활성화된 슬라이드의 텍스트 영역을 타겟으로 잡음
+      let targetTextareaId = 'js-code-input';
+      if (activeSlideIndex === 1) targetTextareaId = 'py-code-input';
+      else if (activeSlideIndex === 2) targetTextareaId = 'html-code-input';
+      else if (activeSlideIndex === 3) targetTextareaId = 'sql-code-input';
+
+      const targetArea = document.getElementById(targetTextareaId);
+      const originalText = targetArea.value;
+
+      runAISimulation(prompt, originalText, container, (newText) => {
+        targetArea.value = newText;
+        // HTML 미리보기 갱신용 강제 트리거
+        targetArea.dispatchEvent(new Event('input'));
+      });
+    });
+  </script>
+</body>
+</html>
