@@ -17,6 +17,8 @@
     <nav class="nav-menu">
       <a href="index.html" class="nav-link">Home</a>
       <a href="features.html" class="nav-link">Features</a>
+      <a href="demo.html" class="nav-link">Playground</a>
+      <a href="demo-collab.html" class="nav-link">Collaboration</a>
       <a href="solutions-enterprise.html" class="nav-link">Solutions</a>
       <a href="pricing.html" class="nav-link">Pricing</a>
       <a href="contact.html" class="nav-link">Contact</a>
@@ -42,7 +44,7 @@
     </div>
 
     <!-- 👥 협업 레이아웃 본체 -->
-    <div class="collab-layout">
+    <div class="collab-layout" style="margin-bottom:60px;">
       
       <!-- 좌측 가상 공유 에디터 -->
       <div class="collab-editor-container">
@@ -84,6 +86,40 @@ const teamGoals = {
       </div>
 
     </div>
+
+    <!-- 📊 [NEW] 3대 도구 대체 비교 인포그래픽 테이블 섹션 -->
+    <div class="comparison-container">
+      <div class="badge-tag" style="color:var(--accent); border-color:var(--accent);"><i class="fas fa-balance-scale"></i> Value Comparison</div>
+      <h2 style="font-size:28px; font-weight:800;">왜 AMEVA Workstation인가?</h2>
+      <p style="color:var(--text-muted); font-size:13px; margin-top:6px;">기존 파편화된 협업 방식과 AMEVA 통합 생산성의 차이를 눈으로 직접 비교해 보세요.</p>
+      
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>기능 영역</th>
+            <th class="comparison-column-legacy">전통적인 작업 방식 (Legacy Tools)</th>
+            <th class="comparison-column-ameva">AMEVA Workstation (Unified)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>문서 저작 (Paper)</strong></td>
+            <td style="color:var(--text-muted);">정적 텍스트 및 죽은 코드 스니펫. 실제 실행을 위해 로컬 컴파일러 별도 기동 필요.</td>
+            <td class="comparison-column-ameva">문서 내에 JS, Py, SQL WASM 런타임 탑재. 타이핑 즉시 라이브 렌더링 결과 확인.</td>
+          </tr>
+          <tr>
+            <td><strong>팀 소통 (Email)</strong></td>
+            <td style="color:var(--text-muted);">업데이트 확인을 위한 빈번한 피드백 메일 전송 및 컨텍스트 파편화 문제.</td>
+            <td class="comparison-column-ameva">문서 인라인 Y.js 실시간 채팅 및 알림 피드. 모든 대화 기록이 문서 컨텍스트에 보존.</td>
+          </tr>
+          <tr>
+            <td><strong>버전 및 병합 (GitHub)</strong></td>
+            <td style="color:var(--text-muted);">비개발자 팀원은 사용하기 어려운 복잡한 Git CLI 및 수동 브랜치 충돌 해결(Merge Conflict).</td>
+            <td class="comparison-column-ameva">온디바이스 AI 비서 탑재. Git 스타일 Red/Green Diff 카드를 클릭 한번으로 즉각 적용(Accept).</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </main>
 
   <script type="module">
@@ -114,7 +150,7 @@ const teamGoals = {
           startBtn.style.display = 'none';
 
           // 1. Ameva-Chan 접속
-          chatMsg.innerHTML += `
+          chatMsg.innerHTML = `
             <div class="collab-chat-bubble">
               <div class="collab-chat-sender" style="color:#ec4899;">Ameva-Chan</div>
               반갑습니다! 이번 마케팅 홍보 시나리오 파일 다 같이 손보고 보강해 두시죠!
@@ -122,7 +158,7 @@ const teamGoals = {
           `;
           usersList.innerHTML += `<span class="collab-user-badge" style="border-color:#ec4899; color:#ec4899;">Ameva-Chan</span>`;
 
-          // 2. 가상 커서 보이기 및 타이핑 에뮬레이션
+          // 2. 가상 커서 보이기 및 타이핑 에뮬레이션 (20ms 스피드 최적화)
           setTimeout(() => {
             vCursor.style.display = 'block';
             vCursor.style.top = '120px';
@@ -131,7 +167,7 @@ const teamGoals = {
             simulateTyping(
               textarea,
               textarea.value + '\n\n// Ameva-Chan의 수정분\nteamGoals.status = "In Progress";\nconsole.log("팀 협업 가동율 500% 돌파!");',
-              45,
+              20,
               () => {
                 vCursor.style.display = 'none';
                 showToast('✓ Ameva-Chan 님이 입력을 완료했습니다.', 'info');
