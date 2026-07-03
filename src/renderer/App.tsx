@@ -814,7 +814,19 @@ graph TD
     targetEditor.replaceBlocks(targetEditor.document, updatedBlocks)
     
     const fileId = 'appended-' + Math.random().toString(36).substr(2, 9)
-    setAppendedFiles(prev => [...prev, { id: fileId, filePath: fileName, startBlockId: headerBlockId }])
+    setAppendedFiles(prev => {
+      if (prev.length === 0) {
+        return [
+          {
+            id: 'base-file',
+            filePath: filePath ? filePath.split(/[\\/]/).pop() || '무제 문서.md' : '무제 문서.md',
+            startBlockId: targetEditor.document[0]?.id || ''
+          },
+          { id: fileId, filePath: fileName, startBlockId: headerBlockId }
+        ]
+      }
+      return [...prev, { id: fileId, filePath: fileName, startBlockId: headerBlockId }]
+    })
     
     setTimeout(() => {
       const el = document.querySelector(`[data-id="${headerBlockId}"], [data-block-id="${headerBlockId}"]`)
