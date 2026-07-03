@@ -1079,8 +1079,76 @@ input:checked + .slider:before {
     -webkit-overflow-scrolling: touch;
   }
   
-  /* 5. 기타 섹션 컨테이너 여백 축소 */
-  .promo-container {
-    padding: 86px 16px 40px !important; /* 상단 헤더 높이만큼 여백 최적화 */
+    /* 5. 기타 섹션 컨테이너 여백 축소 */
+    .promo-container {
+      padding: 86px 16px 40px !important; /* 상단 헤더 높이만큼 여백 최적화 */
+    }
   }
+}
+
+/* ── AI 인라인 시뮬레이션용 인풋 및 수락/거절 버튼 프리미엄 스타일 ── */
+.sim-prompt-input {
+  flex: 1;
+  background: var(--bg-textarea);
+  border: 1px solid var(--border-muted);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--text-main);
+  font-size: 12px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.sim-prompt-input::placeholder {
+  color: var(--text-dark);
+  opacity: 0.7;
+}
+
+.sim-prompt-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.sim-btn-accept {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: none;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+  transition: all 0.2s ease;
+}
+
+.sim-btn-accept:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+  filter: brightness(1.1);
+}
+
+.sim-btn-accept:active {
+  transform: translateY(0);
+}
+
+.sim-btn-reject {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-muted);
+  color: var(--text-main);
+  padding: 7px 16px; /* 보더 두께 고려 단차 정렬 */
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sim-btn-reject:hover {
+  background: var(--bg-glass-active);
+  border-color: var(--text-dark);
+}
+
+.sim-btn-reject:active {
+  transform: scale(0.98);
 }
