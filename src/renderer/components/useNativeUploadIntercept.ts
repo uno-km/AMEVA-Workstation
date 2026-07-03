@@ -9,15 +9,24 @@ export function useNativeUploadIntercept(
     if (!editor || !editorContainerRef.current) return
     const container = editorContainerRef.current
 
+    const isEditorMounted = () => {
+      const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
+      return !!(view && view.dom && document.body.contains(view.dom))
+    }
+
     const handleFileUploadIntercept = async (e: MouseEvent) => {
+      if (!isEditorMounted()) return
+
       const target = e.target as HTMLElement
-      const isUploadTrigger = 
-        target.closest('.bn-file-input') || 
-        target.textContent?.includes('Choose File') || 
-        target.textContent?.includes('Upload File') ||
-        target.textContent?.includes('Upload Image') ||
-        target.textContent?.includes('Upload Video') ||
-        target.textContent?.includes('Upload Audio')
+      const button = target.closest('button') || target.closest('[role="button"]') || target.closest('.bn-file-input')
+      const isUploadTrigger = !!(button && (
+        button.classList.contains('bn-file-input') ||
+        button.textContent?.includes('Choose File') || 
+        button.textContent?.includes('Upload File') ||
+        button.textContent?.includes('Upload Image') ||
+        button.textContent?.includes('Upload Video') ||
+        button.textContent?.includes('Upload Audio')
+      ))
 
       if (!isUploadTrigger) return
 
