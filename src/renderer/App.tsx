@@ -43,11 +43,10 @@ function convertJupyterToCodeBlocks(blocks: any[]): any[] {
       const lang = copy.props?.language || 'javascript'
       
       // 코드 텍스트를 그대로 전달하며 언어 지정을 props.language에 실어 표준 마크다운 펜스로 저장합니다.
-      // BlockNote가 가져오기 시 인식할 수 있도록 javascript/typescript를 js/ts 단축어로 매핑하여 내보냅니다.
       const finalCodeText = copy.props?.code || ''
       copy.content = [{ type: 'text', text: finalCodeText, styles: {} }]
       copy.props = {
-        language: lang === 'javascript' ? 'js' : lang === 'typescript' ? 'ts' : lang
+        language: lang
       }
     } else if (copy.children) {
       copy.children = convertJupyterToCodeBlocks(copy.children)
@@ -77,10 +76,10 @@ function normalizeMarkdown(raw: string): string {
   content = parts.join('```')
   
   // opening fence 정밀 매칭 (뒤에 알파벳/숫자 언어명이 오고 개행이 오는 경우)
-  // BlockNote가 fence 언어를 정확히 해석할 수 있도록 javascript/typescript를 js/ts 단축어로 매핑합니다.
+  // BlockNote가 fence 언어를 정확히 해석할 수 있도록 js/ts/py 단축어를 표준 언어명(javascript/typescript/python)으로 정규화합니다.
   content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, (match, lang) => {
     const l = lang.toLowerCase()
-    const mapped = l === 'javascript' ? 'js' : l === 'typescript' ? 'ts' : l
+    const mapped = l === 'js' ? 'javascript' : l === 'ts' ? 'typescript' : l === 'py' ? 'python' : l
     return `\n\n\`\`\`${mapped}\n`
   })
   // closing fence 또는 언어가 없는 fence 정밀 매칭
