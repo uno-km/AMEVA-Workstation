@@ -17,6 +17,8 @@
     <nav class="nav-menu">
       <a href="index.html" class="nav-link">Home</a>
       <a href="features.html" class="nav-link">Features</a>
+      <a href="demo.html" class="nav-link">Playground</a>
+      <a href="demo-collab.html" class="nav-link">Collaboration</a>
       <a href="solutions-enterprise.html" class="nav-link">Solutions</a>
       <a href="pricing.html" class="nav-link">Pricing</a>
       <a href="contact.html" class="nav-link">Contact</a>
@@ -39,7 +41,7 @@
     <div style="background:var(--bg-card); border:1px solid var(--border-muted); border-radius:16px; padding:32px; line-height:1.8;">
       <h3 style="font-weight:700; color:var(--secondary); margin-bottom:12px;"><i class="fas fa-network-wired"></i> 동시 편집의 비밀: Y.js</h3>
       <p style="color:var(--text-muted); margin-bottom:20px; font-size:13px;">
-        기존의 협업 에디터들은 중앙 서버의 판단 하에 텍스트 인덱스를 재조정하는 OT(Operational Transformation) 방식을 사용하여 랙이 심하고 서버 의존도가 높았습니다. AMEVA는 데이터 분산 병합을 보장하는 **CRDT(Conflict-free Replicated Data Type)** 모델을 적용하여:
+        기존의 수기 협업 에디터들은 중앙 서버의 판단 하에 텍스트 인덱스를 재조정하는 OT 방식을 사용하여 지연율이 컸습니다. AMEVA는 데이터 분산 병합을 보장하는 **CRDT** 모델을 적용하여:
         <br><br>
         - 각 사용자의 커서 위치와 하이라이트 영역이 개별 노드 ID로 매핑되어 데이터 오버헤드 없이 스트리밍됩니다.<br>
         - 인터넷 전송이 불가능한 보안 격리 연구실 내에서도, 특정 컴퓨터의 포트(1234)를 방화벽 허용하는 것만으로 완벽한 독자적 로컬 협업 서버가 기동됩니다.

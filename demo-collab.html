@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Collaboration Demo | AMEVA Workstation</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <div class="brand-icon"><i class="fas fa-cubes"></i></div>
+      <span>AMEVA Workstation</span>
+    </a>
+    <nav class="nav-menu">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="features.html" class="nav-link">Features</a>
+      <a href="solutions-enterprise.html" class="nav-link">Solutions</a>
+      <a href="pricing.html" class="nav-link">Pricing</a>
+      <a href="contact.html" class="nav-link">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <button id="theme-toggle" class="btn-theme"><i class="fas fa-sun"></i></button>
+      <a href="contact.html" class="btn-primary" style="padding: 8px 16px; font-size: 11px;">Request Demo</a>
+    </div>
+  </header>
+
+  <main class="promo-container">
+    <section style="text-align: center; margin-bottom: 30px;">
+      <div class="badge-tag"><i class="fas fa-users"></i> Real-time CRDT Sync</div>
+      <h2 style="font-size:32px; font-weight:800;">다자간 실시간 협업 & AI 병합 시뮬레이션관</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin-top:6px;">
+        기존의 페이퍼, 이메일, 깃허브를 완전히 대체하는 AMEVA만의 초지연 동시 협업 솔루션을 가상 체험해 보세요.
+      </p>
+    </section>
+
+    <!-- 체험 활성화 버튼 -->
+    <div style="text-align:center; margin-bottom:20px;">
+      <button id="start-collab-btn" class="btn-primary" style="background:linear-gradient(135deg, var(--accent), var(--primary)); box-shadow:0 0 20px rgba(236,72,153,0.3);"><i class="fas fa-play"></i> 실시간 협업 라이브 데모 시작</button>
+    </div>
+
+    <!-- 👥 협업 레이아웃 본체 -->
+    <div class="collab-layout">
+      
+      <!-- 좌측 가상 공유 에디터 -->
+      <div class="collab-editor-container">
+        <div class="mac-bar" style="justify-content: space-between; align-items:center;">
+          <div style="display:flex; gap:6px;">
+            <div class="mac-dot mac-red"></div>
+            <div class="mac-dot mac-yellow"></div>
+            <div class="mac-dot mac-green"></div>
+          </div>
+          <div id="collab-users-list" style="display:flex; align-items:center;">
+            <span class="collab-user-badge" style="border-color:var(--secondary); color:var(--secondary);">나 (Me)</span>
+          </div>
+        </div>
+        
+        <!-- 실시간 네온 가상 커서 -->
+        <div id="virtual-cursor" class="collab-cursor">
+          <div class="collab-cursor-label">Ameva-Chan</div>
+        </div>
+
+        <textarea id="collab-textarea" class="collab-textarea" placeholder="[라이브 데모 시작] 버튼을 누르면 협업 시뮬레이터가 기동됩니다." readonly>// 실시간 협업 에디터 맛보기
+const teamGoals = {
+  project: 'AMEVA Workstation',
+  status: 'Ready'
+};
+</textarea>
+
+        <!-- AI 인라인 수정 수락 제안 영역 -->
+        <div id="collab-ai-box" style="margin-top:10px;"></div>
+      </div>
+
+      <!-- 우측 가상 채팅 패널 -->
+      <div class="collab-chat-panel">
+        <div class="collab-chat-header">
+          <i class="fas fa-comments"></i> <span>Live Session Chat</span>
+        </div>
+        <div id="collab-chat-messages" class="collab-chat-messages">
+          <div class="collab-chat-bubble" style="background:rgba(255,255,255,0.01); border-color:transparent; color:var(--text-dark);">채팅 세션이 비어 있습니다.</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script type="module">
+    import { initTheme } from './js/common/theme.js';
+    import { initNavigation } from './js/common/navigation.js';
+    import { showToast } from './js/utils/toast.js';
+    import { simulateTyping } from './js/utils/editor-sim.js';
+    import { runAISimulation } from './js/utils/ai-sim.js';
+
+    initTheme();
+    initNavigation();
+
+    const startBtn = document.getElementById('start-collab-btn');
+    const chatMsg = document.getElementById('collab-chat-messages');
+    const usersList = document.getElementById('collab-users-list');
+    const textarea = document.getElementById('collab-textarea');
+    const vCursor = document.getElementById('virtual-cursor');
+    const aiBox = document.getElementById('collab-ai-box');
+
+    if (startBtn) {
+      startBtn.addEventListener('click', () => {
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 협업 세션 연결 중...';
+        chatMsg.innerHTML = '';
+
+        setTimeout(() => {
+          showToast('✓ 로컬 P2P CRDT 채널이 형성되었습니다.', 'success');
+          startBtn.style.display = 'none';
+
+          // 1. Ameva-Chan 접속
+          chatMsg.innerHTML += `
+            <div class="collab-chat-bubble">
+              <div class="collab-chat-sender" style="color:#ec4899;">Ameva-Chan</div>
+              반갑습니다! 이번 마케팅 홍보 시나리오 파일 다 같이 손보고 보강해 두시죠!
+            </div>
+          `;
+          usersList.innerHTML += `<span class="collab-user-badge" style="border-color:#ec4899; color:#ec4899;">Ameva-Chan</span>`;
+
+          // 2. 가상 커서 보이기 및 타이핑 에뮬레이션
+          setTimeout(() => {
+            vCursor.style.display = 'block';
+            vCursor.style.top = '120px';
+            vCursor.style.left = '40px';
+
+            simulateTyping(
+              textarea,
+              textarea.value + '\n\n// Ameva-Chan의 수정분\nteamGoals.status = "In Progress";\nconsole.log("팀 협업 가동율 500% 돌파!");',
+              45,
+              () => {
+                vCursor.style.display = 'none';
+                showToast('✓ Ameva-Chan 님이 입력을 완료했습니다.', 'info');
+
+                // 3. Antigravity-Bot 접속 및 대화
+                setTimeout(() => {
+                  chatMsg.innerHTML += `
+                    <div class="collab-chat-bubble">
+                      <div class="collab-chat-sender" style="color:#a855f7;">Antigravity (AI)</div>
+                      Ameva-Chan 님, 6번 라인 코드를 기업 도입 실증용 최적화 구조로 다듬어 드릴까요?
+                    </div>
+                  `;
+                  chatMsg.scrollTop = chatMsg.scrollHeight;
+
+                  // 4. AI 제안 카드 노출 시뮬레이션
+                  setTimeout(() => {
+                    runAISimulation(
+                      '기업 최적화 구조로 교정해줘',
+                      textarea.value,
+                      aiBox,
+                      (newText) => {
+                        textarea.value = newText;
+                      }
+                    );
+                  }, 1200);
+
+                }, 1000);
+              }
+            );
+          }, 1500);
+
+        }, 1200);
+      });
+    }
+  </script>
+</body>
+</html>
