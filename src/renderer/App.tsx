@@ -946,6 +946,14 @@ graph TD
       setAppendedFiles([])
       setTabs([{ id: 'default', filePath: filePath, content: currentContent, blocks: [] }])
       setActiveTabId('default')
+    } else if (mode === 'append') {
+      setAppendedFiles([
+        {
+          id: 'base-file',
+          filePath: filePath ? filePath.split(/[\\/]/).pop() || '무제 문서.md' : '무제 문서.md',
+          startBlockId: editor?.document[0]?.id || ''
+        }
+      ])
     } else if (mode === 'tab') {
       setTabs([{ id: 'default', filePath: filePath, content: currentContent, blocks: [] }])
       setActiveTabId('default')
@@ -1253,13 +1261,13 @@ graph TD
   // Preview 전환 시 에디터 상태를 먼저 flush → currentContent 최신화 보장
   // mermaid 블록은 blocksToMarkdownLossy가 fence를 잃을 수 있으므로 직접 재구성
   const handleSwitchMode = async (mode: EditorMode) => {
-    if (mode === 'preview' && editor) {
+    // 1. 'edit' 모드를 나갈 때: 에디터 블록들을 마크다운 텍스트로 변환하여 currentContent 갱신
+    if (editorMode === 'edit' && (mode === 'preview' || mode === 'raw') && editor) {
       try {
         // 1차: BlockNote의 표준 변환 시도
         let latest = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
 
         // 2차: mermaid 블록을 직접 스캔하여 누락된 fence 보완
-        // editor.document를 순회하며 mermaid codeBlock 식별
         const blocks = editor.document as any[]
         const mermaidBlocks = blocks.filter(
           b => b.type === 'codeBlock' &&
@@ -1267,11 +1275,8 @@ graph TD
         )
 
         if (mermaidBlocks.length > 0) {
-          // blocksToMarkdownLossy 결과에 mermaid fence가 없으면
-          // 각 mermaid 블록의 실제 코드를 수동으로 구성하여 append
           const hasMermaidFence = latest.includes('```mermaid')
           if (!hasMermaidFence) {
-            // fallback: editor.document 기반으로 전체 markdown 재구성
             const lines: string[] = []
             for (const block of blocks) {
               const lang = (block.props?.language || '').toLowerCase()
@@ -1308,6 +1313,19 @@ graph TD
         console.error('[handleSwitchMode] markdown 변환 실패:', err)
       }
     }
+
+    // 2. 'edit' 모드로 돌아올 때: raw 마크다운(currentContentRef)을 파싱하여 에디터 블록으로 로드
+    if (mode === 'edit' && editor) {
+      try {
+        const normalized = normalizeMarkdown(currentContentRef.current)
+        const blocks = await editor.tryParseMarkdownToBlocks(normalized)
+        cleanCodeBlocks(blocks)
+        editor.replaceBlocks(editor.document, blocks)
+      } catch (err) {
+        console.error('[handleSwitchMode] editor blocks 로드 실패:', err)
+      }
+    }
+
     setEditorMode(mode)
   }
 
