@@ -934,60 +934,106 @@ input:checked + .slider:before {
   background: rgba(16, 185, 129, 0.02);
 }
 
+/* 🎪 모바일 햄버거 토글 단추 기본 숨김 (데스크톱) */
+.mobile-nav-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-size: 20px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  transition: background 0.2s;
+}
+.mobile-nav-toggle:hover {
+  background: var(--bg-glass-active);
+}
+
+/* 🎪 모바일 전체화면 서랍 메뉴 오버레이 기본 숨김 */
+.mobile-nav-overlay {
+  position: fixed;
+  top: 56px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-deep);
+  z-index: 999;
+  transform: translateY(-100%);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow-y: auto;
+  border-top: 1px solid var(--border-muted);
+}
+.mobile-nav-overlay.active {
+  transform: translateY(0);
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+.mobile-nav-links .nav-link {
+  font-size: 18px !important;
+  font-weight: 700;
+  color: var(--text-main);
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-muted);
+  display: block;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.mobile-nav-links .nav-link:hover,
+.mobile-nav-links .nav-link.active {
+  background: var(--bg-glass-active);
+  color: var(--primary) !important;
+  border-color: var(--primary);
+  padding-left: 20px; /* 밀어주는 이펙트 */
+}
+
 /* 📱 모바일 & 태블릿 최고급 반응형 미디어 쿼리 (768px 이하) */
 @media (max-width: 768px) {
-  /* 1. 헤더 네비게이션을 2열 레이아웃으로 변경하여 절대 겹치지 않고 쾌적하게 렌더링 */
+  /* 1. 헤더 네비게이션 햄버거 모드로 전환 */
   html body header {
-    padding: 12px 16px !important;
-    height: auto !important; /* 고정 높이 해제 */
+    padding: 0 16px !important;
+    height: 56px !important; /* 고정 컴팩트 높이 복원 */
     display: flex !important;
-    flex-wrap: wrap !important;
-    flex-direction: row !important;
     align-items: center !important;
     justify-content: space-between !important;
   }
   
-  /* 모바일에서 브랜드 이름 텍스트 크기를 작게 조율하여 테마 버튼과 충돌 차단 */
+  /* 모바일에서 브랜드 이름 텍스트 크기를 작게 조율 */
   html body .brand span {
     font-size: 13px !important;
-    max-width: 120px !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    max-width: 140px !important;
   }
   
-  /* 헤더 내부 구조 유연 조율을 위해 brand와 actions를 양 끝으로 정렬 */
+  /* 데스크톱 가로 메뉴바 완전 삭제 (숨김) */
+  html body .nav-menu {
+    display: none !important;
+  }
+  
+  /* 햄버거 토글러 및 테마 버튼 노출 */
+  html body .mobile-nav-toggle {
+    display: flex !important;
+  }
   html body .header-actions {
-    position: static !important; /* absolute 해제하고 flex 배치 */
+    position: static !important;
     display: flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 10px !important;
   }
   html body .header-actions .btn-primary {
     display: none !important;
-  }
-
-  /* 둘째 줄: 100% 전폭 가로 스크롤 메뉴 탭바 (Stripe/Toss 감성) */
-  html body .nav-menu {
-    flex-basis: 100% !important; /* 전폭 개행 강제 */
-    width: 100% !important;
-    max-width: 100% !important;
-    margin: 8px 0 0 0 !important;
-    gap: 16px !important;
-    overflow-x: auto !important;
-    white-space: nowrap !important;
-    padding: 8px 0 2px 0 !important;
-    border-top: 1px solid var(--border-muted) !important;
-    display: flex !important;
-    justify-content: flex-start !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  html body .nav-menu::-webkit-scrollbar {
-    display: none !important; /* 모바일 전용 노출을 위해 얇은 스크롤바 감춤 */
-  }
-  html body .nav-link {
-    font-size: 12px !important;
-    padding: 4px 6px !important;
   }
 
   /* 2. 히어로 헤드라인 글자 크기 유연 감소 */
@@ -1011,7 +1057,7 @@ input:checked + .slider:before {
     text-align: center;
   }
 
-  /* 3. 협업 시뮬레이터 가로 폭 찌그러짐 차단 (그리드 열을 1열로 변경) */
+  /* 3. 협업 시뮬레이터 가로 폭 찌러짐 차단 */
   .collab-layout {
     display: grid !important;
     grid-template-columns: 1fr !important;
@@ -1035,6 +1081,6 @@ input:checked + .slider:before {
   
   /* 5. 기타 섹션 컨테이너 여백 축소 */
   .promo-container {
-    padding: 110px 16px 40px !important; /* 2열 헤더 높이만큼 상단 여백 보정 */
+    padding: 86px 16px 40px !important; /* 상단 헤더 높이만큼 여백 최적화 */
   }
 }
