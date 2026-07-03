@@ -933,3 +933,79 @@ input:checked + .slider:before {
   font-weight: 700;
   background: rgba(16, 185, 129, 0.02);
 }
+
+/* 📱 모바일 & 태블릿 최고급 반응형 미디어 쿼리 (768px 이하) */
+@media (max-width: 768px) {
+  /* 1. 헤더 네비게이션 모바일 압축 및 가로 스크롤 */
+  header {
+    padding: 0 16px;
+    height: 56px;
+  }
+  .nav-menu {
+    gap: 14px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 2px;
+    max-width: 65%;
+    -webkit-overflow-scrolling: touch;
+  }
+  .nav-menu::-webkit-scrollbar {
+    display: none; /* 깔끔한 모바일 뷰를 위해 스크롤바 숨김 */
+  }
+  .nav-link {
+    font-size: 11px;
+  }
+  .header-actions {
+    gap: 6px;
+  }
+  .header-actions .btn-primary {
+    display: none; /* 모바일 한정으로 Request Demo 버튼 숨겨 헤더 영역 보장 */
+  }
+
+  /* 2. 히어로 헤드라인 글자 크기 유연 감소 */
+  .hero-title {
+    font-size: 32px !important;
+    line-height: 1.2 !important;
+    letter-spacing: -1.2px !important;
+  }
+  .hero-subtitle {
+    font-size: 13px !important;
+    padding: 0 12px;
+  }
+  .hero-actions {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    padding: 0 16px;
+  }
+  .hero-actions a {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* 3. 협업 시뮬레이터 가로 폭 찌그러짐 차단 (세로 2단 정렬) */
+  .collab-layout {
+    flex-direction: column !important;
+    gap: 16px;
+  }
+  .collab-editor-container {
+    width: 100% !important;
+  }
+  .collab-chat-panel {
+    width: 100% !important;
+    height: 250px !important;
+  }
+
+  /* 4. 비교 대조표 가로 슬라이딩 스크롤 활성화 */
+  .comparison-table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* 5. 기타 섹션 컨테이너 여백 축소 */
+  .promo-container {
+    padding: 80px 16px 40px !important;
+  }
+}
