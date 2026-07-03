@@ -616,12 +616,18 @@ graph TD
   useEffect(() => {
     if (window.electronAPI && editor) {
       const unsub = window.electronAPI.onFileOpenArgv(async (_event, file) => {
-        setFilePath(file.filePath)
-        await loadMarkdownIntoEditor(editor, file.content)
+        if (fileOpenMode === 'append') {
+          await appendMarkdownIntoEditor(editor, file.content, file.filePath.split(/[\\/]/).pop() || '파일')
+        } else if (fileOpenMode === 'tab') {
+          await openFileInTab(editor, file.content, file.filePath)
+        } else {
+          setFilePath(file.filePath)
+          await loadMarkdownIntoEditor(editor, file.content)
+        }
       })
       return () => unsub()
     }
-  }, [editor])
+  }, [editor, fileOpenMode])
 
   // ── 자동 스냅샷 (3분) ──────────────────────────────────────
   useEffect(() => {
@@ -965,8 +971,14 @@ graph TD
     if (window.electronAPI) {
       const file = await window.electronAPI.openFile()
       if (file) {
-        setFilePath(file.filePath)
-        await loadMarkdownIntoEditor(editor, file.content)
+        if (fileOpenMode === 'append') {
+          await appendMarkdownIntoEditor(editor, file.content, file.filePath.split(/[\\/]/).pop() || '파일')
+        } else if (fileOpenMode === 'tab') {
+          await openFileInTab(editor, file.content, file.filePath)
+        } else {
+          setFilePath(file.filePath)
+          await loadMarkdownIntoEditor(editor, file.content)
+        }
       }
     } else {
       // 브라우저 환경 (Electron 없음)
@@ -976,11 +988,17 @@ graph TD
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0]
         if (file) {
-          setFilePath(file.name)
           const reader = new FileReader()
           reader.onload = async (evt) => {
             const content = evt.target?.result as string
-            await loadMarkdownIntoEditor(editor, content)
+            if (fileOpenMode === 'append') {
+              await appendMarkdownIntoEditor(editor, content, file.name)
+            } else if (fileOpenMode === 'tab') {
+              await openFileInTab(editor, content, file.name)
+            } else {
+              setFilePath(file.name)
+              await loadMarkdownIntoEditor(editor, content)
+            }
           }
           reader.readAsText(file)
         }
@@ -1406,6 +1424,14 @@ graph TD
               onToggleServer={() => toggleLocalServer(serverPort)}
               collaborationLink={collaborationLink}
               isConnected={isConnected}
+              fileOpenMode={fileOpenMode}
+              setFileOpenMode={handleSwitchOpenMode}
+              appendedFiles={appendedFiles}
+              onSelectAppendedFile={handleSelectAppendedFile}
+              tabs={tabs}
+              activeTabId={activeTabId}
+              onSelectTab={handleSelectTab}
+              onCloseTab={handleCloseTab}
               showAIPanel={showAIPanel}
               onToggleAI={() => setShowAIPanel(p => !p)}
               chatMessages={chatMessages}
