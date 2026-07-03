@@ -1005,17 +1005,18 @@ input:checked + .slider:before {
     text-align: center;
   }
 
-  /* 3. 협업 시뮬레이터 가로 폭 찌그러짐 차단 (세로 2단 정렬) */
+  /* 3. 협업 시뮬레이터 가로 폭 찌그러짐 차단 (그리드 열을 1열로 변경) */
   .collab-layout {
-    flex-direction: column !important;
-    gap: 16px;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
   }
   .collab-editor-container {
     width: 100% !important;
   }
   .collab-chat-panel {
     width: 100% !important;
-    height: 250px !important;
+    height: 280px !important;
   }
 
   /* 4. 비교 대조표 가로 슬라이딩 스크롤 활성화 */
