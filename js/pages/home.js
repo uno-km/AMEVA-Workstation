@@ -3,18 +3,50 @@ import { trackEvent } from '../common/analytics.js';
 export function initHome() {
   trackEvent('PageLoad', 'Home');
 
-  // Typing Effect
+  // 🎪 Multi-Word Easing Loop Typing Engine
   const typingEl = document.getElementById('hero-typing');
   if (typingEl) {
-    const text = 'AI, 코워크, 페이퍼';
-    let idx = 0;
-    function type() {
-      if (idx < text.length) {
-        typingEl.textContent += text[idx++];
-        setTimeout(type, 120);
+    const words = [
+      'AI', 
+      'Collaboration', 
+      'Document', 
+      'Email', 
+      'Development', 
+      'Meeting', 
+      'Proposal', 
+      'Media'
+    ];
+    let wordIdx = 0;
+    let charIdx = 0;
+    let isDeleting = false;
+
+    function loop() {
+      const currentWord = words[wordIdx];
+      
+      if (isDeleting) {
+        typingEl.textContent = currentWord.substring(0, charIdx--);
+      } else {
+        typingEl.textContent = currentWord.substring(0, charIdx++);
       }
+
+      // 타이핑은 부드럽고 딜리팅은 신속하게 속도 튜닝
+      let speed = isDeleting ? 40 : 100;
+
+      if (!isDeleting && charIdx > currentWord.length) {
+        isDeleting = true;
+        speed = 1600; // 완성 단어 노출 홀드 1.6초
+      } else if (isDeleting && charIdx < 0) {
+        isDeleting = false;
+        charIdx = 0;
+        wordIdx = (wordIdx + 1) % words.length; // 다음 영단어로 회전
+        speed = 400; // 다음 텀 대기
+      }
+
+      setTimeout(loop, speed);
     }
-    setTimeout(type, 400);
+    
+    // 0.5초 대기 후 루프 기동
+    setTimeout(loop, 500);
   }
 
   // Interactive Graphic Card Hover effect
