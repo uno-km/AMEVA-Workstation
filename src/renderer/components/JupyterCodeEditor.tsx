@@ -175,6 +175,7 @@ export function JupyterCodeEditorHeader({
           <option value="html" style={{ background: '#12131a', color: '#14b8a6' }}>HTML Sandbox</option>
           <option value="mermaid" style={{ background: '#12131a', color: '#8b5cf6' }}>Mermaid</option>
           <option value="plaintext" style={{ background: '#12131a', color: '#6b7280' }}>Plaintext</option>
+          <option value="text" style={{ background: '#12131a', color: '#6b7280' }}>Text</option>
           <option value="json" style={{ background: '#12131a', color: '#10b981' }}>JSON</option>
           <option value="bash" style={{ background: '#12131a', color: '#ec4899' }}>Bash</option>
         </select>
@@ -530,7 +531,7 @@ export function JupyterCodeEditorTerminal({
               textAlign: 'left',
               whiteSpace: 'pre-wrap',
             }}>
-              ⚠️ Mermaid 에러:<br />
+              Mermaid 에러:<br />
               {mermaidError}
             </div>
           ) : mermaidSvg ? (

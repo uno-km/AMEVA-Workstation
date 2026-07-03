@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('dialog:saveExportedFile', data, isBase64, defaultName, filters),
   selectLocalFile: (filters?: { name: string; extensions: string[] }[]) =>
     ipcRenderer.invoke('dialog:selectLocalFile', filters),
+  showMessageBox: (options: any) => ipcRenderer.invoke('dialog:showMessageBox', options),
 
   // ── PDF 출력 ──
   printToPDF: (htmlContent: string) => ipcRenderer.invoke('action:printToPDF', htmlContent),

@@ -8,6 +8,8 @@ export interface AppSettings {
   autoSnapshot: boolean
   theme: 'dark' | 'gray' | 'white' | 'hacker'
   wordWrap: boolean
+  showMinimap: boolean
+  installedPlugins?: string[]
 }
 
 interface SettingsModalProps {
@@ -268,6 +270,22 @@ export function SettingsModal({ isOpen, onClose, settings, onUpdateSettings }: S
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
               >
                 {!settings.wordWrap ? <ToggleRight size={28} /> : <ToggleLeft size={28} style={{ color: 'var(--text-dark)' }} />}
+              </button>
+            </div>
+
+            {/* 미니맵 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h4 style={{ fontSize: '12px', fontWeight: 700 }}>에디터 우측 미니맵(Minimap) 표시</h4>
+                <p style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  에디터 우측 상단에 문서의 시각화 맵과 현재 스크롤 영역을 노출합니다.
+                </p>
+              </div>
+              <button
+                onClick={() => onUpdateSettings({ showMinimap: !settings.showMinimap })}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
+              >
+                {settings.showMinimap ? <ToggleRight size={28} /> : <ToggleLeft size={28} style={{ color: 'var(--text-dark)' }} />}
               </button>
             </div>
           </div>

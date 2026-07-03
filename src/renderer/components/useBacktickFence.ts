@@ -9,6 +9,7 @@ const FENCE_LANG_MAP: Record<string, string> = {
   md: 'markdown',  markdown: 'markdown',
   json: 'json', xml: 'xml', sql: 'sql',
   bash: 'bash', sh: 'bash', c: 'c', cpp: 'cpp', java: 'java',
+  text: 'plaintext', plaintext: 'plaintext', txt: 'plaintext',
 }
 
 export function useBacktickFence(editor: BlockNoteEditor | null) {

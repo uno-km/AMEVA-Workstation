@@ -38,6 +38,7 @@ const LANG_META: Record<string, LangMeta> = {
   cpp:        { color: '#10b981', label: 'C++',        runnable: false, previewable: false, isHtml: false, isMermaid: false },
   java:       { color: '#f43f5e', label: 'Java',       runnable: false, previewable: false, isHtml: false, isMermaid: false },
   text:       { color: '#6b7280', label: 'Text',       runnable: false, previewable: false, isHtml: false, isMermaid: false },
+  plaintext:  { color: '#6b7280', label: 'Text',       runnable: false, previewable: false, isHtml: false, isMermaid: false },
 }
 
 export function getLangMeta(lang: string): LangMeta {
@@ -237,6 +238,11 @@ export function JupyterCodeViewer({
   const [showMermaidPreview, setShowMermaidPreview] = useState(resolvedLanguage === 'mermaid')
   const [showHtmlModal, setShowHtmlModal] = useState(false)
   const [showMdPreview, setShowMdPreview] = useState(false)
+  const [showHtmlRender, setShowHtmlRender] = useState(false)
+
+  useEffect(() => {
+    setShowHtmlRender(false)
+  }, [code, resolvedLanguage])
 
   const handleRun = async () => {
     setHasRun(true)
@@ -247,6 +253,7 @@ export function JupyterCodeViewer({
       if (resolvedLanguage === 'html') {
         setSuccess(true)
         setOutputLines([{ type: 'info', text: '렌더링 완료' }])
+        setShowHtmlRender(true)
         return
       }
       const result = (resolvedLanguage === 'python' || resolvedLanguage === 'py')
@@ -320,7 +327,7 @@ export function JupyterCodeViewer({
             }}
           >
             <Play size={10} fill="#fff" />
-            Run
+            {meta.isHtml ? '렌더링' : 'Run'}
           </button>
         )}
 
@@ -455,7 +462,7 @@ export function JupyterCodeViewer({
       )}
 
       {/* ── HTML Sandbox Preview ── */}
-      {!isCollapsed && meta.isHtml && resolvedCode.trim() && (
+      {!isCollapsed && meta.isHtml && showHtmlRender && resolvedCode.trim() && (
         <div style={{ padding: '12px 16px', borderTop: `1px solid ${accentColor}22` }}>
           <InlineHtmlRenderer code={resolvedCode} />
         </div>

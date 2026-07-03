@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react'
 import {
   Bot, Send, Square, Trash2, Sparkles, ChevronDown,
   Mic, MicOff, Settings2, Copy, Check, X, AlertCircle,
-  Wand2, Languages, FileText, Expand, Lightbulb
+  Wand2, Languages, FileText, Expand, Lightbulb, Lock
 } from 'lucide-react'
 import type { AIMessage } from '../hooks/useAI'
 
@@ -25,6 +25,10 @@ interface AIPanelProps {
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert') => void
   onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void
   activeBlockId?: string
+  editor?: any
+  blocks?: any[]
+  activeTab?: string
+  installedPlugins?: string[]
 }
 
 const QUICK_ACTIONS = [
@@ -140,7 +144,7 @@ function MessageBubble({
           {!isUser && !msg.isStreaming && msg.originalText && msg.proposedText ? (
             <div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 'bold' }}>
-                📝 문서 수정 제안 (AI Edit Suggestion)
+                문서 수정 제안 (AI Edit Suggestion)
               </div>
               <div style={{
                 border: '1px solid var(--border-muted)',
@@ -330,7 +334,7 @@ function MessageBubble({
                       transition: 'all 0.15s',
                     }}
                   >
-                    ➕ 커서에 삽입
+                    커서에 삽입
                   </button>
                 )}
 
@@ -355,7 +359,7 @@ function MessageBubble({
                     }}
                     title={hasSelection ? '에디터 선택 영역과 교체합니다' : '에디터에서 영역을 드래그하면 교체할 수 있습니다'}
                   >
-                    ✏️ 선택교체
+                    선택교체
                   </button>
                 )}
               </>
@@ -385,7 +389,10 @@ export function AIPanel({
   onClearSelectedText,
   onApplySuggestion,
   onUpdateDiffState,
-  activeBlockId,
+  editor,
+  blocks = [],
+  activeTab = 'ai',
+  installedPlugins = [],
 }: AIPanelProps) {
   const [input, setInput] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -505,7 +512,9 @@ export function AIPanel({
         </button>
       </div>
 
-      {/* 설정 패널 */}
+      {activeTab === 'ai' && (
+        <>
+          {/* 설정 패널 */}
       {showSettings && (
         <div style={{
           padding: '12px 16px',
@@ -587,7 +596,7 @@ export function AIPanel({
               background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)',
               fontSize: '10px', color: 'var(--text-muted)',
             }}>
-              💡 AI 사용을 위해 llama.cpp를 설치하세요:<br />
+              AI 사용을 위해 llama.cpp를 설치하세요:<br />
               C:\ameva\llama\llama-cli.exe
             </div>
           )}
@@ -826,6 +835,145 @@ export function AIPanel({
           )}
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'outline' && (() => {
+        const isUnlocked = installedPlugins.includes('outline')
+        if (!isUnlocked) {
+          return (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+              textAlign: 'center',
+              color: 'var(--text-dark)',
+              gap: '12px',
+            }}>
+              <Lock size={28} style={{ color: 'var(--text-dark)' }} />
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: '#f8fafc' }}>
+                Outline 기능이 잠겨 있습니다.
+              </div>
+              <div style={{ fontSize: '11px', lineHeight: '1.5', color: 'var(--text-muted)' }}>
+                상단 메뉴의 Marketplace에서<br />
+                Outline 익스텐션을 구독하시면 즉시 잠금이 해제됩니다.
+              </div>
+            </div>
+          )
+        }
+
+        const getDocumentOutline = (items: any[]): { id: string; text: string; level: number }[] => {
+          const list: any[] = []
+          const traverse = (arr: any[]) => {
+            for (const item of arr) {
+              if (item.type === 'heading') {
+                const text = item.content?.map((c: any) => c.text).join('') || '제목 없음'
+                list.push({
+                  id: item.id,
+                  text,
+                  level: item.props?.level || 1,
+                })
+              }
+              if (item.children) {
+                traverse(item.children)
+              }
+            }
+          }
+          if (items && Array.isArray(items)) {
+            traverse(items)
+          }
+          return list
+        }
+
+        const outline = getDocumentOutline(blocks)
+
+        return (
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px',
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>
+              문서 개요 (총 {outline.length}개 제목)
+            </div>
+            {outline.length === 0 ? (
+              <div style={{ fontSize: '11px', color: 'var(--text-dark)', fontStyle: 'italic', textAlign: 'center', marginTop: '24px' }}>
+                작성된 제목(Heading)이 없습니다.
+              </div>
+            ) : (
+              outline.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => {
+                    const el = document.querySelector(`[data-id="${item.id}"]`)
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      el.classList.add('pulse-indicator')
+                      setTimeout(() => el.classList.remove('pulse-indicator'), 1000)
+                    }
+                  }}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    color: item.level === 1 ? 'var(--text-main)' : 'var(--text-muted)',
+                    fontWeight: item.level === 1 ? 700 : item.level === 2 ? 600 : 500,
+                    paddingLeft: `${(item.level - 1) * 12 + 10}px`,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'background 0.15s',
+                    borderLeft: item.level === 1 ? '2px solid var(--primary)' : '2px solid transparent',
+                    background: 'rgba(255,255,255,0.01)',
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.01)'}
+                >
+                  <span style={{
+                    width: '4px',
+                    height: '4px',
+                    borderRadius: '50%',
+                    backgroundColor: item.level === 1 ? 'var(--primary)' : 'var(--text-dark)',
+                    display: 'inline-block'
+                  }} />
+                  {item.text}
+                </div>
+              ))
+            )}
+          </div>
+        )
+      })()}
+
+      {activeTab === 'calculator' && (
+        <div
+          id="ameva-plugin-calculator"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-main)',
+            height: '100%',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+          ref={(el) => {
+            if (el && (window as any).AMEVA_PLUGINS?.calculator) {
+              try {
+                (window as any).AMEVA_PLUGINS.calculator.render(el.id);
+              } catch (e) {
+                console.error('계산기 플러그인 렌더링 실패:', e);
+              }
+            }
+          }}
+        />
+      )}
 
       <style>{`
         @keyframes cursor-blink {

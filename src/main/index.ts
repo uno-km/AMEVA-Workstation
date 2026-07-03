@@ -14,6 +14,9 @@ const localDirname = (typeof import.meta !== 'undefined' && import.meta.url)
 const __filename = localFilename
 const __dirname = localDirname
 import { readFile, writeFile, unlink } from 'fs/promises'
+import { createRequire } from 'module'
+const require = createRequire(import.meta.url)
+const pdf = require('pdf-parse')
 import { spawn, ChildProcess } from 'child_process'
 import { WebSocketServer, WebSocket } from 'ws'
 import { networkInterfaces } from 'os'
@@ -146,11 +149,44 @@ function getActiveWindow(event: any): BrowserWindow | null {
 ipcMain.handle('dialog:openFile', async (event) => {
   const result = await dialog.showOpenDialog(getActiveWindow(event)!, {
     properties: ['openFile'],
-    filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }],
+    filters: [
+      { name: 'All Supported Documents', extensions: ['md', 'markdown', 'txt', 'docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'ipynb', 'adc'] },
+      { name: 'Markdown Document', extensions: ['md', 'markdown'] },
+      { name: 'Plain Text', extensions: ['txt'] },
+      { name: 'Word Document', extensions: ['docx'] },
+      { name: 'PDF Document', extensions: ['pdf'] },
+      { name: 'HWPX Document', extensions: ['hwpx'] },
+      { name: 'Excel Sheet', extensions: ['xlsx', 'xls'] },
+      { name: 'Jupyter Notebook', extensions: ['ipynb'] },
+    ],
   })
   if (result.canceled || result.filePaths.length === 0) return null
-  const content = await readFile(result.filePaths[0], 'utf-8')
-  return { content, filePath: result.filePaths[0] }
+  const filePath = result.filePaths[0]
+  const ext = filePath.split('.').pop()?.toLowerCase() || ''
+  
+  const isBinary = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
+  let content: string
+  
+  if (ext === 'pdf') {
+    try {
+      const buffer = await readFile(filePath)
+      const data = await pdf(buffer)
+      content = data.text || ''
+    } catch (err: any) {
+      content = `Error parsing PDF: ${err.message}`
+    }
+  } else if (isBinary) {
+    const buffer = await readFile(filePath)
+    content = buffer.toString('base64')
+  } else {
+    content = await readFile(filePath, 'utf-8')
+  }
+  
+  return { content, filePath, isBinary }
+})
+
+ipcMain.handle('dialog:showMessageBox', async (event, options) => {
+  return await dialog.showMessageBox(getActiveWindow(event)!, options)
 })
 
 ipcMain.handle('dialog:selectLocalFile', async (event, filters?: any[]) => {
@@ -169,13 +205,31 @@ ipcMain.handle('dialog:saveFile', async (event, content: string, filePath?: stri
   let targetPath = filePath
   if (!targetPath) {
     const result = await dialog.showSaveDialog(getActiveWindow(event)!, {
-      title: 'Save Markdown File',
-      filters: [{ name: 'Markdown', extensions: ['md'] }],
+      title: 'Save Document',
+      filters: [
+        { name: 'All Supported Documents', extensions: ['md', 'markdown', 'txt', 'docx', 'pdf', 'hwpx', 'xlsx', 'ipynb', 'adc'] },
+        { name: 'Markdown Document', extensions: ['md'] },
+        { name: 'Plain Text', extensions: ['txt'] },
+        { name: 'Word Document', extensions: ['docx'] },
+        { name: 'PDF Document', extensions: ['pdf'] },
+        { name: 'HWPX Document', extensions: ['hwpx'] },
+        { name: 'Excel Sheet', extensions: ['xlsx'] },
+        { name: 'Jupyter Notebook', extensions: ['ipynb'] },
+      ],
     })
     if (result.canceled || !result.filePath) return null
     targetPath = result.filePath
   }
-  await writeFile(targetPath, content, 'utf-8')
+  
+  const ext = targetPath.split('.').pop()?.toLowerCase() || ''
+  const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
+  
+  if (isBinarySave) {
+    await writeFile(targetPath, Buffer.from(content, 'base64'))
+  } else {
+    await writeFile(targetPath, content, 'utf-8')
+  }
+  
   return targetPath
 })
 
@@ -376,10 +430,40 @@ ipcMain.handle('llm:generate', async (event, payload: {
   }
 
   const llamaPath = findLlamaCli()
-  const modelPath = payload.modelPath || 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
+  let modelPath = payload.modelPath || 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
 
-  // 모델 파일 또는 실행 바이너리 존재 확인
-  const isRealExecutionAvailable = existsSync(modelPath) && existsSync(llamaPath || '')
+  // 만약 기본 3B 모델 파일이 없는데, 해당 폴더 내 다른 .gguf 파일이 존재한다면 동적 감지하여 대체
+  if (!existsSync(modelPath) && !payload.modelPath) {
+    const llmDir = 'C:\\ameva\\models\\llm'
+    if (existsSync(llmDir)) {
+      try {
+        const { readdirSync } = require('fs')
+        const files = readdirSync(llmDir)
+        const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
+        if (firstGguf) {
+          modelPath = join(llmDir, firstGguf)
+        }
+      } catch {}
+    }
+  }
+
+  // 모델 파일 또는 실행 바이너리 존재 확인 (절대경로와 PATH 등록 명령어 동시 지원)
+  let isRealExecutionAvailable = existsSync(modelPath)
+  if (isRealExecutionAvailable) {
+    if (llamaPath && (llamaPath.includes('\\') || llamaPath.includes('/'))) {
+      isRealExecutionAvailable = existsSync(llamaPath)
+    } else if (llamaPath) {
+      try {
+        const { execSync } = require('child_process')
+        execSync(process.platform === 'win32' ? `where ${llamaPath}` : `which ${llamaPath}`, { stdio: 'ignore' })
+        isRealExecutionAvailable = true
+      } catch {
+        isRealExecutionAvailable = false
+      }
+    } else {
+      isRealExecutionAvailable = false
+    }
+  }
 
   if (!isRealExecutionAvailable) {
     // ── 💡 모델/실행 파일 없을 때: 시뮬레이션 스트리밍 모드 작동 ──

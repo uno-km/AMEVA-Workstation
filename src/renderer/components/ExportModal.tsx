@@ -284,7 +284,7 @@ export function ExportModal({ progress, minimized, onMinimize, onClose, onOpenFi
                 alignSelf: 'flex-start',
               }}
             >
-              📂 파일 열기
+              파일 열기
             </button>
           </div>
         )}

@@ -403,7 +403,7 @@ const JupyterBlockSpec = createReactBlockSpec(
             fontFamily: 'monospace',
             fontSize: '12px'
           }}>
-            ⚠️ Jupyter 블록 렌더링 실패: {err.message}
+            Jupyter 블록 렌더링 실패: {err.message}
           </div>
         )
       }

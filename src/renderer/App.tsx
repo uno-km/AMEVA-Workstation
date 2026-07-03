@@ -8,6 +8,9 @@ import { MenuBar } from './components/MenuBar'
 import { AboutModal } from './components/AboutModal'
 import { MarkdownGuideModal } from './components/MarkdownGuideModal'
 import { AIPanel } from './components/AIPanel'
+import { Minimap } from './components/Minimap'
+import { RightTabStrip } from './components/RightTabStrip'
+import { MarketplaceModal } from './components/MarketplaceModal'
 import { ExportModal } from './components/ExportModal'
 import type { ExportProgress } from './components/ExportModal'
 import { ResizeHandle } from './components/ResizeHandle'
@@ -26,6 +29,10 @@ import {
   exportToPPTX, exportToHWPX, exportToXML,
 } from './utils/exporters'
 import { normalizeBlocks } from './utils/normalizeBlocks'
+import JSZip from 'jszip'
+import * as XLSX from 'xlsx'
+import { FloatingChat } from './components/FloatingChat'
+import { packMarkdownToADC, unpackADCToMarkdown } from './utils/adcPackager'
 
 const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -83,14 +90,14 @@ function normalizeMarkdown(raw: string): string {
     return `\n\n\`\`\`${mapped}\n`
   })
   // closing fence 또는 언어가 없는 fence 정밀 매칭
-  content = content.replace(/\n*```[^\n]*\n+/g, '\n```\n\n')
+  content = content.replace(/\n*```[ \t]*\n+/g, '\n```\n\n')
   
   content = content.replace(/\n{3,}/g, '\n\n')
   return content.trim()
 }
 
 function cleanCodeBlocks(blocks: any[]) {
-  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql']
+  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql']
   blocks.forEach(block => {
     if (block.type === 'codeBlock') {
       const text = block.content ? block.content.map((c: any) => c.text).join('') : ''
@@ -136,11 +143,41 @@ function cleanCodeBlocks(blocks: any[]) {
       }
       block.content = undefined
     }
+    if (block.type === 'image' && block.props?.url) {
+      const url = block.props.url.toLowerCase()
+      const isVideo = url.endsWith('.mp4') || 
+                      url.endsWith('.webm') || 
+                      url.endsWith('.mov') || 
+                      url.endsWith('.ogg') ||
+                      url.startsWith('data:video/')
+      if (isVideo) {
+        block.type = 'video'
+      }
+    }
     if (block.children) {
       cleanCodeBlocks(block.children)
     }
   })
 }
+
+function cleanMarkdownCodeBlocks(markdown: string): string {
+  const norm = (l: string) => {
+    const low = l.toLowerCase()
+    if (low === 'js') return 'javascript'
+    if (low === 'ts') return 'typescript'
+    if (low === 'py') return 'python'
+    if (low === 'txt') return 'text'
+    if (low === 'sh') return 'bash'
+    return low
+  }
+  return markdown.replace(/```([a-zA-Z0-9_-]+)\n\s*([a-zA-Z0-9_-]+)\n/g, (match, lang1, lang2) => {
+    if (norm(lang1) === norm(lang2)) {
+      return `\`\`\`${lang1}\n`
+    }
+    return match
+  })
+}
+
 
 async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -170,6 +207,264 @@ function triggerBrowserDownload(data: Blob | string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+async function parseFileToMarkdown(content: string, filePath: string, isBinary: boolean): Promise<string> {
+  const ext = filePath.split('.').pop()?.toLowerCase() || ''
+  
+  if (!isBinary) {
+    if (ext === 'ipynb') {
+      try {
+        const notebook = JSON.parse(content)
+        const cells = notebook.cells || []
+        const mdLines: string[] = []
+        const kernelLang = notebook.metadata?.kernelspec?.language || 'python'
+        
+        for (const cell of cells) {
+          const source = Array.isArray(cell.source) ? cell.source.join('') : cell.source || ''
+          if (cell.cell_type === 'markdown') {
+            mdLines.push(source)
+            mdLines.push('')
+          } else if (cell.cell_type === 'code') {
+            mdLines.push(`\`\`\`${kernelLang}`)
+            mdLines.push(source)
+            mdLines.push('```')
+            mdLines.push('')
+          }
+        }
+        return mdLines.join('\n')
+      } catch (err: any) {
+        return `Error parsing Jupyter Notebook: ${err.message}`
+      }
+    }
+    return content
+  }
+  
+  const binaryString = window.atob(content)
+  const bytes = new Uint8Array(binaryString.length)
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i)
+  }
+  const arrayBuffer = bytes.buffer
+  
+  if (ext === 'docx') {
+    try {
+      const mammoth = await import('mammoth')
+      const result = await mammoth.convertToMarkdown({ arrayBuffer })
+      return result.value
+    } catch (err: any) {
+      try {
+        const zip = await JSZip.loadAsync(arrayBuffer)
+        const docXml = await zip.file('word/document.xml')?.async('text')
+        if (!docXml) return `Error parsing DOCX: word/document.xml not found`
+        const pMatches = docXml.match(/<w:p[\s\S]*?>([\s\S]*?)<\/w:p>/g) || []
+        const lines: string[] = []
+        for (const pXml of pMatches) {
+          const tMatches = pXml.match(/<w:t[\s\S]*?>([\s\S]*?)<\/w:t>/g) || []
+          let pText = ''
+          for (const tXml of tMatches) {
+            const text = tXml.replace(/<w:t[\s\S]*?>/, '').replace('</w:t>', '')
+            pText += text
+          }
+          lines.push(pText)
+        }
+        return lines.join('\n\n')
+      } catch (innerErr: any) {
+        return `Error parsing DOCX: ${err.message} (Backup failed: ${innerErr.message})`
+      }
+    }
+  }
+
+  if (ext === 'adc') {
+    try {
+      const markdown = await unpackADCToMarkdown(arrayBuffer)
+      return markdown
+    } catch (err: any) {
+      return `Error unpacking Ameva Document: ${err.message}`
+    }
+  }
+  
+  if (ext === 'hwpx') {
+    try {
+      const zip = await JSZip.loadAsync(arrayBuffer)
+      const sectionXml = await zip.file('Contents/section0.xml')?.async('text')
+      if (!sectionXml) return 'Error parsing HWPX: section0.xml not found'
+      const pMatches = sectionXml.match(/<hp:p[\s\S]*?>([\s\S]*?)<\/hp:p>/g) || []
+      const lines: string[] = []
+      for (const pXml of pMatches) {
+        const tMatches = pXml.match(/<hp:t[\s\S]*?>([\s\S]*?)<\/hp:t>/g) || []
+        let pText = ''
+        for (const tXml of tMatches) {
+          const text = tXml.replace(/<hp:t[\s\S]*?>/, '').replace('</hp:t>', '')
+          pText += text
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&')
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+        }
+        lines.push(pText.trim())
+      }
+      return lines.join('\n\n')
+    } catch (err: any) {
+      return `Error parsing HWPX: ${err.message}`
+    }
+  }
+  
+  if (ext === 'xlsx' || ext === 'xls') {
+    try {
+      const workbook = XLSX.read(bytes, { type: 'array' })
+      const mdLines: string[] = []
+      for (const sheetName of workbook.SheetNames) {
+        const worksheet = workbook.Sheets[sheetName]
+        const csv = XLSX.utils.sheet_to_csv(worksheet)
+        mdLines.push(`## Sheet: ${sheetName}`)
+        mdLines.push('')
+        const rows = csv.split('\n').map(r => r.trim()).filter(r => r.length > 0)
+        if (rows.length === 0) {
+          mdLines.push('*Empty Sheet*')
+          mdLines.push('')
+          continue
+        }
+        const mdTableLines = rows.map((row, idx) => {
+          const cells = row.split(',').map(c => {
+            let clean = c.trim()
+            if (clean.startsWith('"') && clean.endsWith('"')) {
+              clean = clean.substring(1, clean.length - 1)
+            }
+            return clean.replace(/\|/g, '\\|')
+          })
+          const line = '| ' + cells.join(' | ') + ' |'
+          if (idx === 0) {
+            const separator = '| ' + cells.map(() => '---').join(' | ') + ' |'
+            return line + '\n' + separator
+          }
+          return line
+        })
+        mdLines.push(mdTableLines.join('\n'))
+        mdLines.push('')
+      }
+      return mdLines.join('\n')
+    } catch (err: any) {
+      return `Error parsing Excel: ${err.message}`
+    }
+  }
+  
+  return `Binary file loaded. Content size: ${bytes.length} bytes.`
+}
+
+function convertMarkdownToIpynb(markdown: string): string {
+  const cells: any[] = []
+  const lines = markdown.split('\n')
+  let currentMarkdownLines: string[] = []
+  let isCodeBlock = false
+  let codeBlockLines: string[] = []
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (line.trim().startsWith('```')) {
+      if (isCodeBlock) {
+        cells.push({
+          cell_type: 'code',
+          execution_count: null,
+          metadata: {},
+          outputs: [],
+          source: codeBlockLines.map((l, idx) => idx === codeBlockLines.length - 1 ? l : l + '\n')
+        })
+        codeBlockLines = []
+        isCodeBlock = false
+      } else {
+        if (currentMarkdownLines.length > 0) {
+          cells.push({
+            cell_type: 'markdown',
+            metadata: {},
+            source: currentMarkdownLines.map((l, idx) => idx === currentMarkdownLines.length - 1 ? l : l + '\n')
+          })
+          currentMarkdownLines = []
+        }
+        isCodeBlock = true
+      }
+    } else {
+      if (isCodeBlock) {
+        codeBlockLines.push(line)
+      } else {
+        currentMarkdownLines.push(line)
+      }
+    }
+  }
+  
+  if (currentMarkdownLines.length > 0) {
+    cells.push({
+      cell_type: 'markdown',
+      metadata: {},
+      source: currentMarkdownLines.map((l, idx) => idx === currentMarkdownLines.length - 1 ? l : l + '\n')
+    })
+  }
+  
+  const notebook = {
+    cells,
+    metadata: {
+      kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' }
+    },
+    nbformat: 4,
+    nbformat_minor: 2
+  }
+  return JSON.stringify(notebook, null, 2)
+}
+
+async function convertMarkdownToBinary(editorInstance: BlockNoteEditor, filePath: string): Promise<string> {
+  const ext = filePath.split('.').pop()?.toLowerCase() || ''
+  
+  const copyBlocks = (blocks: any[]): any[] => {
+    return blocks.map(block => {
+      const copy = { ...block }
+      if (copy.type === 'jupyter') {
+        copy.type = 'codeBlock'
+        const lang = copy.props?.language || 'javascript'
+        const finalCodeText = copy.props?.code || ''
+        copy.content = [{ type: 'text', text: finalCodeText, styles: {} }]
+        copy.props = { language: lang }
+      } else if (copy.children) {
+        copy.children = copyBlocks(copy.children)
+      }
+      return copy
+    })
+  }
+  const rawBlocks = copyBlocks(editorInstance.document)
+  
+  if (ext === 'docx') {
+    const blob = await exportToWord(rawBlocks)
+    const arrayBuffer = await blob.arrayBuffer()
+    return arrayBufferToBase64(arrayBuffer)
+  }
+  
+  if (ext === 'xlsx') {
+    const uint8 = exportToExcel(rawBlocks)
+    return arrayBufferToBase64(uint8.buffer)
+  }
+  
+  if (ext === 'hwpx') {
+    const blob = await exportToHWPX(rawBlocks)
+    const arrayBuffer = await blob.arrayBuffer()
+    return arrayBufferToBase64(arrayBuffer)
+  }
+  
+  if (ext === 'pdf') {
+    const html = blocksToHTML(rawBlocks)
+    if (window.electronAPI?.printToPDF) {
+      const base64 = await window.electronAPI.printToPDF(html)
+      return base64
+    }
+  }
+  
+  if (ext === 'adc') {
+    const markdown = await editorInstance.blocksToMarkdownLossy(rawBlocks)
+    const blob = await packMarkdownToADC(markdown)
+    const arrayBuffer = await blob.arrayBuffer()
+    return arrayBufferToBase64(arrayBuffer)
+  }
+  
+  throw new Error(`Unsupported binary save format: ${ext}`)
+}
+
 // ── 메인 앱 컴포넌트 ─────────────────────────────────────────
 export default function App() {
   const [documentId] = useState('default-doc')
@@ -179,6 +474,8 @@ export default function App() {
   const [editorMode, setEditorMode] = useState<EditorMode>('edit')
   const [filePath, setFilePath] = useState<string | null>(null)
   const [currentContent, setCurrentContent] = useState('')
+  const [isChatFloating, setIsChatFloating] = useState(false)
+  const [hasChatUnread, setHasChatUnread] = useState(false)
 
   // ── 파일 오픈 모드 및 다중 파일 관리 상태 ──
   const [fileOpenMode, setFileOpenMode] = useState<'replace' | 'append' | 'tab'>('replace')
@@ -205,6 +502,8 @@ export default function App() {
     }
   }, [currentContent, activeTabId, fileOpenMode])
 
+
+
   // 에디터 영역 CSS zoom (1.0 = 100%, Electron 네이티브 줄 미사용)
   const [editorZoom, setEditorZoom] = useState(1.0)
 
@@ -223,6 +522,74 @@ export default function App() {
   const [showStatusBar, setShowStatusBar] = useState(true)
   const [showSidebar, setShowSidebar] = useState(true)
   const [showAIPanel, setShowAIPanel] = useState(false)
+  const [activeRightTab, setActiveRightTab] = useState<string>('ai')
+  const [showMarketplaceModal, setShowMarketplaceModal] = useState(false)
+  const handleInstallPlugin = async (id: string, scriptUrl: string) => {
+    try {
+      const existingScript = document.getElementById(`script-plugin-${id}`)
+      if (!existingScript) {
+        const res = await fetch(scriptUrl)
+        if (!res.ok) throw new Error('스크립트 다운로드 실패')
+        const scriptText = await res.text()
+        
+        const script = document.createElement('script')
+        script.id = `script-plugin-${id}`
+        script.text = scriptText
+        document.body.appendChild(script)
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        let checkCount = 0
+        const checkInterval = setInterval(() => {
+          checkCount++
+          if ((window as any).AMEVA_PLUGINS?.[id]) {
+            clearInterval(checkInterval)
+            
+            const current = settings.installedPlugins || []
+            if (!current.includes(id)) {
+              const next = [...current, id]
+              handleUpdateSettings({ installedPlugins: next })
+            }
+            resolve()
+          }
+          if (checkCount > 15) {
+            clearInterval(checkInterval)
+            reject(new Error('플러그인 로드 타임아웃'))
+          }
+        }, 100)
+      })
+    } catch (err) {
+      console.error('플러그인 로드 오류:', err)
+      throw err
+    }
+  }
+
+  const handleUninstallPlugin = (id: string) => {
+    const script = document.getElementById(`script-plugin-${id}`)
+    if (script) {
+      script.remove()
+    }
+    if ((window as any).AMEVA_PLUGINS?.[id]) {
+      delete (window as any).AMEVA_PLUGINS[id]
+    }
+    
+    const current = settings.installedPlugins || []
+    const next = current.filter((p) => p !== id)
+    handleUpdateSettings({ installedPlugins: next })
+
+    if ((id === 'outline' || id === 'calculator') && activeRightTab === id) {
+      setActiveRightTab('ai')
+    }
+  }
+
+  const handleToggleRightTab = (tab: string) => {
+    if (showAIPanel && activeRightTab === tab) {
+      setShowAIPanel(false)
+    } else {
+      setActiveRightTab(tab)
+      setShowAIPanel(true)
+    }
+  }
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const DEFAULT: AppSettings = {
@@ -232,6 +599,8 @@ export default function App() {
       autoSnapshot: true,
       theme: 'dark',
       wordWrap: true,
+      showMinimap: true,
+      installedPlugins: [],
     }
     try {
       const stored = localStorage.getItem('app-settings')
@@ -239,6 +608,20 @@ export default function App() {
     } catch {}
     return DEFAULT
   })
+
+  // 앱 최초 마운트 시 settings.installedPlugins 에 남아있는 익스텐션 목록 복구 로드
+  useEffect(() => {
+    if (settings.installedPlugins && settings.installedPlugins.length > 0) {
+      settings.installedPlugins.forEach(async (id) => {
+        const scriptUrl = `http://localhost:3010/plugins/${id}.js`
+        try {
+          await handleInstallPlugin(id, scriptUrl)
+        } catch (e) {
+          console.error(`부팅 시 플러그인 ${id} 자동 활성화 실패:`, e)
+        }
+      })
+    }
+  }, [])
 
   useEffect(() => {
     document.body.setAttribute('data-theme', settings.theme)
@@ -302,6 +685,15 @@ export default function App() {
     ydoc, provider, username, userColor, serverRunning
   )
 
+  // 채팅 읽지 않음(unread) 주황점 감지 연계
+  useEffect(() => {
+    if (chatMessages.length === 0) return
+    const lastMsg = chatMessages[chatMessages.length - 1]
+    if (lastMsg.author !== username && (isChatFloating || activeTabId !== 'chat')) {
+      setHasChatUnread(true)
+    }
+  }, [chatMessages, isChatFloating, activeTabId])
+
   // ── BlockNote 에디터 ────────────────────────────────────────
   const [editor, setEditor] = useState<BlockNoteEditor | null>(null)
   const isInitialLoad = useRef(true)
@@ -345,7 +737,13 @@ export default function App() {
         }
         // 에디터 포커싱 및 연동 초기화
         setTimeout(() => {
-          view.focus()
+          try {
+            if (view && view.dom && document.body.contains(view.dom) && typeof view.focus === 'function') {
+              view.focus()
+            }
+          } catch (e) {
+            console.warn('Failed to focus editor view:', e)
+          }
           setSelectedText('')
         }, 20)
       }
@@ -788,8 +1186,9 @@ graph TD
   //  2. replaceBlocks 로 한 번에 교체 (removeBlocks 후 document[0]이 undefined가 되는 문제 회피)
   //  3. 삽입 완료 후 blocksToMarkdownLossy 로 역변환 → currentContent 설정
   //     (__LT_TEMP__ 등 임시 토큰이 preview에 노출되는 문제 차단)
-  const loadMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string) => {
-    const normalized = normalizeMarkdown(rawContent)
+  const loadMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, isBinary = false, path = '') => {
+    const markdown = await parseFileToMarkdown(rawContent, path || filePath || '', isBinary)
+    const normalized = normalizeMarkdown(markdown)
     const blocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
     cleanCodeBlocks(blocks)
     targetEditor.replaceBlocks(targetEditor.document, blocks)
@@ -797,14 +1196,14 @@ graph TD
       const derived = await targetEditor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(targetEditor.document))
       setCurrentContent(derived)
     } catch {
-      // 역변환 실패 시 원본으로 폴백 (최소한 preview는 뭔가 보여줌)
-      setCurrentContent(rawContent)
+      setCurrentContent(markdown)
     }
   }
 
   // 아래로 계속 이어서 열기 (Append Mode)
-  const appendMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, fileName: string) => {
-    const normalized = normalizeMarkdown(rawContent)
+  const appendMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, fileName: string, isBinary = false, path = '') => {
+    const markdown = await parseFileToMarkdown(rawContent, path, isBinary)
+    const normalized = normalizeMarkdown(markdown)
     const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
     cleanCodeBlocks(newBlocks)
     
@@ -853,16 +1252,17 @@ graph TD
       const derived = await targetEditor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(targetEditor.document))
       setCurrentContent(derived)
     } catch {
-      setCurrentContent(rawContent)
+      setCurrentContent(markdown)
     }
   }
 
   // 탭으로 새로 열기 (Tab Mode)
-  const openFileInTab = async (targetEditor: BlockNoteEditor, fileContent: string, path: string) => {
+  const openFileInTab = async (targetEditor: BlockNoteEditor, fileContent: string, path: string, isBinary = false) => {
     const currentBlocks = [...targetEditor.document]
     const currentActiveId = activeTabId
     
-    const normalized = normalizeMarkdown(fileContent)
+    const markdown = await parseFileToMarkdown(fileContent, path, isBinary)
+    const normalized = normalizeMarkdown(markdown)
     const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
     cleanCodeBlocks(newBlocks)
     
@@ -870,7 +1270,7 @@ graph TD
     const newTab = {
       id: newTabId,
       filePath: path,
-      content: fileContent,
+      content: markdown,
       blocks: newBlocks
     }
     
@@ -886,7 +1286,7 @@ graph TD
     
     setActiveTabId(newTabId)
     setFilePath(path)
-    setCurrentContent(fileContent)
+    setCurrentContent(markdown)
     
     targetEditor.replaceBlocks(targetEditor.document, newBlocks)
   }
@@ -1001,32 +1401,52 @@ graph TD
       const file = await window.electronAPI.openFile()
       if (file) {
         if (fileOpenMode === 'append') {
-          await appendMarkdownIntoEditor(editor, file.content, file.filePath.split(/[\\/]/).pop() || '파일')
+          await appendMarkdownIntoEditor(editor, file.content, file.filePath.split(/[\\/]/).pop() || '파일', file.isBinary, file.filePath)
         } else if (fileOpenMode === 'tab') {
-          await openFileInTab(editor, file.content, file.filePath)
+          await openFileInTab(editor, file.content, file.filePath, file.isBinary)
         } else {
           setFilePath(file.filePath)
-          await loadMarkdownIntoEditor(editor, file.content)
+          await loadMarkdownIntoEditor(editor, file.content, file.isBinary, file.filePath)
         }
       }
     } else {
       // 브라우저 환경 (Electron 없음)
       const input = document.createElement('input')
       input.type = 'file'
-      input.accept = '.md,.markdown,.txt'
+      input.accept = '.md,.markdown,.txt,.docx,.hwpx,.pdf,.xlsx,.ipynb'
       input.onchange = async (e) => {
         const file = (e.target as HTMLInputElement).files?.[0]
         if (file) {
           const reader = new FileReader()
           reader.onload = async (evt) => {
             const content = evt.target?.result as string
-            if (fileOpenMode === 'append') {
-              await appendMarkdownIntoEditor(editor, content, file.name)
-            } else if (fileOpenMode === 'tab') {
-              await openFileInTab(editor, content, file.name)
+            const ext = file.name.split('.').pop()?.toLowerCase() || ''
+            const isBinaryFile = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
+            
+            if (isBinaryFile) {
+              const binReader = new FileReader()
+              binReader.onload = async (binEvt) => {
+                const arrBuffer = binEvt.target?.result as ArrayBuffer
+                const base64 = arrayBufferToBase64(arrBuffer)
+                if (fileOpenMode === 'append') {
+                  await appendMarkdownIntoEditor(editor, base64, file.name, true, file.name)
+                } else if (fileOpenMode === 'tab') {
+                  await openFileInTab(editor, base64, file.name, true)
+                } else {
+                  setFilePath(file.name)
+                  await loadMarkdownIntoEditor(editor, base64, true, file.name)
+                }
+              }
+              binReader.readAsArrayBuffer(file)
             } else {
-              setFilePath(file.name)
-              await loadMarkdownIntoEditor(editor, content)
+              if (fileOpenMode === 'append') {
+                await appendMarkdownIntoEditor(editor, content, file.name, false, file.name)
+              } else if (fileOpenMode === 'tab') {
+                await openFileInTab(editor, content, file.name, false)
+              } else {
+                setFilePath(file.name)
+                await loadMarkdownIntoEditor(editor, content, false, file.name)
+              }
             }
           }
           reader.readAsText(file)
@@ -1038,25 +1458,103 @@ graph TD
 
   const handleSaveFile = async () => {
     if (!editor) return
-    const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
+    const path = filePath || 'document.md'
+    const ext = path.split('.').pop()?.toLowerCase() || 'md'
+    
+    const rawBlocks = convertJupyterToCodeBlocks(editor.document)
+    const markdown = await editor.blocksToMarkdownLossy(rawBlocks)
+    const hasMedia = markdown.includes('data:video/') || markdown.includes('data:audio/')
+    
+    if (hasMedia && ['md', 'markdown', 'txt'].includes(ext)) {
+      if (window.electronAPI?.showMessageBox) {
+        const boxRes = await window.electronAPI.showMessageBox({
+          type: 'question',
+          buttons: ['예 (권장)', '아니오'],
+          defaultId: 0,
+          title: '아메바 문서 포맷 변환 권장',
+          message: '문서에 대용량 미디어 파일(동영상/오디오)이 감지되었습니다.\n미디어 공유가 완벽하게 지원되고 용량이 절감되는 아메바 문서 포맷(.adc)으로 변환하여 저장하시겠습니까?\n\n(아니오를 선택하시면 일반 마크다운 형식으로 저장이 계속 진행됩니다.)',
+        })
+        
+        if (boxRes.response === 0) {
+          const savedPath = await window.electronAPI.saveFile('', undefined)
+          if (savedPath) {
+            const newExt = savedPath.split('.').pop()?.toLowerCase() || 'md'
+            let contentToSave: string
+            if (newExt === 'adc') {
+              const blob = await packMarkdownToADC(markdown)
+              const arrayBuffer = await blob.arrayBuffer()
+              contentToSave = arrayBufferToBase64(arrayBuffer)
+            } else if (newExt === 'ipynb') {
+              contentToSave = convertMarkdownToIpynb(markdown)
+            } else if (['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(newExt)) {
+              contentToSave = await convertMarkdownToBinary(editor, savedPath)
+            } else {
+              contentToSave = markdown
+            }
+            await window.electronAPI.saveFile(contentToSave, savedPath)
+            setFilePath(savedPath)
+            createSnapshot(`Ameva Document 저장본`, contentToSave)
+            return
+          } else {
+            return
+          }
+        }
+      } else {
+        const confirmSave = window.confirm("문서에 동영상 또는 오디오 파일이 포함되어 있습니다. 아메바 전용 포맷(.adc)으로 저장하시겠습니까?")
+        if (confirmSave) {
+          const blob = await packMarkdownToADC(markdown)
+          triggerBrowserDownload(blob, (filePath ? filePath.split('.').slice(0, -1).join('.') : 'document') + '.adc')
+          return
+        }
+      }
+    }
+    
+    const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
+    
+    let contentToSave: string
+    if (ext === 'ipynb') {
+      contentToSave = convertMarkdownToIpynb(markdown)
+    } else if (isBinarySave) {
+      contentToSave = await convertMarkdownToBinary(editor, path)
+    } else {
+      contentToSave = markdown
+    }
+    
     if (window.electronAPI) {
-      const savedPath = await window.electronAPI.saveFile(markdown, filePath || undefined)
+      const savedPath = await window.electronAPI.saveFile(contentToSave, filePath || undefined)
       if (savedPath) {
         setFilePath(savedPath)
-        createSnapshot(`저장본 (${new Date().toLocaleTimeString()})`, markdown)
+        createSnapshot(`저장본 (${new Date().toLocaleTimeString()})`, contentToSave)
       }
     } else {
-      triggerBrowserDownload(markdown, filePath || 'document.md')
-      createSnapshot('웹 브라우저 저장본', markdown)
+      triggerBrowserDownload(contentToSave, filePath || 'document.' + ext)
+      createSnapshot('웹 브라우저 저장본', contentToSave)
     }
   }
 
   const handleSaveAsFile = async () => {
     if (!editor) return
     const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
+    
     if (window.electronAPI) {
       const savedPath = await window.electronAPI.saveFile(markdown, undefined)
-      if (savedPath) { setFilePath(savedPath); createSnapshot('다른 이름으로 저장본', markdown) }
+      if (savedPath) {
+        const ext = savedPath.split('.').pop()?.toLowerCase() || 'md'
+        const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
+        let contentToSave: string
+        
+        if (ext === 'ipynb') {
+          contentToSave = convertMarkdownToIpynb(markdown)
+        } else if (isBinarySave) {
+          contentToSave = await convertMarkdownToBinary(editor, savedPath)
+        } else {
+          contentToSave = markdown
+        }
+        
+        await window.electronAPI.saveFile(contentToSave, savedPath)
+        setFilePath(savedPath)
+        createSnapshot('다른 이름으로 저장본', contentToSave)
+      }
     } else {
       triggerBrowserDownload(markdown, 'document_new.md')
     }
@@ -1329,6 +1827,7 @@ graph TD
           }
         }
 
+        latest = cleanMarkdownCodeBlocks(latest)
         setCurrentContent(latest)
       } catch (err) {
         console.error('[handleSwitchMode] markdown 변환 실패:', err)
@@ -1406,6 +1905,7 @@ graph TD
         onOpenAbout={() => setIsAboutOpen(true)}
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenGithub={handleOpenGithub}
+        onOpenMarketplace={() => setShowMarketplaceModal(true)}
       />
 
       {/* 메인 레이아웃: 사이드바 + 에디터 + AI패널 */}
@@ -1478,6 +1978,11 @@ graph TD
               onChatClear={clearChatMessages}
               username={username}
               userColor={userColor}
+              isChatFloating={isChatFloating}
+              onToggleChatFloat={() => {
+                setIsChatFloating(!isChatFloating)
+                if (!isChatFloating) setHasChatUnread(false)
+              }}
             />
             {/* 사이드바 우측 경계 리사이즈 핸들 */}
             <ResizeHandle
@@ -1513,6 +2018,13 @@ graph TD
             theme={settings.theme}
             onSelectedTextChange={setSelectedText}
           />
+          {settings.showMinimap && (settings.installedPlugins || []).includes('minimap') && editor && (
+            <Minimap
+              editor={editor}
+              editorContainerRef={editorContainerRef}
+              blocks={editor.document}
+            />
+          )}
         </div>
 
         {/* AI 패널 (우측): zoom 무연 고정 */}
@@ -1552,8 +2064,21 @@ graph TD
             onApplySuggestion={handleApplySuggestion}
             onUpdateDiffState={updateMessageDiffState}
             activeBlockId={activeBlockId || undefined}
+            editor={editor}
+            blocks={editor ? editor.document : []}
+            activeTab={activeRightTab}
+            installedPlugins={settings.installedPlugins || []}
           />
         </div>
+
+        {/* 📋 극도로 미려한 코랩 스타일 우측 고정 탭 스트립 (bookmarks) */}
+        <RightTabStrip
+          activeTab={activeRightTab}
+          isOpen={showAIPanel}
+          onToggleTab={handleToggleRightTab}
+          hasChatUnread={hasChatUnread}
+          installedPlugins={settings.installedPlugins || []}
+        />
       </div>
 
       {/* 상태바 */}
@@ -1596,6 +2121,15 @@ graph TD
         onClose={() => setIsGuideOpen(false)}
       />
 
+      {/* 마켓플레이스 모달 */}
+      <MarketplaceModal
+        isOpen={showMarketplaceModal}
+        onClose={() => setShowMarketplaceModal(false)}
+        installedPlugins={settings.installedPlugins || []}
+        onInstallPlugin={handleInstallPlugin}
+        onUninstallPlugin={handleUninstallPlugin}
+      />
+
       {/* 내보내기 진행 모달 */}
       <ExportModal
         progress={exportProgress}
@@ -1603,14 +2137,26 @@ graph TD
         onMinimize={() => setExportMinimized(prev => !prev)}
         onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
         onOpenFile={(path) => {
-          // Electron: shell.openPath로 파일 탐색기에서 열기
           if (window.electronAPI?.openExternalLink) {
-            // 파일 경로를 file:// URL로 변환
             const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
             window.electronAPI.openExternalLink(fileUrl)
           }
         }}
       />
+
+      {isChatFloating && (
+        <FloatingChat
+          messages={chatMessages}
+          onSend={sendChatMessage}
+          onClear={clearChatMessages}
+          username={username}
+          userColor={userColor}
+          serverRunning={serverRunning}
+          onDockBack={() => setIsChatFloating(false)}
+          hasUnread={hasChatUnread}
+          onClearUnread={() => setHasChatUnread(false)}
+        />
+      )}
     </div>
   )
 }

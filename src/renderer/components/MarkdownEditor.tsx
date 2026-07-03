@@ -236,7 +236,21 @@ function decodeHtmlEntities(str: string): string {
 function buildPreviewSegments(markdown: string) {
   const customBlocks: { lang: string; code: string }[] = []
 
+  const renderer = new marked.Renderer()
+  renderer.image = function({ href, title, text }) {
+    const isVideo = href.toLowerCase().endsWith('.mp4') || 
+                    href.toLowerCase().endsWith('.webm') || 
+                    href.toLowerCase().endsWith('.mov') || 
+                    href.toLowerCase().endsWith('.ogg') ||
+                    href.startsWith('data:video/')
+    if (isVideo) {
+      return `<video src="${href}" controls style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: 8px 0;"></video>`
+    }
+    return `<img src="${href}" alt="${text}" title="${title || ''}" style="max-width: 100%;" />`
+  }
+
   const html = marked.parse(markdown, {
+    renderer,
     walkTokens(token) {
       if (token.type === 'code') {
         const lang = (token.lang || '').toLowerCase()

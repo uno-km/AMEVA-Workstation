@@ -27,6 +27,7 @@ interface MenuBarProps {
   onOpenAbout: () => void
   onOpenGuide: () => void
   onOpenGithub: () => void
+  onOpenMarketplace: () => void
 }
 
 export function MenuBar({
@@ -52,6 +53,7 @@ export function MenuBar({
   onOpenAbout,
   onOpenGuide,
   onOpenGithub,
+  onOpenMarketplace,
 }: MenuBarProps) {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -276,6 +278,16 @@ export function MenuBar({
           onClick={onOpenSettings}
         >
           Settings
+        </button>
+      </div>
+
+      {/* 4.5 Marketplace 메뉴 (단독 버튼으로 즉시 마켓플레이스 팝업 노출) */}
+      <div style={{ position: 'relative' }}>
+        <button
+          style={menuStyle}
+          onClick={onOpenMarketplace}
+        >
+          Marketplace
         </button>
       </div>
 
