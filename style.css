@@ -936,30 +936,52 @@ input:checked + .slider:before {
 
 /* 📱 모바일 & 태블릿 최고급 반응형 미디어 쿼리 (768px 이하) */
 @media (max-width: 768px) {
-  /* 1. 헤더 네비게이션 모바일 압축 및 가로 스크롤 */
+  /* 1. 헤더 네비게이션을 2열 레이아웃으로 변경하여 절대 겹치지 않고 쾌적하게 렌더링 */
   header {
-    padding: 0 16px;
-    height: 56px;
+    padding: 10px 16px;
+    height: auto; /* 고정 높이 해제 */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
   }
-  .nav-menu {
-    gap: 14px;
-    overflow-x: auto;
-    white-space: nowrap;
-    padding-bottom: 2px;
-    max-width: 65%;
-    -webkit-overflow-scrolling: touch;
+  
+  /* 첫 줄: 브랜드 로고와 테마/액션 컨트롤 정렬 */
+  header > .brand {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
   }
-  .nav-menu::-webkit-scrollbar {
-    display: none; /* 깔끔한 모바일 뷰를 위해 스크롤바 숨김 */
-  }
-  .nav-link {
-    font-size: 11px;
-  }
+  
+  /* 헤더 내부 구조 유연 조율을 위해 brand와 actions를 양 끝으로 정렬 */
   .header-actions {
-    gap: 6px;
+    position: absolute;
+    right: 16px;
+    top: 12px;
+    gap: 8px;
   }
   .header-actions .btn-primary {
-    display: none; /* 모바일 한정으로 Request Demo 버튼 숨겨 헤더 영역 보장 */
+    display: none;
+  }
+
+  /* 둘째 줄: 100% 전폭 가로 스크롤 메뉴 탭바 (Stripe/Toss 감성) */
+  .nav-menu {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    gap: 18px;
+    overflow-x: auto;
+    white-space: nowrap;
+    padding: 6px 0;
+    border-top: 1px solid var(--border-muted);
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start;
+  }
+  .nav-menu::-webkit-scrollbar {
+    display: none; /* 모바일 전용 노출을 위해 얇은 스크롤바 감춤 */
+  }
+  .nav-link {
+    font-size: 12px;
+    padding: 4px 6px;
   }
 
   /* 2. 히어로 헤드라인 글자 크기 유연 감소 */
@@ -1006,6 +1028,6 @@ input:checked + .slider:before {
   
   /* 5. 기타 섹션 컨테이너 여백 축소 */
   .promo-container {
-    padding: 80px 16px 40px !important;
+    padding: 110px 16px 40px !important; /* 2열 헤더 높이만큼 상단 여백 보정 */
   }
 }
