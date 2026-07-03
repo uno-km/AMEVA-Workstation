@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Features | AMEVA Workstation</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <div class="brand-icon"><i class="fas fa-cubes"></i></div>
+      <span>AMEVA Workstation</span>
+    </a>
+    <nav class="nav-menu">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="features.html" class="nav-link">Features</a>
+      <a href="solutions-enterprise.html" class="nav-link">Solutions</a>
+      <a href="pricing.html" class="nav-link">Pricing</a>
+      <a href="contact.html" class="nav-link">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <button id="theme-toggle" class="btn-theme"><i class="fas fa-sun"></i></button>
+      <a href="contact.html" class="btn-primary" style="padding: 8px 16px; font-size: 11px;">Request Demo</a>
+    </div>
+  </header>
+
+  <main class="promo-container">
+    <section style="text-align: center; margin-bottom: 50px;">
+      <div class="badge-tag"><i class="fas fa-sparkles"></i> Core Capabilities</div>
+      <h2 style="font-size:36px; font-weight:800; margin-bottom:12px;">엔터프라이즈를 위한 혁신적 저작 엔진</h2>
+      <p style="color:var(--text-muted); max-width:600px; margin:0 auto;">카드를 클릭하여 각 기능의 상세한 메커니즘과 비즈니스 활용 방안을 확장 확인하세요.</p>
+    </section>
+
+    <div class="features-grid">
+      <!-- 카드 1 -->
+      <div class="feature-detail-card">
+        <div class="feature-icon-wrapper"><i class="fas fa-brain"></i></div>
+        <h3>AI Copilot & Diff Acceptor</h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:8px;">자연어 명령 편집 및 Git 스타일 충돌 분석 UI 탑재.</p>
+        <div class="expanded-desc">
+          <p>
+            사용자가 본문을 드래그하고 "수정해줘" 라고 전송하면, AI가 수정 전/후를 분석하여 Diff 카드로 띄웁니다. 사용자는 클릭 한 번으로 변경 제안을 본문에 즉시 융합(Accept)하거나 기각(Reject)할 수 있습니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- 카드 2 -->
+      <div class="feature-detail-card">
+        <div class="feature-icon-wrapper"><i class="fas fa-terminal"></i></div>
+        <h3>다국어 코드 샌드박스</h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:8px;">문서 내에서 JavaScript, Python, SQL 즉시 컴파일 실행.</p>
+        <div class="expanded-desc">
+          <p>
+            별도의 개발 서버 환경 구축 필요 없이 에디터 내부의 Jupyter Block을 통해 런타임 결과와 오류 로그를 즉시 수집하고 테이블 양식으로 보기 좋게 렌더링합니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- 카드 3 -->
+      <div class="feature-detail-card">
+        <div class="feature-icon-wrapper"><i class="fas fa-users"></i></div>
+        <h3>Y.js 분산 실시간 협업</h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:8px;">로컬 P2P 및 퍼블릭 릴레이 클라우드 듀얼 모드 CRDT 싱크.</p>
+        <div class="expanded-desc">
+          <p>
+            외부 서버 연동 없이 동일 인트라넷 망 내에서 독자적인 웹소켓 서버를 1초 만에 띄워 동료들을 초대할 수 있으며, 공용 릴레이 서버로 전 세계 팀원들과 지연률 0%로 문서와 캐럿을 공유합니다.
+          </p>
+        </div>
+      </div>
+
+      <!-- 카드 4 -->
+      <div class="feature-detail-card">
+        <div class="feature-icon-wrapper"><i class="fas fa-play"></i></div>
+        <h3>리치 미디어 임베더</h3>
+        <p style="font-size:13px; color:var(--text-muted); margin-top:8px;">고화질 비디오, 오디오 스트리밍 블록 완벽 지원.</p>
+        <div class="expanded-desc">
+          <p>
+            용량이 큰 오디오 파일이나 사내 시연 비디오 가이드라인을 문서 본문 내에 깔끔하게 임베딩하고 커스텀 플레이어 위젯을 통해 편리하게 청취 및 인라인 재생을 할 수 있습니다.
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initTheme } from './js/common/theme.js';
+    import { initNavigation } from './js/common/navigation.js';
+    import { initFeatures } from './js/pages/features.js';
+
+    initTheme();
+    initNavigation();
+    initFeatures();
+  </script>
+</body>
+</html>

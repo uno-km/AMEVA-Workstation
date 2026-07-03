@@ -14,7 +14,7 @@ interface AIPanelProps {
   isAvailable: boolean
   models: { name: string; filename: string; path: string; size: number }[]
   settings: { modelPath: string; temperature: number; maxTokens: number; systemPrompt: string }
-  onSend: (message: string, context?: string) => void
+  onSend: (message: string, context?: string, originalText?: string, blockId?: string) => void
   onAbort: () => void
   onClear: () => void
   onUpdateSettings: (s: Partial<{ modelPath: string; temperature: number; maxTokens: number; systemPrompt: string }>) => void
@@ -23,6 +23,8 @@ interface AIPanelProps {
   selectedText?: string
   onClearSelectedText?: () => void
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert') => void
+  onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void
+  activeBlockId?: string
 }
 
 const QUICK_ACTIONS = [
@@ -42,10 +44,12 @@ function MessageBubble({
   msg,
   onApplySuggestion,
   hasSelection,
+  onUpdateDiffState,
 }: {
   msg: AIMessage
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert') => void
   hasSelection: boolean
+  onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void
 }) {
   const [copied, setCopied] = useState(false)
   const isUser = msg.role === 'user'
@@ -132,7 +136,45 @@ function MessageBubble({
           whiteSpace: 'pre-wrap',
           position: 'relative',
         }}>
-          {msg.content}
+          {/* 스트리밍 완료 후 Diff 제안이 있는 경우 DiffRenderer 표출 */}
+          {!isUser && !msg.isStreaming && msg.originalText && msg.proposedText ? (
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px', fontWeight: 'bold' }}>
+                📝 문서 수정 제안 (AI Edit Suggestion)
+              </div>
+              <div style={{
+                border: '1px solid var(--border-muted)',
+                borderRadius: '6px',
+                overflow: 'hidden',
+                fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                fontSize: '11px',
+                background: '#0d0e12',
+              }}>
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.08)',
+                  padding: '6px 8px',
+                  borderBottom: '1px solid rgba(239, 68, 68, 0.15)',
+                }}>
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#f87171', marginBottom: '2px' }}>수정 전 (Before)</div>
+                  <div style={{ textDecoration: 'line-through', whiteSpace: 'pre-wrap', color: '#fca5a5' }}>
+                    {msg.originalText}
+                  </div>
+                </div>
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.08)',
+                  padding: '6px 8px',
+                }}>
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', color: '#4ade80', marginBottom: '2px' }}>수정 후 (After)</div>
+                  <div style={{ whiteSpace: 'pre-wrap', color: '#86efac' }}>
+                    {msg.proposedText}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            msg.content
+          )}
+
           {msg.isStreaming && (
             <span style={{
               display: 'inline-block',
@@ -157,72 +199,166 @@ function MessageBubble({
             padding: '0 2px',
             flexWrap: 'wrap',
           }}>
-            {/* 복사 */}
-            <button
-              onClick={handleCopy}
-              style={{
-                background: 'var(--bg-glass)',
-                border: '1px solid var(--border-muted)',
-                cursor: 'pointer',
-                color: copied ? '#10b981' : 'var(--text-muted)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px',
-                fontSize: '10px',
-                padding: '3px 7px',
-                borderRadius: '5px',
-                transition: 'all 0.15s',
-              }}
-            >
-              {copied ? <Check size={10} /> : <Copy size={10} />}
-              {copied ? '복사됨' : '복사'}
-            </button>
+            {/* Diff 제안 수락/거절 분기 */}
+            {!isUser && msg.originalText && msg.proposedText ? (
+              <>
+                {msg.diffState === 'pending' && (
+                  <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                    <button
+                      onClick={() => {
+                        if (onApplySuggestion && msg.proposedText) {
+                          onApplySuggestion(msg.proposedText, 'replace')
+                        }
+                        if (onUpdateDiffState) {
+                          onUpdateDiffState(msg.id, 'accepted')
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        background: 'rgba(16,185,129,0.18)',
+                        border: '1px solid rgba(16,185,129,0.4)',
+                        cursor: 'pointer',
+                        color: '#34d399',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        padding: '5px 10px',
+                        borderRadius: '5px',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <Check size={12} /> 수락 (Accept)
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (onUpdateDiffState) {
+                          onUpdateDiffState(msg.id, 'rejected')
+                        }
+                      }}
+                      style={{
+                        background: 'rgba(239,68,68,0.12)',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        cursor: 'pointer',
+                        color: '#f87171',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                        fontSize: '11px',
+                        padding: '5px 10px',
+                        borderRadius: '5px',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      <X size={12} /> 거절
+                    </button>
+                  </div>
+                )}
+                {msg.diffState === 'accepted' && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: '#34d399',
+                    background: 'rgba(16,185,129,0.06)',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(16,185,129,0.15)',
+                    fontWeight: 'bold',
+                  }}>
+                    <Check size={12} /> 수정안이 본문에 적용되었습니다
+                  </div>
+                )}
+                {msg.diffState === 'rejected' && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    fontSize: '11px',
+                    color: 'var(--text-muted)',
+                    background: 'rgba(255,255,255,0.02)',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    border: '1px solid var(--border-muted)',
+                  }}>
+                    <X size={12} /> 제안 거절됨
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                {/* 복사 */}
+                <button
+                  onClick={handleCopy}
+                  style={{
+                    background: 'var(--bg-glass)',
+                    border: '1px solid var(--border-muted)',
+                    cursor: 'pointer',
+                    color: copied ? '#10b981' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px',
+                    fontSize: '10px',
+                    padding: '3px 7px',
+                    borderRadius: '5px',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {copied ? <Check size={10} /> : <Copy size={10} />}
+                  {copied ? '복사됨' : '복사'}
+                </button>
 
-            {/* 에디터 커서 삽입 */}
-            {onApplySuggestion && (
-              <button
-                onClick={() => onApplySuggestion(textToApply, 'insert')}
-                style={{
-                  background: 'rgba(139,92,246,0.1)',
-                  border: '1px solid rgba(139,92,246,0.25)',
-                  cursor: 'pointer',
-                  color: 'var(--primary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  fontSize: '10px',
-                  padding: '3px 7px',
-                  borderRadius: '5px',
-                  transition: 'all 0.15s',
-                }}
-              >
-                ➕ 커서에 삽입
-              </button>
-            )}
+                {/* 에디터 커서 삽입 */}
+                {onApplySuggestion && (
+                  <button
+                    onClick={() => onApplySuggestion(textToApply, 'insert')}
+                    style={{
+                      background: 'rgba(139,92,246,0.1)',
+                      border: '1px solid rgba(139,92,246,0.25)',
+                      cursor: 'pointer',
+                      color: 'var(--primary)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      fontSize: '10px',
+                      padding: '3px 7px',
+                      borderRadius: '5px',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    ➕ 커서에 삽입
+                  </button>
+                )}
 
-            {/* 선택 교체 */}
-            {onApplySuggestion && (
-              <button
-                onClick={() => onApplySuggestion(textToApply, 'replace')}
-                disabled={!hasSelection}
-                style={{
-                  background: hasSelection ? 'rgba(6,182,212,0.12)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${hasSelection ? 'rgba(6,182,212,0.3)' : 'var(--border-muted)'}`,
-                  cursor: hasSelection ? 'pointer' : 'not-allowed',
-                  color: hasSelection ? 'var(--secondary)' : 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '3px',
-                  fontSize: '10px',
-                  padding: '3px 7px',
-                  borderRadius: '5px',
-                  transition: 'all 0.15s',
-                  opacity: hasSelection ? 1 : 0.45,
-                }}
-                title={hasSelection ? '에디터 선택 영역과 교체합니다' : '에디터에서 영역을 드래그하면 교체할 수 있습니다'}
-              >
-                ✏️ 선택교체
-              </button>
+                {/* 선택 교체 */}
+                {onApplySuggestion && (
+                  <button
+                    onClick={() => onApplySuggestion(textToApply, 'replace')}
+                    disabled={!hasSelection}
+                    style={{
+                      background: hasSelection ? 'rgba(6,182,212,0.12)' : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${hasSelection ? 'rgba(6,182,212,0.3)' : 'var(--border-muted)'}`,
+                      cursor: hasSelection ? 'pointer' : 'not-allowed',
+                      color: hasSelection ? 'var(--secondary)' : 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px',
+                      fontSize: '10px',
+                      padding: '3px 7px',
+                      borderRadius: '5px',
+                      transition: 'all 0.15s',
+                      opacity: hasSelection ? 1 : 0.45,
+                    }}
+                    title={hasSelection ? '에디터 선택 영역과 교체합니다' : '에디터에서 영역을 드래그하면 교체할 수 있습니다'}
+                  >
+                    ✏️ 선택교체
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -248,6 +384,8 @@ export function AIPanel({
   selectedText = '',
   onClearSelectedText,
   onApplySuggestion,
+  onUpdateDiffState,
+  activeBlockId,
 }: AIPanelProps) {
   const [input, setInput] = useState('')
   const [showSettings, setShowSettings] = useState(false)
@@ -269,7 +407,7 @@ export function AIPanel({
       ? `[선택한 부분 텍스트]\n${selectedText}\n\n[문서 내용 전체]\n${currentContent}`
       : (useContext ? currentContent : undefined)
 
-    onSend(input.trim(), finalContext)
+    onSend(input.trim(), finalContext, selectedText || undefined, activeBlockId)
     setInput('')
   }
 
@@ -285,7 +423,7 @@ export function AIPanel({
     const finalContext = selectedText
       ? `[선택한 부분 텍스트]\n${selectedText}\n\n[문서 내용 전체]\n${currentContent}`
       : currentContent
-    onSend(prompt, finalContext)
+    onSend(prompt, finalContext, selectedText || undefined, activeBlockId)
   }
 
   if (!isOpen) return null
@@ -541,6 +679,7 @@ export function AIPanel({
               msg={msg}
               onApplySuggestion={onApplySuggestion}
               hasSelection={!!selectedText}
+              onUpdateDiffState={onUpdateDiffState}
             />
           ))}
           <div ref={messagesEndRef} />

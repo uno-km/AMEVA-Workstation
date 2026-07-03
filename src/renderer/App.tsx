@@ -261,6 +261,7 @@ export default function App() {
     messages: aiMessages, isGenerating, isAvailable, models,
     settings: aiSettings, generateResponse, abortGeneration,
     clearHistory: clearAIHistory, updateSettings: updateAISettings,
+    updateMessageDiffState,
   } = useAI()
 
   const { messages: chatMessages, sendMessage: sendChatMessage, clearMessages: clearChatMessages } = useChat(
@@ -273,10 +274,32 @@ export default function App() {
 
   // ── AI 에디터 텍스트 연동 및 적용 ─────────────────────────────
   const [selectedText, setSelectedText] = useState('')
+  const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
 
-  const handleApplySuggestion = useCallback((text: string, mode: 'replace' | 'insert') => {
+  const handleApplySuggestion = useCallback((text: string, mode: 'replace' | 'insert', blockId?: string) => {
     if (!editor) return
     try {
+      if (blockId) {
+        try {
+          const targetBlock = editor.getBlock(blockId)
+          if (targetBlock) {
+            if (targetBlock.type === 'jupyter') {
+              editor.updateBlock(blockId, {
+                type: 'jupyter',
+                props: { ...targetBlock.props, code: text }
+              })
+            } else {
+              editor.updateBlock(blockId, {
+                content: text
+              })
+            }
+            return
+          }
+        } catch (bErr) {
+          console.warn('블록 단위 직접 업데이트 실패, selection 폴백 실행:', bErr)
+        }
+      }
+
       const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
       if (view) {
         const { state, dispatch } = view
@@ -483,6 +506,7 @@ graph TD
       if (currentId !== activeBlockIdRef.current) {
         const prevId = activeBlockIdRef.current
         activeBlockIdRef.current = currentId
+        setActiveBlockId(currentId)
 
         if (prevId) {
           try {
@@ -1264,6 +1288,8 @@ graph TD
             selectedText={selectedText}
             onClearSelectedText={() => setSelectedText('')}
             onApplySuggestion={handleApplySuggestion}
+            onUpdateDiffState={updateMessageDiffState}
+            activeBlockId={activeBlockId || undefined}
           />
         </div>
       </div>

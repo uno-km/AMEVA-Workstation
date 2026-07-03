@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pricing Plans | AMEVA Workstation</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <div class="brand-icon"><i class="fas fa-cubes"></i></div>
+      <span>AMEVA Workstation</span>
+    </a>
+    <nav class="nav-menu">
+      <a href="index.html" class="nav-link">Home</a>
+      <a href="features.html" class="nav-link">Features</a>
+      <a href="solutions-enterprise.html" class="nav-link">Solutions</a>
+      <a href="pricing.html" class="nav-link">Pricing</a>
+      <a href="contact.html" class="nav-link">Contact</a>
+    </nav>
+    <div class="header-actions">
+      <button id="theme-toggle" class="btn-theme"><i class="fas fa-sun"></i></button>
+      <a href="contact.html" class="btn-primary" style="padding: 8px 16px; font-size: 11px;">Request Demo</a>
+    </div>
+  </header>
+
+  <main class="promo-container">
+    <section style="text-align: center; margin-bottom: 30px;">
+      <div class="badge-tag"><i class="fas fa-credit-card"></i> Flexible Plans</div>
+      <h2 style="font-size:36px; font-weight:800;">비즈니스 성장에 최적화된 가격 정책</h2>
+      <p style="color:var(--text-muted); font-size:14px; margin-top:6px;">합리적인 구독 플랜으로 AMEVA의 전 기능을 격리 제한 없이 누리세요.</p>
+    </section>
+
+    <!-- 월/연간 전환 토글 -->
+    <div class="toggle-container">
+      <span style="font-size:13px; font-weight:600; color:var(--text-muted);">월간 결제</span>
+      <label class="switch">
+        <input type="checkbox" id="billing-toggle">
+        <span class="slider"></span>
+      </label>
+      <span style="font-size:13px; font-weight:600; color:var(--primary);">연간 결제 (20% 할인)</span>
+    </div>
+
+    <!-- 카드 격리 그리드 -->
+    <div class="pricing-grid">
+      <!-- 플랜 1 -->
+      <div class="price-card">
+        <h4 style="font-size:18px; font-weight:700; margin-bottom:8px;">Starter</h4>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">개인 개발자 및 소규모 팀용 기본 패키지</p>
+        <div style="font-size:32px; font-weight:800; margin-bottom:20px;">
+          $<span class="price-val" data-monthly="12" data-yearly="9">12</span><span style="font-size:14px; font-weight:500; color:var(--text-muted);">/mo</span>
+        </div>
+        <ul style="text-align:left; font-size:12px; color:var(--text-muted); margin-bottom:24px; line-height:2;">
+          <li><i class="fas fa-check" style="color:var(--secondary); margin-right:6px;"></i> 로컬 마크다운 저작 위젯</li>
+          <li><i class="fas fa-check" style="color:var(--secondary); margin-right:6px;"></i> JS/HTML/SQL 코드 런타임</li>
+          <li><i class="fas fa-check" style="color:var(--secondary); margin-right:6px;"></i> 기본 AI 도우미 호출 (API 별도)</li>
+        </ul>
+        <a href="contact.html" class="btn-secondary" style="width:100%; display:block;">시작하기</a>
+      </div>
+
+      <!-- 플랜 2 (Featured) -->
+      <div class="price-card featured">
+        <h4 style="font-size:18px; font-weight:700; margin-bottom:8px;">Pro</h4>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">공동 협업과 실시간 미디어 활용이 빈번한 워킹 그룹</p>
+        <div style="font-size:32px; font-weight:800; margin-bottom:20px; color:var(--primary);">
+          $<span class="price-val" data-monthly="29" data-yearly="23">29</span><span style="font-size:14px; font-weight:500; color:var(--text-muted);">/mo</span>
+        </div>
+        <ul style="text-align:left; font-size:12px; color:var(--text-muted); margin-bottom:24px; line-height:2;">
+          <li><i class="fas fa-check" style="color:var(--primary); margin-right:6px;"></i> Starter의 전 기능 포함</li>
+          <li><i class="fas fa-check" style="color:var(--primary); margin-right:6px;"></i> Y.js 실시간 듀얼 협업 (로컬/클라우드)</li>
+          <li><i class="fas fa-check" style="color:var(--primary); margin-right:6px;"></i> AI Accept/Reject Diff 에디팅</li>
+          <li><i class="fas fa-check" style="color:var(--primary); margin-right:6px;"></i> 미디어 스트리밍 임베더 탑재</li>
+        </ul>
+        <a href="contact.html" class="btn-primary" style="width:100%; display:block;">Pro 체험 신청</a>
+      </div>
+
+      <!-- 플랜 3 -->
+      <div class="price-card">
+        <h4 style="font-size:18px; font-weight:700; margin-bottom:8px;">Enterprise</h4>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:20px;">보안이 보장된 인트라넷 폐쇄망 및 모델 서버가 필요한 기업</p>
+        <div style="font-size:32px; font-weight:800; margin-bottom:20px;">
+          Custom
+        </div>
+        <ul style="text-align:left; font-size:12px; color:var(--text-muted); margin-bottom:24px; line-height:2;">
+          <li><i class="fas fa-check" style="color:var(--secondary); margin-right:6px;"></i> Pro의 전 기능 포함</li>
+          <li><i class="fas fa-check" style="color:var(--secondary); margin-right:6px;"></i> 로컬 LLM 분산 GPU 라우팅 게이트웨이</li>
+          <li><i class="fas fa-check" style="color:var(--secondary); margin-right:6px;"></i> SSO 및 사내 사용자 계정 보안 커스텀</li>
+          <li><i class="fas fa-check" style="color:var(--secondary); margin-right:6px;"></i> 24/7 전담 기술 엔지니어 지원</li>
+        </ul>
+        <a href="contact.html" class="btn-secondary" style="width:100%; display:block;">문의하기</a>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { initTheme } from './js/common/theme.js';
+    import { initNavigation } from './js/common/navigation.js';
+    import { initPricing } from './js/pages/pricing.js';
+
+    initTheme();
+    initNavigation();
+    initPricing();
+  </script>
+</body>
+</html>

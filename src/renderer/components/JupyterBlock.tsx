@@ -14,9 +14,9 @@ const KEYWORDS: Record<string, string[]> = {
   cmd: ['echo', 'cd', 'dir', 'mkdir', 'del', 'rmdir', 'copy', 'move', 'cls', 'path', 'taskkill', 'tasklist', 'netstat', 'ipconfig']
 }
 
-// 본문 문서 내 최근 단어 토크나이저
+// 본문 문서 내 최근 단어 토크나이저 (최소 2글자 이상으로 완화하여 짧은 변수도 파싱)
 function getDocWords(text: string): string[] {
-  const matches = text.match(/\b[a-zA-Z_]\w{2,15}\b/g)
+  const matches = text.match(/\b[a-zA-Z_]\w{1,25}\b/g)
   if (!matches) return []
   return Array.from(new Set(matches))
 }
@@ -43,6 +43,16 @@ const JupyterBlockSpec = createReactBlockSpec(
         const [cursorPos, setCursorPos] = useState(0)
         const mirrorRef = useRef<HTMLDivElement | null>(null)
 
+        // 로컬 입력 버퍼 캐시 (랙 방지)
+        const [localCode, setLocalCode] = useState(code)
+
+        // 부모의 code prop이 변경되면 로컬 캐시 동기화 (단, 포커스 중이 아닐 때만)
+        useEffect(() => {
+          if (document.activeElement !== textareaRef.current) {
+            setLocalCode(code)
+          }
+        }, [code])
+
         // 텍스트 스크롤 동기화 핸들러
         const handleScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
           if (mirrorRef.current) {
@@ -50,16 +60,17 @@ const JupyterBlockSpec = createReactBlockSpec(
           }
         }
 
-        // 제안 단어 실시간 계산 (Static Dictionary + Doc Context)
+        // 제안 단어 실시간 계산 (로컬 캐시 기준)
         let suggestion = ''
-        const beforeCursor = code.substring(0, cursorPos)
+        const beforeCursor = localCode.substring(0, cursorPos)
         const prefixMatch = beforeCursor.match(/([a-zA-Z_]\w*)$/)
         const prefix = prefixMatch ? prefixMatch[1] : ''
 
         if (prefix.length >= 1) {
           const langKeywords = KEYWORDS[language] || []
-          const docWords = getDocWords(code)
-          const allCandidates = Array.from(new Set([...langKeywords, ...docWords]))
+          const docWords = getDocWords(localCode)
+          // 0순위로 본문 로컬 변수명(docWords)을 매핑! 그 뒤에 정적 키워드 결합!
+          const allCandidates = Array.from(new Set([...docWords, ...langKeywords]))
           const match = allCandidates.find(w => w.toLowerCase().startsWith(prefix.toLowerCase()) && w.toLowerCase() !== prefix.toLowerCase())
           if (match) {
             suggestion = match.substring(prefix.length)
@@ -75,8 +86,9 @@ const JupyterBlockSpec = createReactBlockSpec(
           }
         }
 
-        // 블록 props 변경 유틸
+        // 블록 props 변경 유틸 (로컬과 부모 상태 둘 다 갱신)
         const updateCode = (newCode: string) => {
+          setLocalCode(newCode)
           editor.updateBlock(block.id, {
             type: 'jupyter',
             props: { ...block.props, code: newCode }
@@ -233,7 +245,7 @@ const JupyterBlockSpec = createReactBlockSpec(
                       textAlign: 'left'
                     }}
                   >
-                    <span>{code.substring(0, cursorPos)}</span>
+                    <span>{localCode.substring(0, cursorPos)}</span>
                     {suggestion && (
                       <span style={{ color: '#6b7280', opacity: 0.8, background: 'rgba(255,255,255,0.06)', borderRadius: '2px', padding: '0 2px' }}>
                         {suggestion}
@@ -244,7 +256,7 @@ const JupyterBlockSpec = createReactBlockSpec(
 
                 <textarea
                   ref={textareaRef}
-                  value={code}
+                  value={localCode}
                   onChange={(e) => {
                     updateCode(e.target.value)
                     setCursorPos(e.target.selectionStart)

@@ -7,6 +7,11 @@ export interface AIMessage {
   timestamp: number
   isStreaming?: boolean
   error?: boolean
+  // 인라인 Diff 제안용 메타데이터
+  originalText?: string
+  proposedText?: string
+  diffState?: 'pending' | 'accepted' | 'rejected'
+  blockId?: string
 }
 
 export interface AISettings {
@@ -97,6 +102,7 @@ export function useAI() {
                 content: !data.success
                   ? (data.error || '오류가 발생했습니다.')
                   : m.content,
+                proposedText: data.success ? m.content : undefined
               }
             : m
         ))
@@ -113,7 +119,12 @@ export function useAI() {
     }
   }, [])
 
-  const generateResponse = useCallback(async (userMessage: string, context?: string) => {
+  const generateResponse = useCallback(async (
+    userMessage: string, 
+    context?: string, 
+    originalText?: string, 
+    blockId?: string
+  ) => {
     if (!window.electronAPI || isGenerating) return
 
     const userMsg: AIMessage = {
@@ -130,6 +141,9 @@ export function useAI() {
       content: '',
       timestamp: Date.now(),
       isStreaming: true,
+      originalText,
+      diffState: originalText ? 'pending' : undefined,
+      blockId
     }
 
     currentAssistantIdRef.current = assistantId
@@ -231,6 +245,12 @@ export function useAI() {
     })
   }, [])
 
+  const updateMessageDiffState = useCallback((msgId: string, state: 'accepted' | 'rejected') => {
+    setMessages(prev => prev.map(m =>
+      m.id === msgId ? { ...m, diffState: state } : m
+    ))
+  }, [])
+
   return {
     messages,
     isGenerating,
@@ -243,5 +263,6 @@ export function useAI() {
     abortGeneration,
     clearHistory,
     updateSettings,
+    updateMessageDiffState,
   }
 }
