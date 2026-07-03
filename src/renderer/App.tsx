@@ -102,9 +102,19 @@ function cleanCodeBlocks(blocks: any[]) {
         lang = amevaLangMatch[1].toLowerCase()
         finalCode = lines.slice(1).join('\n')
       } 
-      // 2단계: 첫 번째 줄 단어 매칭 시도
-      else if (firstLine && supportedLangs.includes(firstLine.toLowerCase())) {
+      // 2단계: 첫 번째 줄 단어 매칭 시도 (지원 언어명 매칭 또는 블록의 설정 언어와 일치하는 경우 강제 스트립)
+      else if (firstLine && (
+        supportedLangs.includes(firstLine.toLowerCase()) ||
+        (block.props?.language && firstLine.toLowerCase() === block.props.language.toLowerCase()) ||
+        (block.props?.language && firstLine.toLowerCase() === 'py' && block.props.language.toLowerCase() === 'python') ||
+        (block.props?.language && firstLine.toLowerCase() === 'js' && block.props.language.toLowerCase() === 'javascript') ||
+        (block.props?.language && firstLine.toLowerCase() === 'ts' && block.props.language.toLowerCase() === 'typescript')
+      )) {
         lang = firstLine.toLowerCase() === 'py' ? 'python' : firstLine.toLowerCase() === 'js' ? 'javascript' : firstLine.toLowerCase() === 'ts' ? 'typescript' : firstLine.toLowerCase()
+        if (block.props?.language && !supportedLangs.includes(firstLine.toLowerCase())) {
+          // supportedLangs에 없지만 block.props.language와 동일한 경우도 해당 언어로 세팅
+          lang = block.props.language.toLowerCase()
+        }
         finalCode = lines.slice(1).join('\n')
       } 
       // 3단계: 기본 block.props.language 매칭 시도
