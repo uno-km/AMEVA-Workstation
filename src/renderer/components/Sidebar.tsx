@@ -214,20 +214,27 @@ export function Sidebar({
             {/* 편집/뷰어 모드 */}
             <div>
               {sectionLabel('에디터 모드')}
-              <div style={{ display: 'flex', gap: '6px' }}>
+              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                 <button
                   className={`btn btn-glass ${editorMode === 'edit' ? 'active' : ''}`}
-                  style={{ flex: 1, fontSize: '12px', padding: '7px 10px' }}
+                  style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
                   onClick={() => setEditorMode('edit')}
                 >
-                  <Terminal size={13} /> 편집
+                  <Terminal size={12} /> 편집
                 </button>
                 <button
                   className={`btn btn-glass ${editorMode === 'preview' ? 'active' : ''}`}
-                  style={{ flex: 1, fontSize: '12px', padding: '7px 10px' }}
+                  style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
                   onClick={() => setEditorMode('preview')}
                 >
-                  <Eye size={13} /> 미리보기
+                  <Eye size={12} /> 미리보기
+                </button>
+                <button
+                  className={`btn btn-glass ${editorMode === 'raw' ? 'active' : ''}`}
+                  style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
+                  onClick={() => setEditorMode('raw')}
+                >
+                  <FileText size={12} /> 원문보기
                 </button>
               </div>
             </div>

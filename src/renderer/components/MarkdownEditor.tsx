@@ -31,7 +31,7 @@ import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
 interface MarkdownEditorProps {
   editor: BlockNoteEditor | null
-  editorMode: 'edit' | 'preview'
+  editorMode: 'edit' | 'preview' | 'raw'
   peers: PeerState[]
   onMouseMove: (e: React.MouseEvent) => void
   onSelectionChange: (selection: { anchorBlockId: string; focusBlockId: string } | null) => void
@@ -614,8 +614,42 @@ export function MarkdownEditor({
               }}
             />
           </BlockNoteView>
-        ) : (
+        ) : editorMode === 'preview' ? (
           <MarkdownPreview markdown={currentContent} editor={editor} />
+        ) : (
+          <div style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '16px 24px',
+            boxSizing: 'border-box',
+          }}>
+            <textarea
+              value={currentContent}
+              onChange={(e) => setCurrentContent(e.target.value)}
+              placeholder="여기에 마크다운 원문이 표시됩니다. 직접 수정할 수도 있습니다."
+              style={{
+                width: '100%',
+                height: 'calc(100vh - 120px)',
+                minHeight: '400px',
+                background: 'rgba(5, 5, 10, 0.4)',
+                border: '1px solid var(--border-muted)',
+                borderRadius: '8px',
+                color: 'var(--text-main)',
+                fontFamily: 'Consolas, Monaco, "Courier New", Courier, monospace',
+                fontSize: '13px',
+                lineHeight: '1.6',
+                padding: '16px',
+                resize: 'none',
+                outline: 'none',
+                boxSizing: 'border-box',
+                transition: 'all 0.2s',
+              }}
+              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
+              onBlur={(e) => e.currentTarget.style.borderColor = 'var(--border-muted)'}
+            />
+          </div>
         )}
 
       </div>

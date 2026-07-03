@@ -1,4 +1,4 @@
-export type EditorMode = 'edit' | 'preview'
+export type EditorMode = 'edit' | 'preview' | 'raw'
 
 export type ExportFormat = 'md' | 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'hwpx' | 'html' | 'xml'
 
