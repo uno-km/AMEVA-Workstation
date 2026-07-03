@@ -1,0 +1,157 @@
+import React from 'react'
+import { X, RefreshCw } from 'lucide-react'
+import type { DocumentSnapshot } from '../../shared/types'
+
+interface DiffModalProps {
+  isOpen: boolean
+  onClose: () => void
+  snapshot: DocumentSnapshot | null
+  currentContent: string
+  getLineDiff: (oldText: string, newText: string) => { type: 'added' | 'removed' | 'unchanged'; value: string }[]
+  onRollback: (content: string) => void
+}
+
+export function DiffModal({
+  isOpen,
+  onClose,
+  snapshot,
+  currentContent,
+  getLineDiff,
+  onRollback,
+}: DiffModalProps) {
+  if (!isOpen || !snapshot) return null
+
+  // 스냅샷(과거) -> 현재 내용 비교
+  const diffs = getLineDiff(snapshot.content, currentContent)
+
+  const handleRollback = () => {
+    onRollback(snapshot.content)
+    onClose()
+  }
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(5, 5, 10, 0.85)',
+        backdropFilter: 'blur(8px)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px',
+      }}
+    >
+      <div
+        className="glass-panel"
+        style={{
+          width: '100%',
+          maxWidth: '1000px',
+          height: '80vh',
+          borderRadius: '12px',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
+          boxShadow: '0 20px 50px rgba(139, 92, 246, 0.25)',
+        }}
+      >
+        {/* 헤더 */}
+        <div
+          style={{
+            padding: '16px 24px',
+            borderBottom: '1px solid var(--border-muted)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            backgroundColor: 'rgba(0,0,0,0.2)',
+          }}
+        >
+          <div>
+            <h3 style={{ fontSize: '16px', fontWeight: 700 }}>버전 비교 및 복구</h3>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+              스냅샷: {snapshot.title} ({new Date(snapshot.timestamp).toLocaleString()}) vs 현재 편집본
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        {/* Diff 리스트 영역 */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '20px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '13px',
+            backgroundColor: '#0a0a0f',
+            lineHeight: '1.6',
+          }}
+        >
+          {diffs.map((line, index) => {
+            let bgColor = 'transparent'
+            let color = 'var(--text-main)'
+            let prefix = ' '
+
+            if (line.type === 'added') {
+              bgColor = 'rgba(16, 185, 129, 0.15)'
+              color = '#10b981'
+              prefix = '+'
+            } else if (line.type === 'removed') {
+              bgColor = 'rgba(239, 68, 68, 0.15)'
+              color = '#ef4444'
+              prefix = '-'
+            }
+
+            return (
+              <div
+                key={index}
+                style={{
+                  backgroundColor: bgColor,
+                  color: color,
+                  padding: '2px 8px',
+                  borderRadius: '2px',
+                  display: 'flex',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-all',
+                }}
+              >
+                <span style={{ userSelect: 'none', marginRight: '12px', opacity: 0.5, width: '12px' }}>
+                  {prefix}
+                </span>
+                <span>{line.value || ' '}</span>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* 푸터 버튼 */}
+        <div
+          style={{
+            padding: '16px 24px',
+            borderTop: '1px solid var(--border-muted)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '12px',
+            backgroundColor: 'rgba(0,0,0,0.1)',
+          }}
+        >
+          <button className="btn btn-glass" onClick={onClose}>
+            취소
+          </button>
+          <button className="btn btn-secondary" onClick={handleRollback}>
+            <RefreshCw size={14} /> 이 버전으로 롤백(복구)
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

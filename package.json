@@ -1,0 +1,106 @@
+{
+  "name": "ameva-workstation",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist-electron/index.js",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build && electron-builder",
+    "pack": "electron-builder --dir",
+    "lint": "oxlint",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@blocknote/core": "^0.51.4",
+    "@blocknote/mantine": "^0.51.4",
+    "@blocknote/react": "^0.51.4",
+    "canvas-confetti": "^1.9.4",
+    "docx": "^9.7.1",
+    "highlight.js": "^11.11.1",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.22.0",
+    "marked": "^18.0.5",
+    "mermaid": "^11.16.0",
+    "pptxgenjs": "^4.0.1",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "ws": "^8.21.0",
+    "xlsx": "^0.18.5",
+    "y-websocket": "^3.0.0",
+    "yjs": "^13.6.31"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.9.0",
+    "@types/node": "^24.13.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/ws": "^8.18.1",
+    "@vitejs/plugin-react": "^6.0.3",
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "oxlint": "^1.71.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.1",
+    "vite-plugin-electron": "^1.1.0",
+    "vite-plugin-electron-renderer": "^1.0.0"
+  },
+  "build": {
+    "appId": "com.ameva.markdowneditor",
+    "productName": "AMEVA Markdown Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist",
+      "dist-electron"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "fileAssociations": [
+      {
+        "ext": "md",
+        "name": "Markdown Document",
+        "role": "Editor"
+      },
+      {
+        "ext": "markdown",
+        "name": "Markdown Document",
+        "role": "Editor"
+      },
+      {
+        "ext": "docx",
+        "name": "Word Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "hwpx",
+        "name": "Hancom HWPX Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "pdf",
+        "name": "PDF Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "pptx",
+        "name": "PowerPoint Presentation",
+        "role": "Viewer"
+      },
+      {
+        "ext": "html",
+        "name": "HTML Document",
+        "role": "Viewer"
+      },
+      {
+        "ext": "xml",
+        "name": "XML Document",
+        "role": "Viewer"
+      }
+    ]
+  }
+}
