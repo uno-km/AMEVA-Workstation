@@ -91,6 +91,7 @@ function createWindow() {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
+      webviewTag: true,
     },
     titleBarStyle: 'hidden',
     titleBarOverlay: {

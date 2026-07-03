@@ -3,7 +3,7 @@ import {
   FileText, Save, Download, History, Users, Share2,
   Plus, Trash2, RefreshCw, Eye, Terminal,
   MessageCircle, Sparkles, ChevronDown, ChevronRight,
-  Wifi, WifiOff, Server, X,
+  Wifi, WifiOff, Server, X, PanelLeftClose,
 } from 'lucide-react'
 import type { EditorMode, ExportFormat, DocumentSnapshot, PeerState } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useChat'
@@ -46,9 +46,8 @@ interface SidebarProps {
   onSelectTab: (id: string) => void
   onCloseTab: (id: string) => void
 
-  // AI 패널 토글
-  showAIPanel: boolean
-  onToggleAI: () => void
+  // 사이드바 접기/열기 콜백
+  onToggleSidebar: () => void
 
   // 채팅
   chatMessages: ChatMessage[]
@@ -89,7 +88,7 @@ export function Sidebar({
   fileOpenMode, setFileOpenMode,
   appendedFiles, onSelectAppendedFile,
   tabs, activeTabId, onSelectTab, onCloseTab,
-  showAIPanel, onToggleAI,
+  onToggleSidebar,
   chatMessages, onChatSend, onChatClear, username, userColor,
   isChatFloating, onToggleChatFloat,
 }: SidebarProps) {
@@ -142,24 +141,31 @@ export function Sidebar({
           <div style={{ fontSize: '9px', color: 'var(--text-muted)' }}>AI-Powered Workspace</div>
         </div>
 
-        {/* AI 토글 버튼 */}
+        {/* 사이드바 접기 버튼 (Inline Embedding) */}
         <button
-          onClick={onToggleAI}
-          title="AI 패널 토글"
+          onClick={onToggleSidebar}
+          title="사이드바 접기"
           style={{
             marginLeft: 'auto',
             width: '28px', height: '28px', borderRadius: '7px',
-            background: showAIPanel ? 'linear-gradient(135deg, var(--primary), var(--secondary))' : 'var(--bg-glass)',
-            border: `1px solid ${showAIPanel ? 'var(--primary)' : 'var(--border-muted)'}`,
-            color: showAIPanel ? '#fff' : 'var(--text-main)',
+            background: 'var(--bg-glass)',
+            border: '1px solid var(--border-muted)',
+            color: 'var(--text-main)',
             cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: showAIPanel ? '0 0 10px var(--primary-glow)' : 'none',
-            transition: 'all 0.2s',
+            transition: 'all 0.15s',
             flexShrink: 0,
           }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--primary)'
+            e.currentTarget.style.color = 'var(--primary)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border-muted)'
+            e.currentTarget.style.color = 'var(--text-main)'
+          }}
         >
-          <Sparkles size={13} />
+          <PanelLeftClose size={13} />
         </button>
       </div>
 

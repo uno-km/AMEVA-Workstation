@@ -33,27 +33,34 @@ import JSZip from 'jszip'
 import * as XLSX from 'xlsx'
 import { FloatingChat } from './components/FloatingChat'
 import { packMarkdownToADC, unpackADCToMarkdown } from './utils/adcPackager'
+import { DrawingBlock } from './components/DrawingBlock'
 
 const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
-    jupyter: JupyterBlock
+    jupyter: JupyterBlock,
+    drawing: DrawingBlock
   }
 })
 
-// jupyter 블록을 마크다운 변환 시 표준 codeBlock으로 복구하는 도우미
+// jupyter 블록을 마크다운 변환 시 표준 codeBlock으로 복구하는 도우미 (drawing 블록 포함)
 function convertJupyterToCodeBlocks(blocks: any[]): any[] {
   return blocks.map(block => {
     const copy = { ...block }
     if (copy.type === 'jupyter') {
       copy.type = 'codeBlock'
       const lang = copy.props?.language || 'javascript'
-      
-      // 코드 텍스트를 그대로 전달하며 언어 지정을 props.language에 실어 표준 마크다운 펜스로 저장합니다.
       const finalCodeText = copy.props?.code || ''
       copy.content = [{ type: 'text', text: finalCodeText, styles: {} }]
       copy.props = {
         language: lang
+      }
+    } else if (copy.type === 'drawing') {
+      copy.type = 'codeBlock'
+      const dataText = copy.props?.data || '[]'
+      copy.content = [{ type: 'text', text: dataText, styles: {} }]
+      copy.props = {
+        language: 'ameva-drawing'
       }
     } else if (copy.children) {
       copy.children = convertJupyterToCodeBlocks(copy.children)
@@ -83,7 +90,6 @@ function normalizeMarkdown(raw: string): string {
   content = parts.join('```')
   
   // opening fence 정밀 매칭 (뒤에 알파벳/숫자 언어명이 오고 개행이 오는 경우)
-  // BlockNote가 fence 언어를 정확히 해석할 수 있도록 js/ts/py 단축어를 표준 언어명(javascript/typescript/python)으로 정규화합니다.
   content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, (match, lang) => {
     const l = lang.toLowerCase()
     const mapped = l === 'js' ? 'javascript' : l === 'ts' ? 'typescript' : l === 'py' ? 'python' : l
@@ -97,7 +103,7 @@ function normalizeMarkdown(raw: string): string {
 }
 
 function cleanCodeBlocks(blocks: any[]) {
-  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql']
+  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing']
   blocks.forEach(block => {
     if (block.type === 'codeBlock') {
       const text = block.content ? block.content.map((c: any) => c.text).join('') : ''
@@ -124,7 +130,6 @@ function cleanCodeBlocks(blocks: any[]) {
       )) {
         lang = firstLine.toLowerCase() === 'py' ? 'python' : firstLine.toLowerCase() === 'js' ? 'javascript' : firstLine.toLowerCase() === 'ts' ? 'typescript' : firstLine.toLowerCase()
         if (block.props?.language && !supportedLangs.includes(firstLine.toLowerCase())) {
-          // supportedLangs에 없지만 block.props.language와 동일한 경우도 해당 언어로 세팅
           lang = block.props.language.toLowerCase()
         }
         finalCode = lines.slice(1).join('\n')
@@ -135,6 +140,16 @@ function cleanCodeBlocks(blocks: any[]) {
         lang = rawLang === 'js' ? 'javascript' : rawLang === 'ts' ? 'typescript' : rawLang === 'py' ? 'python' : rawLang
       }
       
+      // ameva-drawing 인 경우 jupyter 로 가는 대신 drawing 블록으로 다이렉트 변환
+      if (lang === 'ameva-drawing') {
+        block.type = 'drawing'
+        block.props = {
+          data: finalCode
+        }
+        block.content = undefined
+        return
+      }
+
       block.type = 'jupyter'
       block.props = {
         language: lang,
@@ -626,6 +641,42 @@ export default function App() {
   useEffect(() => {
     document.body.setAttribute('data-theme', settings.theme)
   }, [settings.theme])
+
+  // ── YouTube PiP (Picture-in-Picture) 플로팅 상태 및 제어 ──
+  const [pipVideoId, setPipVideoId] = useState<string | null>(null)
+  const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 380, y: window.innerHeight - 260 })
+  const [isDraggingPip, setIsDraggingPip] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+
+  useEffect(() => {
+    (window as any).AMEVA_TRIGGER_YOUTUBE_PIP = (videoId: string) => {
+      setPipVideoId(videoId)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (isDraggingPip) {
+        setPipPosition({
+          x: Math.max(10, Math.min(window.innerWidth - 360, e.clientX - dragOffset.x)),
+          y: Math.max(10, Math.min(window.innerHeight - 240, e.clientY - dragOffset.y))
+        })
+      }
+    }
+    const handleMouseUp = () => {
+      setIsDraggingPip(false)
+    }
+
+    if (isDraggingPip) {
+      window.addEventListener('mousemove', handleMouseMove)
+      window.addEventListener('mouseup', handleMouseUp)
+    }
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDraggingPip, dragOffset])
+
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isAboutOpen, setIsAboutOpen] = useState(false)
   const [isGuideOpen, setIsGuideOpen] = useState(false)
@@ -697,6 +748,25 @@ export default function App() {
   // ── BlockNote 에디터 ────────────────────────────────────────
   const [editor, setEditor] = useState<BlockNoteEditor | null>(null)
   const isInitialLoad = useRef(true)
+
+  useEffect(() => {
+    (window as any).AMEVA_GET_CURRENT_CONTENT = () => {
+      return currentContent || ''
+    };
+    (window as any).AMEVA_SET_CURRENT_CONTENT = async (markdownText: string) => {
+      if (editor) {
+        try {
+          const normalized = normalizeMarkdown(markdownText)
+          const blocks = await editor.tryParseMarkdownToBlocks(normalized)
+          cleanCodeBlocks(blocks)
+          editor.replaceBlocks(editor.document, blocks)
+          setCurrentContent(markdownText)
+        } catch (e) {
+          console.error('클라우드 파일 로드 연계 실패:', e)
+        }
+      }
+    }
+  }, [editor, currentContent])
 
   // ── AI 에디터 텍스트 연동 및 적용 ─────────────────────────────
   const [selectedText, setSelectedText] = useState('')
@@ -1911,24 +1981,25 @@ graph TD
       {/* 메인 레이아웃: 사이드바 + 에디터 + AI패널 */}
       <div className="main-layout-row">
 
-        {/* 사이드바 토글 버튼 */}
-        <button
-          onClick={() => setShowSidebar(!showSidebar)}
-          style={{
-            position: 'absolute',
-            left: showSidebar ? `${sidebarWidth - 14}px` : '10px',
-            top: '12px', width: '28px', height: '28px',
-            borderRadius: '6px', background: 'var(--bg-glass)',
-            border: '1px solid var(--border-glow)', color: 'var(--text-main)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', zIndex: 102,
-            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
-            transition: 'left 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          }}
-          title={showSidebar ? '사이드바 접기' : '사이드바 열기'}
-        >
-          {showSidebar ? <PanelLeftClose size={16} /> : <PanelLeft size={16} />}
-        </button>
+        {/* 사이드바 토글 버튼 (닫혀있을 때만 플로팅) */}
+        {!showSidebar && (
+          <button
+            onClick={() => setShowSidebar(true)}
+            style={{
+              position: 'absolute',
+              left: '10px',
+              top: '12px', width: '28px', height: '28px',
+              borderRadius: '6px', background: 'var(--bg-glass)',
+              border: '1px solid var(--border-glow)', color: 'var(--text-main)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', zIndex: 102,
+              boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            }}
+            title="사이드바 열기"
+          >
+            <PanelLeft size={16} />
+          </button>
+        )}
 
         {/* 사이드바 */}
         {showSidebar && (
@@ -1971,8 +2042,7 @@ graph TD
               activeTabId={activeTabId}
               onSelectTab={handleSelectTab}
               onCloseTab={handleCloseTab}
-              showAIPanel={showAIPanel}
-              onToggleAI={() => setShowAIPanel(p => !p)}
+              onToggleSidebar={() => setShowSidebar(p => !p)}
               chatMessages={chatMessages}
               onChatSend={sendChatMessage}
               onChatClear={clearChatMessages}
@@ -2017,6 +2087,7 @@ graph TD
             showCodeRunner={settings.showCodeConsole}
             theme={settings.theme}
             onSelectedTextChange={setSelectedText}
+            installedPlugins={settings.installedPlugins || []}
           />
           {settings.showMinimap && (settings.installedPlugins || []).includes('minimap') && editor && (
             <Minimap
@@ -2094,6 +2165,74 @@ graph TD
           onToggleWordWrap={() => handleUpdateSettings({ wordWrap: !settings.wordWrap })}
           onOpenSettings={() => setIsSettingsOpen(true)}
         />
+      )}
+
+      {/* YouTube Floating PiP Player */}
+      {pipVideoId && (
+        <div
+          style={{
+            position: 'fixed',
+            left: pipPosition.x,
+            top: pipPosition.y,
+            width: '340px',
+            height: '220px',
+            background: '#18181c',
+            border: '1.5px solid var(--primary)',
+            borderRadius: '10px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
+            display: 'flex',
+            flexDirection: 'column',
+            zIndex: 9999,
+            overflow: 'hidden',
+            userSelect: 'none',
+          }}
+        >
+          {/* 드래그 가능한 헤더 바 */}
+          <div
+            style={{
+              height: '28px',
+              background: '#0f0f11',
+              borderBottom: '1px solid #2e2e38',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 10px',
+              cursor: 'move',
+            }}
+            onMouseDown={(e) => {
+              setIsDraggingPip(true)
+              setDragOffset({
+                x: e.clientX - pipPosition.x,
+                y: e.clientY - pipPosition.y
+              })
+            }}
+          >
+            <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)' }}>📺 Floating YouTube PiP Player</span>
+            <button
+              onClick={() => setPipVideoId(null)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#f87171',
+                fontSize: '11px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+              }}
+            >
+              ✕
+            </button>
+          </div>
+          
+          {/* 유튜브 Iframe 프레임 */}
+          <div style={{ flex: 1, background: '#000' }}>
+            <iframe
+              src={`https://www.youtube.com/embed/${pipVideoId}?autoplay=1`}
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              allow="autoplay; encrypted-media"
+              allowfullscreen
+            ></iframe>
+          </div>
+        </div>
       )}
 
       {/* 모달들 */}

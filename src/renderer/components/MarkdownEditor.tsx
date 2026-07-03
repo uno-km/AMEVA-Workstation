@@ -43,6 +43,7 @@ interface MarkdownEditorProps {
   showCodeRunner: boolean
   theme: 'dark' | 'gray' | 'white' | 'hacker'
   onSelectedTextChange?: (text: string) => void
+  installedPlugins?: string[]
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -416,8 +417,27 @@ export function MarkdownEditor({
   showCodeRunner,
   theme,
   onSelectedTextChange,
+  installedPlugins = [],
 }: MarkdownEditorProps) {
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
+  const [selectedFont, setSelectedFont] = useState('Pretendard')
+  const [selectedSize, setSelectedSize] = useState('14px')
+
+  const hasRichStyling = installedPlugins.includes('rich-styling')
+
+  useEffect(() => {
+    if (!editorContainerRef.current) return
+    const editorDom = editorContainerRef.current.querySelector('.bn-editor') as HTMLElement
+    if (editorDom) {
+      if (hasRichStyling) {
+        editorDom.style.fontFamily = selectedFont
+        editorDom.style.fontSize = selectedSize
+      } else {
+        editorDom.style.fontFamily = ''
+        editorDom.style.fontSize = ''
+      }
+    }
+  }, [selectedFont, selectedSize, editor, editorMode, hasRichStyling])
 
   // ─── 3가지 커스텀 기능별 훅 마운트 (코드 파편화 분리 완수) ───
   useBacktickFence(editor)
@@ -473,6 +493,19 @@ export function MarkdownEditor({
             code: '',
             runState: JSON.stringify({ hasRun: false, success: null, outputLines: [] })
           },
+        })
+        editorInstance.setTextCursorPosition(pos.block.id, 'start')
+        editorInstance.focus()
+      } catch {}
+    }
+
+    const insertDrawingBlock = () => {
+      try {
+        const pos = editorInstance.getTextCursorPosition()
+        if (!pos) return
+        editorInstance.updateBlock(pos.block.id, {
+          type: 'drawing',
+          props: { data: '[]' }
         })
         editorInstance.setTextCursorPosition(pos.block.id, 'start')
         editorInstance.focus()
@@ -546,8 +579,20 @@ export function MarkdownEditor({
       },
     ]
 
-    return [...filtered, ...codeItems]
-  }, [])
+    const drawingSubscribed = installedPlugins.includes('drawing-board')
+    const drawingItems = drawingSubscribed ? [
+      {
+        title: 'Drawing Board',
+        onItemClick: insertDrawingBlock,
+        aliases: ['drawing', 'draw', 'sketch', 'paint', 'canvas'],
+        group: 'Media',
+        icon: <FileImage size={16} color="#a855f7" />,
+        subtext: 'Excalidraw 기반 화이트보드 드로잉 블록 삽입 (/draw)',
+      }
+    ] : []
+
+    return [...filtered, ...codeItems, ...drawingItems]
+  }, [installedPlugins])
 
   if (!editor) {
     return (
@@ -562,6 +607,66 @@ export function MarkdownEditor({
       flex: 1, display: 'flex', flexDirection: 'column',
       height: '100%', position: 'relative', backgroundColor: 'var(--bg-main)',
     }}>
+      {hasRichStyling && editorMode === 'edit' && (
+        <div style={{
+          padding: '8px 16px',
+          borderBottom: '1px solid var(--border-muted)',
+          backgroundColor: 'var(--bg-deep)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+          zIndex: 50,
+          flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Font</span>
+            <select
+              value={selectedFont}
+              onChange={(e) => setSelectedFont(e.target.value)}
+              style={{
+                background: '#16161a',
+                border: '1px solid #2e2e38',
+                borderRadius: '4px',
+                color: '#fff',
+                fontSize: '11px',
+                padding: '3px 6px',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="Pretendard">Pretendard (Gothic)</option>
+              <option value="'Courier New', Courier, monospace">Monospace (Hacker)</option>
+              <option value="'Gungsuh', '궁서', serif">궁서체 (Classic)</option>
+              <option value="'Batang', '바탕', serif">바탕체 (Serif)</option>
+              <option value="system-ui, sans-serif">System UI</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Size</span>
+            <select
+              value={selectedSize}
+              onChange={(e) => setSelectedSize(e.target.value)}
+              style={{
+                background: '#16161a',
+                border: '1px solid #2e2e38',
+                borderRadius: '4px',
+                color: '#fff',
+                fontSize: '11px',
+                padding: '3px 6px',
+                outline: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="12px">12px (Compact)</option>
+              <option value="14px">14px (Default)</option>
+              <option value="16px">16px (Medium)</option>
+              <option value="18px">18px (Large)</option>
+              <option value="22px">22px (Huge)</option>
+            </select>
+          </div>
+        </div>
+      )}
       <div
         ref={editorContainerRef}
         onMouseMove={onMouseMove}

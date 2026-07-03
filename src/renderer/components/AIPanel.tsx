@@ -389,6 +389,7 @@ export function AIPanel({
   onClearSelectedText,
   onApplySuggestion,
   onUpdateDiffState,
+  activeBlockId,
   editor,
   blocks = [],
   activeTab = 'ai',
@@ -969,6 +970,148 @@ export function AIPanel({
                 (window as any).AMEVA_PLUGINS.calculator.render(el.id);
               } catch (e) {
                 console.error('계산기 플러그인 렌더링 실패:', e);
+              }
+            }
+          }}
+        />
+      )}
+
+      {activeTab === 'finance' && (
+        <div
+          id="ameva-plugin-finance-dashboard"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-main)',
+            height: '100%',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+          ref={(el) => {
+            if (el && (window as any).AMEVA_PLUGINS?.["finance-dashboard"]) {
+              try {
+                (window as any).AMEVA_PLUGINS["finance-dashboard"].render(el.id);
+              } catch (e) {
+                console.error('주식/환율 플러그인 렌더링 실패:', e);
+              }
+            }
+          }}
+        />
+      )}
+
+      {activeTab === 'youtube' && (
+        <div
+          id="ameva-plugin-youtube"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-main)',
+            height: '100%',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+          ref={(el) => {
+            if (el && (window as any).AMEVA_PLUGINS?.youtube) {
+              try {
+                (window as any).AMEVA_PLUGINS.youtube.render(el.id);
+              } catch (e) {
+                console.error('YouTube 플러그인 렌더링 실패:', e);
+              }
+            }
+          }}
+        />
+      )}
+
+      {activeTab === 'naver' && (
+        <div
+          id="ameva-plugin-naver"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-main)',
+            height: '100%',
+            padding: '16px',
+          }}
+          ref={(el) => {
+            if (el && (window as any).AMEVA_PLUGINS?.naver) {
+              try {
+                (window as any).AMEVA_PLUGINS.naver.render(el.id);
+              } catch (e) {
+                console.error('Naver 플러그인 렌더링 실패:', e);
+              }
+            }
+          }}
+        />
+      )}
+
+      {activeTab === 'google' && (
+        <div
+          id="ameva-plugin-google"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-main)',
+            height: '100%',
+            padding: '16px',
+          }}
+          ref={(el) => {
+            if (el && (window as any).AMEVA_PLUGINS?.google) {
+              try {
+                (window as any).AMEVA_PLUGINS.google.render(el.id);
+              } catch (e) {
+                console.error('Google 플러그인 렌더링 실패:', e);
+              }
+            }
+          }}
+        />
+      )}
+
+      {activeTab === 'calendar' && (
+        <div
+          id="ameva-plugin-calendar"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-main)',
+            height: '100%',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+          ref={(el) => {
+            if (el && (window as any).AMEVA_PLUGINS?.calendar) {
+              try {
+                (window as any).AMEVA_PLUGINS.calendar.render(el.id);
+              } catch (e) {
+                console.error('Calendar 플러그인 렌더링 실패:', e);
+              }
+            }
+          }}
+        />
+      )}
+
+      {activeTab === 'google-drive' && (
+        <div
+          id="ameva-plugin-google-drive"
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--bg-main)',
+            height: '100%',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+          ref={(el) => {
+            if (el && (window as any).AMEVA_PLUGINS?.["google-drive"]) {
+              try {
+                (window as any).AMEVA_PLUGINS["google-drive"].render(el.id);
+              } catch (e) {
+                console.error('GoogleDrive 플러그인 렌더링 실패:', e);
               }
             }
           }}

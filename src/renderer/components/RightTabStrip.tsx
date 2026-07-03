@@ -1,4 +1,4 @@
-import { Sparkles, List, Calculator } from 'lucide-react'
+import { Sparkles, List, Calculator, TrendingUp, Play, Globe, Search, Calendar, HardDrive } from 'lucide-react'
 
 interface RightTabStripProps {
   activeTab: string
@@ -11,11 +11,23 @@ interface RightTabStripProps {
 export function RightTabStrip({ activeTab, isOpen, onToggleTab, hasChatUnread = false, installedPlugins = [] }: RightTabStripProps) {
   const isOutlineSubscribed = installedPlugins.includes('outline')
   const isCalculatorSubscribed = installedPlugins.includes('calculator')
+  const isFinanceSubscribed = installedPlugins.includes('finance-dashboard')
+  const isYoutubeSubscribed = installedPlugins.includes('youtube')
+  const isNaverSubscribed = installedPlugins.includes('naver')
+  const isGoogleSubscribed = installedPlugins.includes('google')
+  const isCalendarSubscribed = installedPlugins.includes('calendar')
+  const isGoogleDriveSubscribed = installedPlugins.includes('google-drive')
   
   const tabs = [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
     ...(isOutlineSubscribed ? [{ id: 'outline', icon: List, label: '문서 구조도 (TOC)', badge: false }] : []),
     ...(isCalculatorSubscribed ? [{ id: 'calculator', icon: Calculator, label: '계산기 도구', badge: false }] : []),
+    ...(isFinanceSubscribed ? [{ id: 'finance', icon: TrendingUp, label: '주식/환율 정보센터', badge: false }] : []),
+    ...(isYoutubeSubscribed ? [{ id: 'youtube', icon: Play, label: 'YouTube 동영상', badge: false }] : []),
+    ...(isNaverSubscribed ? [{ id: 'naver', icon: Globe, label: '네이버 포털', badge: false }] : []),
+    ...(isGoogleSubscribed ? [{ id: 'google', icon: Search, label: '구글 검색', badge: false }] : []),
+    ...(isCalendarSubscribed ? [{ id: 'calendar', icon: Calendar, label: '스케줄 캘린더', badge: false }] : []),
+    ...(isGoogleDriveSubscribed ? [{ id: 'google-drive', icon: HardDrive, label: '구글 드라이브', badge: false }] : []),
   ]
 
   return (
