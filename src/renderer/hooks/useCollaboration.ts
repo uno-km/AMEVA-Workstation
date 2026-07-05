@@ -19,6 +19,8 @@ export function useCollaboration(
   const [serverInfo, setServerInfo] = useState<{ port?: number; error?: string }>({})
   const [serverIp, setServerIp] = useState('localhost')
   const [isConnected, setIsConnected] = useState(false)
+  // [SEC-W-009] 서버에서 발급한 세션 토큰 보관
+  const [sessionToken, setSessionToken] = useState<string | null>(null)
   const editorContainerRef = useRef<HTMLDivElement | null>(null)
 
   const ydocRef = useRef<Y.Doc | null>(null)
@@ -44,12 +46,11 @@ export function useCollaboration(
       const unsub = window.electronAPI.onServerStatus((status: any) => {
         setServerRunning(status.running)
         setServerInfo({ port: status.port, error: status.error })
-        if (status.ip) {
-          setServerIp(status.ip)
-        }
-        if (useLocalServer && !status.running) {
-          setCollabActive(false)
-        }
+        if (status.ip) setServerIp(status.ip)
+        // [SEC-W-009] 서버가 발급한 세션 토큰 저장
+        if (status.token) setSessionToken(status.token)
+        if (!status.running) setSessionToken(null)
+        if (useLocalServer && !status.running) setCollabActive(false)
       })
       return () => unsub()
     }
@@ -69,8 +70,9 @@ export function useCollaboration(
     }
 
     const doc = ydocRef.current
+    // [SEC-W-009] 로컈 서버일 때 세션 토큰을 URL에 첨부
     const serverUrl = useLocalServer
-      ? `ws://${serverHost}:${serverPort}`
+      ? `ws://${serverHost}:${serverPort}${sessionToken ? `?token=${encodeURIComponent(sessionToken)}` : ''}`
       : (serverHost.startsWith('ws://') || serverHost.startsWith('wss://')
           ? serverHost
           : `wss://${serverHost}`)
@@ -128,7 +130,8 @@ export function useCollaboration(
       setPeers([])
       setIsConnected(false)
     }
-  }, [isActive, serverHost, serverPort, useLocalServer, documentId, username, color])
+  }, [isActive, serverHost, serverPort, useLocalServer, documentId, username, color, sessionToken])
+
 
 
   // 3. 내장 협업 서버 구동/중지 및 전체 협업 토글
@@ -147,7 +150,11 @@ export function useCollaboration(
     setCollabActive(prev => !prev)
   }, [serverRunning, useLocalServer])
 
-  // 4. 마우스 포인터 브로드캐스트
+  // 4. 마우스 포인터 브로드캐스트 (60ms 스로틀 적용으로 렉 차단)
+  const lastMouseTimeRef = useRef<number>(0)
+  const pendingMouseRef = useRef<{ x: number; y: number } | null>(null)
+  const throttleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const prov = providerRef.current
     if (!prov || !editorContainerRef.current || !isActive) return
@@ -155,8 +162,44 @@ export function useCollaboration(
     const rect = editorContainerRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top + editorContainerRef.current.scrollTop
-    prov.awareness.setLocalStateField('pointer', { x, y, username })
+
+    const now = Date.now()
+    const THROTTLE_LIMIT = 60 // 60ms 스로틀링 (초당 최대 16회 패킷 제한)
+
+    const sendPointer = (posX: number, posY: number) => {
+      prov.awareness.setLocalStateField('pointer', { x: posX, y: posY, username })
+      lastMouseTimeRef.current = Date.now()
+    }
+
+    if (now - lastMouseTimeRef.current >= THROTTLE_LIMIT) {
+      if (throttleTimeoutRef.current) {
+        clearTimeout(throttleTimeoutRef.current)
+        throttleTimeoutRef.current = null
+      }
+      sendPointer(x, y)
+      pendingMouseRef.current = null
+    } else {
+      pendingMouseRef.current = { x, y }
+      if (!throttleTimeoutRef.current) {
+        throttleTimeoutRef.current = setTimeout(() => {
+          if (pendingMouseRef.current) {
+            sendPointer(pendingMouseRef.current.x, pendingMouseRef.current.y)
+            pendingMouseRef.current = null
+          }
+          throttleTimeoutRef.current = null
+        }, THROTTLE_LIMIT - (now - lastMouseTimeRef.current))
+      }
+    }
   }, [isActive, username])
+
+  // 컴포넌트 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => {
+      if (throttleTimeoutRef.current) {
+        clearTimeout(throttleTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // 5. 드래그 선택 영역 브로드캐스트
   const updateDragSelection = useCallback((selection: { anchorBlockId: string; focusBlockId: string } | null) => {

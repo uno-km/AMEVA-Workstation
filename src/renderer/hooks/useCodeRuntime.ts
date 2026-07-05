@@ -29,10 +29,24 @@ function getOrCreateJSWorker() {
     
     self.console = customConsole;
 
+    // [SEC-W-006] 네트워크 접근 차단 — Worker에서 외부 통신 불가
+    const BLOCKED_PATTERNS = ['fetch(', 'XMLHttpRequest', 'importScripts', 'WebSocket', 'navigator.sendBeacon'];
+
     self.onmessage = function(e) {
       let codeToRun = e.data || '';
+
+      // 금지 패턴 사전 검사
+      for (const pattern of BLOCKED_PATTERNS) {
+        if (codeToRun.includes(pattern)) {
+          postMessage({ success: false, logs: ['[SECURITY] 네트워크 접근 코드는 실행이 차단되었습니다: ' + pattern] });
+          return;
+        }
+      }
+
       // const, let을 var로 치환하여 eval 시 글로벌 스코프(self)에 영구 안착하도록 보정
-      codeToRun = codeToRun.replace(/\bconst\b/g, 'var').replace(/\blet\b/g, 'var');
+      // 주의: 문자열 리터럴 안의 const/let은 교체되지 않도록 간단한 보정
+      codeToRun = codeToRun.replace(/\\bconst\\b(?=[^'"]*(?:['"][^'"]*['"][^'"]*)*$)/gm, 'var')
+                            .replace(/\\blet\\b(?=[^'"]*(?:['"][^'"]*['"][^'"]*)*$)/gm, 'var');
 
       logs.length = 0; // 누적 로그 비우기
       try {
@@ -51,6 +65,16 @@ function getOrCreateJSWorker() {
   const blob = new Blob([workerBlobCode], { type: 'application/javascript' })
   persistentWorker = new Worker(URL.createObjectURL(blob))
   return persistentWorker
+}
+
+// [SEC-W-014] 외부에서 런타임 리소스를 정리할 수 있는 함수
+export function cleanupCodeRuntime() {
+  if (persistentWorker) {
+    persistentWorker.terminate()
+    persistentWorker = null
+  }
+  pyodideInstance = null
+  sqliteDatabaseInstance = null
 }
 
 export function useCodeRuntime() {
@@ -95,12 +119,13 @@ export function useCodeRuntime() {
     let processedCode = code
     let needsMicropip = false
 
+    // 가상 쉘 명령어 및 파이프라인/다중 실행 결합 파서 알고리즘 (WASM Pyodide용)
     const lines = code.split('\n')
     const processedLines = lines.map(line => {
       const trimmed = line.trim()
       if (!trimmed.startsWith('!')) return line
 
-      // 1. pip 패키지 인스톨 명령어 처리
+      // !pip install 특수 처리
       if (trimmed.startsWith('!pip install ')) {
         needsMicropip = true
         const packagesStr = trimmed.substring('!pip install '.length).trim()
@@ -120,46 +145,176 @@ for pkg in ${JSON.stringify(pkgs)}:
         return ''
       }
 
-      // 2. 가상 cmd 쉘 명령어 시뮬레이터 처리 (WASM 격리 샌드박스용)
-      const cmdLine = trimmed.substring(1).trim()
-      const parts = cmdLine.split(' ')
-      const mainCmd = parts[0]
-      const args = parts.slice(1).join(' ').trim()
-
-      switch (mainCmd) {
-        case 'pwd':
-          return `import os\nprint(os.getcwd())`
-        case 'cd':
-          return `import os\nos.chdir(${JSON.stringify(args || '/')})\nprint(f"Changed directory to: {os.getcwd()}")`
-        case 'ls':
-        case 'dir':
-          return `import os\nfor f in os.listdir(${JSON.stringify(args || '.') || "'.'" }):\n    print(f)`
-        case 'mkdir':
-          return `import os\nos.makedirs(${JSON.stringify(args)}, exist_ok=True)\nprint(f"Created directory: {${JSON.stringify(args)}}")`
-        case 'rmdir':
-          return `import os, shutil\nshutil.rmtree(${JSON.stringify(args)}, ignore_errors=True)\nprint(f"Removed directory: {${JSON.stringify(args)}}")`
-        case 'touch':
-          return `with open(${JSON.stringify(args)}, 'w') as f:\n    pass\nprint(f"Created file: {${JSON.stringify(args)}}")`
-        case 'cat':
-        case 'type':
-          return `print(open(${JSON.stringify(args)}, 'r', encoding='utf-8', errors='ignore').read())`
-        case 'echo':
-          return `print(${JSON.stringify(args)})`
-        default:
-          return `print(${JSON.stringify(`[AMEVA Shell] 가상 샌드박스 브라우저 환경에서는 로컬 PC 커맨드 '${cmdLine}'를 실행할 수 없으므로 가상 쉘 시뮬레이터로 대체 작동합니다. (지원 명령어: pwd, cd, ls, dir, mkdir, touch, cat, echo, pip)`)})`
-      }
+      // 쉘 명령어 토크나이저 & 번역기
+      const cmdText = trimmed.substring(1).trim()
+      
+      // 세미콜론(;) 또는 && 기준으로 1차 명령 체인 분할
+      // 예: cd src; pwd  또는  echo hello && ls
+      const chains = cmdText.split(/;|&&/).map(c => c.trim()).filter(Boolean)
+      
+      let pythonCodeBlock = 'import os, shutil, re\n'
+      
+      chains.forEach((chain, chainIdx) => {
+        // 파이프(|) 기준으로 2차 스트림 분할
+        // 예: ls | grep ts | wc -l
+        const pipes = chain.split('|').map(p => p.trim()).filter(Boolean)
+        
+        pythonCodeBlock += `\n# --- Chain [${chainIdx}] : ${chain.replace(/"/g, '\\"')} ---\n`
+        pythonCodeBlock += `pipe_in = ""\n`
+        
+        pipes.forEach((pipe, pipeIdx) => {
+          const parts = pipe.split(/\s+/).filter(Boolean)
+          if (parts.length === 0) return
+          
+          const mainCmd = parts[0].toLowerCase()
+          const args = parts.slice(1).join(' ').trim()
+          const escapedArgs = args.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+          
+          pythonCodeBlock += `\n# Pipe [${pipeIdx}] : ${mainCmd} ${escapedArgs}\n`
+          
+          switch (mainCmd) {
+            case 'pwd':
+              pythonCodeBlock += `pipe_in = os.getcwd()\n`
+              break
+            case 'cd':
+              pythonCodeBlock += `
+try:
+    os.chdir("${escapedArgs}" if "${escapedArgs}" else "/")
+    pipe_in = f"Changed directory to: {os.getcwd()}"
+except Exception as e:
+    pipe_in = f"cd: {str(e)}"
+`
+              break
+            case 'ls':
+            case 'dir':
+              pythonCodeBlock += `
+try:
+    target_dir = "${escapedArgs}" if "${escapedArgs}" else "."
+    pipe_in = "\\n".join(os.listdir(target_dir))
+except Exception as e:
+    pipe_in = f"ls: {str(e)}"
+`
+              break
+            case 'mkdir':
+              pythonCodeBlock += `
+try:
+    os.makedirs("${escapedArgs}", exist_ok=True)
+    pipe_in = f"Created directory: {${JSON.stringify(args)}}"
+except Exception as e:
+    pipe_in = f"mkdir: {str(e)}"
+`
+              break
+            case 'rmdir':
+              pythonCodeBlock += `
+try:
+    shutil.rmtree("${escapedArgs}", ignore_errors=True)
+    pipe_in = f"Removed directory: ${escapedArgs}"
+except Exception as e:
+    pipe_in = f"rmdir: {str(e)}"
+`
+              break
+            case 'touch':
+              pythonCodeBlock += `
+try:
+    with open("${escapedArgs}", 'w') as f:
+        pass
+    pipe_in = f"Created file: ${escapedArgs}"
+except Exception as e:
+    pipe_in = f"touch: {str(e)}"
+`
+              break
+            case 'cat':
+            case 'type':
+              // 파이프 이전 단계의 데이터가 있고 인자가 없으면 파이프 데이터를 cat 대상으로 간주, 아니면 인자 파일 로드
+              pythonCodeBlock += `
+try:
+    target_file = "${escapedArgs}" if "${escapedArgs}" else pipe_in.strip()
+    if target_file:
+        with open(target_file, 'r', encoding='utf-8', errors='ignore') as f:
+            pipe_in = f.read()
+    else:
+        pipe_in = "[ERROR] cat: No file specified"
+except Exception as e:
+    pipe_in = f"cat: {str(e)}"
+`
+              break
+            case 'echo':
+              // 인자가 없으면 파이프 입력을 그대로 출력, 있으면 인자 출력
+              pythonCodeBlock += `pipe_in = "${escapedArgs}" if "${escapedArgs}" else pipe_in\n`
+              break
+            case 'grep':
+              // 간단한 grep 시뮬레이터 (대소문자 무시 옵션 -i 지원)
+              const isCaseInsensitive = args.includes('-i')
+              const cleanPattern = args.replace(/-[a-zA-Z]+/g, '').trim().replace(/"/g, '\\"')
+              pythonCodeBlock += `
+pattern = "${cleanPattern}"
+lines_to_filter = pipe_in.split('\\n')
+if ${isCaseInsensitive ? 'True' : 'False'}:
+    pipe_in = "\\n".join([line for line in lines_to_filter if pattern.lower() in line.lower()])
+else:
+    pipe_in = "\\n".join([line for line in lines_to_filter if pattern in line])
+`
+              break
+            case 'wc':
+              const isLineCount = args.includes('-l')
+              pythonCodeBlock += `
+lines_wc = pipe_in.split('\\n')
+# 빈 라인 제외 개수 세기
+active_lines = [l for l in lines_wc if l.strip()]
+if ${isLineCount ? 'True' : 'False'}:
+    pipe_in = str(len(active_lines))
+else:
+    words = len(pipe_in.split())
+    chars = len(pipe_in)
+    pipe_in = f"{len(active_lines)} {words} {chars}"
+`
+              break
+            case 'head':
+              const headLinesMatch = args.match(/-n\s*(\d+)/) || args.match(/-(\d+)/)
+              const headCount = headLinesMatch ? parseInt(headLinesMatch[1]) : 10
+              pythonCodeBlock += `
+lines_head = pipe_in.split('\\n')
+pipe_in = "\\n".join(lines_head[:${headCount}])
+`
+              break
+            case 'tail':
+              const tailLinesMatch = args.match(/-n\s*(\d+)/) || args.match(/-(\d+)/)
+              const tailCount = tailLinesMatch ? parseInt(tailLinesMatch[1]) : 10
+              pythonCodeBlock += `
+lines_tail = pipe_in.split('\\n')
+pipe_in = "\\n".join(lines_tail[-${tailCount}:])
+`
+              break
+            case 'sort':
+              pythonCodeBlock += `
+lines_sort = [l for l in pipe_in.split('\\n') if l.strip()]
+pipe_in = "\\n".join(sorted(lines_sort))
+`
+              break
+            default:
+              pythonCodeBlock += `pipe_in = "[WASM Sandbox] 파이썬 샌드박스 실행기에서 지원되지 않는 쉘 명령입니다: ${mainCmd}"\n`
+          }
+        })
+        
+        // 각 체인의 최종 결과를 화면에 print
+        pythonCodeBlock += `print(pipe_in)\n`
+      })
+      
+      return pythonCodeBlock
     })
     processedCode = processedLines.join('\n')
 
     // WebAssembly Pyodide Worker 격리 샌드박스 기동 (데스크탑 로컬 파이썬 미사용)
     try {
       if (!(window as any).loadPyodide) {
-        // Pyodide WebAssembly CDN 라이브러리 동적 로드
+        // [SEC-W-016] Pyodide CDN 스크립트에 SRI 해시 적용 — 공급망 공격 차단
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script')
           script.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js'
+          script.integrity = 'sha384-Zt+txBUVind9SDPtCx7HTNK8jiZiFKX/Cm3Ml1tEnAmGKO/QSRn1VqM+Vr45Cbrj'
+          script.crossOrigin = 'anonymous'
           script.onload = () => resolve()
-          script.onerror = () => reject(new Error('Pyodide WebAssembly CDN 로드 실패'))
+          script.onerror = () => reject(new Error('Pyodide WebAssembly CDN 로드 실패 (SRI 검증 실패일 수 있습니다)'))
           document.head.appendChild(script)
         })
       }

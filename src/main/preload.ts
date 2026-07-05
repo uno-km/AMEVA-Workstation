@@ -51,6 +51,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   llmGenerate: (payload: {
     modelPath: string
     prompt: string
+    context?: string
     systemPrompt?: string
     maxTokens?: number
     temperature?: number
@@ -58,6 +59,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     apiType?: 'local' | 'api'
     apiKey?: string
     gpuOnly?: boolean
+    history?: { role: string; content: string }[]
   }) => ipcRenderer.invoke('llm:generate', payload),
 
   llmAbort: () => ipcRenderer.send('llm:abort'),
@@ -74,11 +76,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('llm:done', subscription)
   },
 
+  onLLMLog: (callback: (data: { text: string }) => void) => {
+    const subscription = (_event: any, data: { text: string }) => callback(data)
+    ipcRenderer.on('llm:log', subscription)
+    return () => ipcRenderer.removeListener('llm:log', subscription)
+  },
+
   llmListModels: () => ipcRenderer.invoke('llm:listModels'),
+  llmGetGpuName: () => ipcRenderer.invoke('llm:getGpuName'),
 
   // ── 🎤 Whisper STT ──
   sttTranscribe: (payload: { audioPath: string; language?: string }) =>
     ipcRenderer.invoke('stt:transcribe', payload),
 
   sttGetTempPath: () => ipcRenderer.invoke('stt:getTempPath'),
+
+  // ── 📄 분산 문서 변환 브리지 ──
+  exportConvert: (payload: { blocks: any; format: string; defaultName: string }) =>
+    ipcRenderer.invoke('export:convert', payload),
 })

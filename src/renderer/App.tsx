@@ -30,7 +30,7 @@ import {
 } from './utils/exporters'
 import { normalizeBlocks } from './utils/normalizeBlocks'
 import JSZip from 'jszip'
-import * as XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { FloatingChat } from './components/FloatingChat'
 import { packMarkdownToADC, unpackADCToMarkdown } from './utils/adcPackager'
 import { DrawingBlock } from './components/DrawingBlock'
@@ -326,27 +326,26 @@ async function parseFileToMarkdown(content: string, filePath: string, isBinary: 
   
   if (ext === 'xlsx' || ext === 'xls') {
     try {
-      const workbook = XLSX.read(bytes, { type: 'array' })
+      // [SEC-W-018] ExcelJS 사용 — xlsx CVE-2023-30533 해소
+      const wb = new ExcelJS.Workbook()
+      await wb.xlsx.load(bytes.buffer as ArrayBuffer)
       const mdLines: string[] = []
-      for (const sheetName of workbook.SheetNames) {
-        const worksheet = workbook.Sheets[sheetName]
-        const csv = XLSX.utils.sheet_to_csv(worksheet)
-        mdLines.push(`## Sheet: ${sheetName}`)
+      wb.eachSheet((worksheet) => {
+        mdLines.push(`## Sheet: ${worksheet.name}`)
         mdLines.push('')
-        const rows = csv.split('\n').map(r => r.trim()).filter(r => r.length > 0)
-        if (rows.length === 0) {
+        const sheetRows: string[][] = []
+        worksheet.eachRow((row) => {
+          const cells = (row.values as any[]).slice(1).map(v =>
+            v != null ? String(v).replace(/\|/g, '\\|') : ''
+          )
+          sheetRows.push(cells)
+        })
+        if (sheetRows.length === 0) {
           mdLines.push('*Empty Sheet*')
           mdLines.push('')
-          continue
+          return
         }
-        const mdTableLines = rows.map((row, idx) => {
-          const cells = row.split(',').map(c => {
-            let clean = c.trim()
-            if (clean.startsWith('"') && clean.endsWith('"')) {
-              clean = clean.substring(1, clean.length - 1)
-            }
-            return clean.replace(/\|/g, '\\|')
-          })
+        const mdTableLines = sheetRows.map((cells, idx) => {
           const line = '| ' + cells.join(' | ') + ' |'
           if (idx === 0) {
             const separator = '| ' + cells.map(() => '---').join(' | ') + ' |'
@@ -356,7 +355,7 @@ async function parseFileToMarkdown(content: string, filePath: string, isBinary: 
         })
         mdLines.push(mdTableLines.join('\n'))
         mdLines.push('')
-      }
+      })
       return mdLines.join('\n')
     } catch (err: any) {
       return `Error parsing Excel: ${err.message}`
@@ -452,7 +451,7 @@ async function convertMarkdownToBinary(editorInstance: BlockNoteEditor, filePath
   }
   
   if (ext === 'xlsx') {
-    const uint8 = exportToExcel(rawBlocks)
+    const uint8 = await exportToExcel(rawBlocks)
     return arrayBufferToBase64(uint8.buffer)
   }
   
@@ -468,6 +467,35 @@ async function convertMarkdownToBinary(editorInstance: BlockNoteEditor, filePath
       const base64 = await window.electronAPI.printToPDF(html)
       return base64
     }
+    // [HIGH-002] 브라우저 환경: 숨김젠 iframe + window.print() fallback
+    // Electron 없으면 브라우저 인쇄 대화상자를 연다
+    await new Promise<void>((resolve) => {
+      const iframe = document.createElement('iframe')
+      iframe.style.position = 'fixed'
+      iframe.style.top = '-9999px'
+      iframe.style.left = '-9999px'
+      iframe.style.width = '210mm'
+      iframe.style.height = '297mm'
+      document.body.appendChild(iframe)
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document
+      if (iframeDoc) {
+        iframeDoc.open()
+        iframeDoc.write(html)
+        iframeDoc.close()
+        iframe.contentWindow?.focus()
+        setTimeout(() => {
+          iframe.contentWindow?.print()
+          setTimeout(() => {
+            document.body.removeChild(iframe)
+            resolve()
+          }, 500)
+        }, 300)
+      } else {
+        document.body.removeChild(iframe)
+        resolve()
+      }
+    })
+    return null
   }
   
   if (ext === 'adc') {
@@ -624,17 +652,21 @@ export default function App() {
     return DEFAULT
   })
 
-  // 앱 최초 마운트 시 settings.installedPlugins 에 남아있는 익스텐션 목록 복구 로드
+  // [PERF] 앱 최초 마운트 시 settings.installedPlugins 에 남아있는 익스텐션 목록 복구 로드
+  // 메인 UI가 가볍고 부드럽게 먼저 로드될 수 있도록 1200ms 레이지 로딩(Lazy loading) 및 병렬 가동 처리
   useEffect(() => {
     if (settings.installedPlugins && settings.installedPlugins.length > 0) {
-      settings.installedPlugins.forEach(async (id) => {
-        const scriptUrl = `http://localhost:3010/plugins/${id}.js`
-        try {
-          await handleInstallPlugin(id, scriptUrl)
-        } catch (e) {
-          console.error(`부팅 시 플러그인 ${id} 자동 활성화 실패:`, e)
-        }
-      })
+      const timer = setTimeout(() => {
+        settings.installedPlugins.forEach(async (id) => {
+          const scriptUrl = `http://localhost:3010/plugins/${id}.js`
+          try {
+            await handleInstallPlugin(id, scriptUrl)
+          } catch (e) {
+            console.error(`부팅 시 플러그인 ${id} 자동 활성화 실패:`, e)
+          }
+        })
+      }, 1200)
+      return () => clearTimeout(timer)
     }
   }, [])
 
@@ -714,6 +746,20 @@ export default function App() {
   const IDLE_PROGRESS: ExportProgress = { phase: 'idle', format: '', percent: 0, message: '' }
   const [exportProgress, setExportProgress] = useState<ExportProgress>(IDLE_PROGRESS)
   const [exportMinimized, setExportMinimized] = useState(false)
+  const [showModelHub, setShowModelHub] = useState(false) // 🤖 AI 모델 셋업 허브 모달 전역화
+
+  // ── [PERF] 코어 퍼포먼스: 문서 최우선 로드 및 부속 패널 지연(Progressive Loading) 기법 ──
+  const [isSidebarReady, setIsSidebarReady] = useState(false)
+  const [isAIPanelReady, setIsAIPanelReady] = useState(false)
+
+  useEffect(() => {
+    const timerSidebar = setTimeout(() => setIsSidebarReady(true), 250) // 문서 로드 완료 직후 로딩
+    const timerAI = setTimeout(() => setIsAIPanelReady(true), 1500)      // AI 엔진 및 우측 패널 연동은 1.5초 뒤 늦게 가동
+    return () => {
+      clearTimeout(timerSidebar)
+      clearTimeout(timerAI)
+    }
+  }, [])
 
   // ── 훅 초기화 ──────────────────────────────────────────────
   const {
@@ -729,7 +775,7 @@ export default function App() {
     messages: aiMessages, isGenerating, isAvailable, models,
     settings: aiSettings, generateResponse, abortGeneration,
     clearHistory: clearAIHistory, updateSettings: updateAISettings,
-    updateMessageDiffState,
+    updateMessageDiffState, engineLogs,
   } = useAI()
 
   const { messages: chatMessages, sendMessage: sendChatMessage, clearMessages: clearChatMessages } = useChat(
@@ -1626,7 +1672,15 @@ graph TD
         createSnapshot('다른 이름으로 저장본', contentToSave)
       }
     } else {
-      triggerBrowserDownload(markdown, 'document_new.md')
+      // [HIGH-003] 브라우저 환경: Markdown 다운로드 + 다른 형식 안내
+      const wantOther = window.confirm(
+        '브라우저에서는 파일 저장 대화상자가 지원되지 않습니다.\n' +
+        'Markdown(.md) 파일로 다운로드하시겠습니까?\n' +
+        '(Excel, PDF 등 다른 형식은 상단 [내보내기] 메뉴를 사용하세요)'
+      )
+      if (wantOther) {
+        triggerBrowserDownload(markdown, 'document_new.md')
+      }
     }
   }
 
@@ -1672,12 +1726,9 @@ graph TD
 
           case 'html': {
             setP(40, 'HTML 변환 중...')
-            const html = blocksToHTML(blocks)
-            setP(65, '저장 대화상자 열기...')
-            savedPath = await window.electronAPI.saveExportedFile(
-              html, false, 'document.html',
-              [{ name: 'HTML Document', extensions: ['html', 'htm'] }]
-            )
+            const res = await window.electronAPI.exportConvert({ blocks, format: 'html', defaultName: 'document.html' })
+            savedPath = res.success ? res.savedPath : undefined
+            if (!res.success && res.error) throw new Error(res.error)
             break
           }
 
@@ -1690,57 +1741,42 @@ graph TD
           }
 
           case 'docx': {
-            setP(35, 'Word 문서 생성 중...')
-            const blob = await exportToWord(blocks)
-            setP(65, '저장 대화상자 열기...')
-            savedPath = await window.electronAPI.saveExportedFile(
-              await blobToBase64(blob), true, 'document.docx',
-              [{ name: 'Word Document', extensions: ['docx'] }]
-            )
+            setP(40, 'Word 변환 중...')
+            const res = await window.electronAPI.exportConvert({ blocks, format: 'docx', defaultName: 'document.docx' })
+            savedPath = res.success ? res.savedPath : undefined
+            if (!res.success && res.error) throw new Error(res.error)
             break
           }
 
           case 'xlsx': {
-            setP(35, 'Excel 데이터 생성 중...')
-            const data = exportToExcel(blocks)
-            setP(65, '저장 대화상자 열기...')
-            savedPath = await window.electronAPI.saveExportedFile(
-              arrayBufferToBase64(data.buffer), true, 'tables.xlsx',
-              [{ name: 'Excel Worksheet', extensions: ['xlsx'] }]
-            )
+            setP(40, 'Excel 변환 중...')
+            const res = await window.electronAPI.exportConvert({ blocks, format: 'xlsx', defaultName: 'tables.xlsx' })
+            savedPath = res.success ? res.savedPath : undefined
+            if (!res.success && res.error) throw new Error(res.error)
             break
           }
 
           case 'pptx': {
-            setP(35, 'PowerPoint 슬라이드 생성 중...')
-            const data = await exportToPPTX(blocks)
-            setP(65, '저장 대화상자 열기...')
-            savedPath = await window.electronAPI.saveExportedFile(
-              arrayBufferToBase64(data), true, 'presentation.pptx',
-              [{ name: 'PowerPoint', extensions: ['pptx'] }]
-            )
+            setP(40, 'PowerPoint 변환 중...')
+            const res = await window.electronAPI.exportConvert({ blocks, format: 'pptx', defaultName: 'presentation.pptx' })
+            savedPath = res.success ? res.savedPath : undefined
+            if (!res.success && res.error) throw new Error(res.error)
             break
           }
 
           case 'hwpx': {
-            setP(35, '한글 문서 생성 중...')
-            const blob = await exportToHWPX(blocks)
-            setP(65, '저장 대화상자 열기...')
-            savedPath = await window.electronAPI.saveExportedFile(
-              await blobToBase64(blob), true, 'document.hwpx',
-              [{ name: 'Hancom HWPX', extensions: ['hwpx'] }]
-            )
+            setP(40, '한글 변환 중...')
+            const res = await window.electronAPI.exportConvert({ blocks, format: 'hwpx', defaultName: 'document.hwpx' })
+            savedPath = res.success ? res.savedPath : undefined
+            if (!res.success && res.error) throw new Error(res.error)
             break
           }
 
           case 'xml': {
             setP(40, 'XML 변환 중...')
-            const xml = exportToXML(blocks)
-            setP(65, '저장 대화상자 열기...')
-            savedPath = await window.electronAPI.saveExportedFile(
-              xml, false, 'document.xml',
-              [{ name: 'XML Document', extensions: ['xml'] }]
-            )
+            const res = await window.electronAPI.exportConvert({ blocks, format: 'xml', defaultName: 'document.xml' })
+            savedPath = res.success ? res.savedPath : undefined
+            if (!res.success && res.error) throw new Error(res.error)
             break
           }
 
@@ -1779,7 +1815,7 @@ graph TD
             break
           }
           case 'docx': triggerBrowserDownload(await exportToWord(blocks), 'document.docx'); savedPath = 'document.docx'; break
-          case 'xlsx': triggerBrowserDownload(new Blob([exportToExcel(blocks).buffer]), 'tables.xlsx'); savedPath = 'tables.xlsx'; break
+          case 'xlsx': triggerBrowserDownload(new Blob([(await exportToExcel(blocks)).buffer]), 'tables.xlsx'); savedPath = 'tables.xlsx'; break
           case 'pptx': triggerBrowserDownload(new Blob([await exportToPPTX(blocks)]), 'presentation.pptx'); savedPath = 'presentation.pptx'; break
           case 'hwpx': triggerBrowserDownload(await exportToHWPX(blocks), 'document.hwpx'); savedPath = 'document.hwpx'; break
           case 'xml': triggerBrowserDownload(exportToXML(blocks), 'document.xml'); savedPath = 'document.xml'; break
@@ -1931,11 +1967,19 @@ graph TD
   }
 
   const handleOpenGithub = () => {
-    window.electronAPI?.openExternalLink('https://github.com/uno-km/AMEVA-Model-Nexus')
+    if (window.electronAPI?.openExternalLink) {
+      window.electronAPI.openExternalLink('https://github.com/uno-km/AMEVA-Model-Nexus')
+    } else {
+      // [MEDIUM-006] 브라우저 fallback: 새 탭으로 열기
+      window.open('https://github.com/uno-km/AMEVA-Model-Nexus', '_blank', 'noopener,noreferrer')
+    }
   }
 
   const handleCloseApp = () => {
-    window.electronAPI?.closeApp()
+    if (window.electronAPI?.closeApp) {
+      window.electronAPI.closeApp()
+    }
+    // 브라우저에서는 창 닫기 불가 — 조용히 무시
   }
 
   // ── 렌더 ───────────────────────────────────────────────────
@@ -2012,48 +2056,56 @@ graph TD
               position: 'relative',
             }}
           >
-            <Sidebar
-              filePath={filePath}
-              editorMode={editorMode}
-              setEditorMode={handleSwitchMode}
-              onOpenFile={handleOpenFile}
-              onSaveFile={handleSaveFile}
-              onExport={handleExport}
-              snapshots={snapshots}
-              onCreateSnapshot={(title) => createSnapshot(title, currentContent)}
-              onDeleteSnapshot={deleteSnapshot}
-              onSelectSnapshotForDiff={handleSelectSnapshotForDiff}
-              peers={peers}
-              serverRunning={isActive}
-              serverPort={serverPort}
-              setServerPort={setServerPort}
-              serverHost={serverHost}
-              setServerHost={setServerHost}
-              useLocalServer={useLocalServer}
-              setUseLocalServer={setUseLocalServer}
-              onToggleServer={() => toggleLocalServer(serverPort)}
-              collaborationLink={collaborationLink}
-              isConnected={isConnected}
-              fileOpenMode={fileOpenMode}
-              setFileOpenMode={handleSwitchOpenMode}
-              appendedFiles={appendedFiles}
-              onSelectAppendedFile={handleSelectAppendedFile}
-              tabs={tabs}
-              activeTabId={activeTabId}
-              onSelectTab={handleSelectTab}
-              onCloseTab={handleCloseTab}
-              onToggleSidebar={() => setShowSidebar(p => !p)}
-              chatMessages={chatMessages}
-              onChatSend={sendChatMessage}
-              onChatClear={clearChatMessages}
-              username={username}
-              userColor={userColor}
-              isChatFloating={isChatFloating}
-              onToggleChatFloat={() => {
-                setIsChatFloating(!isChatFloating)
-                if (!isChatFloating) setHasChatUnread(false)
-              }}
-            />
+            {isSidebarReady ? (
+              <Sidebar
+                filePath={filePath}
+                editorMode={editorMode}
+                setEditorMode={handleSwitchMode}
+                onOpenFile={handleOpenFile}
+                onSaveFile={handleSaveFile}
+                onExport={handleExport}
+                snapshots={snapshots}
+                onCreateSnapshot={(title) => createSnapshot(title, currentContent)}
+                onDeleteSnapshot={deleteSnapshot}
+                onSelectSnapshotForDiff={handleSelectSnapshotForDiff}
+                peers={peers}
+                serverRunning={isActive}
+                serverPort={serverPort}
+                setServerPort={setServerPort}
+                serverHost={serverHost}
+                setServerHost={setServerHost}
+                useLocalServer={useLocalServer}
+                setUseLocalServer={setUseLocalServer}
+                onToggleServer={() => toggleLocalServer(serverPort)}
+                collaborationLink={collaborationLink}
+                isConnected={isConnected}
+                fileOpenMode={fileOpenMode}
+                setFileOpenMode={handleSwitchOpenMode}
+                appendedFiles={appendedFiles}
+                onSelectAppendedFile={handleSelectAppendedFile}
+                tabs={tabs}
+                activeTabId={activeTabId}
+                onSelectTab={handleSelectTab}
+                onCloseTab={handleCloseTab}
+                onToggleSidebar={() => setShowSidebar(p => !p)}
+                chatMessages={chatMessages}
+                onChatSend={sendChatMessage}
+                onChatClear={clearChatMessages}
+                username={username}
+                userColor={userColor}
+                isChatFloating={isChatFloating}
+                onToggleChatFloat={() => {
+                  setIsChatFloating(!isChatFloating)
+                  if (!isChatFloating) setHasChatUnread(false)
+                }}
+              />
+            ) : (
+              <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '14px', background: '#0a0a0f', height: '100%', borderRight: '1px solid rgba(255,255,255,0.05)', userSelect: 'none' }}>
+                <div style={{ height: '24px', background: 'rgba(139,92,246,0.08)', borderRadius: '6px', width: '70%', opacity: 0.5 }} />
+                <div style={{ height: '32px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', opacity: 0.5 }} />
+                <div style={{ flex: 1, background: 'rgba(255,255,255,0.01)', borderRadius: '8px', opacity: 0.3 }} />
+              </div>
+            )}
             {/* 사이드바 우측 경계 리사이즈 핸들 */}
             <ResizeHandle
               onMouseDown={handleSidebarResizeStart}
@@ -2116,30 +2168,40 @@ graph TD
               placement="left"
             />
           )}
-          <AIPanel
-            isOpen={showAIPanel}
-            onClose={() => setShowAIPanel(false)}
-            messages={aiMessages}
-            isGenerating={isGenerating}
-            isAvailable={isAvailable}
-            models={models}
-            settings={aiSettings}
-            onSend={generateResponse}
-            onAbort={abortGeneration}
-            onClear={clearAIHistory}
-            onUpdateSettings={updateAISettings}
-            currentContent={currentContent}
-            panelWidth={aiPanelWidth}
-            selectedText={selectedText}
-            onClearSelectedText={() => setSelectedText('')}
-            onApplySuggestion={handleApplySuggestion}
-            onUpdateDiffState={updateMessageDiffState}
-            activeBlockId={activeBlockId || undefined}
-            editor={editor}
-            blocks={editor ? editor.document : []}
-            activeTab={activeRightTab}
-            installedPlugins={settings.installedPlugins || []}
-          />
+          {isAIPanelReady ? (
+            <AIPanel
+              isOpen={showAIPanel}
+              onClose={() => setShowAIPanel(false)}
+              messages={aiMessages}
+              isGenerating={isGenerating}
+              isAvailable={isAvailable}
+              models={models}
+              settings={aiSettings}
+              onSend={(msg, ctx, orig, bId, runtimeSettings) => generateResponse(msg, ctx, orig, bId, runtimeSettings, editor)}
+              onAbort={abortGeneration}
+              onClear={clearAIHistory}
+              onUpdateSettings={updateAISettings}
+              currentContent={currentContent}
+              panelWidth={aiPanelWidth}
+              selectedText={selectedText}
+              onClearSelectedText={() => setSelectedText('')}
+              onApplySuggestion={handleApplySuggestion}
+              onUpdateDiffState={updateMessageDiffState}
+              activeBlockId={activeBlockId || undefined}
+              editor={editor}
+              blocks={editor ? editor.document : []}
+              activeTab={activeRightTab}
+              installedPlugins={settings.installedPlugins || []}
+              engineLogs={engineLogs}
+              showModelHub={showModelHub}
+              setShowModelHub={setShowModelHub}
+            />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a0f', padding: '20px', borderLeft: '1px solid rgba(255,255,255,0.05)', userSelect: 'none' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--primary)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '12px' }}>AI 엔진 및 도구 준비 중...</span>
+            </div>
+          )}
         </div>
 
         {/* 📋 극도로 미려한 코랩 스타일 우측 고정 탭 스트립 (bookmarks) */}
@@ -2249,6 +2311,16 @@ graph TD
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
+        username={username}
+        userColor={userColor}
+        onUpdateUser={(name, color) => {
+          setUsername(name)
+          setUserColor(color)
+        }}
+        onOpenModelHub={() => {
+          setIsSettingsOpen(false)
+          setShowModelHub(true)
+        }}
       />
       <AboutModal
         isOpen={isAboutOpen}
@@ -2276,10 +2348,14 @@ graph TD
         onMinimize={() => setExportMinimized(prev => !prev)}
         onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
         onOpenFile={(path) => {
+          const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
           if (window.electronAPI?.openExternalLink) {
-            const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
             window.electronAPI.openExternalLink(fileUrl)
+          } else if (path.startsWith('http')) {
+            // [MEDIUM-006] 브라우저 fallback: http URL만 다른 탭으로
+            window.open(path, '_blank', 'noopener,noreferrer')
           }
+          // 로컈 file:// 경로는 브라우저에서 접근 불가
         }}
       />
 

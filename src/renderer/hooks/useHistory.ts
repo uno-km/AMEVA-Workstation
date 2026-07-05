@@ -129,13 +129,21 @@ export function useHistory(documentId: string) {
   const createSnapshot = useCallback(
     async (title: string, content: string) => {
       if (!db) return
-      
+
+      // [SEC-W-024] 스냅샷 콘텐츠 크기 제한 (20MB)
+      const MAX_SNAPSHOT_BYTES = 20 * 1024 * 1024
+      if (new Blob([content]).size > MAX_SNAPSHOT_BYTES) {
+        console.warn('[Snapshot] 콘텐츠가 너무 커서 스냅샷을 저장할 수 없습니다 (최대 20MB).')
+        return
+      }
+
       try {
         // C++ 네이티브 컴프레션
         const compressed = await compressText(content)
-        
+
         const snapshot: CompressedSnapshot = {
-          id: `snap_${Date.now()}`,
+          // [SEC-W-023] crypto.randomUUID()로 충돌 없는 고유 ID 생성
+          id: `snap_${crypto.randomUUID()}`,
           documentId,
           timestamp: Date.now(),
           compressedContent: compressed,
