@@ -1326,7 +1326,6 @@ export function useAI() {
         const agentResult = await agent.executeSession(agentQuery, (log) => {
           setEngineLogs(prev => prev + log)
           accumulatedLogs += log
-        }, dynamicSystemPrompt)
 
           setMessages(prev => prev.map(m => {
             if (m.id === assistantId) {
@@ -1370,7 +1369,7 @@ export function useAI() {
             }
             return m
           }))
-        })
+        }, dynamicSystemPrompt)
 
         if (agentResult.success && agentResult.finalAnswer) {
           const finalAnswer = agentResult.finalAnswer
@@ -1446,7 +1445,7 @@ export function useAI() {
                   afterBlockId = 'END'
                 }
 
-                const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table']
+                const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table', 'jupyter', 'drawing']
                 const blockType = validTypes.includes(curr.typeRaw) ? curr.typeRaw as InsertSuggestion['blockType'] : 'paragraph'
 
                 let siblingIndex = siblingBlockIds.length - 1
