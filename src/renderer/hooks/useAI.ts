@@ -1593,9 +1593,9 @@ export function useAI() {
               : m
           ))
         }
- else {
-          throw new Error(agentResult.error || '에이전트가 솔루션을 도출하지 못했습니다.')
-        }
+      } else {
+        throw new Error(agentResult.error || '에이전트가 솔루션을 도출하지 못했습니다.')
+      }
       } catch (err: any) {
         console.error('[useAI] 에이전트 구동 실패:', err)
         setMessages(prev => prev.map(m =>
