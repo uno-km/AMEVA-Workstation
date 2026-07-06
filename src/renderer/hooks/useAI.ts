@@ -432,14 +432,20 @@ export function useAI() {
             let proposedText = cleanContent
             let insertSuggestion: InsertSuggestion | undefined
 
+            // 🤖 [스트리밍 UI 숨김 처리] 스트리밍 중에도 태그 문법 자체는 화면에 노출되지 않도록 제거
+            cleanContent = cleanContent
+              .replace(/\[EDIT_SUGGESTION:\s*[a-zA-Z0-9_\-]+\](?:\r?\n)?/i, '')
+              .replace(/\[INSERT_SUGGESTION:[^\]]+\](?:\r?\n)?/i, '')
+
             // 🤖 [수정 제안 자동 감지] Parse EDIT_SUGGESTION from RAW (un-sanitized) text.
             const editMatch = rawForEdit.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
             if (editMatch && data.success) {
               blockId = editMatch[1]
               proposedText = editMatch[2].trim()
-              cleanContent = cleanContent
-                .replace(/\[EDIT_SUGGESTION:\s*[a-zA-Z0-9_\-]+\](?:\r?\n)?[\s\S]*/i, '')
-                .trim()
+              // 태그는 위에서 이미 제거되었으므로, 제안된 텍스트 자체를 채팅 버블에서 제거합니다.
+              if (proposedText) {
+                cleanContent = cleanContent.replace(proposedText, '').trim()
+              }
 
               if (editorRef.current) {
                 try {
@@ -1286,10 +1292,9 @@ export function useAI() {
     const isContextEmpty = !context || context.trim() === '' || context.trim() === '[]'
     if (isContextEmpty) {
       dynamicSystemPrompt = `[⚠️ 초강력 절대 지침: 빈 에디터 대응 정책]\n` +
-        `현재 에디터 문서의 내용이 완전히 비어 있습니다. 사용자가 "문체 개선", "표현 자연스럽게 수정", "요약" 등을 요청하더라도, ` +
-        `마음대로 가상의 SQLite 쿼리 예시, HTML 샌드박스 예시, JavaScript 코드 예시, Mermaid 다이어그램 등을 멋대로 창작하여 에디터에 꽂으려(INSERT_SUGGESTION/EDIT_SUGGESTION) 하지 마십시오. ` +
-        `수정할 본문 재료가 없는 상태이므로, 사용자에게 "현재 에디터 본문이 비어 있어 수정 또는 개선을 진행할 수 없습니다. ` +
-        `개선하고 싶은 본문 텍스트를 먼저 에디터에 작성해 주시거나, 수정할 문장을 채팅창에 제공해 주세요."라고 친절한 텍스트 안내로만 대응하십시오.\n\n` +
+        `현재 에디터 문서의 내용이 완전히 비어 있습니다. ` +
+        `본문 재료가 없는 상태이므로, 마음대로 가상의 내용을 창작하여 에디터에 삽입하거나 수정 제안(INSERT_SUGGESTION/EDIT_SUGGESTION)을 하지 마십시오. ` +
+        `사용자에게 "현재 문서가 비어 있어 해당 작업을 수행할 수 없으니 텍스트를 먼저 입력해 주세요"라고 친절히 안내하십시오.\n\n` +
         dynamicSystemPrompt
     }
 
@@ -1358,7 +1363,7 @@ export function useAI() {
     if (intent === 'WRITE') {
       dynamicSystemPrompt += `\n\n지금 요청은 새로운 내용을 문서에 추가하는 작업입니다.\n컨텍스트의 블록 목록을 분석하여 가장 적절한 삽입 위치를 결정하십시오.\n왜 그 위치를 선택했는지 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[INSERT_SUGGESTION: afterBlockId=..., type=..., level=...]\n삽입할 내용\n${codeRestriction}`
     } else if (intent === 'EDIT') {
-      dynamicSystemPrompt += `\n\n지금 요청은 문서의 기존 내용을 수정하는 작업입니다.\n수정 이유를 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[EDIT_SUGGESTION: 블록ID]\n수정된 내용 (명령어나 요청 사항을 제거하고 깔끔하게 정제된 수정 결과문 자체만 작성하십시오.)\n${codeRestriction}`
+      dynamicSystemPrompt += `\n\n지금 요청은 문서의 기존 내용을 수정하는 작업입니다.\n수정 이유를 한 문장으로 설명한 뒤, 수정한 내용을 제공할 때 **반드시 다음 형식을 엄격히 지켜서** 출력하십시오:\n\n[EDIT_SUGGESTION: 블록ID]\n여기에 깔끔하게 정제된 수정 결과문을 작성하세요.\n\n주의: 수정한 텍스트는 반드시 위 태그의 아래에 위치해야 하며, 태그를 맨 끝에 적으면 안 됩니다.\n${codeRestriction}`
     } else if (intent === 'SUMMARY') {
       dynamicSystemPrompt += `\n\n지금 요청은 문서 요약 작업입니다. 만약 사용자가 지정하여 태깅한 [참조 블록]들이 있다면, 절대 문서 전체를 요약하지 말고 오직 해당 [참조 블록]들의 내용만을 요약하십시오. 3~5줄로 간결하게 요약하십시오.\n${codeRestriction}`
     } else {
@@ -1716,7 +1721,7 @@ export function useAI() {
                   afterBlockId = 'END'
                 }
 
-                const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table', 'jupyter', 'drawing']
+                const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table']
                 const blockType = validTypes.includes(curr.typeRaw) ? curr.typeRaw as InsertSuggestion['blockType'] : 'paragraph'
 
                 let siblingIndex = siblingBlockIds.length - 1
@@ -1811,7 +1816,7 @@ export function useAI() {
       sessionId: sessId, // [FIX-IPC-001] 일반 챗 모드에서도 세션 ID 격리 전송
       modelPath: finalSettings.modelPath,
       prompt: userMessage,
-      context: context || undefined,
+      context: (taggedBlocks && taggedBlocks.length > 0) ? undefined : (context || undefined),
       systemPrompt: dynamicSystemPrompt,
       maxTokens: finalSettings.maxTokens,
       temperature: finalSettings.temperature,
@@ -1867,11 +1872,11 @@ export function useAI() {
       }
 
       // [FIX-C-001] 리스너를 먼저 등록하고 나서 llmGenerate 호출 (레이스 컨디션 차단)
-      const unsubToken = window.electronAPI!.onLLMToken((token) => {
+      const unsubToken = window.electronAPI!.onLLMToken(sessId, (token) => {
         if (!settled) result += token
       })
 
-      const unsubDone = window.electronAPI!.onLLMDone((data) => {
+      const unsubDone = window.electronAPI!.onLLMDone(sessId, (data) => {
         if (settled) return
         cleanup(unsubToken, unsubDone)
         resolve(data.success ? result.trim() : (data.error || ''))

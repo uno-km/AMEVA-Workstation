@@ -44,6 +44,7 @@ export interface IElectronAPI {
 
   // 홍 로컈 LLM
   llmGenerate: (payload: {
+    sessionId: string
     modelPath: string
     prompt: string
     context?: string
@@ -51,15 +52,17 @@ export interface IElectronAPI {
     maxTokens?: number
     temperature?: number
     contextSize?: number
-    apiType?: 'local' | 'api'
+    apiType?: 'local' | 'api' | 'ollama' | 'wasm'
     apiKey?: string
+    apiEndpoint?: string
+    apiModel?: string
     gpuOnly?: boolean
     history?: { role: string; content: string }[]
   }) => Promise<{ success: boolean; error?: string }>
 
-  llmAbort: () => void
+  llmAbort: (sessionId: string) => void
 
-  onLLMToken: (callback: (token: string) => void) => () => void
+  onLLMToken: (sessionId: string, callback: (token: string) => void) => () => void
   onLLMDone: (sessionId: string, callback: (data: { success: boolean; fullText?: string; error?: string }) => void) => () => void
   onLLMLog: (callback: (data: { text: string }) => void) => () => void
   llmAddLog: (payload: { text: string; prefix?: string }) => void
