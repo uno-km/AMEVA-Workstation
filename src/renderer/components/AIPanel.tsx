@@ -3230,6 +3230,75 @@ function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps) {
 function renderMessageContent(content: string, onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string, isCodeBlock?: boolean, lang?: string) => void) {
   if (!content) return null
 
+  // 🦾 [MCP-Visual-WOW] "✔ **MCP 데이터 연동 완료**" 패턴 존재 시 초록색 연동 알림 카드 드로잉
+  if (content.includes("✔ **MCP 데이터 연동 완료**") || content.includes("✔ MCP 데이터 연동 완료")) {
+    const lines = content.split('\n')
+    const title = "✔ MCP 데이터 연동 완료"
+    const description = lines.filter(l => !l.includes("✔")).join('\n').trim()
+
+    return (
+      <div style={{
+        marginTop: '6px',
+        marginBottom: '6px',
+        padding: '14px 16px',
+        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(5, 150, 105, 0.03))',
+        border: '1.5px solid rgba(16, 185, 129, 0.25)',
+        borderRadius: '10px',
+        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}>
+        {/* 상단 뱃지 */}
+        <div style={{
+          position: 'absolute',
+          top: '12px',
+          right: '12px',
+          background: 'linear-gradient(135deg, #10b981, #059669)',
+          color: '#fff',
+          fontSize: '9px',
+          fontWeight: 800,
+          padding: '2px 7px',
+          borderRadius: '20px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '3px',
+          boxShadow: '0 2px 5px rgba(16, 185, 129, 0.3)'
+        }}>
+          <span>⚡</span>
+          <span>MCP LIVE</span>
+        </div>
+
+        {/* 타이틀 */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          fontSize: '14px',
+          fontWeight: 700,
+          color: '#10b981',
+          textShadow: '0 0 10px rgba(16, 185, 129, 0.15)'
+        }}>
+          <span>{title}</span>
+        </div>
+
+        {/* 세부 텍스트 */}
+        <div style={{
+          fontSize: '12px',
+          lineHeight: '1.6',
+          color: 'var(--text-main)',
+          opacity: 0.9,
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
+        }}>
+          {description}
+        </div>
+      </div>
+    )
+  }
+
   // 마크다운 fenced code block (```) 기준 파싱
   const parts = content.split('```')
   return parts.map((part, idx) => {
