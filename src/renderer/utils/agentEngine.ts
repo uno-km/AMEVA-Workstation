@@ -278,10 +278,11 @@ export class AgentEngine {
     })
   }
 
-  /**
-   * 자가 교정(Self-Correction) 기능이 활성화된 ReAct 실행 루프
-   */
-  public async executeSession(userPrompt: string, onProgress?: (log: string) => void): Promise<AgentSessionResult> {
+  public async executeSession(
+    userPrompt: string, 
+    onProgress?: (log: string) => void,
+    customSystemPrompt?: string
+  ): Promise<AgentSessionResult> {
     const activeTools = this.getAvailableTools()
     const steps: AgentSessionStep[] = []
     
@@ -289,7 +290,9 @@ export class AgentEngine {
       .map(t => `- ${t.name}: ${t.description} (파라미터 정의: ${JSON.stringify(t.parameters)})`)
       .join('\n')
 
-    const systemPrompt = `당신은 사용자의 질의를 주어진 도구(Tool)들을 사용해 주도적으로 임무 수행하는 지능형 에이전트입니다.
+    const basePrompt = customSystemPrompt || `당신은 사용자의 질의를 주어진 도구(Tool)들을 사용해 주도적으로 임무 수행하는 지능형 에이전트입니다.`
+
+    const systemPrompt = `${basePrompt}
 절대 혼잣말을 하거나 중간 단계의 설명 없이, 반드시 아래 정의된 ReAct 형식 포맷만을 한 단락씩 순차적으로 작성하십시오.
 
 # 사용 가능한 도구 목록:

@@ -1326,6 +1326,7 @@ export function useAI() {
         const agentResult = await agent.executeSession(agentQuery, (log) => {
           setEngineLogs(prev => prev + log)
           accumulatedLogs += log
+        }, dynamicSystemPrompt)
 
           setMessages(prev => prev.map(m => {
             if (m.id === assistantId) {
