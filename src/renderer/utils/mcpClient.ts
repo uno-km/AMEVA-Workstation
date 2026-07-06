@@ -227,12 +227,34 @@ export class MCPClientManager {
     }
   }
 
+  private static mcpToken: string | null = null
+
+  private static async getOrFetchToken(): Promise<string | null> {
+    if (this.mcpToken) return this.mcpToken
+    if ((window as any).electronAPI?.mcpGetToken) {
+      try {
+        this.mcpToken = await (window as any).electronAPI.mcpGetToken()
+      } catch (err) {
+        console.error('[MCPClientManager] mcpGetToken 실패:', err)
+      }
+    }
+    return this.mcpToken
+  }
+
   /** localhost / 127.0.0.1 네트워크 바인딩 실패 시 상호 폴백 재시도 헬퍼 */
   private static async safeMcpFetch(url: string, body: any): Promise<Response> {
+    const token = await this.getOrFetchToken()
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(body)
       })
       return res
@@ -243,7 +265,7 @@ export class MCPClientManager {
         console.warn(`[MCPClientManager] 127.0.0.1 fetch 실패. localhost 폴백 재시도... URL: ${fallbackUrl}`)
         return await fetch(fallbackUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(body)
         })
       }
@@ -253,7 +275,7 @@ export class MCPClientManager {
         console.warn(`[MCPClientManager] localhost fetch 실패. 127.0.0.1 폴백 재시도... URL: ${fallbackUrl}`)
         return await fetch(fallbackUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify(body)
         })
       }

@@ -85,15 +85,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('llm:log', subscription)
   },
 
-  llmListModels: () => ipcRenderer.invoke('llm:listModels'),
+  llmListModels: (type?: 'llm' | 'code') => ipcRenderer.invoke('llm:listModels', type),
   llmGetGpuName: () => ipcRenderer.invoke('llm:getGpuName'),
-  llmDownloadModel: (payload: { url: string; filename: string }) => ipcRenderer.invoke('llm:downloadModel', payload),
+  llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => ipcRenderer.invoke('llm:downloadModel', payload),
   onLLMDownloadProgress: (callback: (status: any) => void) => {
     const subscription = (_event: any, status: any) => callback(status)
     ipcRenderer.on('llm:download-progress', subscription)
     return () => ipcRenderer.removeListener('llm:download-progress', subscription)
   },
-  llmImportModel: (sourcePath: string) => ipcRenderer.invoke('llm:importModel', sourcePath),
+  llmImportModel: (sourcePath: string, type?: 'llm' | 'code') => ipcRenderer.invoke('llm:importModel', sourcePath, type),
 
   // ── 🎤 Whisper STT ──
   sttTranscribe: (payload: { audioPath: string; language?: string }) =>
@@ -113,4 +113,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isFreeMode: () => ipcRenderer.invoke('llm:is-free-mode'),
   planGetStatus: () => ipcRenderer.invoke('plan:get-status'),
   planSetStatus: (isPro: boolean) => ipcRenderer.invoke('plan:set-status', isPro),
+
+  // 🔐 OS Keychain (safeStorage) 자격 증명 연동
+  keychainSet: (key: string, value: string) => ipcRenderer.invoke('keychain:set', key, value),
+  keychainGet: (key: string) => ipcRenderer.invoke('keychain:get', key),
+  keychainDelete: (key: string) => ipcRenderer.invoke('keychain:delete', key),
+  fetchUrlMetadata: (url: string) => ipcRenderer.invoke('action:fetchUrlMetadata', url),
+  mcpGetToken: () => ipcRenderer.invoke('mcp:getToken'),
 })

@@ -64,6 +64,7 @@ export interface AIMessage {
 
 export interface AISettings {
   modelPath: string
+  codeModelPath?: string
   temperature: number
   maxTokens: number
   systemPrompt: string
@@ -78,6 +79,7 @@ export interface AISettings {
 
 const DEFAULT_SETTINGS: AISettings = {
   modelPath: 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf',
+  codeModelPath: '',
   temperature: 0.7,
   maxTokens: 1024,
   systemPrompt: `당신은 AMEVA 문서 에디터에 내장된 AI 문서 편집 에이전트입니다.
@@ -146,7 +148,12 @@ const DEFAULT_SETTINGS: AISettings = {
 
 export function useAI() {
   const [messages, setMessages] = useState<AIMessage[]>([])
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isGenerating, _setIsGenerating] = useState(false)
+  const isGeneratingRef = useRef(false)
+  const setIsGenerating = useCallback((val: boolean) => {
+    _setIsGenerating(val)
+    isGeneratingRef.current = val
+  }, [])
   const [settings, setSettings] = useState<AISettings>(() => {
     try {
       const stored = localStorage.getItem('ai-settings')
@@ -174,7 +181,9 @@ export function useAI() {
   const [streamingText, setStreamingText] = useState('')
   const [isAvailable, setIsAvailable] = useState(false)
   const [models, setModels] = useState<{ name: string; filename: string; path: string; size: number }[]>([])
+  const [codeModels, setCodeModels] = useState<{ name: string; filename: string; path: string; size: number }[]>([])
   const [engineLogs, setEngineLogs] = useState<string>('') // 🤖 로컬 터미널 로그 데이터 저장소
+  const [pendingQueue, setPendingQueue] = useState<Array<any>>([])
 
   const unsubTokenRef = useRef<(() => void) | null>(null)
   const unsubDoneRef = useRef<(() => void) | null>(null)
@@ -191,6 +200,7 @@ export function useAI() {
 
   // 🦾 [SaaS 유료 기능] 연속 요청 큐 및 실행 레프
   const pendingQueueRef = useRef<Array<{
+    id: string
     userMessage: string
     context?: string
     originalText?: string
@@ -208,7 +218,9 @@ export function useAI() {
       return
     }
     setIsAvailable(true)
-    window.electronAPI.llmListModels().then(list => {
+
+    // 일반 모델 로드
+    window.electronAPI.llmListModels('llm').then(list => {
       setModels(list)
       if (list.length > 0) {
         setSettings(prev => {
@@ -221,14 +233,28 @@ export function useAI() {
     }).catch(() => {
       setIsAvailable(false)
     })
+
+    // 코딩 모델 로드
+    window.electronAPI.llmListModels('code').then(list => {
+      setCodeModels(list)
+      if (list.length > 0) {
+        setSettings(prev => {
+          const exists = list.some(m => m.path === prev.codeModelPath)
+          if (exists) return prev
+          return { ...prev, codeModelPath: list[0].path }
+        })
+      }
+    }).catch(() => {})
   }, [])
 
   // 모델 목록 갱신 함수 (수동 리스캔)
   const refreshModels = useCallback(async () => {
     if (!window.electronAPI) return
     try {
-      const list = await window.electronAPI.llmListModels()
+      const list = await window.electronAPI.llmListModels('llm')
       setModels(list)
+      const codeList = await window.electronAPI.llmListModels('code')
+      setCodeModels(codeList)
     } catch (e) {
       console.warn('모델 목록 갱신 실패:', e)
     }
@@ -605,33 +631,22 @@ export function useAI() {
 
     // (일일 10회 제한 가드를 finalSettings 결합 시점인 하단으로 이동시킴)
 
-    if (isGenerating) {
-      // Pro 플랜이고 요청 큐 플러그인이 ON인 경우에만 큐 작동
-      if (isPro && enabledPlugins.requestQueue) {
-        pendingQueueRef.current.push({
-          userMessage,
-          context,
-          originalText,
-          blockId,
-          runtimeSettings,
-          editorInstance,
-          taggedBlocks
-        })
-        const queueNoticeId = `msg_queue_${Date.now()}`
-        setMessages(prev => [
-          ...prev,
-          {
-            id: queueNoticeId,
-            role: 'assistant',
-            content: `⏳ [Request Queue] 연속 요청이 수신되었습니다. 대기열에 추가되었습니다. (현재 대기: ${pendingQueueRef.current.length}개)`,
-            timestamp: Date.now()
-          }
-        ])
-        return
-      } else {
-        // 무료 모드이거나 플러그인이 꺼진 경우: 즉시 차단
-        return
+    if (isGeneratingRef.current) {
+      // 🦾 [FEAT] 사용자 요청에 따라 플랜/옵션 무관 상시 대기열(Request Queue) 작동
+      const queueId = `q_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+      const newQueueItem = {
+        id: queueId,
+        userMessage,
+        context,
+        originalText,
+        blockId,
+        runtimeSettings,
+        editorInstance,
+        taggedBlocks
       }
+      pendingQueueRef.current.push(newQueueItem)
+      setPendingQueue([...pendingQueueRef.current])
+      return
     }
 
     setEngineLogs('') // [디버그] 이전 LLM 세션 로그 비우기
@@ -685,6 +700,24 @@ export function useAI() {
 
     // 호출 시점 런타임 세팅 최우선 병합
     const finalSettings = { ...settings, ...runtimeSettings }
+
+    // ── [FEAT] 코딩 요청 자동 감지 및 코딩 특화 모델 교체 ──
+    const isCodingRequest = (() => {
+      const cleanPrompt = userMessage.toLowerCase().trim()
+      const codingKeywords = [
+        '코드', '코딩', '개발', '함수', '구현', '프로그래밍', '알고리즘', '정규식',
+        'python', 'javascript', 'typescript', 'c++', 'java', 'html', 'css', 'sql',
+        'api', '컴파일', '디버그', 'eslint', 'prettier', 'git', 'github', 'mcp', 'wasm',
+        'code', 'implement', 'debug', 'compile', 'function', 'class', 'struct', 'library'
+      ]
+      return codingKeywords.some(k => cleanPrompt.includes(k))
+    })()
+
+    let codeModelUsed = false
+    if (isCodingRequest && finalSettings.codeModelPath && finalSettings.codeModelPath !== '') {
+      finalSettings.modelPath = finalSettings.codeModelPath
+      codeModelUsed = true
+    }
 
     // 🦾 [무료 플랜] 일일 AI 생성 10회 제한 및 예외 필터링 실구현 가드
     if (!isPro) {
@@ -742,6 +775,10 @@ export function useAI() {
     sanitizerRef.current = new StreamingSanitizer()
     rawAccumRef.current = ''
     setMessages(prev => [...prev, userMsg, assistantMsg])
+    if (codeModelUsed) {
+      const modelNameOnly = finalSettings.modelPath.split(/[\\/]/).pop()
+      setEngineLogs(prev => prev + `[System] 코딩 요청이 감지되었습니다. 코딩 특화 모델(${modelNameOnly})로 전환하여 응답을 생성합니다.\n`)
+    }
     setIsGenerating(true)
     setStreamingText('')
 
@@ -989,6 +1026,7 @@ export function useAI() {
                 originalText: data.success || (isAbortError && cleanContent.trim())
                   ? (editMatch ? originalText : m.originalText)
                   : undefined,
+                diffState: (editMatch && data.success) ? 'pending' : m.diffState, // [BUG FIX] espontaneously 생성된 에디터 수정 제안의 상태를 대기로 설정
                 blockId,
                 insertSuggestion: data.success ? insertSuggestions[0] : undefined,
                 insertSuggestions: data.success ? insertSuggestions : undefined,
@@ -1105,7 +1143,7 @@ export function useAI() {
                   })
                 } else {
                   editorRef.current.updateBlock(targetBlockId, {
-                    content: targetProposed
+                    content: [{ type: 'text', text: targetProposed, styles: {} }] // [BUG FIX] BlockNote 규격에 맞춰 문자열을 인라인 객체 배열로 감싸 전달
                   })
                 }
                 console.log(`[useAI] [Auto-Apply] 블록 ${targetBlockId} 수정안 자동 반영 성공!`)
@@ -1120,7 +1158,7 @@ export function useAI() {
                       [{
                         type: s.blockType === 'heading' ? 'heading' : 'paragraph',
                         props: s.level ? { level: s.level } : undefined,
-                        content: s.content
+                        content: [{ type: 'text', text: s.content, styles: {} }] // [BUG FIX] BlockNote 규격에 맞춰 문자열을 인라인 객체 배열로 감싸 전달
                       }],
                       s.afterBlockId,
                       'after'
@@ -1147,7 +1185,7 @@ export function useAI() {
                   })
                 } else {
                   editorRef.current.updateBlock(firstBlock.id, {
-                    content: finalClean
+                    content: [{ type: 'text', text: finalClean, styles: {} }] // [BUG FIX] BlockNote 규격에 맞춰 문자열을 인라인 객체 배열로 감싸 전달
                   })
                 }
                 console.log(`[useAI] [Auto-Apply] 태그된 블록 ${firstBlock.id}에 텍스트 자동 반영 성공!`)
@@ -1161,7 +1199,21 @@ export function useAI() {
         // 세션 리스너 자동 해제
         if (unsubTokenRef.current) { unsubTokenRef.current(); unsubTokenRef.current = null }
         if (unsubDoneRef.current) { unsubDoneRef.current(); unsubDoneRef.current = null }
-        setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 완료 시 다음 항목 기동
+
+        // [BUG FIX] 만약 EDIT_SUGGESTION 이나 INSERT_SUGGESTION 같은 사용자 승인이 필요한 제안이 있다면
+        // 승인이 완료될 때까지 다음 큐를 기동하지 않는다.
+        const rawForEdit = rawAccumRef.current
+        const editMatch = rawForEdit.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
+        let hasInsertSuggestion = false
+        if (!editMatch && data.success) {
+          const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
+          hasInsertSuggestion = tagRegex.test(rawForEdit)
+        }
+        const hasPendingDecision = data.success && (!!editMatch || hasInsertSuggestion)
+
+        if (!hasPendingDecision) {
+          setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 대기 결정이 없으면 완료 시 즉시 다음 항목 기동
+        }
       })
     }
 
@@ -1245,14 +1297,18 @@ export function useAI() {
       `  </div>\n` +
       `</div>`
 
+    const codeRestriction = isCodingRequest 
+      ? `\n[💡 코딩 지침] 사용자가 코드 또는 프로그래밍 구현을 요청했으므로, 필요한 JavaScript, HTML, CSS 등의 코드 및 설명 예시를 상세히 작성하여 제공하십시오.`
+      : `\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
+
     if (intent === 'WRITE') {
-      dynamicSystemPrompt += `\n\n지금 요청은 새로운 내용을 문서에 추가하는 작업입니다.\n컨텍스트의 블록 목록을 분석하여 가장 적절한 삽입 위치를 결정하십시오.\n왜 그 위치를 선택했는지 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[INSERT_SUGGESTION: afterBlockId=..., type=..., level=...]\n삽입할 내용\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
+      dynamicSystemPrompt += `\n\n지금 요청은 새로운 내용을 문서에 추가하는 작업입니다.\n컨텍스트의 블록 목록을 분석하여 가장 적절한 삽입 위치를 결정하십시오.\n왜 그 위치를 선택했는지 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[INSERT_SUGGESTION: afterBlockId=..., type=..., level=...]\n삽입할 내용\n${codeRestriction}`
     } else if (intent === 'EDIT') {
-      dynamicSystemPrompt += `\n\n지금 요청은 문서의 기존 내용을 수정하는 작업입니다.\n수정 이유를 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[EDIT_SUGGESTION: 블록ID]\n수정된 내용 (명령어나 요청 사항을 제거하고 깔끔하게 정제된 수정 결과문 자체만 작성하십시오.)\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
+      dynamicSystemPrompt += `\n\n지금 요청은 문서의 기존 내용을 수정하는 작업입니다.\n수정 이유를 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[EDIT_SUGGESTION: 블록ID]\n수정된 내용 (명령어나 요청 사항을 제거하고 깔끔하게 정제된 수정 결과문 자체만 작성하십시오.)\n${codeRestriction}`
     } else if (intent === 'SUMMARY') {
-      dynamicSystemPrompt += `\n\n지금 요청은 문서 요약 작업입니다. 만약 사용자가 지정하여 태깅한 [참조 블록]들이 있다면, 절대 문서 전체를 요약하지 말고 오직 해당 [참조 블록]들의 내용만을 요약하십시오. 3~5줄로 간결하게 요약하십시오.\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
+      dynamicSystemPrompt += `\n\n지금 요청은 문서 요약 작업입니다. 만약 사용자가 지정하여 태깅한 [참조 블록]들이 있다면, 절대 문서 전체를 요약하지 말고 오직 해당 [참조 블록]들의 내용만을 요약하십시오. 3~5줄로 간결하게 요약하십시오.\n${codeRestriction}`
     } else {
-      dynamicSystemPrompt += `\n\n지금은 일반 질문 또는 이전 검색 결과에 대한 연쇄 질의입니다. 이전 대화 기록을 참고하여 사용자의 의도에 맞게 간결하고 명확하게 답변하십시오. 만약 제목 추천 요청인 경우 근사한 제목 후보들을 리스트로 추천하십시오.\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
+      dynamicSystemPrompt += `\n\n지금은 일반 질문 또는 이전 검색 결과에 대한 연쇄 질의입니다. 이전 대화 기록을 참고하여 사용자의 의도에 맞게 간결하고 명확하게 답변하십시오. 만약 제목 추천 요청인 경우 근사한 제목 후보들을 리스트로 추천하십시오.\n${codeRestriction}`
     }
 
     // 최근 5개 대화쌍 (최대 10개 메시지)의 내역을 백엔드로 전달하기 위해 매핑
@@ -1273,7 +1329,7 @@ export function useAI() {
       try {
         const agent = new AgentEngine({
           providerType: finalSettings.apiType === 'ollama' ? 'ollama' : 'llama.cpp',
-          endpointUrl: finalSettings.apiType === 'ollama' ? 'http://localhost:11434' : 'http://localhost:3010',
+          endpointUrl: finalSettings.apiType === 'ollama' ? 'http://localhost:11434' : 'http://localhost:12345',
           modelName: finalSettings.modelPath,
           temperature: 0.1,
           maxTurns: 5
@@ -1374,6 +1430,7 @@ export function useAI() {
 사용자가 주가 정보나 시세를 물어보면, 절대 일반 검색을 돌리지 말고 반드시 'query_stock_info' 도구를 최우선 호출하여 실시간 수치를 획득하십시오.
 도구 호출이 완료되면 그 결과를 기반으로 최종 답변(Final Answer)을 한두 문장으로 솔직하게 정리하여 제공하십시오. HTML 카드 조립이나 [INSERT_SUGGESTION] 태그 기재 등은 절대 하지 마십시오.`
 
+        let agentHasPendingDecision = false
         const agentResult = await agent.executeSession(agentQuery, (log) => {
           setEngineLogs(prev => prev + log)
           accumulatedLogs += log
@@ -1594,6 +1651,7 @@ export function useAI() {
             }
           }
 
+          agentHasPendingDecision = !!(editMatch || insertSuggestions.length > 0)
           // 성공 시 말풍선 내용 업데이트 및 스트리밍 완료 처리
           setMessages(prev => prev.map(m =>
             m.id === assistantId
@@ -1654,7 +1712,9 @@ export function useAI() {
         isAgentRunningRef.current = false
         setIsGenerating(false)
         currentAssistantIdRef.current = null
-        setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 에이전트 종료 시 다음 항목 기동
+        if (!agentHasPendingDecision) {
+          setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 에이전트 종료 시 대기결정이 없으면 다음 항목 기동
+        }
       }
       return
     }
@@ -1761,6 +1821,7 @@ export function useAI() {
   const checkAndProcessNextQueue = useCallback(() => {
     if (pendingQueueRef.current.length === 0) return
     const nextReq = pendingQueueRef.current.shift()
+    setPendingQueue([...pendingQueueRef.current]) // [BUG FIX] 큐에서 대기열 아이템이 제거되었으므로 즉시 UI 상태 반영
     if (nextReq) {
       // 대기 큐 안내 메시지 필터 제거
       setMessages(prev => prev.filter(m => !m.id.startsWith('msg_queue_')))
@@ -1800,10 +1861,15 @@ export function useAI() {
   }, [])
 
   const updateMessageDiffState = useCallback((msgId: string, state: 'accepted' | 'rejected') => {
-    setMessages(prev => prev.map(m =>
-      m.id === msgId ? { ...m, diffState: state } : m
-    ))
-  }, [])
+    setMessages(prev => {
+      const next = prev.map(m =>
+        m.id === msgId ? { ...m, diffState: state } : m
+      )
+      // [BUG FIX] 수정안 승인/거절 시 다음 대기 큐 기동
+      setTimeout(() => checkAndProcessNextQueue(), 80)
+      return next
+    })
+  }, [checkAndProcessNextQueue])
 
   /** 삽입 제안 상태 업데이트 (다중 카드 독립 제어 지원) */
   const updateInsertSuggestionStatus = useCallback((
@@ -1813,57 +1879,74 @@ export function useAI() {
     newSiblingIndex?: number,
     suggestionIndex?: number
   ) => {
-    setMessages(prev => prev.map(m => {
-      if (m.id !== msgId) return m
+    setMessages(prev => {
+      let allResolved = true
+      const next = prev.map(m => {
+        if (m.id !== msgId) return m
 
-      // 1. 다중 제안 배열이 존재하는 경우 특정 인덱스 업데이트
-      if (m.insertSuggestions && m.insertSuggestions.length > 0 && suggestionIndex !== undefined) {
-        const updatedSuggestions = [...m.insertSuggestions]
-        const target = updatedSuggestions[suggestionIndex]
-        if (target) {
-          updatedSuggestions[suggestionIndex] = {
-            ...target,
-            status,
-            ...(newAfterBlockId !== undefined ? { afterBlockId: newAfterBlockId } : {}),
-            ...(newSiblingIndex !== undefined ? { siblingIndex: newSiblingIndex } : {}),
-          }
+        // 1. 다중 제안 배열이 존재하는 경우 특정 인덱스 업데이트
+        if (m.insertSuggestions && m.insertSuggestions.length > 0 && suggestionIndex !== undefined) {
+          const updatedSuggestions = [...m.insertSuggestions]
+          const target = updatedSuggestions[suggestionIndex]
+          if (target) {
+            updatedSuggestions[suggestionIndex] = {
+              ...target,
+              status,
+              ...(newAfterBlockId !== undefined ? { afterBlockId: newAfterBlockId } : {}),
+              ...(newSiblingIndex !== undefined ? { siblingIndex: newSiblingIndex } : {}),
+            }
 
-          // [BUG FIX] 연속적인 다중 삽입 제안 시, 이전 블록이 삽입된 직후 후속 블록의 기준점(afterBlockId)을
-          // 방금 새로 삽입된 신규 블록의 ID로 승계 체이닝하여 순서가 뒤바뀌는 버그를 차단함
-          if (status === 'accepted' && newAfterBlockId) {
-            const oldAfterBlockId = target.afterBlockId
-            for (let i = suggestionIndex + 1; i < updatedSuggestions.length; i++) {
-              const pendingSuggestion = updatedSuggestions[i]
-              if (pendingSuggestion.status === 'pending') {
-                if (pendingSuggestion.afterBlockId === oldAfterBlockId) {
-                  updatedSuggestions[i] = {
-                    ...pendingSuggestion,
-                    afterBlockId: newAfterBlockId
+            // [BUG FIX] 연속적인 다중 삽입 제안 시, 이전 블록이 삽입된 직후 후속 블록의 기준점(afterBlockId)을
+            // 방금 새로 삽입된 신규 블록의 ID로 승계 체이닝하여 순서가 뒤바뀌는 버그를 차단함
+            if (status === 'accepted' && newAfterBlockId) {
+              const oldAfterBlockId = target.afterBlockId
+              for (let i = suggestionIndex + 1; i < updatedSuggestions.length; i++) {
+                const pendingSuggestion = updatedSuggestions[i]
+                if (pendingSuggestion.status === 'pending') {
+                  if (pendingSuggestion.afterBlockId === oldAfterBlockId) {
+                    updatedSuggestions[i] = {
+                      ...pendingSuggestion,
+                      afterBlockId: newAfterBlockId
+                    }
                   }
                 }
               }
             }
           }
+          if (updatedSuggestions.some(s => s.status === 'pending')) {
+            allResolved = false
+          }
+          return {
+            ...m,
+            insertSuggestions: updatedSuggestions,
+            insertSuggestion: updatedSuggestions[0] // 하위 호환용
+          }
         }
+
+        // 2. 단수형 폴백 호환성 처리
+        if (!m.insertSuggestion) return m
+        if (status === 'pending') allResolved = false
         return {
           ...m,
-          insertSuggestions: updatedSuggestions,
-          insertSuggestion: updatedSuggestions[0] // 하위 호환용
+          insertSuggestion: {
+            ...m.insertSuggestion,
+            status,
+            ...(newAfterBlockId !== undefined ? { afterBlockId: newAfterBlockId } : {}),
+            ...(newSiblingIndex !== undefined ? { siblingIndex: newSiblingIndex } : {}),
+          }
         }
+      })
+      // [BUG FIX] 삽입 제안이 모두 결정(승인/거절)되면 다음 대기 큐 기동
+      if (allResolved) {
+        setTimeout(() => checkAndProcessNextQueue(), 80)
       }
+      return next
+    })
+  }, [checkAndProcessNextQueue])
 
-      // 2. 단수형 폴백 호환성 처리
-      if (!m.insertSuggestion) return m
-      return {
-        ...m,
-        insertSuggestion: {
-          ...m.insertSuggestion,
-          status,
-          ...(newAfterBlockId !== undefined ? { afterBlockId: newAfterBlockId } : {}),
-          ...(newSiblingIndex !== undefined ? { siblingIndex: newSiblingIndex } : {}),
-        }
-      }
-    }))
+  const removeFromQueue = useCallback((itemId: string) => {
+    pendingQueueRef.current = pendingQueueRef.current.filter(item => item.id !== itemId)
+    setPendingQueue([...pendingQueueRef.current])
   }, [])
 
   return {
@@ -1871,6 +1954,7 @@ export function useAI() {
     isGenerating,
     isAvailable,
     models,
+    codeModels,
     settings,
     streamingText,
     engineLogs,
@@ -1884,5 +1968,7 @@ export function useAI() {
     updateInsertSuggestionStatus,
     refreshModels,
     importModel,
+    pendingQueue,
+    removeFromQueue,
   }
 }

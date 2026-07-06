@@ -10,6 +10,7 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
   securityLevel: 'loose',
+  suppressErrors: true,
 })
 
 export interface RunState {
@@ -276,6 +277,15 @@ export function JupyterCodeEditorTerminal({
       try {
         const temp = document.getElementById(renderId)
         if (temp) temp.remove()
+        
+        document.querySelectorAll('[id^="dmermaid"]').forEach(el => el.remove())
+
+        try {
+          await mermaid.parse(code, { suppressErrors: true })
+        } catch (parseErr: any) {
+          setMermaidError(parseErr.message || 'Mermaid 문법 오류가 감지되었습니다.')
+          return
+        }
 
         const { svg } = await mermaid.render(renderId, code)
         setMermaidSvg(svg)

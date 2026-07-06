@@ -84,6 +84,11 @@ export interface IElectronAPI {
   isFreeMode: () => Promise<boolean>
   planGetStatus: () => Promise<boolean>
   planSetStatus: (isPro: boolean) => Promise<{ success: boolean; isPro?: boolean; error?: string }>
+
+  // 🔐 OS Keychain (safeStorage) 자격 증명 연동
+  keychainSet: (key: string, value: string) => Promise<{ success: boolean; error?: string }>
+  keychainGet: (key: string) => Promise<string | null>
+  keychainDelete: (key: string) => Promise<{ success: boolean; error?: string }>
 }
 
 declare global {

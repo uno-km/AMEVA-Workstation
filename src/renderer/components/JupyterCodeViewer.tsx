@@ -4,6 +4,15 @@ import { BlockNoteEditor } from '@blocknote/core'
 import { Play, Eye, Copy, ChevronDown, Terminal, Globe } from 'lucide-react'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
+
+// Mermaid 초기화
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'dark',
+  securityLevel: 'loose',
+  suppressErrors: true,
+})
+
 import hljs from 'highlight.js'
 import 'highlight.js/styles/vs2015.css'
 import { useCodeRuntime } from '../hooks/useCodeRuntime'
@@ -167,6 +176,18 @@ function InlineMermaidRenderer({ code }: { code: string }) {
     const renderDiagram = async () => {
       try {
         const cleanCode = code.replace(/^(\s*)end([가-힣a-zA-Z]+)/gm, '$1end\n$1$2')
+        
+        document.querySelectorAll('[id^="dmermaid"]').forEach(el => el.remove())
+
+        try {
+          await mermaid.parse(cleanCode, { suppressErrors: true })
+        } catch (parseErr: any) {
+          if (active) {
+            setError(parseErr.message || 'Mermaid 문법 오류가 감지되었습니다.')
+          }
+          return
+        }
+
         const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanCode)
         if (active) {
           setSvg(renderedSvg)

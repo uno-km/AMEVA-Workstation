@@ -36,6 +36,8 @@ import { FloatingChat } from './components/FloatingChat'
 import { packMarkdownToADC, unpackADCToMarkdown } from './utils/adcPackager'
 import { DrawingBlock } from './components/DrawingBlock'
 import { FindReplaceBar } from './components/FindReplaceBar'
+import { LinkPreviewBlock } from './components/LinkPreviewBlock'
+import { YoutubeBlock } from './components/YoutubeBlock'
 
 // ── 키보드 단축키 동적 매칭 헬퍼 함수 ───────────────────────────
 const matchHotkey = (e: KeyboardEvent, hotkeyStr: string) => {
@@ -70,7 +72,9 @@ const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
     jupyter: JupyterBlock,
-    drawing: DrawingBlock
+    drawing: DrawingBlock,
+    linkPreview: LinkPreviewBlock,
+    youtube: YoutubeBlock
   }
 })
 
@@ -296,7 +300,14 @@ async function parseFileToMarkdown(content: string, filePath: string, isBinary: 
     return content
   }
   
-  const binaryString = window.atob(content)
+  let binaryString = ''
+  try {
+    binaryString = window.atob(content.replace(/\s/g, ''))
+  } catch (e) {
+    console.warn('[parseFileToMarkdown] atob 디코딩 실패, 원본 텍스트 폴백 사용:', e)
+    return content
+  }
+  
   const bytes = new Uint8Array(binaryString.length)
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i)
@@ -941,7 +952,7 @@ export default function App() {
     settings: aiSettings, generateResponse, abortGeneration,
     clearHistory: clearAIHistory, updateSettings: updateAISettings,
     updateMessageDiffState, updateInsertSuggestionStatus, engineLogs,
-    refreshModels, importModel,
+    refreshModels, importModel, pendingQueue, removeFromQueue,
   } = useAI()
 
   const { messages: chatMessages, sendMessage: sendChatMessage, clearMessages: clearChatMessages } = useChat(
@@ -959,7 +970,40 @@ export default function App() {
 
   // ── BlockNote 에디터 ────────────────────────────────────────
   const [editor, setEditor] = useState<BlockNoteEditor | null>(null)
+  const processedUrlsRef = useRef<Set<string>>(new Set())
   const isInitialLoad = useRef(true)
+
+  // ── 외부 플러그인(웹뷰) 연동용 전역 API 바인딩 ──
+  useEffect(() => {
+    (window as any).AMEVA_INSERT_TEXT_TO_EDITOR = (text: string) => {
+      if (editor) {
+        try {
+          const doc = editor.document
+          const blockPayload = {
+            type: 'paragraph' as const,
+            content: [{ type: 'text' as const, text: text, styles: {} }]
+          }
+          if (doc.length > 0) {
+            editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
+          } else {
+            editor.insertBlocks([blockPayload], doc[0], 'before')
+          }
+        } catch (e) {
+          console.error('[Insert Text Global API Failed]', e)
+        }
+      } else {
+        setCurrentContent(prev => prev + '\n' + text)
+      }
+    }
+
+    (window as any).AMEVA_ASK_AGENT = (text: string) => {
+      setShowAIPanel(true)
+      setActiveRightTab('ai')
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('ameva:fill-ai-input', { detail: text }))
+      }, 150)
+    }
+  }, [editor])
 
   useEffect(() => {
     (window as any).AMEVA_GET_CURRENT_CONTENT = () => {
@@ -1431,6 +1475,83 @@ graph TD
         if (isUpdating) return
         isUpdating = true
 
+        // ── URL 자동 변환 로직 (유튜브 & 링크 프리뷰 카드) ──
+        try {
+          const cursor = editor.getTextCursorPosition()
+          const activeBlock = cursor?.block
+          if (activeBlock && activeBlock.type === 'paragraph') {
+            const contentArr = activeBlock.content as any[]
+            if (contentArr && contentArr.length === 1 && contentArr[0].type === 'text') {
+              const textVal = contentArr[0].text.trim()
+              const urlPattern = /^(https?:\/\/[^\s]+)$/i
+              if (urlPattern.test(textVal)) {
+                if (!processedUrlsRef.current.has(activeBlock.id)) {
+                  processedUrlsRef.current.add(activeBlock.id)
+
+                  const blockId = activeBlock.id
+                  // 1. YouTube 분기
+                  let videoId = ''
+                  if (textVal.includes('youtube.com/watch?v=')) {
+                    videoId = textVal.split('watch?v=')[1].split('&')[0]
+                  } else if (textVal.includes('youtu.be/')) {
+                    videoId = textVal.split('youtu.be/')[1].split('?')[0]
+                  }
+
+                  if (videoId) {
+                    editor.updateBlock(blockId, {
+                      type: 'youtube',
+                      props: { url: textVal, videoId: videoId }
+                    })
+                  } else {
+                    // 2. 일반 URL 링크 프리뷰 분기
+                    editor.updateBlock(blockId, {
+                      type: 'linkPreview',
+                      props: {
+                        url: textVal,
+                        title: 'Loading preview...',
+                        description: 'URL 프리뷰 데이터를 페치하고 있습니다...',
+                        thumbnail: ''
+                      }
+                    })
+
+                    if ((window as any).electronAPI?.fetchUrlMetadata) {
+                      (window as any).electronAPI.fetchUrlMetadata(textVal).then((metadata: any) => {
+                        try {
+                          editor.updateBlock(blockId, {
+                            type: 'linkPreview',
+                            props: {
+                              url: textVal,
+                              title: metadata.title || 'Untitled Page',
+                              description: metadata.description || '',
+                              thumbnail: metadata.image || ''
+                            }
+                          })
+                        } catch (updateErr) {
+                          console.error('Failed to update LinkPreview block with metadata:', updateErr)
+                        }
+                      }).catch((fetchErr: any) => {
+                        try {
+                          editor.updateBlock(blockId, {
+                            type: 'linkPreview',
+                            props: {
+                              url: textVal,
+                              title: '연결 실패',
+                              description: `메타데이터 수집 오류: ${fetchErr.message}`,
+                              thumbnail: ''
+                            }
+                          })
+                        } catch {}
+                      })
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } catch (urlErr) {
+          console.error('[URL Auto-Convert Failed]', urlErr)
+        }
+
         let activeHeadingCleared = false
         let activeHeadingText = ''
         const activeId = activeBlockIdRef.current
@@ -1714,6 +1835,7 @@ graph TD
   //  3. 삽입 완료 후 blocksToMarkdownLossy 로 역변환 → currentContent 설정
   //     (__LT_TEMP__ 등 임시 토큰이 preview에 노출되는 문제 차단)
   const loadMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, isBinary = false, path = '') => {
+    setEditorMode('edit')
     const markdown = await parseFileToMarkdown(rawContent, path || filePath || '', isBinary)
     const normalized = normalizeMarkdown(markdown)
 
@@ -2716,6 +2838,8 @@ graph TD
               downloadStatus={downloadStatus}
               setDownloadStatus={setDownloadStatus}
               onScrollToBlock={handleScrollToBlock}
+              pendingQueue={pendingQueue}
+              removeFromQueue={removeFromQueue}
             />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a0f', padding: '20px', borderLeft: '1px solid rgba(255,255,255,0.05)', userSelect: 'none' }}>
@@ -2935,6 +3059,8 @@ graph TD
           taggedBlocks={taggedBlocks}
           setTaggedBlocks={setTaggedBlocks}
           onScrollToBlock={handleScrollToBlock}
+          pendingQueue={pendingQueue}
+          removeFromQueue={removeFromQueue}
         />
       )}
 

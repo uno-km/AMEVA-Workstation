@@ -1,7 +1,7 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, session, net } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, session, net, safeStorage } from 'electron'
 import { join, dirname, resolve as resolvePath, basename } from 'path'
 import { fileURLToPath } from 'url'
-import { existsSync } from 'fs'
+import { existsSync, writeFileSync, readFileSync } from 'fs'
 import * as exportersMain from './exportersMain'
 
 // 🤖 개발용 일렉트론 보안 경고 비활성화
@@ -20,7 +20,8 @@ const __dirname = localDirname
 import { readFile, writeFile, unlink } from 'fs/promises'
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
-const pdf = require('pdf-parse')
+const pdfModule = require('pdf-parse')
+const pdf = typeof pdfModule === 'function' ? pdfModule : (pdfModule.default || pdfModule)
 import { spawn, ChildProcess } from 'child_process'
 import { WebSocketServer, WebSocket } from 'ws'
 import { networkInterfaces } from 'os'
@@ -118,6 +119,9 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // [MEM-CLEANUP] 프로그램 기동 시점에 OS 상에 유령으로 남아있던 모든 llama 프로세스 일괄 정리
+  forceCleanupLocalLLMProcesses()
+
   // [SEC-W-021] Content-Security-Policy 설정
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
@@ -504,12 +508,28 @@ let activeServerModelPath: string = ''
 let activeServerGpuOnly: boolean = true
 const serverPort = 12345
 
+function forceCleanupLocalLLMProcesses() {
+  try {
+    const { execSync } = require('child_process')
+    if (process.platform === 'win32') {
+      execSync('taskkill /f /im llama-server.exe', { stdio: 'ignore' })
+      execSync('taskkill /f /im llama-cli.exe', { stdio: 'ignore' })
+    } else {
+      execSync('killall -9 llama-server llama-cli', { stdio: 'ignore' })
+    }
+  } catch (e) {
+    // 프로세스 없을 시 예외 무시
+  }
+}
+
 app.on('will-quit', () => {
   if (activeServerProcess) {
     try {
       activeServerProcess.kill('SIGKILL')
     } catch {}
   }
+  // 유령 프로세스 확실히 정리
+  forceCleanupLocalLLMProcesses()
   // 앱 완전히 꺼지기 직전 모든 MCP 서버 종료 보장
   try { MCPProcessManager.killAll() } catch {}
 })
@@ -737,7 +757,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
       const errorMsg = `로컬 모델 파일 또는 엔진 바이너리가 디바이스에 존재하지 않습니다.\n\n- 엔진 경로: ${llamaPath || '미지정'}\n- 모델 파일: ${modelPath}\n\n우측 상단 톱니바퀴 -> 'Models' 탭에서 파일을 체크하시거나, AI 패널의 설정 기어 버튼 -> '모델 허브 개방'을 통해 간편하게 AI를 설정해주세요.`
       if (!event.sender.isDestroyed()) {
         event.sender.send('llm:log', { text: `\n[Fatal Error] 실행 실패:\n${errorMsg}\n` })
-        event.sender.send('llm:done', { success: false, error: errorMsg })
+        event.sender.send(`llm:done:${sessionId}`, { success: false, error: errorMsg })
       }
       resolve({ success: false, error: errorMsg })
     })
@@ -799,23 +819,30 @@ ipcMain.handle('llm:generate', async (event, payload: {
 
         let resolved = false
         const req = https.request(reqOptions, (res: any) => {
+          const statusCode = res.statusCode || 200
           let buffer = ''
+          let rawResponse = ''
+
           res.on('data', (chunk: Buffer) => {
             const chunkText = chunk.toString()
-            const lines = chunkText.split('\n')
-            for (const line of lines) {
-              const cleaned = line.trim()
-              if (cleaned.startsWith('data:')) {
-                try {
-                  const dataStr = cleaned.slice(5).trim()
-                  if (dataStr === '[DONE]') continue
-                  const parsed = JSON.parse(dataStr)
-                  const token = parsed.choices[0]?.delta?.content
-                  if (token) {
-                    buffer += token
-                    tokenSender.send(token)
-                  }
-                } catch {}
+            rawResponse += chunkText
+
+            if (statusCode >= 200 && statusCode < 300) {
+              const lines = chunkText.split('\n')
+              for (const line of lines) {
+                const cleaned = line.trim()
+                if (cleaned.startsWith('data:')) {
+                  try {
+                    const dataStr = cleaned.slice(5).trim()
+                    if (dataStr === '[DONE]') continue
+                    const parsed = JSON.parse(dataStr)
+                    const token = parsed.choices[0]?.delta?.content
+                    if (token) {
+                      buffer += token
+                      tokenSender.send(token)
+                    }
+                  } catch {}
+                }
               }
             }
           })
@@ -825,10 +852,25 @@ ipcMain.handle('llm:generate', async (event, payload: {
               resolved = true
               ipcMain.off(`llm:abort:${sessionId}`, abortListener)
               tokenSender.flush()
-              if (!event.sender.isDestroyed()) {
-                event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
+
+              if (statusCode < 200 || statusCode >= 300) {
+                let errorMessage = `HTTP 에러 코드: ${statusCode}`
+                try {
+                  const errorObj = JSON.parse(rawResponse)
+                  errorMessage = errorObj.error?.message || errorObj.message || rawResponse || errorMessage
+                } catch {
+                  if (rawResponse) errorMessage = rawResponse
+                }
+                if (!event.sender.isDestroyed()) {
+                  event.sender.send(`llm:done:${sessionId}`, { success: false, error: errorMessage })
+                }
+                resolve({ success: false, error: errorMessage })
+              } else {
+                if (!event.sender.isDestroyed()) {
+                  event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
+                }
+                resolve({ success: true })
               }
-              resolve({ success: true })
             }
           })
         })
@@ -884,6 +926,8 @@ ipcMain.handle('llm:generate', async (event, payload: {
             } catch {}
             activeServerProcess = null
           }
+          // [MEM-CLEANUP] OS 상에 유령으로 남은 다른 llama 프로세스들도 중복 점유 방지를 위해 강제 일괄 살해
+          forceCleanupLocalLLMProcesses()
           
           const sArgs = [
             '-m', modelPath,
@@ -897,11 +941,11 @@ ipcMain.handle('llm:generate', async (event, payload: {
             sArgs.push('-t', '4')
           }
           
-          if (!event.sender.isDestroyed()) {
-            event.sender.send('llm:log', { text: `[System] 새 llama-server 프로세스를 백그라운드에 구동합니다...\n모델: ${basename(modelPath)}\nGPU 레이어: ${gpuOnlyFlag ? '99 (GPU 가속)' : '0 (CPU 전용)'}\n` })
+          if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('llm:log', { text: `[System] 새 llama-server 프로세스를 백그라운드에 구동합니다...\n모델: ${basename(modelPath)}\nGPU 레이어: ${gpuOnlyFlag ? '99 (GPU 가속)' : '0 (CPU 전용)'}\n` })
           }
           
-          const proc = spawn(llamaPath!, sArgs, { windowsHide: true })
+          const proc = spawn(llamaPath!, sArgs, { cwd: dirname(llamaPath!), windowsHide: true })
           activeServerProcess = proc
           activeServerModelPath = modelPath
           activeServerGpuOnly = gpuOnlyFlag
@@ -916,17 +960,17 @@ ipcMain.handle('llm:generate', async (event, payload: {
             activeServerModelPath = ''
           })
 
-          // 서버 stdout/stderr 로그를 렌더러로 실시간 전달
+          // 서버 stdout/stderr 로그를 렌더러로 실시간 전달 (mainWindow 경유 브로드캐스트로 새로고침/HMR 누수 차단)
           proc.stdout?.on('data', (data: Buffer) => {
             const text = data.toString()
-            if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:log', { text })
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('llm:log', { text })
             }
           })
           proc.stderr?.on('data', (data: Buffer) => {
             const text = data.toString()
-            if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:log', { text })
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('llm:log', { text })
             }
           })
           
@@ -993,7 +1037,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
             activeServerModelPath = ''
             if (!event.sender.isDestroyed()) {
               event.sender.send('llm:log', { text: `\n[Fatal Error] llama-server 기동 실패: ${reason}\n` })
-              event.sender.send('llm:done', { success: false, error: reason })
+              event.sender.send(`llm:done:${sessionId}`, { success: false, error: reason })
             }
             return resolve({ success: false, error: reason })
           }
@@ -1287,9 +1331,9 @@ ipcMain.handle('llm:getGpuName', async () => {
   return 'Generic Graphics Device'
 })
 
-// 사용 가능한 LLM 모델 목록 조회 (c:\ameva\models\llm 경로 탐색)
-ipcMain.handle('llm:listModels', async () => {
-  const llmDir = 'C:\\ameva\\models\\llm'
+// 사용 가능한 LLM 및 코딩 모델 목록 조회 (c:\ameva\models\llm 혹은 code 경로 탐색)
+ipcMain.handle('llm:listModels', async (event, type?: 'llm' | 'code') => {
+  const llmDir = type === 'code' ? 'C:\\ameva\\models\\code' : 'C:\\ameva\\models\\llm'
   try {
     const { readdir } = await import('fs/promises')
     if (!existsSync(llmDir)) return []
@@ -1311,12 +1355,14 @@ ipcMain.handle('llm:listModels', async () => {
   } catch {
     return []
   }
+})
+
 // 외부에서 다운로드한 모델 파일 복사 가져오기
-ipcMain.handle('llm:importModel', async (event, sourcePath: string) => {
-  const llmDir = 'C:\\ameva\\models\\llm'
+ipcMain.handle('llm:importModel', async (event, sourcePath: string, type?: 'llm' | 'code') => {
+  const llmDir = type === 'code' ? 'C:\\ameva\\models\\code' : 'C:\\ameva\\models\\llm'
   try {
     const { copyFile, mkdir } = await import('fs/promises')
-    if (!existsSync(sourcePath)) {
+    if (!sourcePath || !existsSync(sourcePath)) {
       return { success: false, error: '선택한 파일이 존재하지 않습니다.' }
     }
     const filename = basename(sourcePath)
@@ -1332,8 +1378,6 @@ ipcMain.handle('llm:importModel', async (event, sourcePath: string) => {
   } catch (err: any) {
     return { success: false, error: `파일 복사 실패: ${err.message}` }
   }
-})
-
 })
 
 let activeDownloadRequest: any = null
@@ -1353,8 +1397,9 @@ const MAX_REDIRECT_DEPTH = 5
 ipcMain.handle('llm:downloadModel', async (event, payload: {
   url: string
   filename: string
+  type?: 'llm' | 'code'
 }) => {
-  const llmDir = 'C:\\ameva\\models\\llm'
+  const llmDir = payload.type === 'code' ? 'C:\\ameva\\models\\code' : 'C:\\ameva\\models\\llm'
   const { mkdir } = await import('fs/promises')
   const { createWriteStream } = require('fs')
   const https = require('https')
@@ -1880,4 +1925,224 @@ ipcMain.handle('mcp:kill', async (_event, serverId: string) => {
   MCPProcessManager.killServer(serverId)
   return { success: true }
 })
+
+// 🔐 OS Keychain (safeStorage) 자격 증명 관리 IPC 핸들러 등록
+const credentialsPath = join(app.getPath('userData'), 'credentials.json')
+
+ipcMain.handle('keychain:set', async (_event, key: string, value: string) => {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) {
+      return { success: false, error: 'OS 암호화 스토리지를 사용할 수 없는 환경입니다.' }
+    }
+    let data: Record<string, string> = {}
+    if (existsSync(credentialsPath)) {
+      try {
+        data = JSON.parse(readFileSync(credentialsPath, 'utf8'))
+      } catch {
+        data = {}
+      }
+    }
+    const encrypted = safeStorage.encryptString(value)
+    data[key] = encrypted.toString('base64')
+    writeFileSync(credentialsPath, JSON.stringify(data), 'utf8')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('keychain:get', async (_event, key: string) => {
+  try {
+    if (!existsSync(credentialsPath)) return null
+    if (!safeStorage.isEncryptionAvailable()) return null
+    const data = JSON.parse(readFileSync(credentialsPath, 'utf8'))
+    const encryptedBase64 = data[key]
+    if (!encryptedBase64) return null
+    const buffer = Buffer.from(encryptedBase64, 'base64')
+    const decrypted = safeStorage.decryptString(buffer)
+    return decrypted
+  } catch {
+    return null
+  }
+})
+
+ipcMain.handle('keychain:delete', async (_event, key: string) => {
+  try {
+    if (!existsSync(credentialsPath)) return { success: true }
+    let data: Record<string, string> = {}
+    try {
+      data = JSON.parse(readFileSync(credentialsPath, 'utf8'))
+    } catch {
+      data = {}
+    }
+    delete data[key]
+    writeFileSync(credentialsPath, JSON.stringify(data), 'utf8')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
+
+// [FEAT] 외부 URL 메타데이터 백그라운드 크롤링 채널 (CORS 우회 및 메모리 절약)
+ipcMain.handle('action:fetchUrlMetadata', async (_event, targetUrl: string) => {
+  return new Promise<{ title?: string; description?: string; image?: string; url: string }>((resolve) => {
+    const http = require('http')
+    const https = require('https')
+    const { URL } = require('url')
+
+    const fetchHtml = (urlStr: string, redirectsRemaining = 5) => {
+      if (redirectsRemaining < 0) {
+        resolve({ title: '', description: '너무 많은 리다이렉트가 발생했습니다.', image: '', url: targetUrl })
+        return
+      }
+
+      let parsedUrl: URL
+      try {
+        parsedUrl = new URL(urlStr)
+      } catch (err) {
+        resolve({ title: '', description: '유효하지 않은 URL 형식입니다.', image: '', url: targetUrl })
+        return
+      }
+
+      const client = parsedUrl.protocol === 'https:' ? https : http
+      const options = {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+        },
+        timeout: 5000
+      }
+
+      const req = client.get(urlStr, options, (res: any) => {
+        // 3xx 리다이렉션 처리
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          const redirectTarget = new URL(res.headers.location, urlStr).toString()
+          res.resume() // 메모리 해제
+          fetchHtml(redirectTarget, redirectsRemaining - 1)
+          return
+        }
+
+        if (res.statusCode !== 200) {
+          res.resume()
+          resolve({ title: '', description: `서버 코드: ${res.statusCode}`, image: '', url: targetUrl })
+          return
+        }
+
+        let html = ''
+        let totalBytes = 0
+        const MAX_HTML_BYTES = 1024 * 1024; // 최대 1MB 제한 (메모리 절약)
+        let isResolved = false
+
+        const finalizeResolve = (htmlContent: string) => {
+          if (isResolved) return
+          isResolved = true
+
+          const getMetaTag = (property: string) => {
+            const regexes = [
+              new RegExp(`<meta[^>]*property=["']og:${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
+              new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:${property}["']`, 'i'),
+              new RegExp(`<meta[^>]*name=["']og:${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
+              new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*name=["']og:${property}["']`, 'i')
+            ]
+            for (const r of regexes) {
+              const match = htmlContent.match(r)
+              if (match && match[1]) {
+                return match[1]
+                  .replace(/&amp;/g, '&')
+                  .replace(/&lt;/g, '<')
+                  .replace(/&gt;/g, '>')
+                  .replace(/&quot;/g, '"')
+                  .replace(/&#39;/g, "'")
+                  .trim()
+              }
+            }
+            return ''
+          }
+
+          let title = getMetaTag('title')
+          if (!title) {
+            const titleMatch = htmlContent.match(/<title[^>]*>([^<]*)<\/title>/i)
+            if (titleMatch && titleMatch[1]) {
+              title = titleMatch[1].trim()
+            }
+          }
+
+          let description = getMetaTag('description')
+          if (!description) {
+            const descMatch = htmlContent.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i)
+            if (descMatch && descMatch[1]) {
+              description = descMatch[1].trim()
+            }
+          }
+
+          const image = getMetaTag('image')
+
+          resolve({
+            title: title || parsedUrl.hostname,
+            description: description || '설명이 존재하지 않는 웹 페이지입니다.',
+            image: image || '',
+            url: urlStr
+          })
+        }
+
+        res.on('data', (chunk: Buffer) => {
+          totalBytes += chunk.length
+          if (totalBytes > MAX_HTML_BYTES) {
+            html += chunk.toString('utf8', 0, MAX_HTML_BYTES - (totalBytes - chunk.length))
+            req.destroy() // 용량 초과 시 소켓 파괴
+            finalizeResolve(html) // 즉시 resolve
+          } else {
+            html += chunk.toString('utf8')
+          }
+        })
+
+        res.on('end', () => {
+          finalizeResolve(html)
+        })
+      })
+
+      req.on('error', (err: any) => {
+        if (isResolved) return
+        isResolved = true
+        resolve({ title: '', description: `연결 실패: ${err.message}`, image: '', url: targetUrl })
+      })
+
+      req.on('timeout', () => {
+        req.destroy()
+        if (isResolved) return
+        isResolved = true
+        resolve({ title: '', description: '연결 시간 초과', image: '', url: targetUrl })
+      })
+    }
+
+    fetchHtml(targetUrl)
+  })
+})
+
+ipcMain.handle('mcp:getToken', async () => {
+  try {
+    const fs = require('fs')
+    if (process.env.AMEVA_TOKEN) {
+      return process.env.AMEVA_TOKEN.trim()
+    }
+    const tokenPath = 'c:\\ameva\\AMEVA-MCP-Wasm-Toolkit\\.token'
+    if (fs.existsSync(tokenPath)) {
+      return fs.readFileSync(tokenPath, 'utf8').trim()
+    }
+  } catch (err) {
+    console.error('mcp:getToken 실패:', err)
+  }
+  return null
+})
+
+// 🦾 [CONSOLE EXIT-GUARD] 터미널에서 Ctrl+C (SIGINT) 또는 SIGTERM 시그널로 강제 종료 시, 백그라운드 자식 프로세스를 즉각 동기적으로 정리
+process.on('SIGINT', () => {
+  forceCleanupLocalLLMProcesses()
+  process.exit(0)
+})
+process.on('SIGTERM', () => {
+  forceCleanupLocalLLMProcesses()
+  process.exit(0)
+})
+
 

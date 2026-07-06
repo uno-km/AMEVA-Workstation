@@ -14,7 +14,7 @@ interface AIPanelProps {
   isGenerating: boolean
   isAvailable: boolean
   models: { name: string; filename: string; path: string; size: number }[]
-  settings: { modelPath: string; temperature: number; maxTokens: number; systemPrompt: string; apiType?: string; apiKey?: string; apiEndpoint?: string; apiModel?: string; gpuOnly?: boolean }
+  settings: { modelPath: string; temperature: number; maxTokens: number; systemPrompt: string; apiType?: string; apiKey?: string; apiEndpoint?: string; apiModel?: string; gpuOnly?: boolean; theme?: string }
   onSend: (message: string, context?: string, originalText?: string, blockId?: string, runtimeSettings?: any) => void
   onAbort: () => void
   onClear: () => void
@@ -42,6 +42,8 @@ interface AIPanelProps {
   taggedBlocks: { id: string; text: string }[]
   setTaggedBlocks: React.Dispatch<React.SetStateAction<{ id: string; text: string }[]>>
   onScrollToBlock: (blockId: string) => void
+  pendingQueue?: Array<any>
+  removeFromQueue?: (id: string) => void
 }
 
 const QUICK_ACTIONS = [
@@ -218,6 +220,7 @@ function InsertPreviewCard({
   onApply,
   onReject,
   onMove,
+  onScrollToBlock, // [BUG FIX] 스크롤/포커싱용 콜백 수신
 }: {
   msg: AIMessage
   ins: InsertSuggestion
@@ -225,6 +228,7 @@ function InsertPreviewCard({
   onApply: () => void
   onReject: () => void
   onMove: (direction: 'up' | 'down') => void
+  onScrollToBlock?: (blockId: string) => void // [BUG FIX] 타입 추가
 }) {
   const [logExpanded, setLogExpanded] = useState(false)
 
@@ -279,13 +283,18 @@ function InsertPreviewCard({
         border: `1px solid ${accepted ? 'rgba(16,185,129,0.22)' : 'rgba(239,68,68,0.18)'}`,
         background: accepted ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)',
       }}>
-        {/* 결과 헤더 — 클릭으로 펼침 */}
+        {/* 결과 헤더 — 클릭으로 펼침 및 수락 시 스크롤 포커싱 */}
         <div
-          onClick={() => setLogExpanded(v => !v)}
+          onClick={() => {
+            if (accepted && ins.afterBlockId && onScrollToBlock) {
+              onScrollToBlock(ins.afterBlockId)
+            }
+            setLogExpanded(v => !v)
+          }}
           style={{
             padding: '7px 10px',
             display: 'flex', alignItems: 'center', gap: '6px',
-            cursor: hasReasonLog ? 'pointer' : 'default',
+            cursor: (accepted || hasReasonLog) ? 'pointer' : 'default',
             fontSize: '11px', color: accepted ? '#10b981' : '#f87171',
             fontWeight: 600,
           }}
@@ -660,6 +669,7 @@ function MessageBubble({
   onUpdateInsertSuggestionStatus,
   blocks,
   onScrollToBlock,
+  isWhiteTheme,
 }: {
   msg: AIMessage
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string) => void
@@ -669,6 +679,7 @@ function MessageBubble({
   onUpdateInsertSuggestionStatus?: (msgId: string, status: 'pending' | 'accepted' | 'rejected', newAfterBlockId?: string, newSiblingIndex?: number) => void
   blocks?: any[]
   onScrollToBlock?: (blockId: string) => void
+  isWhiteTheme: boolean
 }) {
   const [copied, setCopied] = useState(false)
   const [thoughtExpanded, setThoughtExpanded] = useState(false)
@@ -763,7 +774,9 @@ function MessageBubble({
         <span style={{
           fontSize: '9px',
           fontWeight: 800,
-          color: isUser ? 'rgba(167,139,250,0.85)' : 'rgba(34,211,238,0.85)',
+          color: isWhiteTheme
+            ? (isUser ? '#6d28d9' : '#0891b2')
+            : (isUser ? 'rgba(167,139,250,0.85)' : 'rgba(34,211,238,0.85)'),
           textTransform: 'uppercase',
           letterSpacing: '0.5px',
           alignSelf: isUser ? 'flex-end' : 'flex-start',
@@ -842,8 +855,8 @@ function MessageBubble({
             <div style={{
               marginBottom: '8px',
               borderRadius: '6px',
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.06)',
+              background: isWhiteTheme ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
+              border: isWhiteTheme ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.06)',
               overflow: 'hidden',
             }}>
               <div
@@ -858,7 +871,7 @@ function MessageBubble({
                   color: 'var(--text-muted)',
                   fontWeight: 600,
                   userSelect: 'none',
-                  background: 'rgba(255,255,255,0.01)',
+                  background: isWhiteTheme ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.01)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -884,8 +897,8 @@ function MessageBubble({
                   fontSize: '11px',
                   color: 'var(--text-muted)',
                   lineHeight: '1.5',
-                  borderTop: '1px solid rgba(255,255,255,0.04)',
-                  background: 'rgba(0,0,0,0.12)',
+                  borderTop: isWhiteTheme ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.04)',
+                  background: isWhiteTheme ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.12)',
                   whiteSpace: 'pre-wrap',
                   wordBreak: 'break-word',
                   minHeight: msg.isStreaming && !thinkingText ? '28px' : undefined,
@@ -893,7 +906,7 @@ function MessageBubble({
                   alignItems: msg.isStreaming && !thinkingText ? 'center' : 'flex-start',
                 }}>
                   {thinkingText || (msg.isStreaming
-                    ? <span style={{ color: 'rgba(255,255,255,0.25)', fontStyle: 'italic', fontSize: '10px' }}>{"<think> 태그 대기 중..."}</span>
+                    ? <span style={{ color: isWhiteTheme ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.25)', fontStyle: 'italic', fontSize: '10px' }}>{"<think> 태그 대기 중..."}</span>
                     : null
                   )}
                 </div>
@@ -909,6 +922,7 @@ function MessageBubble({
                 msg={msg}
                 ins={ins}
                 blocks={blocks || []}
+                onScrollToBlock={onScrollToBlock}
                 onApply={() => {
                   onApplyInsertSuggestion?.(msg.id, ins.afterBlockId, ins.blockType, ins.content, ins.level, idx)
                 }}
@@ -961,6 +975,7 @@ function MessageBubble({
                 msg={msg}
                 ins={msg.insertSuggestion}
                 blocks={blocks || []}
+                onScrollToBlock={onScrollToBlock}
                 onApply={() => {
                   const ins = msg.insertSuggestion!
                   onApplyInsertSuggestion?.(msg.id, ins.afterBlockId, ins.blockType, ins.content, ins.level)
@@ -1158,18 +1173,26 @@ function MessageBubble({
                   </div>
                 )}
                 {msg.diffState === 'accepted' && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    fontSize: '11px',
-                    color: '#34d399',
-                    background: 'rgba(16,185,129,0.06)',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    border: '1px solid rgba(16,185,129,0.15)',
-                    fontWeight: 'bold',
-                  }}>
+                  <div
+                    onClick={() => {
+                      if (msg.blockId && onScrollToBlock) {
+                        onScrollToBlock(msg.blockId)
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '11px',
+                      color: '#34d399',
+                      background: 'rgba(16,185,129,0.06)',
+                      padding: '4px 8px',
+                      borderRadius: '4px',
+                      border: '1px solid rgba(16,185,129,0.15)',
+                      fontWeight: 'bold',
+                      cursor: onScrollToBlock ? 'pointer' : 'default', // [BUG FIX] 클릭 가능하도록 커서 스타일 추가
+                    }}
+                  >
                     <Check size={12} /> 수정안이 본문에 적용되었습니다
                   </div>
                 )}
@@ -1379,10 +1402,30 @@ export function AIPanel({
   taggedBlocks = [],
   setTaggedBlocks,
   onScrollToBlock,
+  pendingQueue = [],
+  removeFromQueue,
 }: AIPanelProps) {
   const [input, setInput] = useState('')
+  const isWhiteTheme = settings.theme === 'white'
   const [manualMode, setManualMode] = useState<'auto' | 'edit' | 'summary' | 'chat'>('auto')
   const [showSettings, setShowSettings] = useState(false)
+
+  // ── [FEAT] 외부 우클릭 팝업 연동 질문 텍스트 바인딩 ──
+  useEffect(() => {
+    const handleFillInput = (e: Event) => {
+      const customEvent = e as CustomEvent<string>
+      if (customEvent.detail) {
+        setInput(customEvent.detail)
+        setTimeout(() => {
+          textareaRef.current?.focus()
+        }, 50)
+      }
+    }
+    window.addEventListener('ameva:fill-ai-input', handleFillInput)
+    return () => {
+      window.removeEventListener('ameva:fill-ai-input', handleFillInput)
+    }
+  }, [])
   const [useContext, setUseContext] = useState(true) // 기본으로 켬
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const logEndRef = useRef<HTMLDivElement>(null) // 🤖 로그 자동스크롤용
@@ -1398,6 +1441,147 @@ export function AIPanel({
   // [FIX-W-003] 동적 API 엔드포인트/모델명 상태 도입
   const apiEndpoint = settings.apiEndpoint || ''
   const apiModel = settings.apiModel || ''
+
+  // API 제공사(apiProvider) 상태를 settings.apiEndpoint로부터 실시간 계산(Derived State)하여 상태 일관성을 확보합니다.
+  const apiProvider = (() => {
+    const endpoint = settings.apiEndpoint || ''
+    if (endpoint === '') return 'custom'
+    if (endpoint.includes('generativelanguage.googleapis.com')) return 'gemini'
+    if (endpoint.includes('api.openai.com')) return 'openai'
+    if (endpoint.includes('api.anthropic.com')) return 'anthropic'
+    return 'custom'
+  })()
+
+  // 플랫폼별 모델 정의
+  const PROVIDER_MODELS = {
+    gemini: [
+      { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+      { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+      { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+      { value: 'gemini-2.0-flash-thinking-exp', label: 'Gemini 2.0 Flash Thinking' },
+      { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+      { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+    ],
+    openai: [
+      { value: 'gpt-4o-mini', label: 'GPT-4o Mini' },
+      { value: 'gpt-4o', label: 'GPT-4o' },
+      { value: 'gpt-4-turbo', label: 'GPT-4 Turbo' },
+      { value: 'o1-mini', label: 'o1 Mini' },
+      { value: 'o1-preview', label: 'o1 Preview' },
+    ],
+    anthropic: [
+      { value: 'claude-3-5-sonnet-latest', label: 'Claude 3.5 Sonnet' },
+      { value: 'claude-3-5-haiku-latest', label: 'Claude 3.5 Haiku' },
+      { value: 'claude-3-opus-latest', label: 'Claude 3 Opus' },
+    ]
+  }
+
+  // 제공사 변경 핸들러
+  const handleProviderChange = (provider: 'gemini' | 'openai' | 'anthropic' | 'custom') => {
+    if (provider === 'gemini') {
+      onUpdateSettings({
+        apiEndpoint: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+        apiModel: 'gemini-2.5-flash'
+      })
+    } else if (provider === 'openai') {
+      onUpdateSettings({
+        apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+        apiModel: 'gpt-4o-mini'
+      })
+    } else if (provider === 'anthropic') {
+      onUpdateSettings({
+        apiEndpoint: 'https://api.anthropic.com/v1/messages',
+        apiModel: 'claude-3-5-sonnet-latest'
+      })
+    } else if (provider === 'custom') {
+      onUpdateSettings({
+        apiEndpoint: '',
+        apiModel: ''
+      })
+    }
+  }
+
+  // API 키 로드 완료 여부를 추적하는 로컬 Ref (중복 비동기 호출 방지 락)
+  const isApiKeyLoadedRef = useRef<Record<string, boolean>>({})
+
+  // 앱 시작 시 및 apiProvider 변경 시 OS 키체인에서 암호화 저장된 API Key 복구
+  useEffect(() => {
+    if (!window.electronAPI || apiType !== 'api') return
+
+    // 해당 제공사의 키를 이미 로드했다면 중복 실행 완전히 차단
+    if (isApiKeyLoadedRef.current[apiProvider]) return
+
+    const loadSavedApiKey = async () => {
+      let keychainKey = 'openai-api-key'
+      if (apiProvider === 'gemini') {
+        keychainKey = 'gemini-api-key'
+      } else if (apiProvider === 'anthropic') {
+        keychainKey = 'claude-api-key'
+      } else if (apiProvider === 'openai') {
+        keychainKey = 'openai-api-key'
+      } else if (apiProvider === 'custom') {
+        return
+      }
+
+      const savedKey = await window.electronAPI.keychainGet(keychainKey)
+      if (savedKey) {
+        isApiKeyLoadedRef.current[apiProvider] = true
+        if (savedKey !== apiKey) {
+          onUpdateSettings({ apiKey: savedKey })
+        }
+      }
+    }
+
+    loadSavedApiKey()
+  }, [apiProvider, apiType, apiKey])
+
+  // API Key 변경 시 휴리스틱 탐지 핸들러 및 OS 키체인 자동 저장
+  const handleApiKeyChange = (val: string) => {
+    const trimmed = val.trim()
+    let detectedProvider: 'gemini' | 'openai' | 'anthropic' | 'custom' | null = null
+    let targetEndpoint = ''
+    let targetModel = ''
+    let keychainKey = 'openai-api-key'
+
+    if (trimmed.startsWith('AIzaSy') || trimmed.startsWith('AQ.')) {
+      detectedProvider = 'gemini'
+      targetEndpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
+      targetModel = 'gemini-2.5-flash'
+      keychainKey = 'gemini-api-key'
+    } else if (trimmed.startsWith('sk-ant')) {
+      detectedProvider = 'anthropic'
+      targetEndpoint = 'https://api.anthropic.com/v1/messages'
+      targetModel = 'claude-3-5-sonnet-latest'
+      keychainKey = 'claude-api-key'
+    } else if (trimmed.startsWith('sk-')) {
+      detectedProvider = 'openai'
+      targetEndpoint = 'https://api.openai.com/v1/chat/completions'
+      targetModel = 'gpt-4o-mini'
+      keychainKey = 'openai-api-key'
+    } else {
+      if (apiProvider === 'gemini') keychainKey = 'gemini-api-key'
+      else if (apiProvider === 'anthropic') keychainKey = 'claude-api-key'
+      else if (apiProvider === 'openai') keychainKey = 'openai-api-key'
+    }
+
+    if (detectedProvider) {
+      onUpdateSettings({
+        apiKey: val,
+        apiEndpoint: targetEndpoint,
+        apiModel: targetModel
+      })
+    } else {
+      onUpdateSettings({ apiKey: val })
+    }
+
+    if (window.electronAPI) {
+      if (trimmed === '') {
+        window.electronAPI.keychainDelete(keychainKey)
+      } else {
+        window.electronAPI.keychainSet(keychainKey, val)
+      }
+    }
+  }
 
   const [gpuName, setGpuName] = useState('')
   const [showDownloadDetail, setShowDownloadDetail] = useState(false)
@@ -1518,7 +1702,7 @@ export function AIPanel({
   }
 
   const handleSend = () => {
-    if (!input.trim() || isGenerating) return
+    if (!input.trim()) return
 
     const finalContext = getContextWithRAG(input.trim(), false)
     const resolvedMode = getActiveMode(input)
@@ -1639,7 +1823,7 @@ export function AIPanel({
           </div>
           <div style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
             {apiType === 'api'
-              ? 'OpenAI GPT-4o 연결됨'
+              ? `${apiProvider === 'gemini' ? 'Google Gemini' : apiProvider === 'anthropic' ? 'Anthropic Claude' : apiProvider === 'openai' ? 'OpenAI GPT' : 'Custom Cloud API'} 연결됨`
               : apiType === 'ollama'
               ? 'Ollama 로컬 백그라운드 서비스'
               : (isAvailable
@@ -1729,13 +1913,36 @@ export function AIPanel({
           {/* API Key 입력란 */}
           {apiType === 'api' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {/* API 제공사 선택 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 제공사</label>
+                <select
+                  value={apiProvider}
+                  onChange={e => handleProviderChange(e.target.value as any)}
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-glass)',
+                    border: '1px solid var(--border-muted)',
+                    borderRadius: '6px',
+                    padding: '5px 8px',
+                    color: 'var(--text-main)',
+                    fontSize: '11px',
+                  }}
+                >
+                  <option value="gemini">Google Gemini (AI Studio)</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="anthropic">Anthropic (Claude)</option>
+                  <option value="custom">Custom (직접 입력)</option>
+                </select>
+              </div>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API Key</label>
                 <input
                   type="password"
                   value={apiKey}
-                  onChange={e => onUpdateSettings({ apiKey: e.target.value })}
-                  placeholder="sk-... (OpenAI) | sk-ant-... (Claude)"
+                  onChange={e => handleApiKeyChange(e.target.value)}
+                  placeholder="키를 입력하면 제공사가 자동 감지됩니다"
                   style={{
                     width: '100%',
                     background: 'var(--bg-glass)',
@@ -1755,39 +1962,67 @@ export function AIPanel({
                   type="text"
                   value={apiEndpoint}
                   onChange={e => onUpdateSettings({ apiEndpoint: e.target.value })}
+                  disabled={apiProvider !== 'custom'}
                   placeholder="https://api.openai.com/v1/chat/completions"
                   style={{
                     width: '100%',
-                    background: 'var(--bg-glass)',
+                    background: apiProvider === 'custom' ? 'var(--bg-glass)' : 'rgba(255, 255, 255, 0.05)',
                     border: '1px solid var(--border-muted)',
                     borderRadius: '6px',
                     padding: '5px 8px',
-                    color: 'var(--text-main)',
+                    color: apiProvider === 'custom' ? 'var(--text-main)' : 'var(--text-muted)',
                     fontSize: '10px',
                     outline: 'none',
+                    cursor: apiProvider === 'custom' ? 'text' : 'not-allowed',
                   }}
                 />
               </div>
-              {/* [FIX-W-003] 모델명 입력란 */}
+              {/* [FIX-W-003] 모델명 입력란 / 셀렉트박스 */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 모델명</label>
-                <input
-                  type="text"
-                  value={apiModel}
-                  onChange={e => onUpdateSettings({ apiModel: e.target.value })}
-                  placeholder="gpt-4o-mini | claude-3-5-sonnet-20241022"
-                  style={{
-                    width: '100%',
-                    background: 'var(--bg-glass)',
-                    border: '1px solid var(--border-muted)',
-                    borderRadius: '6px',
-                    padding: '5px 8px',
-                    color: 'var(--text-main)',
-                    fontSize: '10px',
-                    outline: 'none',
-                  }}
-                />
+                {apiProvider === 'custom' ? (
+                  <input
+                    type="text"
+                    value={apiModel}
+                    onChange={e => onUpdateSettings({ apiModel: e.target.value })}
+                    placeholder="gpt-4o-mini | claude-3-5-sonnet-20241022"
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-glass)',
+                      border: '1px solid var(--border-muted)',
+                      borderRadius: '6px',
+                      padding: '5px 8px',
+                      color: 'var(--text-main)',
+                      fontSize: '10px',
+                      outline: 'none',
+                    }}
+                  />
+                ) : (
+                  <select
+                    value={apiModel}
+                    onChange={e => onUpdateSettings({ apiModel: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-glass)',
+                      border: '1px solid var(--border-muted)',
+                      borderRadius: '6px',
+                      padding: '5px 8px',
+                      color: 'var(--text-main)',
+                      fontSize: '11px',
+                    }}
+                  >
+                    {(PROVIDER_MODELS[apiProvider] || []).map((m: any) => (
+                      <option key={m.value} value={m.value}>{m.label}</option>
+                    ))}
+                  </select>
+                )}
               </div>
+              {/* Anthropic 선택 시 경고/주의 안내문구 추가 */}
+              {apiProvider === 'anthropic' && (
+                <div style={{ fontSize: '9px', color: '#fbbf24', marginTop: '2px', lineHeight: '1.2' }}>
+                  ⚠️ Anthropic 공식 API는 헤더 규격이 달라 직접 연동 시 에러가 날 수 있습니다. OpenRouter나 OpenAI 호환 프록시를 사용할 때는 제공사를 Custom으로 지정하여 설정하세요.
+                </div>
+              )}
             </div>
           )}
 
@@ -2142,6 +2377,7 @@ export function AIPanel({
               onUpdateInsertSuggestionStatus={onUpdateInsertSuggestionStatus}
               blocks={blocks}
               onScrollToBlock={onScrollToBlock}
+              isWhiteTheme={isWhiteTheme}
             />
           ))}
           <div ref={messagesEndRef} />
@@ -2291,8 +2527,8 @@ export function AIPanel({
                   width: '100%',
                   padding: '5px 2px',
                   borderRadius: '6px',
-                  background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
-                  border: isActive ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                  background: isActive ? (isWhiteTheme ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)') : 'transparent',
+                  border: isActive ? (isWhiteTheme ? '1px solid rgba(0,0,0,0.12)' : '1px solid rgba(255,255,255,0.1)') : '1px solid transparent',
                   color: isActive ? activeColor : 'var(--text-muted)',
                   fontSize: '9.5px',
                   fontWeight: isActive ? 800 : 500,
@@ -2314,7 +2550,7 @@ export function AIPanel({
         </div>
 
         {/* 🤖 모델 간편 선택 셀렉트 */}
-        {models.length > 0 && (
+        {apiType === 'api' ? (
           <div style={{
             display: 'flex',
             alignItems: 'center',
@@ -2325,29 +2561,56 @@ export function AIPanel({
             <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, flexShrink: 0 }}>
               AI 모델:
             </span>
-            <select
-              value={settings.modelPath}
-              onChange={e => onUpdateSettings({ modelPath: e.target.value })}
-              style={{
-                flex: 1,
-                background: 'rgba(0,0,0,0.2)',
-                border: '1px solid var(--border-muted)',
-                borderRadius: '6px',
-                padding: '4px 6px',
-                color: 'var(--text-main)',
-                fontSize: '10px',
-                outline: 'none',
-                cursor: 'pointer',
-                fontFamily: 'monospace',
-              }}
-            >
-              {models.map(m => (
-                <option key={m.path} value={m.path} style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
-                  {m.filename}
-                </option>
-              ))}
-            </select>
+            <div style={{
+              flex: 1,
+              background: isWhiteTheme ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--border-muted)',
+              borderRadius: '6px',
+              padding: '4px 6px',
+              color: 'var(--primary)',
+              fontSize: '10px',
+              fontWeight: 700,
+              fontFamily: 'monospace',
+            }}>
+              [Cloud API] {apiModel || 'Gemini'}
+            </div>
           </div>
+        ) : (
+          models.length > 0 && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              width: '100%',
+              marginBottom: '2px',
+            }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, flexShrink: 0 }}>
+                AI 모델:
+              </span>
+              <select
+                value={settings.modelPath}
+                onChange={e => onUpdateSettings({ modelPath: e.target.value })}
+                style={{
+                  flex: 1,
+                  background: isWhiteTheme ? 'var(--bg-card)' : 'rgba(0,0,0,0.2)',
+                  border: '1px solid var(--border-muted)',
+                  borderRadius: '6px',
+                  padding: '4px 6px',
+                  color: 'var(--text-main)',
+                  fontSize: '10px',
+                  outline: 'none',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                }}
+              >
+                {models.map(m => (
+                  <option key={m.path} value={m.path} style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
+                    {m.filename}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )
         )}
 
         {/* 선택 텍스트 연동 알림 뱃지 */}
@@ -2434,14 +2697,14 @@ export function AIPanel({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '4px',
-                  background: 'rgba(139, 92, 246, 0.16)',
-                  color: '#c084fc',
+                  background: isWhiteTheme ? 'rgba(109, 40, 217, 0.08)' : 'rgba(139, 92, 246, 0.16)',
+                  color: isWhiteTheme ? '#6d28d9' : '#c084fc',
                   fontSize: '9.5px',
                   fontWeight: 700,
                   padding: '2px 6px',
                   borderRadius: '4px',
                   cursor: 'pointer',
-                  border: '1px solid rgba(139, 92, 246, 0.25)',
+                  border: isWhiteTheme ? '1px solid rgba(109, 40, 217, 0.2)' : '1px solid rgba(139, 92, 246, 0.25)',
                   transition: 'background 0.2s',
                   userSelect: 'none',
                 }}
@@ -2459,6 +2722,72 @@ export function AIPanel({
                   style={{ cursor: 'pointer', opacity: 0.7 }}
                 />
               </span>
+            ))}
+          </div>
+        )}
+
+        {/* ⏳ 대기열 큐 (Request Queue) UI 목록 */}
+        {pendingQueue.length > 0 && (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '5px',
+            padding: '6px 8px',
+            background: isWhiteTheme ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.02)',
+            border: '1px solid var(--border-muted)',
+            borderRadius: '8px',
+            marginBottom: '6px',
+            maxHeight: '120px',
+            overflowY: 'auto',
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+              <span style={{ fontSize: '9px', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                ⏳ 처리 대기열 ({pendingQueue.length}개)
+              </span>
+              <span style={{ fontSize: '8.5px', color: 'var(--text-muted)' }}>
+                순차적으로 자동 실행됩니다
+              </span>
+            </div>
+            {pendingQueue.map((item, idx) => (
+              <div
+                key={item.id || idx}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  background: isWhiteTheme ? 'var(--bg-card)' : 'rgba(255,255,255,0.03)',
+                  border: '1px solid var(--border-muted)',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                }}
+              >
+                <span style={{
+                  fontSize: '10px',
+                  color: 'var(--text-main)',
+                  textOverflow: 'ellipsis',
+                  overflow: 'hidden',
+                  whiteSpace: 'nowrap',
+                  maxWidth: '85%',
+                }}>
+                  {idx + 1}. {item.userMessage}
+                </span>
+                <button
+                  onClick={() => removeFromQueue?.(item.id)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#f87171',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '2px',
+                    borderRadius: '4px',
+                  }}
+                  title="대기열에서 제거"
+                >
+                  <X size={10} />
+                </button>
+              </div>
             ))}
           </div>
         )}
@@ -2509,7 +2838,9 @@ export function AIPanel({
               }}
               title="중단"
             >
-              <Square size={14} />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
+                <rect x="4" y="4" width="16" height="16" rx="2" />
+              </svg>
             </button>
           ) : (
             <button
