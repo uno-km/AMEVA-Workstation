@@ -1167,9 +1167,13 @@ export function useAI() {
     // 🤖 주식 쿼리 및 HTML 카드 렌더링에 관한 강력 지침 주입
     dynamicSystemPrompt += `\n\n[⚠️ 초강력 절대 지침: Stock Query Tool & HTML Card Rendering]\n` +
       `만약 사용자가 주식 시세나 주가를 물어보고 이를 "본문에 요약/삽입/추가"해 달라고 하는 경우:\n` +
-      `1. 먼저 'query_stock_info' 도구를 호출하여 주가 데이터를 획득하십시오.\n` +
+      `1. 절대 일반 'web_search'를 쓰지 말고, 반드시 'query_stock_info' 도구를 최우선 호출하여 정확한 종목 시세 정보를 획득하십시오.\n` +
       `2. 획득한 주가 데이터(회사명, 주가, 변동액, 변동률, 전일가, 고가, 거래량, 외인비중 등)를 기반으로, 에디터 본문에 삽입될 아름답고 세련된 주식 시세 요약 카드 HTML/CSS 코드를 작성하십시오.\n` +
-      `3. 이 HTML 코드는 반드시 아래와 같은 jupyter HTML 셀 규격으로 [INSERT_SUGGESTION]을 제안하여 본문에 삽입되게 만들어야 합니다. (language는 html이어야 함)\n\n` +
+      `3. 이 HTML 코드는 반드시 아래와 같은 jupyter HTML 셀 규격으로 [INSERT_SUGGESTION]을 제안하여 본문에 삽입되게 만들어야 합니다. (language는 html이어야 함)\n` +
+      `4. 주가 수집과 에디터 삽입([INSERT_SUGGESTION]) 처리가 모두 끝났다면, 최종 마크다운 답변으로 절대 다른 부연 설명을 지어내지 말고 오직 아래의 알림 문장 템플릿만을 유일한 최종 답변으로 출력하여 챗봇창에 보여주십시오. (회사명, 종목코드에 실제 값을 채워넣으십시오)\n\n` +
+      `최종 답변 알림 템플릿 규격:\n` +
+      `✔ **MCP 데이터 연동 완료**\n` +
+      `{회사명}({종목코드})의 실시간 주가 데이터 수집을 성공했습니다. **Stock Query Tool (MCP)**을 통해 최신 시세와 변동률 대시보드 표를 가상 에디터 본문에 즉시 동적으로 생성해 두었습니다!\n\n` +
       `예시 규격 (이 디자인을 그대로 따르되 실제 획득한 수치와 상승/하락 여부에 맞추어 화살표(▲/▼), 색상(상승은 #22c55e/녹색테마 #f0fdf4, 하락은 #ef4444/적색테마 #fef2f2)을 정확히 변경하십시오):\n` +
       `[INSERT_SUGGESTION: afterBlockId=START, type=jupyter]\n` +
       `//# [AMEVA_LANG:html]\n` +
@@ -1248,6 +1252,33 @@ export function useAI() {
         } else {
           agent.unregisterTool('run_python')
           setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+        }
+
+        // 🦾 [Stock-MCP Hard-wire] 실시간 주식 쿼리 MCP 도구를 에이전트에 명시적으로 항상 직접 바인딩
+        try {
+          agent.registerTool({
+            name: "query_stock_info",
+            description: "지정한 회사명(예: 삼성전자, 현대차) 또는 6자리 주식 기호(예: 005930)를 입력받아 실시간 시세, 거래량, 변동액, 외인비중 등 상세 정보를 실시간 쿼리하여 반환합니다.",
+            parameters: {
+              type: "object",
+              properties: {
+                stockCode: { type: "string", description: "회사명 또는 6자리 주식 기호 (예: 삼성전자, 005930)" }
+              },
+              required: ["stockCode"]
+            },
+            execute: async (args) => {
+              // mcp-wasm-gateway HTTP 채널을 통해 동기식 호출
+              const res = await MCPClientManager.callTool('mcp-wasm-gateway', 'query_stock_info', args)
+              return {
+                success: res.success,
+                result: res.result,
+                error: res.error
+              }
+            }
+          })
+          setEngineLogs(prev => prev + `  - [System] 실시간 주식 MCP 툴 (query_stock_info) 명시적 강제 연동 완료.\n`)
+        } catch (stErr) {
+          console.warn('[useAI] 주식 MCP 바인딩 오류:', stErr)
         }
 
         // [FIX-MCP-001] 활성 상태인 외부 MCP 서버들의 도구 동적 주입 및 에이전트 바인딩
