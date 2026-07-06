@@ -480,7 +480,7 @@ function findLlamaCli(): string | null {
   const isDev = !app.isPackaged
   const basePath = isDev
     ? join(app.getAppPath(), 'resources')
-    : join(process.resourcesPath, 'bin')
+    : join(process.resourcesPath, 'resources') // changed 'bin' to 'resources' to match package.json extraResources
 
   const platform = process.platform // 'win32', 'darwin', 'linux'
   

@@ -63,6 +63,13 @@
       "dist",
       "dist-electron"
     ],
+    "extraResources": [
+      {
+        "from": "resources",
+        "to": "resources",
+        "filter": ["**/*"]
+      }
+    ],
     "win": {
       "target": [
         "nsis"
