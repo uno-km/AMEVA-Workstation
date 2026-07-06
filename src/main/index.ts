@@ -153,6 +153,30 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+
+  // 🤖 [Background Warmup] 앱 기동 시 로컬 LLM 백그라운드 비동기 기동 (웜업)
+  try {
+    const llamaPath = findLlamaCli()
+    let defaultModelPath = 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
+    const fs = require('fs')
+    if (!fs.existsSync(defaultModelPath)) {
+      const llmDir = 'C:\\ameva\\models\\llm'
+      if (fs.existsSync(llmDir)) {
+        try {
+          const files = fs.readdirSync(llmDir)
+          const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
+          if (firstGguf) defaultModelPath = join(llmDir, firstGguf)
+        } catch {}
+      }
+    }
+    if (llamaPath && fs.existsSync(defaultModelPath)) {
+      startLlamaServerWithFallback(llamaPath, defaultModelPath, 4096, true)
+        .then(ok => console.log('Background Warmup Status:', ok))
+        .catch(err => console.error('Background Warmup Failed:', err))
+    }
+  } catch (err) {
+    console.error('Failed to trigger background warmup:', err)
+  }
 })
 
 app.on('window-all-closed', () => {
@@ -507,6 +531,8 @@ let activeServerProcess: any = null
 let activeServerModelPath: string = ''
 let activeServerGpuOnly: boolean = true
 const serverPort = 12345
+// 서버 기동 진행 중 플래그 (경쟁 조건 방지)
+let serverStartingPromise: Promise<boolean> | null = null
 
 function forceCleanupLocalLLMProcesses() {
   try {
@@ -533,6 +559,158 @@ app.on('will-quit', () => {
   // 앱 완전히 꺼지기 직전 모든 MCP 서버 종료 보장
   try { MCPProcessManager.killAll() } catch {}
 })
+
+// ─── 렌더러 터미널 로그 브로드캐스트 헬퍼 ───
+let llamaLogBuffer = ''
+
+function logToRenderer(text: string) {
+  llamaLogBuffer += text
+  if (llamaLogBuffer.length > 200000) {
+    llamaLogBuffer = llamaLogBuffer.slice(-200000)
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('llm:log', { text })
+  }
+  process.stderr.write(text) // 개발 터미널에도 출력
+}
+
+ipcMain.handle('llm:get-logs', () => {
+  return llamaLogBuffer
+})
+
+// ─── [GPU→CPU 자동 폴백] llama-server 기동 헬퍼 ───
+// GPU 가속(-ngl 99) 기동 시 즉사(exit code !== null 즉시)하면 CPU 전용(-ngl 0)으로 재기동
+async function startLlamaServerWithFallback(
+  llamaPath: string,
+  modelPath: string,
+  contextSize: number,
+  gpuFirst: boolean
+): Promise<boolean> {
+  // 이미 기동 중인 동일 서버가 있으면 재사용
+  if (
+    activeServerProcess &&
+    activeServerModelPath === modelPath &&
+    !serverStartingPromise
+  ) {
+    logToRenderer(`[System] 기존 llama-server 인스턴스 재사용 (모델: ${basename(modelPath)})\n`)
+    return true
+  }
+
+  // 경쟁 조건: 이미 누군가 기동 중이면 그 완료를 기다림
+  if (serverStartingPromise) {
+    logToRenderer('[System] 다른 요청이 서버 기동 중입니다. 대기...\n')
+    return serverStartingPromise
+  }
+
+  const doStart = async (ngl: number, threads: number): Promise<boolean> => {
+    // 기존 서버 종료
+    if (activeServerProcess) {
+      try { activeServerProcess.kill('SIGKILL') } catch {}
+      activeServerProcess = null
+      activeServerModelPath = ''
+    }
+    forceCleanupLocalLLMProcesses()
+
+    const sArgs = [
+      '-m', modelPath,
+      '-c', String(contextSize),
+      '--port', String(serverPort),
+      '--host', '127.0.0.1',
+      '-ngl', String(ngl),
+    ]
+    if (ngl === 0) sArgs.push('-t', String(threads))
+
+    logToRenderer(`[System] llama-server 기동 시도 (ngl=${ngl}, threads=${threads})\n모델: ${basename(modelPath)}\n경로: ${llamaPath}\n`)
+
+    const proc = spawn(llamaPath, sArgs, { cwd: dirname(llamaPath), windowsHide: true })
+    activeServerProcess = proc
+    activeServerModelPath = modelPath
+    activeServerGpuOnly = ngl > 0
+
+    proc.stdout?.on('data', (d: Buffer) => logToRenderer(d.toString()))
+    proc.stderr?.on('data', (d: Buffer) => logToRenderer(d.toString()))
+    proc.on('close', (code) => {
+      if (activeServerProcess === proc) {
+        activeServerProcess = null
+        activeServerModelPath = ''
+        logToRenderer(`[System] llama-server 종료됨 (exit code: ${code})\n`)
+      }
+    })
+
+    // /health 폴링 (1초 간격, 최대 35초)
+    return new Promise<boolean>((resolveReady) => {
+      const startAt = Date.now()
+      const maxWait = 35_000
+      let earlyExit = false
+
+      const onEarlyClose = (code: number | null) => {
+        if (code !== null && code !== 0) {
+          earlyExit = true
+          resolveReady(false)
+        }
+      }
+      proc.once('close', onEarlyClose)
+
+      const poll = () => {
+        if (earlyExit) return
+        if (Date.now() - startAt > maxWait) {
+          logToRenderer('[Error] llama-server 기동 타임아웃 (35초).\n')
+          resolveReady(false)
+          return
+        }
+        const httpM = require('http')
+        const hReq = httpM.request(
+          { hostname: '127.0.0.1', port: serverPort, path: '/health', method: 'GET', timeout: 1000 },
+          (hRes: any) => {
+            let body = ''
+            hRes.on('data', (d: Buffer) => { body += d.toString() })
+            hRes.on('end', () => {
+              try {
+                const j = JSON.parse(body)
+                if (j.status === 'ok') {
+                  logToRenderer(`[System] ✅ llama-server READY! (소요: ${((Date.now()-startAt)/1000).toFixed(1)}초)\n`)
+                  proc.removeListener('close', onEarlyClose)
+                  resolveReady(true)
+                } else if (j.status === 'loading model') {
+                  logToRenderer('[System] 모델 로딩 중...\n')
+                  setTimeout(poll, 1000)
+                } else {
+                  setTimeout(poll, 1000)
+                }
+              } catch {
+                setTimeout(poll, 1000)
+              }
+            })
+          }
+        )
+        hReq.on('error', () => setTimeout(poll, 1000))
+        hReq.on('timeout', () => { hReq.destroy(); setTimeout(poll, 1000) })
+        hReq.end()
+      }
+      setTimeout(poll, 1200)
+    })
+  }
+
+  serverStartingPromise = (async () => {
+    try {
+      if (gpuFirst) {
+        logToRenderer('[System] 1차 기동 시도: GPU 가속 모드 (ngl=99)\n')
+        const gpuOk = await doStart(99, 4)
+        if (gpuOk) return true
+        // GPU 실패 → CPU 폴백
+        logToRenderer('[Warning] ⚠️  GPU 가속 기동 실패! → CPU 전용 모드로 자동 폴백합니다.\n')
+        const cpuOk = await doStart(0, 4)
+        return cpuOk
+      } else {
+        return await doStart(0, 4)
+      }
+    } finally {
+      serverStartingPromise = null
+    }
+  })()
+
+  return serverStartingPromise
+}
 
 // 🤖 [FIX-IPC-003] 토큰 스트리밍 스로틀 전송 헬퍼
 function createTokenSender(event: any, sessionId: string) {
@@ -574,6 +752,71 @@ const isFreeModeRequested =
 
 // 메인 프로세스 측의 실제 플랜 상태 (데모 모드 시 항상 false 강제)
 let isProPlanMemory = !isFreeModeRequested
+
+// 🤖 [llm:check-health] 포트 12345 llama-server 상태 체크 핸들러
+ipcMain.handle('llm:check-health', async () => {
+  // 프로세스가 아예 없으면 즉시 offline
+  if (!activeServerProcess) {
+    return { status: 'offline', running: false }
+  }
+  return new Promise<{ status: string; running: boolean }>((resolve) => {
+    const httpM = require('http')
+    const hReq = httpM.request(
+      { hostname: '127.0.0.1', port: serverPort, path: '/health', method: 'GET', timeout: 1200 },
+      (hRes: any) => {
+        let body = ''
+        hRes.on('data', (d: Buffer) => { body += d.toString() })
+        hRes.on('end', () => {
+          try {
+            const j = JSON.parse(body)
+            resolve({ status: j.status || 'ok', running: true })
+          } catch {
+            resolve({ status: 'ok', running: true })
+          }
+        })
+      }
+    )
+    hReq.on('error', () => resolve({ status: 'offline', running: false }))
+    hReq.on('timeout', () => { hReq.destroy(); resolve({ status: 'offline', running: false }) })
+    hReq.end()
+  })
+})
+
+// 🤖 [llm:restart] 서버 강제 재기동 웜업 핸들러
+ipcMain.handle('llm:restart', async () => {
+  try {
+    const llamaPath = findLlamaCli()
+    if (!llamaPath) return { success: false, error: 'llama.cpp 엔진 경로를 찾을 수 없습니다.' }
+    
+    let modelPath = 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
+    const fs = require('fs')
+    if (!fs.existsSync(modelPath)) {
+      const llmDir = 'C:\\ameva\\models\\llm'
+      if (fs.existsSync(llmDir)) {
+        try {
+          const files = fs.readdirSync(llmDir)
+          const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
+          if (firstGguf) modelPath = join(llmDir, firstGguf)
+        } catch {}
+      }
+    }
+    
+    if (!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf)을 찾을 수 없습니다.' }
+    
+    if (activeServerProcess) {
+      try { activeServerProcess.kill('SIGKILL') } catch {}
+      activeServerProcess = null
+    }
+    serverStartingPromise = null // [FIX] 기존 기동 락 강제 초기화
+    forceCleanupLocalLLMProcesses()
+    
+    logToRenderer('[System] 수동 재구동 요청 수신. llama-server 웜업 재기동...\n')
+    const ok = await startLlamaServerWithFallback(llamaPath, modelPath, 4096, true)
+    return { success: ok, error: ok ? undefined : '재기동 실패 (CPU 폴백 포함)' }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
 
 ipcMain.handle('llm:is-free-mode', () => {
   return isFreeModeRequested
@@ -666,9 +909,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           stream: true
         })
 
-        if (!event.sender.isDestroyed()) {
-          event.sender.send('llm:log', { text: `[System] Ollama API /api/chat 기동 중...\n서버 주소: http://127.0.0.1:11434\n모델: ${targetModel}\n` })
-        }
+        logToRenderer(`[System] Ollama API 연결 시도 중...\n서버 주소: http://127.0.0.1:11434/api/chat\n모델: ${targetModel}\n`)
 
         const reqOptions = {
           hostname: '127.0.0.1',
@@ -684,6 +925,8 @@ ipcMain.handle('llm:generate', async (event, payload: {
         let resolved = false
         const req = http.request(reqOptions, (res: any) => {
           let buffer = ''
+          logToRenderer(`[System] Ollama 연결 성공! 응답 수신 대기 중 (Status: ${res.statusCode})\n`)
+          
           res.on('data', (chunk: Buffer) => {
             const chunkText = chunk.toString()
             const lines = chunkText.split('\n')
@@ -707,6 +950,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
               resolved = true
               ipcMain.off(`llm:abort:${sessionId}`, abortListener)
               tokenSender.flush()
+              logToRenderer(`[System] Ollama 스트리밍 완료 (수신 글자수: ${buffer.length})\n`)
               if (!event.sender.isDestroyed()) {
                 event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
               }
@@ -720,8 +964,8 @@ ipcMain.handle('llm:generate', async (event, payload: {
             resolved = true
             ipcMain.off(`llm:abort:${sessionId}`, abortListener)
             const errorMsg = `Ollama 서버 연결에 실패했습니다. (http://127.0.0.1:11434)\nOllama가 켜져 있는지 확인해주세요. 에러: ${err.message}`
+            logToRenderer(`\n[Fatal Error] Ollama 연결 실패: ${err.message}\n`)
             if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:log', { text: `\n[Fatal Error] Ollama 연결 실패: ${err.message}\n` })
               event.sender.send(`llm:done:${sessionId}`, { success: false, error: errorMsg })
             }
             resolve({ success: false, error: errorMsg })
@@ -733,6 +977,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           req.destroy()
           if (!resolved) {
             resolved = true
+            logToRenderer(`[System] Ollama 요청이 사용자에 의해 중단되었습니다.\n`)
             if (!event.sender.isDestroyed()) {
               event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
             }
@@ -745,6 +990,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         req.end()
 
       } catch (err: any) {
+        logToRenderer(`[Fatal Error] Ollama 처리 예외 발생: ${err.message}\n`)
         resolve({ success: false, error: err.message })
       }
     })
@@ -914,137 +1160,17 @@ ipcMain.handle('llm:generate', async (event, payload: {
     return new Promise<{ success: boolean; error?: string }>(async (resolve) => {
       try {
         const gpuOnlyFlag = payload.gpuOnly !== false
-        const isServerRunning = activeServerProcess && 
-                                activeServerModelPath === modelPath && 
-                                activeServerGpuOnly === gpuOnlyFlag
-        
-        if (!isServerRunning) {
-          // 기존 서버 프로세스가 실행 중이면 종료
-          if (activeServerProcess) {
-            try {
-              activeServerProcess.kill('SIGKILL')
-            } catch {}
-            activeServerProcess = null
-          }
-          // [MEM-CLEANUP] OS 상에 유령으로 남은 다른 llama 프로세스들도 중복 점유 방지를 위해 강제 일괄 살해
-          forceCleanupLocalLLMProcesses()
-          
-          const sArgs = [
-            '-m', modelPath,
-            '-c', String(contextSize),
-            '--port', String(serverPort),
-            '--host', '127.0.0.1',
-            '-ngl', gpuOnlyFlag ? '99' : '0'
-            // 주의: --log-disable 제거 — 서버 로그를 렌더러로 전달하기 위해 로그 활성화 유지
-          ]
-          if (!gpuOnlyFlag) {
-            sArgs.push('-t', '4')
-          }
-          
-          if (mainWindow && !mainWindow.isDestroyed()) {
-            mainWindow.webContents.send('llm:log', { text: `[System] 새 llama-server 프로세스를 백그라운드에 구동합니다...\n모델: ${basename(modelPath)}\nGPU 레이어: ${gpuOnlyFlag ? '99 (GPU 가속)' : '0 (CPU 전용)'}\n` })
-          }
-          
-          const proc = spawn(llamaPath!, sArgs, { cwd: dirname(llamaPath!), windowsHide: true })
-          activeServerProcess = proc
-          activeServerModelPath = modelPath
-          activeServerGpuOnly = gpuOnlyFlag
-          
-          let initError: string | null = null
-          proc.on('error', (err) => {
-            initError = err.message
-          })
-          
-          proc.on('close', (code) => {
-            activeServerProcess = null
-            activeServerModelPath = ''
-          })
 
-          // 서버 stdout/stderr 로그를 렌더러로 실시간 전달 (mainWindow 경유 브로드캐스트로 새로고침/HMR 누수 차단)
-          proc.stdout?.on('data', (data: Buffer) => {
-            const text = data.toString()
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('llm:log', { text })
-            }
-          })
-          proc.stderr?.on('data', (data: Buffer) => {
-            const text = data.toString()
-            if (mainWindow && !mainWindow.isDestroyed()) {
-              mainWindow.webContents.send('llm:log', { text })
-            }
-          })
-          
-          // 서버 기동 대기: /health 엔드포인트 폴링 (1초 간격, 최대 30초)
-          const serverReady = await new Promise<boolean>((resolveReady) => {
-            const startAt = Date.now()
-            const maxWait = 30_000
-            let closed = false
+        // GPU→CPU 자동 폴백 기동 (경쟁 조건 방지 포함)
+        const serverReady = await startLlamaServerWithFallback(llamaPath!, modelPath, contextSize, gpuOnlyFlag)
 
-            proc.once('close', () => { closed = true; resolveReady(false) })
-            proc.once('error', () => { closed = true; resolveReady(false) })
-
-            const poll = () => {
-              if (closed) return
-              if (Date.now() - startAt > maxWait) {
-                if (!event.sender.isDestroyed()) {
-                  event.sender.send('llm:log', { text: '[Error] 서버 기동 시간 초과 (30초). 혼잡한 모델이거나 GPU 메모리를 확인하세요.\n' })
-                }
-                resolveReady(false)
-                return
-              }
-
-              const httpM = require('http')
-              const hReq = httpM.request(
-                { hostname: '127.0.0.1', port: serverPort, path: '/health', method: 'GET', timeout: 800 },
-                (hRes: any) => {
-                  let body = ''
-                  hRes.on('data', (d: Buffer) => { body += d.toString() })
-                  hRes.on('end', () => {
-                    try {
-                      const j = JSON.parse(body)
-                      if (j.status === 'ok' || j.status === 'loading model') {
-                        if (j.status === 'loading model') {
-                          if (!event.sender.isDestroyed()) {
-                            event.sender.send('llm:log', { text: '[System] 모델 로딩 중... 잠시 기다려주세요.\n' })
-                          }
-                          setTimeout(poll, 1000)
-                          return
-                        }
-                        if (!event.sender.isDestroyed()) {
-                          event.sender.send('llm:log', { text: `[System] llama-server 기동 완료! (/health OK, 소요 시간: ${((Date.now() - startAt) / 1000).toFixed(1)}초)\n` })
-                        }
-                        resolveReady(true)
-                      } else {
-                        setTimeout(poll, 1000)
-                      }
-                    } catch {
-                      setTimeout(poll, 1000)
-                    }
-                  })
-                }
-              )
-              hReq.on('error', () => setTimeout(poll, 1000))
-              hReq.on('timeout', () => { hReq.destroy(); setTimeout(poll, 1000) })
-              hReq.end()
-            }
-
-            setTimeout(poll, 800) // 첫 번째 시도는 0.8초 후
-          })
-          
-          if (initError || !serverReady) {
-            const reason = initError || '서버가 준비되지 않았습니다 (타임아웃)'
-            activeServerProcess = null
-            activeServerModelPath = ''
-            if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:log', { text: `\n[Fatal Error] llama-server 기동 실패: ${reason}\n` })
-              event.sender.send(`llm:done:${sessionId}`, { success: false, error: reason })
-            }
-            return resolve({ success: false, error: reason })
-          }
-        } else {
+        if (!serverReady) {
+          const reason = '서버 기동 실패 (GPU/CPU 폴백 모두 실패). 모델 파일과 llama-server 경로를 확인하세요.'
           if (!event.sender.isDestroyed()) {
-            event.sender.send('llm:log', { text: `[System] 이미 백그라운드에 상주 중인 llama-server(모델: ${basename(modelPath)}) 인스턴스를 재사용하여 즉각 추론합니다.\n` })
+            event.sender.send('llm:log', { text: `\n[Fatal Error] ${reason}\n` })
+            event.sender.send(`llm:done:${sessionId}`, { success: false, error: reason })
           }
+          return resolve({ success: false, error: reason })
         }
 
         let resolved = false

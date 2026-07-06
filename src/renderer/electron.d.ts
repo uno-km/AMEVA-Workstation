@@ -60,8 +60,12 @@ export interface IElectronAPI {
   llmAbort: () => void
 
   onLLMToken: (callback: (token: string) => void) => () => void
-  onLLMDone: (callback: (data: { success: boolean; fullText?: string; error?: string }) => void) => () => void
+  onLLMDone: (sessionId: string, callback: (data: { success: boolean; fullText?: string; error?: string }) => void) => () => void
   onLLMLog: (callback: (data: { text: string }) => void) => () => void
+  llmAddLog: (payload: { text: string; prefix?: string }) => void
+  llmGetLogs: () => Promise<string>
+  llmCheckHealth: () => Promise<{ status: 'ok' | 'offline'; running: boolean; error?: string }>
+  llmRestart: () => Promise<{ success: boolean; error?: string }>
 
   llmListModels: () => Promise<LLMModel[]>
   llmGetGpuName: () => Promise<string>

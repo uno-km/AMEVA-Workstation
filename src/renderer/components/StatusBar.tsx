@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Settings, ZoomIn, Info, Check, WrapText, AlertTriangle } from 'lucide-react'
 import type { PeerState } from '../../shared/types'
 import { MCPClientManager } from '../utils/mcpClient' // [FIX-MCP-UI] MCP 도구 페치를 위함
@@ -42,6 +42,19 @@ export function StatusBar({
 }: StatusBarProps) {
   // 🦾 커스텀 툴팁 상태 관리
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
+  const tooltipTimerRef = useRef<any>(null)
+
+  const handleMouseEnter = (id: string) => {
+    if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current)
+    setActiveTooltip(id)
+  }
+
+  const handleMouseLeave = () => {
+    tooltipTimerRef.current = setTimeout(() => {
+      setActiveTooltip(null)
+    }, 250)
+  }
+
   const [mcpTools, setMcpTools] = useState<any[]>([])
   const [isLoadingTools, setIsLoadingTools] = useState(false)
   // 글자 수, 단어 수, 줄 수 계산
@@ -79,8 +92,8 @@ export function StatusBar({
     boxShadow: '0 10px 30px rgba(0,0,0,0.65), inset 0 1px 1px rgba(255,255,255,0.05)',
     borderRadius: '8px',
     padding: '12px 14px',
-    zIndex: 1000,
-    pointerEvents: 'none',
+    zIndex: 9999,
+    pointerEvents: 'auto',
     display: 'flex',
     flexDirection: 'column',
     gap: '6px',
@@ -143,8 +156,8 @@ export function StatusBar({
           height: '20px',
           position: 'relative'
         }}
-        onMouseEnter={() => setActiveTooltip('ai')}
-        onMouseLeave={() => setActiveTooltip(null)}
+        onMouseEnter={() => handleMouseEnter('ai')}
+        onMouseLeave={handleMouseLeave}
       >
         <div
           style={{
@@ -161,7 +174,11 @@ export function StatusBar({
 
         {/* 👑 커스텀 글래스모피즘 AI 툴팁 */}
         {activeTooltip === 'ai' && (
-          <div style={{ ...tooltipStyle, width: '280px', right: 0 }}>
+          <div 
+            style={{ ...tooltipStyle, width: '280px', right: 0 }}
+            onMouseEnter={() => handleMouseEnter('ai')}
+            onMouseLeave={handleMouseLeave}
+          >
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', marginBottom: '4px' }}>
               🤖 AI 에이전트 인스턴스 사양
             </div>
@@ -169,16 +186,61 @@ export function StatusBar({
               <div><strong>구동 방식:</strong> <span style={{ color: 'var(--secondary)' }}>{detail}</span></div>
               <div><strong>접속 주소:</strong> <span style={{ color: 'var(--text-muted)' }}>{portInfo}</span></div>
               <div><strong>사용 모델:</strong> <span style={{ color: 'var(--text-main)' }}>{modelName}</span></div>
-              <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <strong>상태:</strong> 
-                <span style={{ 
-                  color: aiAvailable ? '#34d399' : '#f87171', 
-                  fontSize: '9.5px', fontWeight: 700, 
-                  background: aiAvailable ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
-                  padding: '1px 5px', borderRadius: '3px'
-                }}>
-                  {aiAvailable ? 'ACTIVE' : 'OFFLINE'}
-                </span>
+              <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <strong>상태:</strong> 
+                  <span style={{ 
+                    color: aiAvailable ? '#34d399' : '#f87171', 
+                    fontSize: '9.5px', fontWeight: 700, 
+                    background: aiAvailable ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                    padding: '1px 5px', borderRadius: '3px'
+                  }}>
+                    {aiAvailable ? 'ACTIVE' : 'OFFLINE'}
+                  </span>
+                </div>
+                
+                {/* 🤖 오프라인 시 재구동(Restart) 버튼 노출 */}
+                {!aiAvailable && type !== 'api' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (window.electronAPI?.llmRestart) {
+                        if (window.electronAPI?.llmAddLog) {
+                          window.electronAPI.llmAddLog({ text: '[System] 재구동 요청을 메인 프로세스로 전송합니다...', prefix: 'System' })
+                        }
+                        window.electronAPI.llmRestart().then(res => {
+                          if (window.electronAPI?.llmAddLog) {
+                            window.electronAPI.llmAddLog({ 
+                              text: res.success ? '[System] 수동 재구동(웜업) 완료.' : `[Error] 재구동 실패: ${res.error}`,
+                              prefix: 'System'
+                            })
+                          }
+                        }).catch(err => {
+                          if (window.electronAPI?.llmAddLog) {
+                            window.electronAPI.llmAddLog({ 
+                              text: `[Error] 재구동 프로세스 예외 발생: ${err.message || String(err)}`,
+                              prefix: 'System'
+                            })
+                          }
+                        })
+                      }
+                    }}
+                    style={{
+                      background: 'rgba(239,68,68,0.2)',
+                      border: '1px solid rgba(239,68,68,0.4)',
+                      color: '#f87171',
+                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      fontSize: '9px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '3px'
+                    }}
+                  >
+                    ↻ 서버 재구동
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -208,8 +270,8 @@ export function StatusBar({
           height: '20px',
           position: 'relative'
         }}
-        onMouseEnter={() => setActiveTooltip('mcp')}
-        onMouseLeave={() => setActiveTooltip(null)}
+        onMouseEnter={() => handleMouseEnter('mcp')}
+        onMouseLeave={handleMouseLeave}
       >
         <div
           style={{
@@ -226,7 +288,11 @@ export function StatusBar({
 
         {/* 👑 커스텀 글래스모피즘 MCP 툴팁 (도구 명세 연동형) */}
         {activeTooltip === 'mcp' && (
-          <div style={{ ...tooltipStyle, width: '340px', right: 0 }}>
+          <div 
+            style={{ ...tooltipStyle, width: '340px', right: 0 }}
+            onMouseEnter={() => handleMouseEnter('mcp')}
+            onMouseLeave={handleMouseLeave}
+          >
             <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px', marginBottom: '4px' }}>
               🔌 AMEVA MCP 통합 게이트웨이
             </div>

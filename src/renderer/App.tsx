@@ -951,7 +951,7 @@ export default function App() {
     messages: aiMessages, isGenerating, isAvailable, models,
     settings: aiSettings, generateResponse, abortGeneration,
     clearHistory: clearAIHistory, updateSettings: updateAISettings,
-    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs,
+    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs, setEngineLogs,
     refreshModels, importModel, pendingQueue, removeFromQueue,
   } = useAI()
 
@@ -1103,6 +1103,14 @@ export default function App() {
 
   // 🤖 참조된 블록(라인) 자동 스크롤 및 하이라이트 효과 적용 함수
   const handleScrollToBlock = useCallback((blockId: string) => {
+    if (editor) {
+      try {
+        editor.focus()
+        editor.setTextCursorPosition(blockId, 'end')
+      } catch (err) {
+        console.warn('editor.setTextCursorPosition failed:', err)
+      }
+    }
     const el = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1114,7 +1122,7 @@ export default function App() {
         }, 1500)
       }
     }
-  }, [])
+  }, [editor])
 
   const handleApplySuggestion = useCallback((text: string, mode: 'replace' | 'insert', blockId?: string, isCodeBlock?: boolean, lang?: string) => {
     if (!editor) return
@@ -2829,6 +2837,7 @@ graph TD
               activeTab={activeRightTab}
               installedPlugins={settings.installedPlugins || []}
               engineLogs={engineLogs}
+              setEngineLogs={setEngineLogs}
               showModelHub={showModelHub}
               setShowModelHub={setShowModelHub}
               taggedBlocks={taggedBlocks}

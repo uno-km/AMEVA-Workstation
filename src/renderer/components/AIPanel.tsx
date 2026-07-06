@@ -33,6 +33,7 @@ interface AIPanelProps {
   activeTab?: string
   installedPlugins?: string[]
   engineLogs?: string
+  setEngineLogs?: (val: string | ((prev: string) => string)) => void
   showModelHub?: boolean
   setShowModelHub?: (show: boolean) => void
   refreshModels?: () => Promise<void>
@@ -1393,6 +1394,7 @@ export function AIPanel({
   activeTab = 'ai',
   installedPlugins = [],
   engineLogs = '', // 🤖 실시간 원시 로그 데이터 매핑
+  setEngineLogs,
   showModelHub = false,
   setShowModelHub,
   refreshModels,
@@ -2344,7 +2346,28 @@ export function AIPanel({
           >
             {engineLogs ? (
               <>
-                {engineLogs}
+                {engineLogs.split('\n').map((line, idx) => {
+                  if (idx > 0 && !line.trim()) return null
+                  let color = '#a7f3d0' // 기본 에메랄드
+                  if (line.includes('[mcp]')) {
+                    color = '#f97316' // 주황색
+                  } else if (line.includes('[ReAct]')) {
+                    color = '#fbbf24' // 앰버
+                  } else if (line.includes('[langchain]')) {
+                    color = '#c084fc' // 라벤더
+                  } else if (line.includes('[System]')) {
+                    color = '#38bdf8' // 하늘색
+                  } else if (line.includes('[Warm-up]')) {
+                    color = '#34d399' // 민트
+                  } else if (line.includes('[Fatal Error]') || line.includes('[Error]')) {
+                    color = '#f87171' // 연빨강
+                  }
+                  return (
+                    <div key={idx} style={{ color, minHeight: '1.2em' }}>
+                      {line}
+                    </div>
+                  )
+                })}
                 <div ref={logEndRef} />
               </>
             ) : (

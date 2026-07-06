@@ -217,7 +217,6 @@ export function useAI() {
       setIsAvailable(true)
       return
     }
-    setIsAvailable(true)
 
     // 일반 모델 로드
     window.electronAPI.llmListModels('llm').then(list => {
@@ -246,6 +245,49 @@ export function useAI() {
       }
     }).catch(() => {})
   }, [])
+
+  // API 타입별 실시간 헬스 체크 폴링
+  useEffect(() => {
+    if (!window.electronAPI) return
+    
+    const checkHealth = async () => {
+      const type = settings.apiType || 'local'
+      
+      if (type === 'api') {
+        setIsAvailable(true)
+        return
+      }
+      
+      if (type === 'ollama') {
+        try {
+          const res = await fetch('http://localhost:11434/api/tags', { 
+            method: 'GET', 
+            signal: AbortSignal.timeout(1500) 
+          })
+          setIsAvailable(res.ok)
+        } catch {
+          setIsAvailable(false)
+        }
+        return
+      }
+      
+      // 'local' 또는 'wasm' (내부 우회) 모드는 포트 12345 llama-server 헬스 체크 검사
+      if (window.electronAPI.llmCheckHealth) {
+        try {
+          const res = await window.electronAPI.llmCheckHealth()
+          setIsAvailable(res.status === 'ok' || res.status === 'loading model')
+        } catch {
+          setIsAvailable(false)
+        }
+      } else {
+        setIsAvailable(false)
+      }
+    }
+    
+    checkHealth() // 최초 1회 실행
+    const timer = setInterval(checkHealth, 4000) // 4초마다
+    return () => clearInterval(timer)
+  }, [settings.apiType])
 
   // 모델 목록 갱신 함수 (수동 리스캔)
   const refreshModels = useCallback(async () => {
@@ -577,7 +619,8 @@ export function useAI() {
             proposedText: data.success || (isAbortError && cleanContent.trim()) ? cleanContent : undefined,
           }
         }
-        return next
+        // 완료 시점에는 배열 내의 모든 메시지의 isStreaming 상태를 명시적으로 해제 (강제 동기화)
+        return next.map(m => m.isStreaming ? { ...m, isStreaming: false } : m)
       })
 
       // Reset per-session state
@@ -590,6 +633,15 @@ export function useAI() {
     const unsubLog = window.electronAPI.onLLMLog((data) => {
       setEngineLogs(prev => prev + data.text)
     })
+
+    // [Init] 메인 프로세스의 초기 로그 누락분 가져오기
+    if (window.electronAPI.llmGetLogs) {
+      window.electronAPI.llmGetLogs().then(logs => {
+        if (logs) {
+          setEngineLogs(prev => prev === '' ? logs : logs + prev)
+        }
+      }).catch(err => console.error('Failed to fetch initial LLM logs', err))
+    }
 
     unsubTokenRef.current = unsubToken
     unsubDoneRef.current = unsubDone
@@ -651,6 +703,9 @@ export function useAI() {
 
     setEngineLogs('') // [디버그] 이전 LLM 세션 로그 비우기
     console.log('[useAI] generateResponse 호출됨. 런타임 세팅:', runtimeSettings)
+
+    // 🤖 이전 메시지 중 isStreaming: true가 남아 있으면 일제히 꺼줌 (중복 커서 깜빡임 제거)
+    setMessages(prev => prev.map(m => m.isStreaming ? { ...m, isStreaming: false } : m))
 
     const userMsg: AIMessage = {
       id: `msg_${Date.now()}_user`,
@@ -1323,7 +1378,13 @@ export function useAI() {
 
     if (needsAgent) {
       isAgentRunningRef.current = true
-      setEngineLogs(prev => prev + `\n[System] 에이전트 모드가 감지되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다...\n`)
+      
+      if (window.electronAPI?.llmAddLog) {
+        window.electronAPI.llmAddLog({ text: 'Initializing LangChain ReAct Agent Executor...', prefix: 'langchain' })
+        window.electronAPI.llmAddLog({ text: '에이전트 모드가 활성화되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다.', prefix: 'ReAct' })
+      } else {
+        setEngineLogs(prev => prev + `\n[System] 에이전트 모드가 감지되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다...\n`)
+      }
       
       try {
         const agent = new AgentEngine({
@@ -1344,17 +1405,33 @@ export function useAI() {
         } catch {}
 
         if (enabledPlugins.webSearch) {
-          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (ON)\n`)
+          if (window.electronAPI?.llmAddLog) {
+            window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 웹검색 도구 (ON)', prefix: 'ReAct' })
+          } else {
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (ON)\n`)
+          }
         } else {
           agent.unregisterTool('web_search')
-          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+          if (window.electronAPI?.llmAddLog) {
+            window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 웹검색 도구 (OFF - 마켓플레이스 플러그인 제한)', prefix: 'ReAct' })
+          } else {
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+          }
         }
 
         if (enabledPlugins.pythonConsole) {
-          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (ON)\n`)
+          if (window.electronAPI?.llmAddLog) {
+            window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 파이썬 콘솔 도구 (ON)', prefix: 'ReAct' })
+          } else {
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (ON)\n`)
+          }
         } else {
           agent.unregisterTool('run_python')
-          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+          if (window.electronAPI?.llmAddLog) {
+            window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)', prefix: 'ReAct' })
+          } else {
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+          }
         }
 
         // 🦾 [Stock-MCP Hard-wire] 실시간 주식 쿼리 MCP 도구를 에이전트에 명시적으로 항상 직접 바인딩
@@ -1379,7 +1456,11 @@ export function useAI() {
               }
             }
           })
-          setEngineLogs(prev => prev + `  - [System] 실시간 주식 MCP 툴 (query_stock_info) 명시적 강제 연동 완료.\n`)
+          if (window.electronAPI?.llmAddLog) {
+            window.electronAPI.llmAddLog({ text: '- [System] 실시간 주식 MCP 툴 (query_stock_info) 명시적 강제 연동 완료.', prefix: 'ReAct' })
+          } else {
+            setEngineLogs(prev => prev + `  - [System] 실시간 주식 MCP 툴 (query_stock_info) 명시적 강제 연동 완료.\n`)
+          }
         } catch (stErr) {
           console.warn('[useAI] 주식 MCP 바인딩 오류:', stErr)
         }
@@ -1403,7 +1484,11 @@ export function useAI() {
             })
           }
           if (mcpTools.length > 0) {
-            setEngineLogs(prev => prev + `  - [System] MCP 도구 ${mcpTools.length}개 연동 완료.\n`)
+            if (window.electronAPI?.llmAddLog) {
+              window.electronAPI.llmAddLog({ text: `- [System] MCP 도구 ${mcpTools.length}개 연동 완료.`, prefix: 'ReAct' })
+            } else {
+              setEngineLogs(prev => prev + `  - [System] MCP 도구 ${mcpTools.length}개 연동 완료.\n`)
+            }
           }
         } catch (e: any) {
           console.warn('[useAI] MCP 도구 바인딩 오류:', e)
@@ -1431,7 +1516,11 @@ export function useAI() {
 
         let agentHasPendingDecision = false
         const agentResult = await agent.executeSession(agentQuery, (log) => {
-          setEngineLogs(prev => prev + log)
+          if (window.electronAPI?.llmAddLog) {
+            window.electronAPI.llmAddLog({ text: log, prefix: 'ReAct' })
+          } else {
+            setEngineLogs(prev => prev + log)
+          }
           accumulatedLogs += log
 
           setMessages(prev => prev.map(m => {
@@ -1818,6 +1907,7 @@ export function useAI() {
 
   // 🦾 [SaaS 유료 기능] 큐에서 대기 중인 다음 질문을 꺼내 순차 실행
   const checkAndProcessNextQueue = useCallback(() => {
+    if (isGeneratingRef.current) return
     if (pendingQueueRef.current.length === 0) return
     const nextReq = pendingQueueRef.current.shift()
     setPendingQueue([...pendingQueueRef.current]) // [BUG FIX] 큐에서 대기열 아이템이 제거되었으므로 즉시 UI 상태 반영
@@ -1837,6 +1927,11 @@ export function useAI() {
   }, [generateResponse])
 
   const abortGeneration = useCallback(() => {
+    // [FIX] 강제 중단 시 대기 중인 모든 큐 작업도 초기화하여 연쇄 실행(Race condition) 방지
+    pendingQueueRef.current = []
+    setPendingQueue([])
+    setMessages(prev => prev.filter(m => !m.id.startsWith('msg_queue_')))
+
     if (!window.electronAPI || !isGenerating) return
     const currentSessionId = currentSessionIdRef.current || 'default'
     window.electronAPI.llmAbort(currentSessionId) // [FIX-IPC-001] 세션별 중단 요청 전달

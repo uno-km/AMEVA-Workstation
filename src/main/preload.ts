@@ -85,6 +85,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('llm:log', subscription)
   },
 
+  llmAddLog: (payload: { text: string; prefix?: string }) => ipcRenderer.send('llm:add-log', payload),
+  llmGetLogs: () => ipcRenderer.invoke('llm:get-logs'),
+
+  llmCheckHealth: () => ipcRenderer.invoke('llm:check-health'),
+  llmRestart: () => ipcRenderer.invoke('llm:restart'),
+
   llmListModels: (type?: 'llm' | 'code') => ipcRenderer.invoke('llm:listModels', type),
   llmGetGpuName: () => ipcRenderer.invoke('llm:getGpuName'),
   llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => ipcRenderer.invoke('llm:downloadModel', payload),

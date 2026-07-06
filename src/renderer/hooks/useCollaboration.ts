@@ -150,27 +150,40 @@ export function useCollaboration(
     setCollabActive(prev => !prev)
   }, [serverRunning, useLocalServer])
 
-  // 4. 마우스 포인터 브로드캐스트 (60ms 스로틀 적용으로 렉 차단)
+  // 4. 마우스 포인터 브로드캐스트 (60ms 스로틀 적용으로 렉 차단 + 미세 변화 필터링)
   const lastMouseTimeRef = useRef<number>(0)
+  const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null)
   const pendingMouseRef = useRef<{ x: number; y: number } | null>(null)
   const throttleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
+ 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     const prov = providerRef.current
     if (!prov || !editorContainerRef.current || !isActive) return
-
+ 
     const rect = editorContainerRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top + editorContainerRef.current.scrollTop
-
+ 
+    // 1. 미세 움직임 필터링 (Displacement Filter): 이전 마우스 위치와 비교해 거리가 3px 이하인 경우 드롭
+    if (lastPointerPosRef.current) {
+      const dx = x - lastPointerPosRef.current.x
+      const dy = y - lastPointerPosRef.current.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      if (distance < 3) return // 미세 변화는 무시하여 소켓 송수신 빈도 감소
+    }
+ 
     const now = Date.now()
-    const THROTTLE_LIMIT = 60 // 60ms 스로틀링 (초당 최대 16회 패킷 제한)
-
+    // 2. 적응형 스로틀 가드 (Adaptive Throttle): 동시 접속 중인 피어 수에 따라 스로틀링 범위 동적 스케일링
+    // 피어가 많을수록 패킷 발송 주기를 60ms ~ 150ms 사이로 완충 제어
+    const currentPeersCount = peers.length
+    const THROTTLE_LIMIT = Math.min(150, 60 + currentPeersCount * 2)
+ 
     const sendPointer = (posX: number, posY: number) => {
       prov.awareness.setLocalStateField('pointer', { x: posX, y: posY, username })
       lastMouseTimeRef.current = Date.now()
+      lastPointerPosRef.current = { x: posX, y: posY }
     }
-
+ 
     if (now - lastMouseTimeRef.current >= THROTTLE_LIMIT) {
       if (throttleTimeoutRef.current) {
         clearTimeout(throttleTimeoutRef.current)
@@ -190,7 +203,7 @@ export function useCollaboration(
         }, THROTTLE_LIMIT - (now - lastMouseTimeRef.current))
       }
     }
-  }, [isActive, username])
+  }, [isActive, username, peers.length])
 
   // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
