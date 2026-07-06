@@ -1384,56 +1384,28 @@ export function useAI() {
           let insertSuggestions: InsertSuggestion[] = []
           let cleanContent = finalAnswer
 
-          // 🦾 [Stock-Orchestration] 에이전트 로그 또는 답변에서 주식 쿼리가 활성화된 경우 직접 HTML 카드 및 연동 메시지 가로채기 조립
-          const stockLog = (accumulatedLogs + ' ' + finalAnswer).toLowerCase()
-          const isStockQuery = stockLog.includes('query_stock_info') || 
-                               stockLog.includes('005930') || 
-                               stockLog.includes('005380') || 
-                               stockLog.includes('000660') ||
-                               stockLog.includes('삼성전자') ||
-                               stockLog.includes('하이닉스') ||
-                               stockLog.includes('현대차')
+          // 🦾 [Stock-Orchestration] 에이전트 실행 로그(accumulatedLogs)에서 query_stock_info 실행 결과 JSON을 파싱하여 동적으로 바인딩
+          const stockLog = (accumulatedLogs + ' ' + finalAnswer)
+          
+          // Observation: 뒤에 나오는 JSON 구조 검색
+          const jsonMatch = stockLog.match(/Observation:\s*({[\s\S]*?})/i)
+          let stockData: any = null
 
-          if (isStockQuery) {
-            let stockData = {
-              name: "삼성전자",
-              code: "005930",
-              price: "78,500원",
-              change: "▲900원",
-              pct: "+1.16%",
-              yesterday: "77,600원",
-              high: "78,900원",
-              volume: "14,242,100주",
-              foreign: "56.4%"
-            }
-
-            if (stockLog.includes('현대') || stockLog.includes('005380')) {
-              stockData = {
-                name: "현대자동차",
-                code: "005380",
-                price: "265,000원",
-                change: "▼1,500원",
-                pct: "-0.56%",
-                yesterday: "266,500원",
-                high: "268,000원",
-                volume: "742,100주",
-                foreign: "38.2%"
+          if (jsonMatch) {
+            try {
+              const parsed = JSON.parse(jsonMatch[1].trim())
+              // JSON 데이터에 주식의 핵심 정보(name, price 등)가 들어있는지 유효성 확인
+              if (parsed.name && parsed.price) {
+                stockData = parsed
               }
-            } else if (stockLog.includes('하이닉스') || stockLog.includes('000660')) {
-              stockData = {
-                name: "SK하이닉스",
-                code: "000660",
-                price: "224,000원",
-                change: "▲6,500원",
-                pct: "+2.99%",
-                yesterday: "217,500원",
-                high: "226,000원",
-                volume: "3,211,400주",
-                foreign: "54.1%"
-              }
+            } catch (jsonErr) {
+              console.warn('[useAI] 주식 JSON 파싱 실패:', jsonErr)
             }
+          }
 
-            // 챗봇용 최종 연동 메시지 생성
+          // 만약 정식 JSON 파싱에 성공했다면 동적 바인딩 기동!
+          if (stockData) {
+            // 챗봇용 최종 연동 메시지 생성 (MCP 데이터 실시간 반영)
             cleanContent = `✔ **MCP 데이터 연동 완료**\n${stockData.name}(${stockData.code})의 실시간 주가 데이터 수집을 성공했습니다. **Stock Query Tool (MCP)**을 통해 최신 시세와 변동률 대시보드 표를 가상 에디터 본문에 즉시 동적으로 생성해 두었습니다!`
             proposedText = cleanContent
 
@@ -1450,7 +1422,8 @@ export function useAI() {
               } catch {}
             }
 
-            const isUp = !stockData.change.includes('▼')
+            // 등락 기호(▲ / ▼) 분석하여 상승/하락 테마를 동적으로 스위칭!
+            const isUp = !String(stockData.change || '').includes('▼') && !String(stockData.pct || '').includes('-')
             const themeBg = isUp ? '#f0fdf4' : '#fef2f2'
             const themeBorder = isUp ? '#bbf7d0' : '#fecaca'
             const themeText = isUp ? '#15803d' : '#b91c1c'
