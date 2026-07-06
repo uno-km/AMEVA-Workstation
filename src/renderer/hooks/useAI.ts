@@ -745,16 +745,15 @@ export function useAI() {
     if (unsubDoneRef.current) { unsubDoneRef.current(); unsubDoneRef.current = null }
 
     if (window.electronAPI) {
-      // 🎯 실시간 개별 세션 토큰 리스너 바인딩
-      unsubTokenRef.current = window.electronAPI.onLLMToken(sessId, (token) => {
-        if (sessId !== currentSessionIdRef.current) return // 타 세션 토큰 무시
-        if (isAgentRunningRef.current) return
+      let lastRenderTime = 0
+      let pendingTokenUpdate = false
 
-        rawAccumRef.current += token
-        setStreamingText(prev => prev + token)
+      const updateUIState = (targetSessId: string) => {
+        if (targetSessId !== currentSessionIdRef.current) return
+        const currentAccum = rawAccumRef.current
+        setStreamingText(currentAccum)
 
         if (currentAssistantIdRef.current) {
-          sanitizerRef.current.appendChunk(token)
           const safeText = sanitizerRef.current.getSafeOutput()
           const thinkingText = sanitizerRef.current.getThinkingBuffer()
 
@@ -779,6 +778,30 @@ export function useAI() {
               reasoningTrace: liveTrace,
             }
           }))
+        }
+      }
+
+      // 🎯 실시간 개별 세션 토큰 리스너 바인딩 (60ms 렌더링 스로틀링 탑재로 화면 깜빡임 차단)
+      unsubTokenRef.current = window.electronAPI.onLLMToken(sessId, (token) => {
+        if (sessId !== currentSessionIdRef.current) return // 타 세션 토큰 무시
+        if (isAgentRunningRef.current) return
+
+        rawAccumRef.current += token
+        sanitizerRef.current.appendChunk(token)
+
+        const now = Date.now()
+        if (now - lastRenderTime > 60) {
+          lastRenderTime = now
+          updateUIState(sessId)
+        } else {
+          if (!pendingTokenUpdate) {
+            pendingTokenUpdate = true
+            setTimeout(() => {
+              pendingTokenUpdate = false
+              lastRenderTime = Date.now()
+              updateUIState(sessId)
+            }, 60)
+          }
         }
       })
 
@@ -1010,6 +1033,75 @@ export function useAI() {
           }
           return next
         })
+
+        // 🦾 [Auto-Apply] taggedBlocks 연동 에디터 자동 반영 기전
+        if (data.success && editorRef.current) {
+          try {
+            // 1. EDIT_SUGGESTION 자동 반영
+            if (editMatch) {
+              const targetBlockId = editMatch[1]
+              const targetProposed = editMatch[2].trim()
+              const block = editorRef.current.getBlock(targetBlockId)
+              if (block) {
+                if (block.type === 'jupyter') {
+                  editorRef.current.updateBlock(targetBlockId, {
+                    type: 'jupyter',
+                    props: { ...block.props, code: targetProposed }
+                  })
+                } else {
+                  editorRef.current.updateBlock(targetBlockId, {
+                    content: targetProposed
+                  })
+                }
+                console.log(`[useAI] [Auto-Apply] 블록 ${targetBlockId} 수정안 자동 반영 성공!`)
+              }
+            }
+            // 2. INSERT_SUGGESTION 자동 반영
+            else if (insertSuggestions.length > 0) {
+              insertSuggestions.forEach(s => {
+                if (s.afterBlockId && s.afterBlockId !== 'undefined') {
+                  try {
+                    editorRef.current.insertBlocks(
+                      [{
+                        type: s.blockType === 'heading' ? 'heading' : 'paragraph',
+                        props: s.level ? { level: s.level } : undefined,
+                        content: s.content
+                      }],
+                      s.afterBlockId,
+                      'after'
+                    )
+                    console.log(`[useAI] [Auto-Apply] 블록 ${s.afterBlockId} 뒤에 자동 삽입 성공!`)
+                  } catch (insErr) {
+                    console.warn('[useAI] 자동 삽입 실패:', insErr)
+                  }
+                }
+              })
+            }
+            // 3. 폴백: taggedBlocks가 있고, 일반 쓰기(WRITE)/수정(EDIT) 매칭 시 첫 번째 태그된 블록 자동 수정 또는 교체
+            else if (taggedBlocks && taggedBlocks.length > 0 && (intent === 'EDIT' || intent === 'WRITE')) {
+              const firstBlock = taggedBlocks[0]
+              const block = editorRef.current.getBlock(firstBlock.id)
+              if (block) {
+                const finalClean = sanitizeResult.finalContent
+                  .replace(/^\[(WRITE|EDIT|CHAT|SUMMARY)\]\s*/i, '')
+                  .trim()
+                if (block.type === 'jupyter') {
+                  editorRef.current.updateBlock(firstBlock.id, {
+                    type: 'jupyter',
+                    props: { ...block.props, code: finalClean }
+                  })
+                } else {
+                  editorRef.current.updateBlock(firstBlock.id, {
+                    content: finalClean
+                  })
+                }
+                console.log(`[useAI] [Auto-Apply] 태그된 블록 ${firstBlock.id}에 텍스트 자동 반영 성공!`)
+              }
+            }
+          } catch (autoApplyErr) {
+            console.error('[useAI] Auto-Apply 적용 중 에러:', autoApplyErr)
+          }
+        }
 
         // 세션 리스너 자동 해제
         if (unsubTokenRef.current) { unsubTokenRef.current(); unsubTokenRef.current = null }
