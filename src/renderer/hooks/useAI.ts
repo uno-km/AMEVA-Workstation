@@ -603,34 +603,7 @@ export function useAI() {
       }
     } catch {}
 
-    // 🦾 [무료 플랜] 일일 AI 생성 10회 제한 실구현 가드
-    if (!isPro) {
-      const todayStr = new Date().toISOString().split('T')[0]
-      const lastDate = localStorage.getItem('ai-usage-date')
-      let usageCount = parseInt(localStorage.getItem('ai-daily-usage-count') || '0', 10)
-
-      if (lastDate !== todayStr) {
-        localStorage.setItem('ai-usage-date', todayStr)
-        localStorage.setItem('ai-daily-usage-count', '0')
-        usageCount = 0
-      }
-
-      if (usageCount >= 10) {
-        const limitMessageId = `msg_limit_${Date.now()}`
-        setMessages(prev => [
-          ...prev,
-          {
-            id: limitMessageId,
-            role: 'assistant',
-            content: `❌ **[무료 요금제 한도 도달]** 무료 플랜의 일일 AI 생성 한도(10회)를 모두 소진하셨습니다. 계속 이용하시려면 Pro Plan으로 구독을 업그레이드해주세요.`,
-            timestamp: Date.now()
-          }
-        ])
-        return
-      }
-
-      localStorage.setItem('ai-daily-usage-count', String(usageCount + 1))
-    }
+    // (일일 10회 제한 가드를 finalSettings 결합 시점인 하단으로 이동시킴)
 
     if (isGenerating) {
       // Pro 플랜이고 요청 큐 플러그인이 ON인 경우에만 큐 작동
@@ -712,6 +685,41 @@ export function useAI() {
 
     // 호출 시점 런타임 세팅 최우선 병합
     const finalSettings = { ...settings, ...runtimeSettings }
+
+    // 🦾 [무료 플랜] 일일 AI 생성 10회 제한 및 예외 필터링 실구현 가드
+    if (!isPro) {
+      const isLocalModel = finalSettings.apiType === 'local' || finalSettings.apiType === 'wasm' || finalSettings.apiType === 'ollama'
+      const isPersonalApiKey = finalSettings.apiType === 'api' && !!finalSettings.apiKey && finalSettings.apiKey.trim() !== ''
+
+      // 로컬 모델 연동 혹은 개인 API 키를 사용해 직접 비용을 부담하는 경우는 일일 한도(10회)에서 면제(Bypass)
+      if (!isLocalModel && !isPersonalApiKey) {
+        const todayStr = new Date().toISOString().split('T')[0]
+        const lastDate = localStorage.getItem('ai-usage-date')
+        let usageCount = parseInt(localStorage.getItem('ai-daily-usage-count') || '0', 10)
+
+        if (lastDate !== todayStr) {
+          localStorage.setItem('ai-usage-date', todayStr)
+          localStorage.setItem('ai-daily-usage-count', '0')
+          usageCount = 0
+        }
+
+        if (usageCount >= 10) {
+          const limitMessageId = `msg_limit_${Date.now()}`
+          setMessages(prev => [
+            ...prev,
+            {
+              id: limitMessageId,
+              role: 'assistant',
+              content: `❌ **[무료 요금제 한도 도달]** 무료 플랜의 일일 클라우드 프록시 AI 생성 한도(10회)를 모두 소진하셨습니다. 계속 이용하시려면 개인 API Key를 등록하거나, Ollama/Local GGUF 등의 로컬 모델을 구동하거나, Pro Plan으로 업그레이드해주세요.`,
+              timestamp: Date.now()
+            }
+          ])
+          return
+        }
+
+        localStorage.setItem('ai-daily-usage-count', String(usageCount + 1))
+      }
+    }
 
     // ✅ 빈 content로 시작 — fake initialThought 주입 제거
     const assistantId = `msg_${Date.now()}_assistant`
