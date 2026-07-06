@@ -1045,6 +1045,53 @@ export function useAI() {
         // 🦾 [Auto-Apply] taggedBlocks 연동 에디터 자동 반영 기전
         if (data.success && editorRef.current) {
           try {
+            const finalAnswerText = sanitizeResult.finalContent
+
+            // 수정 제안 파싱
+            const editMatch = finalAnswerText.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
+            
+            // 다중 삽입 제안 파싱
+            let insertSuggestions: any[] = []
+            if (!editMatch) {
+              const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
+              let match;
+              const parsedMatches: any[] = []
+
+              while ((match = tagRegex.exec(finalAnswerText)) !== null) {
+                parsedMatches.push({
+                  tag: match[0],
+                  afterBlockIdRaw: match[1].trim(),
+                  typeRaw: match[2].trim().toLowerCase(),
+                  level: match[3] ? (parseInt(match[3]) as 1 | 2 | 3) : undefined,
+                  startIndex: match.index,
+                  endIndex: tagRegex.lastIndex
+                })
+              }
+
+              if (parsedMatches.length > 0) {
+                for (let i = 0; i < parsedMatches.length; i++) {
+                  const curr = parsedMatches[i]
+                  const nextStart = (i + 1 < parsedMatches.length) ? parsedMatches[i + 1].startIndex : finalAnswerText.length
+                  const insertContent = finalAnswerText.slice(curr.endIndex, nextStart).trim()
+
+                  let afterBlockId = curr.afterBlockIdRaw
+                  if (!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined') {
+                    afterBlockId = 'END'
+                  }
+
+                  const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table', 'jupyter', 'drawing']
+                  const blockType = validTypes.includes(curr.typeRaw) ? curr.typeRaw : 'paragraph'
+
+                  insertSuggestions.push({
+                    afterBlockId,
+                    blockType,
+                    level: curr.level,
+                    content: insertContent
+                  })
+                }
+              }
+            }
+
             // 1. EDIT_SUGGESTION 자동 반영
             if (editMatch) {
               const targetBlockId = editMatch[1]
@@ -1387,19 +1434,19 @@ export function useAI() {
           // 🦾 [Stock-Orchestration] 에이전트 실행 로그(accumulatedLogs)에서 query_stock_info 실행 결과 JSON을 파싱하여 동적으로 바인딩
           const stockLog = (accumulatedLogs + ' ' + finalAnswer)
           
-          // Observation: 뒤에 나오는 JSON 구조 검색
-          const jsonMatch = stockLog.match(/Observation:\s*({[\s\S]*?})/i)
+          // Observation/실행 결과에 독립적으로 가장 먼저 매칭되는 유효한 주식 JSON 객체({ ... }) 검색
           let stockData: any = null
-
-          if (jsonMatch) {
+          const jsonRegex = /({[\s\S]*?})/g
+          let match
+          while ((match = jsonRegex.exec(stockLog)) !== null) {
             try {
-              const parsed = JSON.parse(jsonMatch[1].trim())
-              // JSON 데이터에 주식의 핵심 정보(name, price 등)가 들어있는지 유효성 확인
-              if (parsed.name && parsed.price) {
+              const parsed = JSON.parse(match[1].trim())
+              if (parsed && parsed.name && parsed.price) {
                 stockData = parsed
+                break
               }
-            } catch (jsonErr) {
-              console.warn('[useAI] 주식 JSON 파싱 실패:', jsonErr)
+            } catch (e) {
+              // 유효하지 않은 JSON 스킵 후 다음 객체 계속 검색
             }
           }
 
