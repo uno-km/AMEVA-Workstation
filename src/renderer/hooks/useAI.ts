@@ -1129,6 +1129,17 @@ export function useAI() {
       `- 지침: 사용자가 과거 시점(예: 2025년 트렌드, 2024년 통계 등)을 명시하여 요청할 경우 반드시 사용자가 지정한 연도의 데이터와 맥락에 맞추어 답변하십시오. ` +
       `반면, 구체적인 시점 지정 없이 '요즘', '현재', '최신 트렌드'를 작성해달라고 요청하는 경우에는 반드시 현재 시스템 기준 연도(${sysYear}년)를 기반으로 작성하십시오.`
 
+    // 🤖 본문 문서 내용이 실제로 비어있는 상황(Empty Editor Context)에 대한 가드 지침 추가
+    const isContextEmpty = !context || context.trim() === '' || context.trim() === '[]'
+    if (isContextEmpty) {
+      dynamicSystemPrompt = `[⚠️ 초강력 절대 지침: 빈 에디터 대응 정책]\n` +
+        `현재 에디터 문서의 내용이 완전히 비어 있습니다. 사용자가 "문체 개선", "표현 자연스럽게 수정", "요약" 등을 요청하더라도, ` +
+        `마음대로 가상의 SQLite 쿼리 예시, HTML 샌드박스 예시, JavaScript 코드 예시, Mermaid 다이어그램 등을 멋대로 창작하여 에디터에 꽂으려(INSERT_SUGGESTION/EDIT_SUGGESTION) 하지 마십시오. ` +
+        `수정할 본문 재료가 없는 상태이므로, 사용자에게 "현재 에디터 본문이 비어 있어 수정 또는 개선을 진행할 수 없습니다. ` +
+        `개선하고 싶은 본문 텍스트를 먼저 에디터에 작성해 주시거나, 수정할 문장을 채팅창에 제공해 주세요."라고 친절한 텍스트 안내로만 대응하십시오.\n\n` +
+        dynamicSystemPrompt
+    }
+
     // 🤖 참조된 본문 블록(태그) 컨텍스트 주입
     if (taggedBlocks && taggedBlocks.length > 0) {
       const referencedContent = taggedBlocks.map((b, i) => `[참조 블록 ${i+1}] (ID: ${b.id}): "${b.text}"`).join('\n')

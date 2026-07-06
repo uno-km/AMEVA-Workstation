@@ -1046,7 +1046,7 @@ function MessageBubble({
               </div>
             </div>
           ) : (
-            cleanContent || (msg.isStreaming ? (
+            renderMessageContent(cleanContent, onApplySuggestion) || (msg.isStreaming ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
                 <span style={{ display: 'flex', gap: '3px' }}>
                   <span className="dot-thinking" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)', animation: 'dot-blink 1.4s infinite both' }} />
@@ -3058,3 +3058,169 @@ export function AIPanel({
     </div>
   )
 }
+
+// 🦾 챗봇 답변 내 코드블럭 마크다운 파싱 및 에디터 본문 즉각 삽입/복사 연동 컴포넌트
+interface MessageCodeBlockProps {
+  lang: string
+  code: string
+  onInsert?: (text: string, mode: 'replace' | 'insert') => void
+}
+
+function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps) {
+  const [copied, setCopied] = React.useState(false)
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    } catch {}
+  }
+
+  const handleInsert = () => {
+    if (onInsert) {
+      onInsert(code, 'insert')
+    }
+  }
+
+  return (
+    <div style={{
+      margin: '12px 0',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      border: '1px solid var(--border-muted)',
+      background: '#0d0e12',
+      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+      textAlign: 'left',
+    }}>
+      {/* 코드 헤더 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '6px 12px',
+        background: '#15161e',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+        userSelect: 'none',
+      }}>
+        <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          {lang}
+        </span>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          {/* 복사 버튼 */}
+          <button
+            onClick={handleCopy}
+            style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '4px',
+              padding: '3px 8px',
+              color: '#d1d5db',
+              fontSize: '10px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              transition: 'all 0.15s ease',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
+            }}
+          >
+            {copied ? <span style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center' }}>✓</span> : <span style={{ fontSize: '9px' }}>📋</span>}
+            <span>{copied ? '복사됨' : '복사'}</span>
+          </button>
+          
+          {/* 본문 삽입 버튼 (마켓플레이스 내 도구들처럼 즉각 에디터 삽입 연동) */}
+          {onInsert && (
+            <button
+              onClick={handleInsert}
+              style={{
+                background: 'linear-gradient(135deg, var(--primary), #7c3aed)',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '3px 8px',
+                color: '#fff',
+                fontSize: '10px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                boxShadow: '0 2px 6px var(--primary-glow)',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.filter = 'brightness(1.15)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.filter = 'none'
+              }}
+            >
+              <span style={{ fontSize: '9px' }}>📥</span>
+              <span>본문에 삽입</span>
+            </button>
+          )}
+        </div>
+      </div>
+      
+      {/* 코드 본문 */}
+      <div style={{
+        padding: '12px',
+        overflowX: 'auto',
+        fontSize: '11px',
+        lineHeight: '1.6',
+        color: '#e5e7eb',
+        whiteSpace: 'pre',
+        background: '#0a0b0e',
+      }}>
+        <code>{code}</code>
+      </div>
+    </div>
+  )
+}
+
+function renderMessageContent(content: string, onApplySuggestion?: (text: string, mode: 'replace' | 'insert') => void) {
+  if (!content) return null
+
+  // 마크다운 fenced code block (```) 기준 파싱
+  const parts = content.split('```')
+  return parts.map((part, idx) => {
+    // 짝수 번째 인덱스: 일반 마크다운/텍스트 영역
+    if (idx % 2 === 0) {
+      if (!part) return null
+      return <span key={idx}>{part}</span>
+    }
+
+    // 홀수 번째 인덱스: fenced code block 영역
+    const firstLineEnd = part.indexOf('\n')
+    let lang = 'code'
+    let code = part
+    if (firstLineEnd !== -1) {
+      const maybeLang = part.substring(0, firstLineEnd).trim()
+      if (maybeLang && maybeLang.length < 15 && !maybeLang.includes(' ') && !maybeLang.includes('(')) {
+        lang = maybeLang
+        code = part.substring(firstLineEnd + 1)
+      }
+    }
+
+    // ```` 처럼 꼬인 경우 끝 단 찌꺼기 백틱 제거
+    code = code.replace(/`+$/, '').trim()
+
+    return (
+      <MessageCodeBlock
+        key={idx}
+        lang={lang}
+        code={code}
+        onInsert={onApplySuggestion}
+      />
+    )
+  })
+}
+
