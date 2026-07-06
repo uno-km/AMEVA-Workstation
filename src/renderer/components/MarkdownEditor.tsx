@@ -6,7 +6,7 @@ import { getDefaultReactSlashMenuItems, SuggestionMenuController } from '@blockn
 import '@blocknote/mantine/style.css'
 import type { PeerState } from '../../shared/types'
 import { ImageLightbox } from './ImageLightbox'
-import { Terminal, Code2, Eye, Globe, X } from 'lucide-react'
+import { Terminal, Code2, Eye, Globe, X, Users, FileText, Sparkles } from 'lucide-react'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 
@@ -29,9 +29,11 @@ import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
 import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
+import type { EditorMode } from '../../shared/types'
+
 interface MarkdownEditorProps {
   editor: BlockNoteEditor | null
-  editorMode: 'edit' | 'preview' | 'raw'
+  editorMode: EditorMode
   peers: PeerState[]
   onMouseMove: (e: React.MouseEvent) => void
   onSelectionChange: (selection: { anchorBlockId: string; focusBlockId: string } | null) => void
@@ -44,6 +46,13 @@ interface MarkdownEditorProps {
   theme: 'dark' | 'gray' | 'white' | 'hacker'
   onSelectedTextChange?: (text: string) => void
   installedPlugins?: string[]
+  onOpenFile?: () => void
+  onStartWelcomeEdit?: () => void
+  onStartNewDocument?: () => void
+  taggedBlocks: { id: string; text: string }[]
+  setTaggedBlocks: React.Dispatch<React.SetStateAction<{ id: string; text: string }[]>>
+  tabs?: Array<{ id: string; filePath: string | null; content: string; blocks: any[] }>
+  isProPlan?: boolean
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -418,10 +427,95 @@ export function MarkdownEditor({
   theme,
   onSelectedTextChange,
   installedPlugins = [],
+  onOpenFile,
+  onStartWelcomeEdit,
+  onStartNewDocument,
+  taggedBlocks,
+  setTaggedBlocks,
+  tabs = [],
+  isProPlan = false,
 }: MarkdownEditorProps) {
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [selectedFont, setSelectedFont] = useState('Pretendard')
   const [selectedSize, setSelectedSize] = useState('14px')
+
+  // 🤖 AI 태깅용 마우스 호버 블록 상태 및 추적 핸들러
+  const [hoverBlock, setHoverBlock] = useState<{ id: string; rect: DOMRect; text: string } | null>(null)
+
+  const handleEditorMouseMove = useCallback((e: React.MouseEvent) => {
+    // 부모 마우스 무브 연계 실행
+    onMouseMove(e)
+
+    if (!isProPlan) {
+      if (hoverBlock) setHoverBlock(null)
+      return
+    }
+
+    if (editorMode !== 'edit' || !editor) {
+      setHoverBlock(null)
+      return
+    }
+
+    const container = editorContainerRef.current
+    if (!container) return
+
+    const clientX = e.clientX
+    const clientY = e.clientY
+
+    // 커서 좌표의 요소 구하기
+    const el = document.elementFromPoint(clientX, clientY)
+    if (!el) return
+
+    // 1. 별표 버튼 위에 있거나 근처일 때는 호버 상태 락 유지
+    const isOverSparkle = el.closest('.sparkle-hover-btn')
+    if (isOverSparkle) {
+      return
+    }
+
+    const blockOuter = el.closest('.bn-block-outer') as HTMLElement
+    if (blockOuter) {
+      const blockId = blockOuter.getAttribute('data-id') || blockOuter.querySelector('[data-id]')?.getAttribute('data-id')
+      if (blockId) {
+        try {
+          const targetBlock = editor.getBlock(blockId)
+          if (targetBlock) {
+            const textContent = targetBlock.content
+              ? (targetBlock.content as any).map((c: any) => c.text).join('')
+              : ''
+
+            const rect = blockOuter.getBoundingClientRect()
+            const containerRect = container.getBoundingClientRect()
+
+            setHoverBlock({
+              id: blockId,
+              rect: {
+                top: rect.top - containerRect.top + container.scrollTop,
+                left: rect.left - containerRect.left,
+                width: rect.width,
+                height: rect.height,
+              } as DOMRect,
+              text: textContent.trim() || (targetBlock.type === 'heading' ? '제목 문단' : '본문 문단')
+            })
+            return
+          }
+        } catch {}
+      }
+    }
+
+    // 2. 마우스가 블록 옆 공백으로 나갔으나 Y축 세로 범위 안이면 버튼 노출 락 유지
+    if (hoverBlock) {
+      const blockDom = document.querySelector(`[data-id="${hoverBlock.id}"], [data-block-id="${hoverBlock.id}"]`)
+      if (blockDom) {
+        const outer = blockDom.closest('.bn-block-outer') || blockDom
+        const bRect = outer.getBoundingClientRect()
+        if (clientY >= bRect.top - 8 && clientY <= bRect.bottom + 8) {
+          return
+        }
+      }
+    }
+
+    setHoverBlock(null)
+  }, [editor, editorMode, onMouseMove, editorContainerRef, hoverBlock])
 
   const hasRichStyling = installedPlugins.includes('rich-styling')
 
@@ -669,13 +763,53 @@ export function MarkdownEditor({
       )}
       <div
         ref={editorContainerRef}
-        onMouseMove={onMouseMove}
+        onMouseMove={handleEditorMouseMove}
         onMouseUp={handleSelection}
         onKeyUp={handleSelection}
         className={!wordWrap ? 'wrap-disabled' : ''}
         style={{ flex: 1, overflowY: 'auto', padding: '40px 60px', position: 'relative' }}
       >
         <PeerBlockHighlightLayer peers={peers} containerRef={editorContainerRef} />
+
+        {/* 🤖 컨텍스트 연동 호버 에이전트 별표(✨) 버튼 레이어 */}
+        {hoverBlock && editorMode === 'edit' && (
+          <button
+            className="sparkle-hover-btn"
+            style={{
+              position: 'absolute',
+              top: hoverBlock.rect.top + (hoverBlock.rect.height - 24) / 2,
+              left: hoverBlock.rect.left + hoverBlock.rect.width + 12, // 본문 우측 마진 구역
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%)',
+              border: 'none',
+              boxShadow: '0 2px 8px rgba(139, 92, 246, 0.4)',
+              color: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '12px',
+              cursor: 'pointer',
+              zIndex: 30,
+              padding: 0,
+              transition: 'transform 0.15s',
+            }}
+            title="이 블록을 AI 채팅 컨텍스트로 태그하여 참조"
+            onClick={(e) => {
+              e.stopPropagation()
+              setTaggedBlocks(prev => {
+                if (prev.some(b => b.id === hoverBlock.id)) return prev
+                const snippet = hoverBlock.text.length > 20
+                  ? hoverBlock.text.slice(0, 20) + '...'
+                  : hoverBlock.text || '본문 문단'
+                return [...prev, { id: hoverBlock.id, text: snippet }]
+              })
+            }}
+          >
+            ✨
+          </button>
+        )}
 
         {peers.map((peer) => {
           if (!peer.dragSelection?.rects) return null
@@ -720,7 +854,107 @@ export function MarkdownEditor({
           )
         })}
 
-        {editorMode === 'edit' ? (
+        {editorMode === 'welcome' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* 눈부신 웰컴 오로라 그래디언트 배너 */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(249,115,22,0.12) 100%)',
+              border: '1px solid rgba(139, 92, 246, 0.35)',
+              borderRadius: '16px',
+              padding: '24px 32px',
+              boxShadow: '0 8px 32px rgba(139, 92, 246, 0.08)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+              position: 'relative',
+              overflow: 'hidden',
+            }}>
+              <div style={{ zIndex: 2 }}>
+                <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px 0', background: 'linear-gradient(90deg, #a78bfa, #fdba74)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  🚀 AMEVA Workstation Guide Book
+                </h1>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
+                  아메바 워크스테이션에 오신 것을 환영합니다! 아래는 손실 없이 완전히 렌더링된 공식 안내 백서입니다.<br />
+                  문서를 직접 작성하거나 웰컴 가이드를 편집하려면 아래 버튼 중 하나를 클릭해 편집을 바로 시작하십시오.
+                </p>
+              </div>
+
+              {/* 아름다운 액션 버튼 그룹 */}
+              <div style={{ display: 'flex', gap: '12px', zIndex: 2, flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-primary"
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onClick={onStartWelcomeEdit}
+                >
+                  <Code2 size={14} /> ✍ 가이드 문서 편집하기
+                </button>
+                
+                <button
+                  className="btn btn-glass"
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onClick={onStartNewDocument}
+                >
+                  ➕ 새 문서 작성하기
+                </button>
+
+                <button
+                  className="btn btn-glass"
+                  style={{
+                    padding: '8px 16px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onClick={onOpenFile}
+                >
+                  📂 기존 파일 열기
+                </button>
+              </div>
+            </div>
+
+            {/* 마크다운 원본의 완전 무결 렌더링 뷰포트 */}
+            <div style={{
+              background: 'var(--bg-deep)',
+              border: '1px solid var(--border-muted)',
+              borderRadius: '16px',
+              padding: '24px 36px',
+            }}>
+              <MarkdownPreview markdown={currentContent} editor={editor} />
+            </div>
+          </div>
+        ) : editorMode === 'edit' ? (
           <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
             <SuggestionMenuController
               triggerCharacter="/"
@@ -730,6 +964,67 @@ export function MarkdownEditor({
                   item.title.toLowerCase().includes(query.toLowerCase()) ||
                   (item.aliases?.some(a => a.toLowerCase().includes(query.toLowerCase())))
                 )
+              }}
+            />
+            <SuggestionMenuController
+              triggerCharacter="@"
+              getItems={async (query) => {
+                if (!editor) return []
+                const peerItems = peers.map(p => ({
+                  title: p.name || '알 수 없는 사용자',
+                  subtext: '협업 참가자 멘션',
+                  icon: <Users size={14} color={p.color || '#a855f7'} />,
+                  onItemClick: () => {
+                    editor.insertInlineContent([{ type: 'text', text: `@${p.name} `, styles: { bold: true } }])
+                  }
+                }))
+                const docItems = tabs.map(t => {
+                  const title = t.filePath ? t.filePath.split(/[\\/]/).pop() || '문서' : '제목 없음'
+                  return {
+                    title: title,
+                    subtext: t.filePath ? `문서 경로: ${t.filePath}` : '저장되지 않은 문서',
+                    icon: <FileText size={14} color="#3b82f6" />,
+                    onItemClick: () => {
+                      editor.insertInlineContent([
+                        { 
+                          type: 'text', 
+                          text: `[doc:${title}]`, 
+                          styles: { underline: true } 
+                        }
+                      ])
+                    }
+                  }
+                })
+                const allItems = [...peerItems, ...docItems]
+                return allItems.filter(item => item.title.toLowerCase().includes(query.toLowerCase()))
+              }}
+            />
+            <SuggestionMenuController
+              triggerCharacter="#"
+              getItems={async (query) => {
+                if (!editor) return []
+                const headingBlocks = editor.document.filter(b => b.type === 'heading')
+                const items = headingBlocks.map(b => {
+                  const textContent = b.content && Array.isArray(b.content) 
+                    ? b.content.map((c: any) => c.text).join('') 
+                    : '제목 없음'
+                  const level = b.props?.level || 1
+                  return {
+                    title: textContent,
+                    subtext: `H${level} 헤더 참조 링크`,
+                    icon: <Sparkles size={14} color="#10b981" />,
+                    onItemClick: () => {
+                      editor.insertInlineContent([
+                        {
+                          type: 'text',
+                          text: `[${textContent}](#${b.id})`,
+                          styles: { italic: true }
+                        }
+                      ])
+                    }
+                  }
+                })
+                return items.filter(item => item.title.toLowerCase().includes(query.toLowerCase()))
               }}
             />
           </BlockNoteView>

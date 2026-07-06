@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, session } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell, session, net } from 'electron'
 import { join, dirname, resolve as resolvePath, basename } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
@@ -91,13 +91,13 @@ function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    show: false, // [PERF] 준비될 때까지 윈도우 노출을 보류하여 검은색 플래시 현상 방지
+    show: true, // [PERF] 메모장처럼 즉시 윈도우 프레임을 노출하여 기동 속도 극대화
     backgroundColor: '#090a0f', // [PERF] 다크 테마 기본 배경색 매핑으로 시각적 통일성 부여
     webPreferences: {
       preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
-      webviewTag: false,   // [SEC-W-004] webviewTag 비활성화 — XSS 확장 벡터 차단
+      webviewTag: true,    // [SEC-W-004] webviewTag 활성화 — 외부 유튜브, 네이버 탭 렌더링 지원
       sandbox: true,       // [SEC-W-004] 렌더러 샌드박스 강화
     },
     titleBarStyle: 'hidden',
@@ -108,33 +108,13 @@ function createWindow() {
     },
   })
 
-  // [PERF] 렌더러가 첫 페인팅을 끝마치고 시각적으로 완성되었을 때 단번에 화면에 표출
-  mainWindow.once('ready-to-show', () => {
-    if (mainWindow) {
-      mainWindow.show()
-    }
-  })
-
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
-    // 개발자 도구 자동 열림 활성화
-    mainWindow.webContents.openDevTools()
+    // 개발자 도구 자동 열림 비활성화 (필요 시 개발자 도구 메뉴를 이용해 열 수 있도록 주석 처리)
+    // mainWindow.webContents.openDevTools()
   } else {
     mainWindow.loadFile(join(__dirname, '../dist/index.html'))
   }
-
-  // 렌더러 로딩 완료 시 최초 전달된 파일 로드 전송
-  mainWindow.webContents.on('did-finish-load', async () => {
-    if (fileToOpenOnStartup && mainWindow) {
-      try {
-        const content = await readFile(fileToOpenOnStartup, 'utf-8')
-        mainWindow.webContents.send('file:open-argv', { content, filePath: fileToOpenOnStartup })
-        fileToOpenOnStartup = null
-      } catch (err) {
-        console.error('Failed to read startup file:', err)
-      }
-    }
-  })
 }
 
 app.whenReady().then(() => {
@@ -144,10 +124,25 @@ app.whenReady().then(() => {
       responseHeaders: {
         ...details.responseHeaders,
         'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' ws://localhost:* wss://* http://localhost:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
+          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' ws://localhost:* wss://* http://localhost:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
         ]
       }
     })
+  })
+
+  // 렌더러 로딩 완료 시 최초 전달된 파일 로드 전송
+  // 렌더러가 완전 기동 완료된 후 직접 준비완료 시그널을 보냈을 때 대기 중이던 시작 파일을 전송 (경쟁 상태 100% 해소)
+  ipcMain.handle('app:ready', async () => {
+    if (fileToOpenOnStartup && mainWindow) {
+      try {
+        const content = await readFile(fileToOpenOnStartup, 'utf-8')
+        mainWindow.webContents.send('file:open-argv', { content, filePath: fileToOpenOnStartup })
+        fileToOpenOnStartup = null
+      } catch (err) {
+        console.error('Failed to read startup file:', err)
+      }
+    }
+    return { success: true }
   })
 
   createWindow()
@@ -162,6 +157,14 @@ app.on('window-all-closed', () => {
     activeLLMProcess.kill()
     activeLLMProcess = null
   }
+  // [FIX-W-001] window-all-closed에서도 백그라운드 서버 프로세스(좀비 방지) 종료
+  if (activeServerProcess) {
+    try { activeServerProcess.kill('SIGKILL') } catch {}
+    activeServerProcess = null
+  }
+  // MCP 자식 프로세스들 일괄 격리 종료
+  try { MCPProcessManager.killAll() } catch {}
+
   if (process.platform !== 'darwin') {
     app.quit()
   }
@@ -303,6 +306,33 @@ ipcMain.handle('action:printToPDF', async (_event, htmlContent: string) => {
   if (saveResult.canceled || !saveResult.filePath) return null
   await writeFile(saveResult.filePath, pdfData)
   return saveResult.filePath
+})
+
+// IPC 핸들러 - 웹 실시간 검색 (CORS 우회 통로)
+ipcMain.handle('action:webSearch', async (_event, query: string) => {
+  if (!isProPlanMemory) {
+    return { success: false, error: '무료 요금제에서는 실시간 웹 검색 기능을 사용할 수 없습니다. Pro 요금제로 업그레이드하세요.' }
+  }
+  try {
+    const res = await net.fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    })
+    if (!res.ok) {
+      throw new Error(`DuckDuckGo 응답 오류: ${res.status}`)
+    }
+    const html = await res.text()
+    const matches = html.match(/<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g) || []
+    const snippets = matches
+      .slice(0, 3)
+      .map(m => m.replace(/<[^>]*>/g, '').trim())
+      .join('\n\n')
+
+    return { success: true, result: snippets }
+  } catch (e: any) {
+    return { success: false, error: e.message }
+  }
 })
 
 // 로컈 IP 주소 추출 헬퍼 함수
@@ -480,10 +510,72 @@ app.on('will-quit', () => {
       activeServerProcess.kill('SIGKILL')
     } catch {}
   }
+  // 앱 완전히 꺼지기 직전 모든 MCP 서버 종료 보장
+  try { MCPProcessManager.killAll() } catch {}
+})
+
+// 🤖 [FIX-IPC-003] 토큰 스트리밍 스로틀 전송 헬퍼
+function createTokenSender(event: any, sessionId: string) {
+  let pendingTokens: string[] = []
+  let throttleTimeout: NodeJS.Timeout | null = null
+
+  const flush = () => {
+    if (pendingTokens.length > 0) {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send(`llm:token:${sessionId}`, { token: pendingTokens.join('') })
+      }
+      pendingTokens = []
+    }
+    throttleTimeout = null
+  }
+
+  return {
+    send: (token: string) => {
+      pendingTokens.push(token)
+      if (!throttleTimeout) {
+        throttleTimeout = setTimeout(flush, 30) // 30ms 스로틀 통일
+      }
+    },
+    flush: () => {
+      if (throttleTimeout) {
+        clearTimeout(throttleTimeout)
+      }
+      flush()
+    }
+  }
+}
+
+// [BM-FREE-MODE] 시작 아규먼트 또는 npm config를 통한 --free 존재 여부 확인
+const isFreeModeRequested = 
+  process.argv.includes('--free') || 
+  process.argv.some(arg => arg.includes('free')) ||
+  process.env.FREE_MODE === 'true' ||
+  process.env.npm_config_free === 'true' // npm run dev --free 감지
+
+// 메인 프로세스 측의 실제 플랜 상태 (데모 모드 시 항상 false 강제)
+let isProPlanMemory = !isFreeModeRequested
+
+ipcMain.handle('llm:is-free-mode', () => {
+  return isFreeModeRequested
+})
+
+ipcMain.handle('plan:get-status', () => {
+  if (isFreeModeRequested) return false
+  return isProPlanMemory
+})
+
+ipcMain.handle('plan:set-status', (_event, isPro: boolean) => {
+  if (isFreeModeRequested) {
+    isProPlanMemory = false
+    return { success: false, error: '무료 데모 모드에서는 플랜을 변경할 수 없습니다.' }
+  }
+  isProPlanMemory = isPro
+  return { success: true, isPro: isProPlanMemory }
 })
 
 // 스트리밍 LLM 추론 (토큰 단위 IPC 이벤트 방출)
 ipcMain.handle('llm:generate', async (event, payload: {
+  sessionId: string       // [FIX-IPC-001] 세션 격리 ID 추가
   modelPath: string
   prompt: string
   context?: string
@@ -493,9 +585,14 @@ ipcMain.handle('llm:generate', async (event, payload: {
   contextSize?: number
   apiType?: 'local' | 'api'
   apiKey?: string
+  apiEndpoint?: string   // [FIX-W-003] 클라우드 API 엔드포인트 동적화
+  apiModel?: string      // [FIX-W-003] 클라우드 API 모델명 동적화
   gpuOnly?: boolean
   history?: { role: 'user' | 'assistant'; content: string }[]
 }) => {
+  const sessionId = payload.sessionId || 'default'
+  const tokenSender = createTokenSender(event, sessionId)
+
   // 기존 프로세스 kill
   if (activeLLMProcess) {
     activeLLMProcess.kill()
@@ -520,15 +617,28 @@ ipcMain.handle('llm:generate', async (event, payload: {
     }
   }
 
-  // 🤖 [Ollama 지원] 만약 apiType이 'ollama'라면 즉시 Ollama API 처리로 진입
+  // 🤖 [Ollama 지원] 만약 apiType이 'ollama'라면 즉시 Ollama API 처리로 진입 (멀티턴 히스토리 지원하도록 api/chat으로 변경)
   if (payload.apiType === 'ollama') {
     return new Promise<{ success: boolean; error?: string }>(async (resolve) => {
       try {
         const http = require('http')
+        const targetModel = payload.modelPath ? basename(payload.modelPath, '.gguf') : 'qwen2.5:3b'
+        
+        // [FIX-OLLAMA-001] 멀티턴 대화 히스토리를 반영하기 위해 messages 포맷팅 빌드
+        const messages = []
+        if (payload.systemPrompt) {
+          messages.push({ role: 'system', content: payload.systemPrompt })
+        }
+        if (payload.history && payload.history.length > 0) {
+          for (const h of payload.history) {
+            messages.push({ role: h.role, content: h.content })
+          }
+        }
+        messages.push({ role: 'user', content: payload.prompt })
+
         const postData = JSON.stringify({
-          model: payload.modelPath ? basename(payload.modelPath, '.gguf') : 'qwen2.5:3b',
-          prompt: payload.prompt,
-          system: payload.systemPrompt,
+          model: targetModel,
+          messages: messages,
           options: {
             temperature: payload.temperature ?? 0.7,
             num_predict: payload.maxTokens ?? 512,
@@ -537,13 +647,13 @@ ipcMain.handle('llm:generate', async (event, payload: {
         })
 
         if (!event.sender.isDestroyed()) {
-          event.sender.send('llm:log', { text: `[System] Ollama API 연동 기동 중...\n서버 주소: http://127.0.0.1:11434\n모델: ${payload.modelPath ? basename(payload.modelPath, '.gguf') : 'qwen2.5:3b'}\n` })
+          event.sender.send('llm:log', { text: `[System] Ollama API /api/chat 기동 중...\n서버 주소: http://127.0.0.1:11434\n모델: ${targetModel}\n` })
         }
 
         const reqOptions = {
           hostname: '127.0.0.1',
           port: 11434,
-          path: '/api/generate',
+          path: '/api/chat',
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -562,12 +672,11 @@ ipcMain.handle('llm:generate', async (event, payload: {
               if (!cleaned) continue
               try {
                 const parsed = JSON.parse(cleaned)
-                const token = parsed.response
+                // Ollama /api/chat에서는 parsed.message.content에 토큰이 들어옵니다.
+                const token = parsed.message?.content
                 if (token) {
                   buffer += token
-                  if (!event.sender.isDestroyed()) {
-                    event.sender.send('llm:token', { token })
-                  }
+                  tokenSender.send(token)
                 }
               } catch {}
             }
@@ -576,10 +685,12 @@ ipcMain.handle('llm:generate', async (event, payload: {
           res.on('end', () => {
             if (!resolved) {
               resolved = true
+              ipcMain.off(`llm:abort:${sessionId}`, abortListener)
+              tokenSender.flush()
               if (!event.sender.isDestroyed()) {
-                event.sender.send('llm:done', { success: true, fullText: buffer })
+                event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
               }
-              resolve({ success: true })
+              resolve({ success: true, content: buffer, response: buffer })
             }
           })
         })
@@ -587,27 +698,28 @@ ipcMain.handle('llm:generate', async (event, payload: {
         req.on('error', (err: any) => {
           if (!resolved) {
             resolved = true
+            ipcMain.off(`llm:abort:${sessionId}`, abortListener)
             const errorMsg = `Ollama 서버 연결에 실패했습니다. (http://127.0.0.1:11434)\nOllama가 켜져 있는지 확인해주세요. 에러: ${err.message}`
             if (!event.sender.isDestroyed()) {
               event.sender.send('llm:log', { text: `\n[Fatal Error] Ollama 연결 실패: ${err.message}\n` })
-              event.sender.send('llm:done', { success: false, error: errorMsg })
+              event.sender.send(`llm:done:${sessionId}`, { success: false, error: errorMsg })
             }
             resolve({ success: false, error: errorMsg })
           }
         })
 
-        // 사용자 중단 리스너
+        // 사용자 중단 리스너 (세션 ID 매핑 격리)
         const abortListener = () => {
           req.destroy()
           if (!resolved) {
             resolved = true
             if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:done', { success: false, error: '사용자에 의해 중단됨' })
+              event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
             }
             resolve({ success: false, error: 'Aborted' })
           }
         }
-        ipcMain.once('llm:abort', abortListener)
+        ipcMain.once(`llm:abort:${sessionId}`, abortListener)
 
         req.write(postData)
         req.end()
@@ -649,12 +761,22 @@ ipcMain.handle('llm:generate', async (event, payload: {
   fullPrompt += `<|im_start|>user\n${payload.prompt}<|im_end|>\n<|im_start|>assistant\n`
 
   if (payload.apiType === 'api') {
-    // ── 💡 OpenAI/Claude 호환 클라우드 API 모드 ──
+    // ── 💡 OpenAI 호환 클라우드 API 모드 (엔드포인트/모델 동적화) ──
+    // [FIX-W-003] 하드코딩된 api.openai.com 및 gpt-4o-mini를 동적 페이로드로 교체
     return new Promise<{ success: boolean; error?: string }>(async (resolve) => {
       try {
         const https = require('https')
+        const targetModel = payload.apiModel || 'gpt-4o-mini'
+        const rawEndpoint = payload.apiEndpoint || 'https://api.openai.com/v1/chat/completions'
+        let parsedEndpoint: URL
+        try {
+          parsedEndpoint = new URL(rawEndpoint)
+        } catch {
+          resolve({ success: false, error: `잘못된 API 엔드포인트 URL: ${rawEndpoint}` })
+          return
+        }
         const postData = JSON.stringify({
-          model: 'gpt-4o-mini',
+          model: targetModel,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: payload.prompt }
@@ -665,9 +787,9 @@ ipcMain.handle('llm:generate', async (event, payload: {
         })
 
         const reqOptions = {
-          hostname: 'api.openai.com',
-          port: 443,
-          path: '/v1/chat/completions',
+          hostname: parsedEndpoint.hostname,
+          port: parseInt(parsedEndpoint.port) || 443,
+          path: parsedEndpoint.pathname + (parsedEndpoint.search || ''),
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -691,9 +813,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
                   const token = parsed.choices[0]?.delta?.content
                   if (token) {
                     buffer += token
-                    if (!event.sender.isDestroyed()) {
-                      event.sender.send('llm:token', { token })
-                    }
+                    tokenSender.send(token)
                   }
                 } catch {}
               }
@@ -703,8 +823,10 @@ ipcMain.handle('llm:generate', async (event, payload: {
           res.on('end', () => {
             if (!resolved) {
               resolved = true
+              ipcMain.off(`llm:abort:${sessionId}`, abortListener)
+              tokenSender.flush()
               if (!event.sender.isDestroyed()) {
-                event.sender.send('llm:done', { success: true, fullText: buffer })
+                event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
               }
               resolve({ success: true })
             }
@@ -714,8 +836,9 @@ ipcMain.handle('llm:generate', async (event, payload: {
         req.on('error', (err: any) => {
           if (!resolved) {
             resolved = true
+            ipcMain.off(`llm:abort:${sessionId}`, abortListener)
             if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:done', { success: false, error: err.message })
+              event.sender.send(`llm:done:${sessionId}`, { success: false, error: err.message })
             }
             resolve({ success: false, error: `API 호출 실패: ${err.message}` })
           }
@@ -726,12 +849,12 @@ ipcMain.handle('llm:generate', async (event, payload: {
           if (!resolved) {
             resolved = true
             if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:done', { success: false, error: '사용자에 의해 중단됨' })
+              event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
             }
             resolve({ success: false, error: 'Aborted' })
           }
         }
-        ipcMain.once('llm:abort', abortListener)
+        ipcMain.once(`llm:abort:${sessionId}`, abortListener)
 
         req.write(postData)
         req.end()
@@ -767,15 +890,15 @@ ipcMain.handle('llm:generate', async (event, payload: {
             '-c', String(contextSize),
             '--port', String(serverPort),
             '--host', '127.0.0.1',
-            '--log-disable',
             '-ngl', gpuOnlyFlag ? '99' : '0'
+            // 주의: --log-disable 제거 — 서버 로그를 렌더러로 전달하기 위해 로그 활성화 유지
           ]
           if (!gpuOnlyFlag) {
             sArgs.push('-t', '4')
           }
           
           if (!event.sender.isDestroyed()) {
-            event.sender.send('llm:log', { text: `[System] 새 llama-server 프로세스를 백그라운드에 구동합니다...\n` })
+            event.sender.send('llm:log', { text: `[System] 새 llama-server 프로세스를 백그라운드에 구동합니다...\n모델: ${basename(modelPath)}\nGPU 레이어: ${gpuOnlyFlag ? '99 (GPU 가속)' : '0 (CPU 전용)'}\n` })
           }
           
           const proc = spawn(llamaPath!, sArgs, { windowsHide: true })
@@ -792,22 +915,87 @@ ipcMain.handle('llm:generate', async (event, payload: {
             activeServerProcess = null
             activeServerModelPath = ''
           })
-          
-          // 서버 기동 대기
-          await new Promise(r => {
-            const t = setTimeout(r, 1800)
-            proc.once('close', () => clearTimeout(t))
-            proc.once('error', () => clearTimeout(t))
+
+          // 서버 stdout/stderr 로그를 렌더러로 실시간 전달
+          proc.stdout?.on('data', (data: Buffer) => {
+            const text = data.toString()
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:log', { text })
+            }
+          })
+          proc.stderr?.on('data', (data: Buffer) => {
+            const text = data.toString()
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:log', { text })
+            }
           })
           
-          if (initError) {
+          // 서버 기동 대기: /health 엔드포인트 폴링 (1초 간격, 최대 30초)
+          const serverReady = await new Promise<boolean>((resolveReady) => {
+            const startAt = Date.now()
+            const maxWait = 30_000
+            let closed = false
+
+            proc.once('close', () => { closed = true; resolveReady(false) })
+            proc.once('error', () => { closed = true; resolveReady(false) })
+
+            const poll = () => {
+              if (closed) return
+              if (Date.now() - startAt > maxWait) {
+                if (!event.sender.isDestroyed()) {
+                  event.sender.send('llm:log', { text: '[Error] 서버 기동 시간 초과 (30초). 혼잡한 모델이거나 GPU 메모리를 확인하세요.\n' })
+                }
+                resolveReady(false)
+                return
+              }
+
+              const httpM = require('http')
+              const hReq = httpM.request(
+                { hostname: '127.0.0.1', port: serverPort, path: '/health', method: 'GET', timeout: 800 },
+                (hRes: any) => {
+                  let body = ''
+                  hRes.on('data', (d: Buffer) => { body += d.toString() })
+                  hRes.on('end', () => {
+                    try {
+                      const j = JSON.parse(body)
+                      if (j.status === 'ok' || j.status === 'loading model') {
+                        if (j.status === 'loading model') {
+                          if (!event.sender.isDestroyed()) {
+                            event.sender.send('llm:log', { text: '[System] 모델 로딩 중... 잠시 기다려주세요.\n' })
+                          }
+                          setTimeout(poll, 1000)
+                          return
+                        }
+                        if (!event.sender.isDestroyed()) {
+                          event.sender.send('llm:log', { text: `[System] llama-server 기동 완료! (/health OK, 소요 시간: ${((Date.now() - startAt) / 1000).toFixed(1)}초)\n` })
+                        }
+                        resolveReady(true)
+                      } else {
+                        setTimeout(poll, 1000)
+                      }
+                    } catch {
+                      setTimeout(poll, 1000)
+                    }
+                  })
+                }
+              )
+              hReq.on('error', () => setTimeout(poll, 1000))
+              hReq.on('timeout', () => { hReq.destroy(); setTimeout(poll, 1000) })
+              hReq.end()
+            }
+
+            setTimeout(poll, 800) // 첫 번째 시도는 0.8초 후
+          })
+          
+          if (initError || !serverReady) {
+            const reason = initError || '서버가 준비되지 않았습니다 (타임아웃)'
             activeServerProcess = null
             activeServerModelPath = ''
             if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:log', { text: `\n[Fatal Error] llama-server 스폰 실패: ${initError}\n` })
-              event.sender.send('llm:done', { success: false, error: initError })
+              event.sender.send('llm:log', { text: `\n[Fatal Error] llama-server 기동 실패: ${reason}\n` })
+              event.sender.send('llm:done', { success: false, error: reason })
             }
-            return resolve({ success: false, error: initError })
+            return resolve({ success: false, error: reason })
           }
         } else {
           if (!event.sender.isDestroyed()) {
@@ -854,9 +1042,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
                   const token = parsed.content
                   if (token) {
                     buffer += token
-                    if (!event.sender.isDestroyed()) {
-                      event.sender.send('llm:token', { token })
-                    }
+                    tokenSender.send(token)
                   }
                 } catch {}
               }
@@ -867,10 +1053,12 @@ ipcMain.handle('llm:generate', async (event, payload: {
             cleanUp()
             if (!resolved) {
               resolved = true
+              ipcMain.off(`llm:abort:${sessionId}`, abortListener)
+              tokenSender.flush()
               if (!event.sender.isDestroyed()) {
-                event.sender.send('llm:done', { success: true, fullText: buffer })
+                event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
               }
-              resolve({ success: true })
+              resolve({ success: true, content: buffer, response: buffer })
             }
           })
         })
@@ -879,8 +1067,10 @@ ipcMain.handle('llm:generate', async (event, payload: {
           cleanUp()
           if (!resolved) {
             resolved = true
+            ipcMain.off(`llm:abort:${sessionId}`, abortListener)
+            tokenSender.flush()
             if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:done', { success: false, error: err.message })
+              event.sender.send(`llm:done:${sessionId}`, { success: false, error: err.message })
             }
             resolve({ success: false, error: `llama-server 통신 실패: ${err.message}` })
           }
@@ -893,12 +1083,12 @@ ipcMain.handle('llm:generate', async (event, payload: {
           if (!resolved) {
             resolved = true
             if (!event.sender.isDestroyed()) {
-              event.sender.send('llm:done', { success: false, error: '사용자에 의해 중단됨' })
+              event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
             }
             resolve({ success: false, error: 'Aborted' })
           }
         }
-        ipcMain.once('llm:abort', abortListener)
+        ipcMain.once(`llm:abort:${sessionId}`, abortListener)
 
         req.write(postData)
         req.end()
@@ -954,33 +1144,20 @@ ipcMain.handle('llm:generate', async (event, payload: {
       let buffer = ''
       let resolved = false
 
-      // [SEC-W-011] 50ms 단위로 토큰 배치 전송 — IPC 이벤트 홍수 방지
-      let pendingTokens = ''
-      let flushTimer: ReturnType<typeof setTimeout> | null = null
-
-      const flushPending = () => {
-        if (pendingTokens && !event.sender.isDestroyed()) {
-          event.sender.send('llm:token', { token: pendingTokens })
-          pendingTokens = ''
-        }
-        flushTimer = null
-      }
-
       // [SEC-W-022] abort 리스너를 트래킹하여 에러 경로에서도 확실히 정리
       const abortListener = () => {
-        if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
         proc.kill('SIGKILL')
         activeLLMProcess = null
         if (!resolved) {
           resolved = true
           if (!event.sender.isDestroyed()) {
-            event.sender.send('llm:done', { success: false, error: '사용자에 의해 중단됨' })
+            event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
           }
           resolve({ success: false, error: 'Aborted' })
         }
-        ipcMain.off('llm:abort', abortListener)
+        ipcMain.off(`llm:abort:${sessionId}`, abortListener)
       }
-      ipcMain.once('llm:abort', abortListener)
+      ipcMain.once(`llm:abort:${sessionId}`, abortListener)
 
       const { StringDecoder } = require('string_decoder')
       const stdoutDecoder = new StringDecoder('utf8')
@@ -1025,12 +1202,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           .replace(/(^|\n)>\s*$/, '$1')
 
         if (chunkToSend) {
-          pendingTokens += chunkToSend
-
-          // 이미 타이머가 없으면 50ms 후 일괄 전송
-          if (!flushTimer) {
-            flushTimer = setTimeout(flushPending, 50)
-          }
+          tokenSender.send(chunkToSend)
         }
       })
 
@@ -1043,28 +1215,26 @@ ipcMain.handle('llm:generate', async (event, payload: {
       })
 
       proc.on('close', (code) => {
-        // 남은 토큰 즉시 플러시
-        if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
-        flushPending()
-        ipcMain.off('llm:abort', abortListener)
+        ipcMain.off(`llm:abort:${sessionId}`, abortListener)
         activeLLMProcess = null
+        tokenSender.flush()
         if (!resolved) {
           resolved = true
           if (!event.sender.isDestroyed()) {
-            event.sender.send('llm:done', { success: code === 0, fullText: buffer })
+            event.sender.send(`llm:done:${sessionId}`, { success: code === 0, fullText: buffer })
           }
           resolve({ success: code === 0 || code === null })
         }
       })
 
       proc.on('error', (err) => {
-        if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
-        ipcMain.off('llm:abort', abortListener)
+        ipcMain.off(`llm:abort:${sessionId}`, abortListener)
         activeLLMProcess = null
+        tokenSender.flush()
         if (!resolved) {
           resolved = true
           if (!event.sender.isDestroyed()) {
-            event.sender.send('llm:done', { success: false, error: err.message })
+            event.sender.send(`llm:done:${sessionId}`, { success: false, error: err.message })
             event.sender.send('llm:log', { text: `\n[Error] llama-cli 오류: ${err.message}` })
           }
           resolve({ success: false, error: `llama-cli 실행 오류: ${err.message}\n\n시스템 호환성 또는 GPU 드라이버 설정을 확인해주세요.` })
@@ -1141,6 +1311,29 @@ ipcMain.handle('llm:listModels', async () => {
   } catch {
     return []
   }
+// 외부에서 다운로드한 모델 파일 복사 가져오기
+ipcMain.handle('llm:importModel', async (event, sourcePath: string) => {
+  const llmDir = 'C:\\ameva\\models\\llm'
+  try {
+    const { copyFile, mkdir } = await import('fs/promises')
+    if (!existsSync(sourcePath)) {
+      return { success: false, error: '선택한 파일이 존재하지 않습니다.' }
+    }
+    const filename = basename(sourcePath)
+    if (!filename.endsWith('.gguf')) {
+      return { success: false, error: '보안 정책: .gguf 파일만 추가할 수 있습니다.' }
+    }
+    if (!existsSync(llmDir)) {
+      await mkdir(llmDir, { recursive: true })
+    }
+    const targetPath = join(llmDir, filename)
+    await copyFile(sourcePath, targetPath)
+    return { success: true, path: targetPath }
+  } catch (err: any) {
+    return { success: false, error: `파일 복사 실패: ${err.message}` }
+  }
+})
+
 })
 
 let activeDownloadRequest: any = null
@@ -1233,6 +1426,11 @@ ipcMain.handle('llm:downloadModel', async (event, payload: {
           }
           if (res.statusCode !== 200) {
             fileStream.close()
+            const errText = `다운로드 실패: 서버 응답 코드 오류: ${res.statusCode} (URL: ${targetUrl})`
+            console.error(errText)
+            if (!event.sender.isDestroyed()) {
+              event.sender.send('llm:log', { text: `\n[Error] ${errText}\n` })
+            }
             resolve({ success: false, error: `서버 응답 코드 오류: ${res.statusCode}` })
             return
           }
@@ -1289,6 +1487,11 @@ ipcMain.handle('llm:downloadModel', async (event, payload: {
         req.on('error', (err: any) => {
           fileStream.close()
           activeDownloadRequest = null
+          const errText = `다운로드 통신 오류: ${err.message} (URL: ${payload.url})`
+          console.error(errText)
+          if (!event.sender.isDestroyed()) {
+            event.sender.send('llm:log', { text: `\n[Error] ${errText}\n` })
+          }
           resolve({ success: false, error: err.message })
         })
       }
@@ -1530,3 +1733,151 @@ ipcMain.on('window:close', (event) => {
   const win = getActiveWindow(event)
   if (win) win.close()
 })
+
+// 🤖 동적 Stdio MCP 자식 프로세스 관리 시스템
+class MCPProcessManager {
+  private static processes: Map<string, {
+    process: ChildProcess;
+    stdoutBuffer: string;
+    pendingResolvers: Map<string, (response: any) => void>;
+  }> = new Map()
+
+  static spawnServer(serverId: string, command: string, args: string[]): Promise<{ success: boolean; error?: string }> {
+    return new Promise((resolve) => {
+      // 기존에 띄웠던 동일 서버가 있으면 킬
+      this.killServer(serverId)
+
+      console.log(`[MCP-Manager] Spawning MCP server "${serverId}" with command: ${command} ${args.join(' ')}`)
+
+      try {
+        const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] })
+        const state = {
+          process: proc,
+          stdoutBuffer: '',
+          pendingResolvers: new Map<string, (response: any) => void>()
+        }
+        this.processes.set(serverId, state)
+
+        proc.stdout.on('data', (chunk: Buffer) => {
+          state.stdoutBuffer += chunk.toString()
+          let newlineIndex: number
+          while ((newlineIndex = state.stdoutBuffer.indexOf('\n')) !== -1) {
+            const rawLine = state.stdoutBuffer.slice(0, newlineIndex).trim()
+            state.stdoutBuffer = state.stdoutBuffer.slice(newlineIndex + 1)
+            
+            if (!rawLine) continue
+            try {
+              const parsed = JSON.parse(rawLine)
+              if (parsed.id !== undefined) {
+                const resolver = state.pendingResolvers.get(String(parsed.id))
+                if (resolver) {
+                  resolver(parsed)
+                  state.pendingResolvers.delete(String(parsed.id))
+                }
+              }
+            } catch (err) {
+              console.warn(`[MCP-Manager][${serverId}] JSON 라인 파싱 실패:`, rawLine)
+            }
+          }
+        })
+
+        proc.on('error', (err) => {
+          console.error(`[MCP-Manager][${serverId}] 프로세스 실행 에러:`, err)
+          this.processes.delete(serverId)
+          resolve({ success: false, error: err.message })
+        })
+
+        proc.on('close', (code) => {
+          console.log(`[MCP-Manager][${serverId}] 프로세스 종료 코드: ${code}`)
+          this.processes.delete(serverId)
+        })
+
+        // Node ChildProcess가 생성되면 resolve
+        proc.on('spawn', () => {
+          resolve({ success: true })
+        })
+      } catch (err: any) {
+        resolve({ success: false, error: err.message })
+      }
+    })
+  }
+
+  static callServer(serverId: string, request: any): Promise<any> {
+    return new Promise((resolve) => {
+      const state = this.processes.get(serverId)
+      if (!state || !state.process.stdin || !state.process.stdin.writable) {
+        resolve({
+          jsonrpc: '2.0',
+          id: request.id,
+          error: { code: -32000, message: `MCP Server "${serverId}"가 정상 실행 중이 아니거나 쓰기가 차단되었습니다.` }
+        })
+        return
+      }
+
+      const reqId = String(request.id)
+      state.pendingResolvers.set(reqId, resolve)
+
+      // 15초 제한 시간
+      const timeout = setTimeout(() => {
+        if (state.pendingResolvers.has(reqId)) {
+          state.pendingResolvers.delete(reqId)
+          resolve({
+            jsonrpc: '2.0',
+            id: request.id,
+            error: { code: -32000, message: `MCP 요청 제한시간(15초) 초과` }
+          })
+        }
+      }, 15000)
+
+      try {
+        state.process.stdin.write(JSON.stringify(request) + '\n')
+      } catch (err: any) {
+        clearTimeout(timeout)
+        state.pendingResolvers.delete(reqId)
+        resolve({
+          jsonrpc: '2.0',
+          id: request.id,
+          error: { code: -32000, message: `stdin 쓰기 실패: ${err.message}` }
+        })
+      }
+    })
+  }
+
+  static killServer(serverId: string) {
+    const state = this.processes.get(serverId)
+    if (state) {
+      try {
+        state.process.kill()
+      } catch {}
+      this.processes.delete(serverId)
+    }
+  }
+
+  static killAll() {
+    console.log('[MCP-Manager] 모든 MCP 서버 프로세스 종료 중...')
+    for (const serverId of this.processes.keys()) {
+      this.killServer(serverId)
+    }
+  }
+}
+
+// 🤖 MCP IPC 핸들러 등록
+ipcMain.handle('mcp:spawn', async (_event, serverId: string, command: string, args: string[]) => {
+  if (!isProPlanMemory) {
+    return { success: false, error: '무료 요금제에서는 MCP 서버를 기동할 수 없습니다. Pro 요금제로 업그레이드하세요.' }
+  }
+  return await MCPProcessManager.spawnServer(serverId, command, args)
+})
+
+ipcMain.handle('mcp:call', async (_event, serverId: string, request: any) => {
+  if (!isProPlanMemory) {
+    return { success: false, error: '무료 요금제에서는 MCP 도구를 호출할 수 없습니다. Pro 요금제로 업그레이드하세요.' }
+  }
+  return await MCPProcessManager.callServer(serverId, request)
+})
+
+ipcMain.handle('mcp:kill', async (_event, serverId: string) => {
+  MCPProcessManager.killServer(serverId)
+  return { success: true }
+})
+

@@ -1,8 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react'
 import {
   X, Settings, Sliders, ToggleLeft, ToggleRight, Monitor, Move,
-  Bot, ToyBrick, User, Shield
+  Bot, ToyBrick, User, Shield, Keyboard, Plus, Trash2, ShieldAlert
 } from 'lucide-react'
+import { MCPClientManager } from '../utils/mcpClient' // [FIX-MCP-UI] MCP 설정 연동
+
+export interface HotkeyConfig {
+  save: string
+  open: string
+  newFile: string
+  pdfExport: string
+  toggleAI: string
+  toggleMode: string
+  zoomIn: string
+  zoomOut: string
+  zoomReset: string
+}
 
 export interface AppSettings {
   showPeersPointer: boolean
@@ -15,6 +28,7 @@ export interface AppSettings {
   installedPlugins?: string[]
   securityPreset?: 'paranoiac' | 'turbo' | 'restricted'
   artifactReviewPolicy?: 'always' | 'never' | 'ask'
+  hotkeys?: HotkeyConfig
 }
 
 interface SettingsModalProps {
@@ -28,7 +42,7 @@ interface SettingsModalProps {
   onOpenModelHub?: () => void
 }
 
-type TabType = 'General' | 'Account' | 'Permissions' | 'Appearance' | 'Models' | 'Customizations'
+type TabType = 'General' | 'Account' | 'Permissions' | 'Appearance' | 'Models' | 'Customizations' | 'Hotkeys' | 'MCP'
 
 export function SettingsModal({
   isOpen,
@@ -57,6 +71,171 @@ export function SettingsModal({
   // 4. 모델 탭 스캔 상태
   const [localModels, setLocalModels] = useState<{ name: string; filename: string; path: string; size: number }[]>([])
 
+  // 🦾 Pro Plan 상태 (마켓플레이스 및 MCP 노출을 제어)
+  const [isProPlan, setIsProPlan] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('is-pro-plan') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
+
+  // 📐 모달 크기 조절 상태 (기본 640px x 460px)
+  const [modalSize, setModalSize] = useState({ width: 640, height: 460 })
+  const isResizing = useRef<string | null>(null) // 'e' | 's' | 'se'
+  const resizeStart = useRef({ x: 0, y: 0, width: 640, height: 460 })
+
+  const handleResizeMouseDown = (dir: 'e' | 's' | 'se', e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const startX = e.clientX
+    const startY = e.clientY
+    const startW = modalSize.width
+    const startH = modalSize.height
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const deltaY = moveEvent.clientY - startY
+      let nextW = startW
+      let nextH = startH
+
+      if (dir.includes('e')) {
+        nextW = Math.max(500, startW + deltaX)
+      }
+      if (dir.includes('s')) {
+        nextH = Math.max(380, startH + deltaY)
+      }
+
+      setModalSize({ width: nextW, height: nextH })
+    }
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+  }
+
+  // 🤖 MCP 설정 관리 로컬 상태
+  const [mcpServers, setMcpServers] = useState<any[]>([])
+  const [newMcpName, setNewMcpName] = useState('')
+  const [newMcpType, setNewMcpType] = useState<'stdio' | 'http'>('http')
+  const [newMcpUrl, setNewMcpUrl] = useState('')
+  const [newMcpCmd, setNewMcpCmd] = useState('')
+  const [newMcpArgs, setNewMcpArgs] = useState('')
+  
+  const [mcpTools, setMcpTools] = useState<any[]>([])
+  const [isLoadingTools, setIsLoadingTools] = useState(false)
+  const [expandedTool, setExpandedTool] = useState<string | null>(null)
+
+  const refreshMcpTools = async () => {
+    setIsLoadingTools(true)
+    try {
+      const tools = await MCPClientManager.fetchAllTools()
+      setMcpTools(tools)
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsLoadingTools(false)
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      const configs = MCPClientManager.loadConfigs()
+      setMcpServers(configs)
+      refreshMcpTools()
+      
+      // Pro 플랜 설정 실시간 반영
+      try {
+        setIsProPlan(localStorage.getItem('is-pro-plan') === 'true')
+      } catch {}
+
+      // 시작 시 무료 플래그 상태 체크
+      if (window.electronAPI?.isFreeMode) {
+        window.electronAPI.isFreeMode().then(isFree => {
+          if (isFree) {
+            setIsFreeModeLocked(true)
+            setIsProPlan(false)
+          }
+        })
+      }
+    }
+  }, [isOpen])
+
+  const handleAddMcp = () => {
+    if (!newMcpName.trim()) return alert('서버 이름을 입력해 주세요.')
+    
+    const newServer: any = {
+      id: `mcp-${Date.now()}`,
+      name: newMcpName.trim(),
+      type: newMcpType,
+      enabled: true
+    }
+
+    if (newMcpType === 'http') {
+      if (!newMcpUrl.trim()) return alert('URL을 입력해 주세요.')
+      newServer.url = newMcpUrl.trim()
+    } else {
+      if (!newMcpCmd.trim()) return alert('실행 명령어를 입력해 주세요.')
+      newServer.command = newMcpCmd.trim()
+      newServer.args = newMcpArgs.trim() ? newMcpArgs.split(/\s+/) : []
+    }
+
+    const updated = [...mcpServers, newServer]
+    MCPClientManager.setConfigs(updated)
+    setMcpServers(updated)
+    
+    setNewMcpName('')
+    setNewMcpUrl('')
+    setNewMcpCmd('')
+    setNewMcpArgs('')
+
+    setTimeout(() => refreshMcpTools(), 200)
+  }
+
+  const handleToggleMcp = (id: string) => {
+    const updated = mcpServers.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s)
+    MCPClientManager.setConfigs(updated)
+    setMcpServers(updated)
+    setTimeout(() => refreshMcpTools(), 200)
+  }
+
+  const handleDeleteMcp = async (id: string) => {
+    const updated = mcpServers.filter(s => s.id !== id)
+    if (window.electronAPI) {
+      await window.electronAPI.mcpKill(id)
+    }
+    MCPClientManager.setConfigs(updated)
+    setMcpServers(updated)
+    setTimeout(() => refreshMcpTools(), 200)
+  }
+
+  const handleToggleProPlan = async () => {
+    if (isFreeModeLocked) {
+      alert('⚠️ 무료 모드 데모 플래그(--free)로 실행되어 요금제 강제 전환이 불가능합니다.')
+      return
+    }
+    const nextVal = !isProPlan
+    if (window.electronAPI?.planSetStatus) {
+      const result = await window.electronAPI.planSetStatus(nextVal)
+      if (result && !result.success) {
+        alert(`요금제 변경 실패: ${result.error}`)
+        return
+      }
+    }
+    setIsProPlan(nextVal)
+    localStorage.setItem('is-pro-plan', String(nextVal))
+    // 탭 선택 보정: 유료에서 무료로 전환 시 현재 MCP 탭에 있었다면 General 탭으로 대피시킴
+    if (!nextVal && activeTab === 'MCP') {
+      setActiveTab('General')
+    }
+  }
+
   useEffect(() => {
     if (isOpen && window.electronAPI?.llmListModels) {
       window.electronAPI.llmListModels().then(list => {
@@ -67,18 +246,19 @@ export function SettingsModal({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     const target = e.target as HTMLElement
-    if (target.closest('button') || target.closest('input') || target.closest('select')) return
+    if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('.resize-handle')) return
     setIsDragging(true)
     dragStart.current = { x: e.clientX - pos.x, y: e.clientY - pos.y }
   }
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return
-      setPos({
-        x: e.clientX - dragStart.current.x,
-        y: e.clientY - dragStart.current.y,
-      })
+      if (isDragging) {
+        setPos({
+          x: e.clientX - dragStart.current.x,
+          y: e.clientY - dragStart.current.y,
+        })
+      }
     }
     const handleMouseUp = () => {
       setIsDragging(false)
@@ -124,8 +304,8 @@ export function SettingsModal({
         position: 'fixed',
         left: `${pos.x}px`,
         top: `${pos.y}px`,
-        width: '640px',
-        height: '420px',
+        width: `${modalSize.width}px`,
+        height: `${modalSize.height}px`,
         borderRadius: '12px',
         border: '1px solid var(--border-muted)',
         boxShadow: '0 25px 60px rgba(0,0,0,0.65)',
@@ -156,8 +336,23 @@ export function SettingsModal({
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
           <Settings size={15} />
           <h3 style={{ fontSize: '12.5px', fontWeight: 800, margin: 0, letterSpacing: '0.3px' }}>
-            AMEVA Nexus Preferences
+            AMEVA Workstation Preferences
           </h3>
+          <span style={{
+            fontSize: '8px',
+            fontWeight: 800,
+            padding: '2px 6px',
+            borderRadius: '4px',
+            background: isProPlan ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 255, 255, 0.04)',
+            border: isProPlan ? '1px solid rgba(168, 85, 247, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)',
+            color: isProPlan ? '#a855f7' : 'var(--text-muted)',
+            letterSpacing: '0.5px',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '3px'
+          }}>
+            {isProPlan ? '👑 PRO PLAN' : 'FREE PLAN'}
+          </span>
         </div>
         <button
           onClick={onClose}
@@ -191,6 +386,8 @@ export function SettingsModal({
             { id: 'Appearance', label: 'Appearance', icon: Monitor },
             { id: 'Models', label: 'Models', icon: Bot },
             { id: 'Customizations', label: 'Customizations', icon: ToyBrick },
+            { id: 'Hotkeys', label: 'Hotkeys', icon: Keyboard },
+            ...(isProPlan ? [{ id: 'MCP', label: 'MCP Manager', icon: ToyBrick }] : [])
           ].map(t => {
             const Icon = t.icon
             const isSelected = activeTab === t.id
@@ -277,6 +474,28 @@ export function SettingsModal({
                   </div>
                   <button onClick={() => onUpdateSettings({ showMinimap: !settings.showMinimap })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
                     {settings.showMinimap ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
+                  </button>
+                </div>
+
+                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  background: 'rgba(168, 85, 247, 0.05)',
+                  border: '1px dashed rgba(168, 85, 247, 0.3)',
+                  borderRadius: '8px',
+                  padding: '10px 12px'
+                }}>
+                  <div>
+                    <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--primary)' }}>👑 AMEVA Pro 플랜 활성화</div>
+                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                      유료 기능을 활성화합니다. 마켓플레이스 접근 및 외부 MCP 서버(Stdio/HTTP) 매니저 탭이 개방됩니다.
+                    </div>
+                  </div>
+                  <button onClick={handleToggleProPlan} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
+                    {isProPlan ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
                   </button>
                 </div>
               </div>
@@ -511,6 +730,386 @@ export function SettingsModal({
             </>
           )}
 
+          {/* Hotkeys Tab */}
+          {activeTab === 'Hotkeys' && (() => {
+            const formatHotkeyForUI = (raw: string): string => {
+              if (!raw) return '지정 안 됨'
+              return raw
+                .replace('Control', 'Ctrl')
+                .replace('Shift', 'Shift')
+                .replace('Alt', 'Alt')
+                .replace('Meta', 'Cmd')
+                .split('+')
+                .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+                .join(' + ')
+            }
+
+            const handleRecordHotkey = (key: keyof HotkeyConfig, e: React.KeyboardEvent<HTMLInputElement>) => {
+              e.preventDefault()
+              e.stopPropagation()
+              
+              const activeKeys: string[] = []
+              if (e.ctrlKey || e.metaKey) activeKeys.push('Control')
+              if (e.shiftKey) activeKeys.push('Shift')
+              if (e.altKey) activeKeys.push('Alt')
+              
+              const isModifier = ['control', 'shift', 'alt', 'meta'].includes(e.key.toLowerCase())
+              if (!isModifier) {
+                // 키패드나 특수 키 보정
+                let normalizedKey = e.key
+                if (e.key === ' ') normalizedKey = 'Space'
+                
+                activeKeys.push(normalizedKey)
+                const hotkeyStr = activeKeys.join('+')
+                
+                const currentHotkeys = settings.hotkeys || {
+                  save: 'Control+s',
+                  open: 'Control+o',
+                  newFile: 'Control+n',
+                  pdfExport: 'Control+p',
+                  toggleAI: 'Control+\\',
+                  toggleMode: 'Control+e',
+                  zoomIn: 'Control+=',
+                  zoomOut: 'Control+-',
+                  zoomReset: 'Control+0'
+                }
+                
+                onUpdateSettings({
+                  hotkeys: {
+                    ...currentHotkeys,
+                    [key]: hotkeyStr
+                  }
+                })
+              }
+            }
+
+            const handleResetHotkeys = () => {
+              onUpdateSettings({
+                hotkeys: {
+                  save: 'Control+s',
+                  open: 'Control+o',
+                  newFile: 'Control+n',
+                  pdfExport: 'Control+p',
+                  toggleAI: 'Control+\\',
+                  toggleMode: 'Control+e',
+                  zoomIn: 'Control+=',
+                  zoomOut: 'Control+-',
+                  zoomReset: 'Control+0'
+                }
+              })
+            }
+
+            return (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', margin: '0 0 4px' }}>
+                  <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0 }}>사용자 정의 단축키 설정</h3>
+                  <button
+                    onClick={handleResetHotkeys}
+                    style={{
+                      fontSize: '10px', color: 'var(--primary)', background: 'none',
+                      border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0,
+                    }}
+                  >
+                    기본값 복원 🔄
+                  </button>
+                </div>
+                <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  입력 필드를 클릭하고 원하는 단축키 조합을 키보드로 누르면 자동으로 녹화됩니다.
+                </div>
+                
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                  maxHeight: '260px',
+                  overflowY: 'auto',
+                  paddingRight: '4px'
+                }}>
+                  {[
+                    { key: 'save', label: '문서 저장' },
+                    { key: 'open', label: '문서 열기' },
+                    { key: 'newFile', label: '새 창 / 새 탭 생성' },
+                    { key: 'pdfExport', label: 'PDF 내보내기' },
+                    { key: 'toggleAI', label: 'AI 어시스턴트 토글' },
+                    { key: 'toggleMode', label: '편집 / 미리보기 모드 전환' },
+                    { key: 'zoomIn', label: '화면 확대 (Zoom In)' },
+                    { key: 'zoomOut', label: '화면 축소 (Zoom Out)' },
+                    { key: 'zoomReset', label: '화면 확대/축소 초기화' },
+                  ].map(item => {
+                    const currentHotkeys = settings.hotkeys || {
+                      save: 'Control+s',
+                      open: 'Control+o',
+                      newFile: 'Control+n',
+                      pdfExport: 'Control+p',
+                      toggleAI: 'Control+\\',
+                      toggleMode: 'Control+e',
+                      zoomIn: 'Control+=',
+                      zoomOut: 'Control+-',
+                      zoomReset: 'Control+0'
+                    }
+                    const rawVal = currentHotkeys[item.key as keyof HotkeyConfig] || ''
+                    return (
+                      <div key={item.key} style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '6px 10px',
+                        background: 'var(--bg-glass)',
+                        border: '1px solid var(--border-muted)',
+                        borderRadius: '6px'
+                      }}>
+                        <span style={{ fontSize: '11px', fontWeight: 600 }}>{item.label}</span>
+                        <input
+                          type="text"
+                          readOnly
+                          value={formatHotkeyForUI(rawVal)}
+                          placeholder="보조키 + 일반키"
+                          onKeyDown={(e) => handleRecordHotkey(item.key as keyof HotkeyConfig, e)}
+                          style={{
+                            width: '160px',
+                            padding: '4px 8px',
+                            background: 'rgba(0,0,0,0.2)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '4px',
+                            color: 'var(--primary)',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            textAlign: 'center',
+                            cursor: 'pointer',
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )
+          })()}
+
+          {/* MCP Manager Tab (Pro Plan Only) */}
+          {activeTab === 'MCP' && isProPlan && (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0 }}>MCP Server Manager</h3>
+                <button
+                  onClick={refreshMcpTools}
+                  style={{
+                    fontSize: '10px', color: 'var(--primary)', background: 'none',
+                    border: 'none', cursor: 'pointer', fontWeight: 700, padding: 0
+                  }}
+                >
+                  새로고침 🔄
+                </button>
+              </div>
+              <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                외부 Stdio 자식 프로세스 또는 HTTP API 게이트웨이 기반의 MCP 도구(Tools) 서버를 하드코딩 없이 통합 제어합니다.
+              </div>
+
+              {/* 1. MCP 추가 폼 */}
+              <div style={{
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--border-muted)',
+                borderRadius: '8px',
+                padding: '10px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px',
+                marginBottom: '10px'
+              }}>
+                <strong style={{ fontSize: '10.5px', color: 'var(--primary)' }}>➕ 새 MCP 서버 추가</strong>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="서버 이름 (예: 파일 매니저)"
+                    value={newMcpName}
+                    onChange={e => setNewMcpName(e.target.value)}
+                    style={{
+                      flex: 1, padding: '5px 8px', background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid var(--border-muted)', borderRadius: '4px',
+                      color: 'var(--text-main)', fontSize: '10.5px', outline: 'none'
+                    }}
+                  />
+                  <select
+                    value={newMcpType}
+                    onChange={e => setNewMcpType(e.target.value as any)}
+                    style={{
+                      padding: '4px 8px', background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid var(--border-muted)', borderRadius: '4px',
+                      color: 'var(--text-main)', fontSize: '10.5px', outline: 'none'
+                    }}
+                  >
+                    <option value="http">HTTP Gateway</option>
+                    <option value="stdio">Stdio Process</option>
+                  </select>
+                </div>
+
+                {newMcpType === 'http' ? (
+                  <input
+                    type="text"
+                    placeholder="HTTP 게이트웨이 주소 URL (예: http://127.0.0.1:11553/mcp)"
+                    value={newMcpUrl}
+                    onChange={e => setNewMcpUrl(e.target.value)}
+                    style={{
+                      padding: '5px 8px', background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid var(--border-muted)', borderRadius: '4px',
+                      color: 'var(--text-main)', fontSize: '10.5px', outline: 'none'
+                    }}
+                  />
+                ) : (
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="text"
+                      placeholder="실행 명령어 (예: npx, python)"
+                      value={newMcpCmd}
+                      onChange={e => setNewMcpCmd(e.target.value)}
+                      style={{
+                        flex: 1, padding: '5px 8px', background: 'rgba(0,0,0,0.2)',
+                        border: '1px solid var(--border-muted)', borderRadius: '4px',
+                        color: 'var(--text-main)', fontSize: '10.5px', outline: 'none'
+                      }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="파라미터 (예: -y @modelcontextprotocol/server-postgres)"
+                      value={newMcpArgs}
+                      onChange={e => setNewMcpArgs(e.target.value)}
+                      style={{
+                        flex: 1, padding: '5px 8px', background: 'rgba(0,0,0,0.2)',
+                        border: '1px solid var(--border-muted)', borderRadius: '4px',
+                        color: 'var(--text-main)', fontSize: '10.5px', outline: 'none'
+                      }}
+                    />
+                  </div>
+                )}
+                <button
+                  onClick={handleAddMcp}
+                  style={{
+                    padding: '6px', background: 'var(--primary)', border: 'none',
+                    borderRadius: '4px', color: '#fff', fontSize: '10.5px',
+                    fontWeight: 700, cursor: 'pointer', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center', gap: '4px'
+                  }}
+                >
+                  <Plus size={12} /> 서버 추가 등록
+                </button>
+              </div>
+
+              {/* 2. 등록된 서버 리스트 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto', marginBottom: '10px' }}>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)' }}>⚙️ 활성 서버 인스턴스</span>
+                {mcpServers.length === 0 ? (
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>
+                    등록된 MCP 서버가 없습니다.
+                  </div>
+                ) : (
+                  mcpServers.map(server => (
+                    <div
+                      key={server.id}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                        borderRadius: '6px', padding: '6px 10px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{
+                            width: '6px', height: '6px', borderRadius: '50%',
+                            backgroundColor: server.enabled ? '#10b981' : 'var(--text-muted)'
+                          }} />
+                          <span style={{ fontSize: '11px', fontWeight: 700 }}>{server.name}</span>
+                          <span style={{
+                            fontSize: '8.5px', color: 'var(--primary)',
+                            background: 'rgba(168,85,247,0.1)', padding: '1px 4px', borderRadius: '3px'
+                          }}>
+                            {server.type.toUpperCase()}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '8.5px', color: 'var(--text-muted)' }}>
+                          {server.type === 'http' ? server.url : `${server.command} ${(server.args || []).join(' ')}`}
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <button
+                          onClick={() => handleToggleMcp(server.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
+                        >
+                          {server.enabled ? <ToggleRight size={22} /> : <ToggleLeft size={22} style={{ color: 'var(--text-dark)' }} />}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteMcp(server.id)}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f87171' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* 3. 로드된 실제 도구 아코디언 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-muted)' }}>🛠️ 실시간 제공 도구 목록 ({mcpTools.length}개)</span>
+                {isLoadingTools ? (
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>
+                    MCP 서버들로부터 도구 명세를 가져오는 중... 🔄
+                  </div>
+                ) : mcpTools.length === 0 ? (
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px' }}>
+                    활성화된 서버가 없거나 제공하는 도구가 없습니다.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '150px', overflowY: 'auto' }}>
+                    {mcpTools.map(tool => {
+                      const isExpanded = expandedTool === tool.name
+                      return (
+                        <div
+                          key={tool.name}
+                          style={{
+                            background: 'rgba(255,255,255,0.01)',
+                            border: '1px solid var(--border-muted)',
+                            borderRadius: '4px',
+                            overflow: 'hidden'
+                          }}
+                        >
+                          <div
+                            onClick={() => setExpandedTool(isExpanded ? null : tool.name)}
+                            style={{
+                              padding: '6px 10px', cursor: 'pointer', display: 'flex',
+                              justifyContent: 'space-between', alignItems: 'center',
+                              background: isExpanded ? 'rgba(255,255,255,0.03)' : 'transparent',
+                              fontSize: '10.5px', fontWeight: 600
+                            }}
+                          >
+                            <span style={{ color: 'var(--secondary)' }}>{tool.name}</span>
+                            <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>
+                              {isExpanded ? '접기 🔼' : '펼치기 🔽'}
+                            </span>
+                          </div>
+                          {isExpanded && (
+                            <div style={{
+                              padding: '8px 10px', borderTop: '1px solid var(--border-muted)',
+                              background: 'rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', gap: '4px'
+                            }}>
+                              <div style={{ fontSize: '10px', color: 'var(--text-main)' }}>
+                                {tool.description || '설명 없음'}
+                              </div>
+                              <div style={{ fontSize: '8.5px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                <strong>입력 명세:</strong> {JSON.stringify(tool.inputSchema?.properties || {})}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
         </div>
       </div>
 
@@ -533,6 +1132,38 @@ export function SettingsModal({
           적용 및 저장
         </button>
       </div>
+
+      {/* 📐 리사이즈 핸들 레이어 */}
+      {/* 우측 핸들 */}
+      <div
+        className="resize-handle"
+        onMouseDown={(e) => handleResizeMouseDown('e', e)}
+        style={{
+          position: 'absolute', right: 0, top: 0, width: '6px', height: '100%',
+          cursor: 'ew-resize', zIndex: 100
+        }}
+      />
+      {/* 하단 핸들 */}
+      <div
+        className="resize-handle"
+        onMouseDown={(e) => handleResizeMouseDown('s', e)}
+        style={{
+          position: 'absolute', left: 0, bottom: 0, width: '100%', height: '6px',
+          cursor: 'ns-resize', zIndex: 100
+        }}
+      />
+      {/* 우하단 모서리 (대각선) 핸들 */}
+      <div
+        className="resize-handle"
+        onMouseDown={(e) => handleResizeMouseDown('se', e)}
+        style={{
+          position: 'absolute', right: 0, bottom: 0, width: '12px', height: '12px',
+          cursor: 'nwse-resize', zIndex: 101,
+          background: 'linear-gradient(135deg, transparent 40%, var(--primary) 60%)',
+          opacity: 0.7,
+          borderRadius: '0 0 12px 0'
+        }}
+      />
     </div>
   )
 }

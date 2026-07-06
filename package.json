@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist-electron/index.js",
   "scripts": {
-    "dev": "vite",
+    "dev": "start /B node C:\\ameva\\AMEVA-Workstation-Market-Place\\server.js && vite",
     "dev:host": "vite --host",
     "dev:browser": "vite --mode browser",
     "build": "tsc && vite build && electron-builder",

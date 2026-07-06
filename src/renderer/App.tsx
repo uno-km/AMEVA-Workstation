@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { MarkdownEditor } from './components/MarkdownEditor'
 import { DiffModal } from './components/DiffModal'
-import { SettingsModal, type AppSettings } from './components/SettingsModal'
+import { SettingsModal, type AppSettings, type HotkeyConfig } from './components/SettingsModal'
 import { StatusBar } from './components/StatusBar'
 import { MenuBar } from './components/MenuBar'
 import { AboutModal } from './components/AboutModal'
@@ -11,6 +11,7 @@ import { AIPanel } from './components/AIPanel'
 import { Minimap } from './components/Minimap'
 import { RightTabStrip } from './components/RightTabStrip'
 import { MarketplaceModal } from './components/MarketplaceModal'
+import { PricingModal } from './components/PricingModal'
 import { ExportModal } from './components/ExportModal'
 import type { ExportProgress } from './components/ExportModal'
 import { ResizeHandle } from './components/ResizeHandle'
@@ -22,7 +23,7 @@ import { usePanelResize } from './hooks/usePanelResize'
 import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core'
 import { JupyterBlock } from './components/JupyterBlock'
 import type { EditorMode, ExportFormat, DocumentSnapshot } from '../shared/types'
-import { PanelLeftClose, PanelLeft } from 'lucide-react'
+import { PanelLeftClose, PanelLeft, Sparkles } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import {
   blocksToHTML, exportToWord, exportToExcel,
@@ -34,6 +35,36 @@ import ExcelJS from 'exceljs'
 import { FloatingChat } from './components/FloatingChat'
 import { packMarkdownToADC, unpackADCToMarkdown } from './utils/adcPackager'
 import { DrawingBlock } from './components/DrawingBlock'
+import { FindReplaceBar } from './components/FindReplaceBar'
+
+// ── 키보드 단축키 동적 매칭 헬퍼 함수 ───────────────────────────
+const matchHotkey = (e: KeyboardEvent, hotkeyStr: string) => {
+  if (!hotkeyStr) return false
+  
+  const parts = hotkeyStr.toLowerCase().split('+')
+  const key = parts.pop()
+  
+  const needCtrl = parts.includes('control') || parts.includes('ctrl')
+  const needShift = parts.includes('shift')
+  const needAlt = parts.includes('alt')
+  const needMeta = parts.includes('meta') || parts.includes('cmd')
+  
+  const hasCtrl = e.ctrlKey || e.metaKey
+  const hasShift = e.shiftKey
+  const hasAlt = e.altKey
+  const hasMeta = e.metaKey
+  
+  if (needCtrl && !hasCtrl) return false
+  if (needShift && !hasShift) return false
+  if (needAlt && !hasAlt) return false
+  if (needMeta && !hasMeta) return false
+  
+  // 보조키를 요구하지 않는데 눌려있다면 일치하지 않는 것으로 처리
+  if (!needCtrl && hasCtrl) return false
+  if (!needShift && hasShift) return false
+  
+  return e.key.toLowerCase() === key
+}
 
 const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -171,6 +202,18 @@ function cleanCodeBlocks(blocks: any[]) {
     }
     if (block.children) {
       cleanCodeBlocks(block.children)
+    }
+  })
+}
+
+function ensureBlockIds(blocks: any[]) {
+  const generateId = () => Math.random().toString(36).substring(2, 10)
+  blocks.forEach(block => {
+    if (!block.id) {
+      block.id = generateId()
+    }
+    if (block.children) {
+      ensureBlockIds(block.children)
     }
   })
 }
@@ -514,7 +557,7 @@ export default function App() {
   const [username] = useState(randomUsername)
   const [userColor] = useState(randomColor)
 
-  const [editorMode, setEditorMode] = useState<EditorMode>('edit')
+  const [editorMode, setEditorMode] = useState<EditorMode>('welcome')
   const [filePath, setFilePath] = useState<string | null>(null)
   const [currentContent, setCurrentContent] = useState('')
   const [isChatFloating, setIsChatFloating] = useState(false)
@@ -563,10 +606,114 @@ export default function App() {
 
 
   const [showStatusBar, setShowStatusBar] = useState(true)
+  const [downloadStatus, setDownloadStatus] = useState<any>(null)
+  const [toastMessage, setToastMessage] = useState<string | null>(null)
+
+  // 🔍 찾기 및 바꾸기 (Find & Replace) 제어 상태
+  const [showFindReplace, setShowFindReplace] = useState(false)
+  const [findReplaceMode, setFindReplaceMode] = useState<'find' | 'replace'>('find')
+
+  // 실시간 모델 다운로드 상태 및 토스트 메세지 연동
+  useEffect(() => {
+    if (window.electronAPI?.onLLMDownloadProgress) {
+      const unsub = window.electronAPI.onLLMDownloadProgress((status: any) => {
+        setDownloadStatus(prev => {
+          const filenameOnly = status.filename.split(/[\\/]/).pop()
+          
+          // 다운로드 신규 추가 시
+          if (!prev && status) {
+            setToastMessage(`📥 [다운로드 시작] '${filenameOnly}' 다운로드 작업이 시작되었습니다.`)
+            setTimeout(() => setToastMessage(null), 3500)
+          }
+          
+          // 다운로드 완료 시 (progress 100)
+          if (status.progress === 100 && (!prev || prev.progress < 100)) {
+            setToastMessage(`🎉 [설치 완료] '${filenameOnly}' 모델 설치가 완료되었습니다!`)
+            setTimeout(() => {
+              setToastMessage(null)
+              setDownloadStatus(null)
+            }, 4000)
+          }
+          
+          return status
+        })
+      })
+      return () => unsub()
+    }
+  }, [])
+
   const [showSidebar, setShowSidebar] = useState(true)
   const [showAIPanel, setShowAIPanel] = useState(false)
   const [activeRightTab, setActiveRightTab] = useState<string>('ai')
   const [showMarketplaceModal, setShowMarketplaceModal] = useState(false)
+  const [showPricingModal, setShowPricingModal] = useState(false)
+
+  // 🦾 SaaS Pro Plan 상태 및 시작 인자 기전
+  const [isProPlan, setIsProPlan] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('is-pro-plan') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
+  const [mcpServersState, setMcpServersState] = useState<any[]>([])
+
+  // 초기 시작 시 무료 기전 플래그 체크 및 MCP 리스트 로드
+  useEffect(() => {
+    const initFlagsAndMcp = async () => {
+      if (window.electronAPI?.planGetStatus) {
+        const backendPro = await window.electronAPI.planGetStatus()
+        console.log('[App] 메인 프로세스로부터 로드한 요금제 상태:', backendPro ? '👑 PRO' : 'FREE')
+        localStorage.setItem('is-pro-plan', String(backendPro))
+        setIsProPlan(backendPro)
+      }
+
+      if (window.electronAPI?.isFreeMode) {
+        const isFree = await window.electronAPI.isFreeMode()
+        if (isFree) {
+          console.log('[App] --free 시작 플래그 감지. 무료 모드로 강제 기동합니다.')
+          localStorage.setItem('is-pro-plan', 'false')
+          setIsProPlan(false)
+          setIsFreeModeLocked(true)
+        }
+      }
+      
+      // MCP 설정 불러오기
+      try {
+        const stored = localStorage.getItem('mcp-servers-config')
+        if (stored) {
+          setMcpServersState(JSON.parse(stored))
+        } else {
+          // 기본값 동기화
+          setMcpServersState([
+            {
+              id: 'mcp-wasm-gateway',
+              name: 'AMEVA OS WASM Gateway',
+              type: 'http',
+              url: 'http://127.0.0.1:11553/mcp',
+              enabled: true
+            }
+          ])
+        }
+      } catch (e) {
+        console.error('[App] MCP 로드 오류:', e)
+      }
+    }
+    
+    initFlagsAndMcp()
+  }, [])
+
+  // 환경설정 창 닫히거나 변경되었을 때 실시간 상태 갱신 리로드 헬퍼
+  const refreshMcpServers = () => {
+    try {
+      const stored = localStorage.getItem('mcp-servers-config')
+      if (stored) setMcpServersState(JSON.parse(stored))
+      
+      const proStored = localStorage.getItem('is-pro-plan') === 'true'
+      setIsProPlan(proStored)
+    } catch {}
+  }
   const handleInstallPlugin = async (id: string, scriptUrl: string) => {
     try {
       const existingScript = document.getElementById(`script-plugin-${id}`)
@@ -644,10 +791,28 @@ export default function App() {
       wordWrap: true,
       showMinimap: true,
       installedPlugins: [],
+      hotkeys: {
+        save: 'Control+s',
+        open: 'Control+o',
+        newFile: 'Control+n',
+        pdfExport: 'Control+p',
+        toggleAI: 'Control+\\',
+        toggleMode: 'Control+e',
+        zoomIn: 'Control+=',
+        zoomOut: 'Control+-',
+        zoomReset: 'Control+0'
+      }
     }
     try {
       const stored = localStorage.getItem('app-settings')
-      if (stored) return { ...DEFAULT, ...JSON.parse(stored) }
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed.hotkeys && (parsed.hotkeys.toggleMode === 'Control+h' || parsed.hotkeys.toggleMode === 'Control+v')) {
+          parsed.hotkeys.toggleMode = 'Control+e'
+          localStorage.setItem('app-settings', JSON.stringify(parsed))
+        }
+        return { ...DEFAULT, ...parsed }
+      }
     } catch {}
     return DEFAULT
   })
@@ -775,7 +940,8 @@ export default function App() {
     messages: aiMessages, isGenerating, isAvailable, models,
     settings: aiSettings, generateResponse, abortGeneration,
     clearHistory: clearAIHistory, updateSettings: updateAISettings,
-    updateMessageDiffState, engineLogs,
+    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs,
+    refreshModels, importModel,
   } = useAI()
 
   const { messages: chatMessages, sendMessage: sendChatMessage, clearMessages: clearChatMessages } = useChat(
@@ -805,6 +971,7 @@ export default function App() {
           const normalized = normalizeMarkdown(markdownText)
           const blocks = await editor.tryParseMarkdownToBlocks(normalized)
           cleanCodeBlocks(blocks)
+          ensureBlockIds(blocks)
           editor.replaceBlocks(editor.document, blocks)
           setCurrentContent(markdownText)
         } catch (e) {
@@ -817,6 +984,93 @@ export default function App() {
   // ── AI 에디터 텍스트 연동 및 적용 ─────────────────────────────
   const [selectedText, setSelectedText] = useState('')
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
+
+  // 🤖 AI 컨텍스트 주입용 참조된 블록(라인) 상태 정의
+  const [taggedBlocks, setTaggedBlocks] = useState<{ id: string; text: string }[]>([])
+
+  // 🤖 원본 콘텐츠 보관 상태 (수정 여부(isDirty) 판별 전용)
+  const [originalContent, setOriginalContent] = useState<string>('')
+
+  // 🤖 최근 저장 완료 시각 보관 상태
+  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null)
+
+  // 🤖 에디터에서 별표 버튼 클릭 시 에이전트 패널을 자동으로 기동해주기 위한 커스텀 설정 함수
+  const customSetTaggedBlocks = useCallback((
+    val: React.SetStateAction<{ id: string; text: string }[]>
+  ) => {
+    setTaggedBlocks(prev => {
+      const next = typeof val === 'function' ? val(prev) : val
+      if (next.length > prev.length) {
+        setShowAIPanel(true)
+        setActiveRightTab('ai')
+        setToastMessage('선택한 블록이 AI 어시스턴트에 참조 태그되었습니다.')
+        setTimeout(() => {
+          setToastMessage(prev => prev === '선택한 블록이 AI 어시스턴트에 참조 태그되었습니다.' ? null : prev)
+        }, 3000)
+      }
+      return next
+    })
+  }, [])
+
+  // 🤖 Ctrl+N 입력 시 새 탭을 추가하고 활성화하는 헬퍼
+  const handleNewTab = useCallback(() => {
+    if (!editor) return
+    
+    // 현재 탭의 변경 사항 저장
+    const currentBlocks = [...editor.document]
+    const activeId = activeTabId
+
+    const newTabId = Math.random().toString(36).substring(2, 10)
+    const newTab = {
+      id: newTabId,
+      filePath: null,
+      content: '',
+      blocks: [
+        {
+          id: Math.random().toString(36).substring(2, 10),
+          type: 'paragraph',
+          content: []
+        }
+      ],
+      originalContent: '',
+      lastSavedTime: null
+    }
+
+    setTabs(prev => {
+      const updated = prev.map(t => {
+        if (t.id === activeId) {
+          return { ...t, filePath: filePath, content: currentContent, blocks: currentBlocks, originalContent: originalContent, lastSavedTime: lastSavedTime }
+        }
+        return t
+      })
+      return [...updated, newTab]
+    })
+
+    setActiveTabId(newTabId)
+    setFilePath(null)
+    setCurrentContent('')
+    setOriginalContent('')
+    setLastSavedTime(null)
+    
+    setTimeout(() => {
+      editor.replaceBlocks(editor.document, newTab.blocks)
+    }, 0)
+  }, [editor, activeTabId, filePath, currentContent, originalContent, lastSavedTime])
+
+  // 🤖 참조된 블록(라인) 자동 스크롤 및 하이라이트 효과 적용 함수
+  const handleScrollToBlock = useCallback((blockId: string) => {
+    const el = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      const outer = el.closest('.bn-block-outer') || el
+      if (outer) {
+        outer.setAttribute('data-highlighted-temp', 'true')
+        setTimeout(() => {
+          outer.removeAttribute('data-highlighted-temp')
+        }, 1500)
+      }
+    }
+  }, [])
 
   const handleApplySuggestion = useCallback((text: string, mode: 'replace' | 'insert', blockId?: string) => {
     if (!editor) return
@@ -868,6 +1122,61 @@ export default function App() {
     }
   }, [editor])
 
+  /**
+   * AI 삽입 제안 승인 핸들러
+   * InsertSuggestion의 afterBlockId 위치 다음에 더블 타입 블록을 삽입한다.
+   */
+  const handleApplyInsertSuggestion = useCallback((
+    msgId: string,
+    afterBlockId: string,
+    blockType: string,
+    content: string,
+    level?: number,
+    suggestionIndex?: number
+  ) => {
+    if (!editor) return
+    try {
+      // BlockNote 삽입 페이로드 생성
+      const blockPayload: any = {
+        id: Math.random().toString(36).substring(2, 10),
+        type: blockType === 'heading' ? 'heading'
+          : blockType === 'bulletListItem' ? 'bulletListItem'
+          : blockType === 'numberedListItem' ? 'numberedListItem'
+          : 'paragraph',
+        content: [{ type: 'text', text: content, styles: {} }],
+      }
+      if (blockType === 'heading' && level) {
+        blockPayload.props = { level: Math.min(3, Math.max(1, level)) as 1 | 2 | 3 }
+      }
+
+      const doc = editor.document
+      if (!doc || doc.length === 0) {
+        // 빈 문서: 첫 번째 블록으로 교체
+        editor.replaceBlocks(doc, [blockPayload])
+      } else if (afterBlockId === 'START') {
+        editor.insertBlocks([blockPayload], doc[0], 'before')
+      } else if (afterBlockId === 'END') {
+        editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
+      } else {
+        // 실제 블록 ID 찾기
+        const flatBlocks = (function flatten(blocks: any[]): any[] {
+          return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
+        })(doc)
+        const targetBlock = flatBlocks.find(b => b.id === afterBlockId)
+        if (targetBlock) {
+          editor.insertBlocks([blockPayload], targetBlock, 'after')
+        } else {
+          // 찾지 못하면 맨 끝에 삽입
+          editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
+        }
+      }
+
+      updateInsertSuggestionStatus(msgId, 'accepted', blockPayload.id, undefined, suggestionIndex)
+    } catch (err) {
+      console.error('AI 삽입 제안 에디터 반영 실패:', err)
+    }
+  }, [editor, updateInsertSuggestionStatus])
+
   useEffect(() => {
     let activeEditor: BlockNoteEditor
     
@@ -913,7 +1222,7 @@ export default function App() {
     // 최초 로드 시에만 기본 웰컴 문서 주입
     if (isInitialLoad.current && (!isActive || !provider)) {
       isInitialLoad.current = false
-      const welcomeMD = `# 🚀 AMEVA Nexus
+      const welcomeMD = `# 🚀 AMEVA Workstation
 
 차세대 AI 기반 통합 협업 워크스테이션에 오신 것을 환영합니다!
 
@@ -990,7 +1299,7 @@ console.log('평균:', sum / nums.length)
 
 \`\`\`mermaid
 graph TD
-    A[사용자] --> B[AMEVA Nexus]
+    A[사용자] --> B[AMEVA Workstation]
     B --> C[AI 어시스턴트]
     B --> D[실시간 협업]
     B --> E[문서 변환]
@@ -998,14 +1307,15 @@ graph TD
     D --> G[Y.js CRDT]
 \`\`\`
 `
-      const initBlocks = async () => {
-        const normalized = normalizeMarkdown(welcomeMD)
-        const blocks = await activeEditor.tryParseMarkdownToBlocks(normalized)
-        cleanCodeBlocks(blocks)
-        activeEditor.replaceBlocks(activeEditor.document, blocks)
-        setCurrentContent(welcomeMD)
+      setCurrentContent(welcomeMD)
+      if (window.electronAPI?.appReady) {
+        window.electronAPI.appReady()
       }
-      initBlocks()
+    } else {
+      // 웰컴 문서 로드하지 않는 기동 분기 (새 창, 협업 연결 창 등)
+      if (window.electronAPI?.appReady) {
+        window.electronAPI.appReady()
+      }
     }
   }, [ydoc, provider, isActive])
 
@@ -1162,26 +1472,101 @@ graph TD
   // ── 단축키 ─────────────────────────────────────────────────
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
-      if (e.ctrlKey || e.metaKey) {
-        if (e.key === '=' || e.key === '+') { e.preventDefault(); handleZoomIn() }
-        else if (e.key === '-') { e.preventDefault(); handleZoomOut() }
-        else if (e.key === '0') { e.preventDefault(); handleZoomReset() }
-        else if (e.key === 's' || e.key === 'S') {
-          e.preventDefault()
-          if (e.altKey || e.shiftKey) {
-            handleSaveAsFile()
+      const hotkeys = settings.hotkeys || {
+        save: 'Control+s',
+        open: 'Control+o',
+        newFile: 'Control+n',
+        pdfExport: 'Control+p',
+        toggleAI: 'Control+\\',
+        toggleMode: 'Control+e',
+        zoomIn: 'Control+=',
+        zoomOut: 'Control+-',
+        zoomReset: 'Control+0'
+      }
+
+      if (matchHotkey(e, hotkeys.zoomIn)) {
+        e.preventDefault()
+        handleZoomIn()
+      } else if (matchHotkey(e, hotkeys.zoomOut)) {
+        e.preventDefault()
+        handleZoomOut()
+      } else if (matchHotkey(e, hotkeys.zoomReset)) {
+        e.preventDefault()
+        handleZoomReset()
+      } else if (matchHotkey(e, hotkeys.save)) {
+        e.preventDefault()
+        if (e.altKey || e.shiftKey) {
+          handleSaveAsFile()
+        } else {
+          handleSaveFile()
+        }
+      } else if (matchHotkey(e, hotkeys.newFile)) {
+        e.preventDefault()
+        if (fileOpenMode === 'tab') {
+          handleNewTab()
+        } else if (fileOpenMode === 'append') {
+          if (editor) {
+            const doc = editor.document
+            if (doc.length > 0) {
+              const newBlockId = Math.random().toString(36).substring(2, 10)
+              const newBlockPayload = {
+                id: newBlockId,
+                type: 'paragraph' as const,
+                content: []
+              }
+              editor.insertBlocks([newBlockPayload], doc[doc.length - 1], 'after')
+              
+              setTimeout(() => {
+                try {
+                  editor.setTextCursorPosition(newBlockId, 'start')
+                  handleScrollToBlock(newBlockId)
+                } catch (err) {}
+              }, 50)
+            }
+          }
+        } else {
+          // fileOpenMode === 'replace'
+          const isDirty = currentContent !== originalContent
+          if (isDirty) {
+            const saveAndOpenNew = window.confirm('현재 수정 중인 문서가 있습니다. 기존 문서를 저장하고 새 창을 여시겠습니까?\n\n(취소를 누르면 현재 문서가 새 빈 문서로 대체됩니다.)')
+            if (saveAndOpenNew) {
+              await handleSaveFile()
+              if (window.electronAPI?.newWindow) {
+                window.electronAPI.newWindow()
+              }
+            } else {
+              handleStartNewDocument()
+            }
           } else {
-            handleSaveFile()
+            if (window.electronAPI?.newWindow) {
+              window.electronAPI.newWindow()
+            } else {
+              handleStartNewDocument()
+            }
           }
         }
-        else if (e.key === 'o') { e.preventDefault(); handleOpenFile() }
-        else if (e.key === 'p') { e.preventDefault(); handleExport('pdf') }
-        else if (e.key === '\\') { e.preventDefault(); setShowAIPanel(p => !p) }
-        else if (e.key === 'h' || e.key === 'H' || (e.shiftKey && (e.key === 'v' || e.key === 'V'))) {
-          e.preventDefault()
-          handleSwitchMode(editorMode === 'edit' ? 'preview' : 'edit')
-        }
-        else if (e.key === 'd' || e.key === 'D') {
+      } else if (matchHotkey(e, hotkeys.open)) {
+        e.preventDefault()
+        handleOpenFile()
+      } else if (matchHotkey(e, hotkeys.pdfExport)) {
+        e.preventDefault()
+        handleExport('pdf')
+      } else if (matchHotkey(e, hotkeys.toggleAI)) {
+        e.preventDefault()
+        setShowAIPanel(p => !p)
+      } else if (matchHotkey(e, hotkeys.toggleMode)) {
+        e.preventDefault()
+        handleSwitchMode(editorMode === 'edit' ? 'preview' : 'edit')
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault()
+        setFindReplaceMode('find')
+        setShowFindReplace(prev => !prev)
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'h' || e.key === 'H')) {
+        e.preventDefault()
+        setFindReplaceMode('replace')
+        setShowFindReplace(prev => !prev)
+      } else if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'd' || e.key === 'D') {
           if (editor) {
             e.preventDefault()
             const pos = editor.getTextCursorPosition()
@@ -1305,14 +1690,47 @@ graph TD
   const loadMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, isBinary = false, path = '') => {
     const markdown = await parseFileToMarkdown(rawContent, path || filePath || '', isBinary)
     const normalized = normalizeMarkdown(markdown)
-    const blocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
-    cleanCodeBlocks(blocks)
-    targetEditor.replaceBlocks(targetEditor.document, blocks)
-    try {
-      const derived = await targetEditor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(targetEditor.document))
-      setCurrentContent(derived)
-    } catch {
-      setCurrentContent(markdown)
+
+    // [PERF] 대용량 문서 점진적(Progressive) 렌더링 알고리즘
+    const lines = normalized.split('\n')
+    if (lines.length > 200 && !isBinary) {
+      const firstChunk = lines.slice(0, 120).join('\n')
+      const remainingChunk = lines.slice(120).join('\n')
+
+      const firstBlocks = await targetEditor.tryParseMarkdownToBlocks(firstChunk)
+      cleanCodeBlocks(firstBlocks)
+      ensureBlockIds(firstBlocks)
+      targetEditor.replaceBlocks(targetEditor.document, firstBlocks)
+      setCurrentContent(normalized)
+      setOriginalContent(normalized)
+
+      setTimeout(async () => {
+        try {
+          const remainingBlocks = await targetEditor.tryParseMarkdownToBlocks(remainingChunk)
+          cleanCodeBlocks(remainingBlocks)
+          ensureBlockIds(remainingBlocks)
+          const doc = targetEditor.document
+          if (doc.length > 0) {
+            targetEditor.insertBlocks(remainingBlocks, doc[doc.length - 1], 'after')
+          }
+        } catch (e) {
+          console.warn('남은 청크 비동기 로딩 오류:', e)
+        }
+      }, 25)
+    } else {
+      // 일반 소형 파일
+      const blocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
+      cleanCodeBlocks(blocks)
+      ensureBlockIds(blocks)
+      targetEditor.replaceBlocks(targetEditor.document, blocks)
+      try {
+        const derived = await targetEditor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(targetEditor.document))
+        setCurrentContent(derived)
+        setOriginalContent(derived)
+      } catch {
+        setCurrentContent(markdown)
+        setOriginalContent(markdown)
+      }
     }
   }
 
@@ -1322,6 +1740,7 @@ graph TD
     const normalized = normalizeMarkdown(markdown)
     const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
     cleanCodeBlocks(newBlocks)
+    ensureBlockIds(newBlocks)
     
     const headerBlockId = 'file-header-' + Math.random().toString(36).substr(2, 9)
     const headerBlock = {
@@ -1381,19 +1800,22 @@ graph TD
     const normalized = normalizeMarkdown(markdown)
     const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
     cleanCodeBlocks(newBlocks)
+    ensureBlockIds(newBlocks)
     
     const newTabId = 'tab-' + Math.random().toString(36).substr(2, 9)
     const newTab = {
       id: newTabId,
       filePath: path,
       content: markdown,
-      blocks: newBlocks
+      blocks: newBlocks,
+      originalContent: markdown,
+      lastSavedTime: new Date()
     }
     
     setTabs(prev => {
       const updated = prev.map(t => {
         if (t.id === currentActiveId) {
-          return { ...t, filePath: filePath, content: currentContent, blocks: currentBlocks }
+          return { ...t, filePath: filePath, content: currentContent, blocks: currentBlocks, originalContent: originalContent, lastSavedTime: lastSavedTime }
         }
         return t
       })
@@ -1403,6 +1825,8 @@ graph TD
     setActiveTabId(newTabId)
     setFilePath(path)
     setCurrentContent(markdown)
+    setOriginalContent(markdown)
+    setLastSavedTime(new Date())
     
     targetEditor.replaceBlocks(targetEditor.document, newBlocks)
   }
@@ -1416,7 +1840,7 @@ graph TD
     setTabs(prev => {
       const updated = prev.map(t => {
         if (t.id === activeId) {
-          return { ...t, filePath: filePath, content: currentContent, blocks: currentBlocks }
+          return { ...t, filePath: filePath, content: currentContent, blocks: currentBlocks, originalContent: originalContent, lastSavedTime: lastSavedTime }
         }
         return t
       })
@@ -1426,13 +1850,17 @@ graph TD
         setTimeout(async () => {
           setFilePath(targetTab.filePath)
           setCurrentContent(targetTab.content)
+          setOriginalContent(targetTab.originalContent !== undefined ? targetTab.originalContent : targetTab.content)
+          setLastSavedTime(targetTab.lastSavedTime !== undefined ? targetTab.lastSavedTime : null)
           
           if (targetTab.blocks && targetTab.blocks.length > 0) {
+            ensureBlockIds(targetTab.blocks)
             editor.replaceBlocks(editor.document, targetTab.blocks)
           } else {
             const normalized = normalizeMarkdown(targetTab.content || '')
             const parsed = await editor.tryParseMarkdownToBlocks(normalized)
             cleanCodeBlocks(parsed)
+            ensureBlockIds(parsed)
             editor.replaceBlocks(editor.document, parsed)
           }
         }, 0)
@@ -1442,19 +1870,21 @@ graph TD
     })
     
     setActiveTabId(tabId)
-  }, [editor, activeTabId, filePath, currentContent])
+  }, [editor, activeTabId, filePath, currentContent, originalContent, lastSavedTime])
 
   // 탭 닫기
   const handleCloseTab = useCallback((tabId: string) => {
     setTabs(prev => {
       const remaining = prev.filter(t => t.id !== tabId)
       if (remaining.length === 0) {
-        const defaultTab = { id: 'default', filePath: null, content: '', blocks: [] }
+        const defaultTab = { id: 'default', filePath: null, content: '', blocks: [], originalContent: '', lastSavedTime: null }
         if (editor) {
           editor.replaceBlocks(editor.document, [])
         }
         setFilePath(null)
         setCurrentContent('')
+        setOriginalContent('')
+        setLastSavedTime(null)
         setActiveTabId('default')
         return [defaultTab]
       }
@@ -1464,6 +1894,8 @@ graph TD
         setActiveTabId(nextTab.id)
         setFilePath(nextTab.filePath)
         setCurrentContent(nextTab.content)
+        setOriginalContent(nextTab.originalContent !== undefined ? nextTab.originalContent : nextTab.content)
+        setLastSavedTime(nextTab.lastSavedTime !== undefined ? nextTab.lastSavedTime : null)
         if (editor) {
           if (nextTab.blocks && nextTab.blocks.length > 0) {
             editor.replaceBlocks(editor.document, nextTab.blocks)
@@ -1609,6 +2041,8 @@ graph TD
             }
             await window.electronAPI.saveFile(contentToSave, savedPath)
             setFilePath(savedPath)
+            setOriginalContent(markdown)
+            setLastSavedTime(new Date())
             createSnapshot(`Ameva Document 저장본`, contentToSave)
             return
           } else {
@@ -1640,6 +2074,8 @@ graph TD
       const savedPath = await window.electronAPI.saveFile(contentToSave, filePath || undefined)
       if (savedPath) {
         setFilePath(savedPath)
+        setOriginalContent(markdown)
+        setLastSavedTime(new Date())
         createSnapshot(`저장본 (${new Date().toLocaleTimeString()})`, contentToSave)
       }
     } else {
@@ -1669,6 +2105,8 @@ graph TD
         
         await window.electronAPI.saveFile(contentToSave, savedPath)
         setFilePath(savedPath)
+        setOriginalContent(markdown)
+        setLastSavedTime(new Date())
         createSnapshot('다른 이름으로 저장본', contentToSave)
       }
     } else {
@@ -1946,6 +2384,7 @@ graph TD
         const normalized = normalizeMarkdown(currentContentRef.current)
         const blocks = await editor.tryParseMarkdownToBlocks(normalized)
         cleanCodeBlocks(blocks)
+        ensureBlockIds(blocks)
         editor.replaceBlocks(editor.document, blocks)
       } catch (err) {
         console.error('[handleSwitchMode] editor blocks 로드 실패:', err)
@@ -1953,6 +2392,39 @@ graph TD
     }
 
     setEditorMode(mode)
+  }
+
+  const handleStartWelcomeEdit = async () => {
+    if (!editor) return
+    try {
+      const normalized = normalizeMarkdown(currentContent || welcomeMD)
+      const blocks = await editor.tryParseMarkdownToBlocks(normalized)
+      cleanCodeBlocks(blocks)
+      ensureBlockIds(blocks)
+      editor.replaceBlocks(editor.document, blocks)
+      setCurrentContent(currentContent || welcomeMD)
+      setOriginalContent(currentContent || welcomeMD)
+      setEditorMode('edit')
+    } catch (err) {
+      console.error('웰컴 편집 로드 실패:', err)
+      setEditorMode('edit')
+    }
+  }
+
+  const handleStartNewDocument = () => {
+    if (editor) {
+      editor.replaceBlocks(editor.document, [
+        {
+          id: Math.random().toString(36).substring(2, 10),
+          type: 'paragraph',
+          content: []
+        }
+      ])
+    }
+    setCurrentContent('')
+    setFilePath(null)
+    setOriginalContent('')
+    setEditorMode('edit')
   }
 
 
@@ -2020,6 +2492,9 @@ graph TD
         onOpenGuide={() => setIsGuideOpen(true)}
         onOpenGithub={handleOpenGithub}
         onOpenMarketplace={() => setShowMarketplaceModal(true)}
+        onOpenPricing={() => setShowPricingModal(true)}
+        hotkeys={settings.hotkeys}
+        isProPlan={isProPlan} // [BM-FREE-MODE] 유료 상태 전달
       />
 
       {/* 메인 레이아웃: 사이드바 + 에디터 + AI패널 */}
@@ -2098,6 +2573,7 @@ graph TD
                   setIsChatFloating(!isChatFloating)
                   if (!isChatFloating) setHasChatUnread(false)
                 }}
+                hotkeys={settings.hotkeys}
               />
             ) : (
               <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '14px', background: '#0a0a0f', height: '100%', borderRight: '1px solid rgba(255,255,255,0.05)', userSelect: 'none' }}>
@@ -2140,6 +2616,13 @@ graph TD
             theme={settings.theme}
             onSelectedTextChange={setSelectedText}
             installedPlugins={settings.installedPlugins || []}
+            onOpenFile={handleOpenFile}
+            onStartWelcomeEdit={handleStartWelcomeEdit}
+            onStartNewDocument={handleStartNewDocument}
+            taggedBlocks={taggedBlocks}
+            setTaggedBlocks={customSetTaggedBlocks}
+            tabs={tabs}
+            isProPlan={isProPlan}
           />
           {settings.showMinimap && (settings.installedPlugins || []).includes('minimap') && editor && (
             <Minimap
@@ -2173,11 +2656,14 @@ graph TD
               isOpen={showAIPanel}
               onClose={() => setShowAIPanel(false)}
               messages={aiMessages}
-              isGenerating={isGenerating}
+               isGenerating={isGenerating}
               isAvailable={isAvailable}
               models={models}
               settings={aiSettings}
-              onSend={(msg, ctx, orig, bId, runtimeSettings) => generateResponse(msg, ctx, orig, bId, runtimeSettings, editor)}
+              onSend={(msg, ctx, orig, bId, runtimeSettings) => {
+                generateResponse(msg, ctx, orig, bId, runtimeSettings, editor, taggedBlocks)
+                setTaggedBlocks([])
+              }}
               onAbort={abortGeneration}
               onClear={clearAIHistory}
               onUpdateSettings={updateAISettings}
@@ -2187,6 +2673,8 @@ graph TD
               onClearSelectedText={() => setSelectedText('')}
               onApplySuggestion={handleApplySuggestion}
               onUpdateDiffState={updateMessageDiffState}
+              onApplyInsertSuggestion={handleApplyInsertSuggestion}
+              onUpdateInsertSuggestionStatus={updateInsertSuggestionStatus}
               activeBlockId={activeBlockId || undefined}
               editor={editor}
               blocks={editor ? editor.document : []}
@@ -2195,6 +2683,13 @@ graph TD
               engineLogs={engineLogs}
               showModelHub={showModelHub}
               setShowModelHub={setShowModelHub}
+              taggedBlocks={taggedBlocks}
+              setTaggedBlocks={setTaggedBlocks}
+              refreshModels={refreshModels}
+              importModel={importModel}
+              downloadStatus={downloadStatus}
+              setDownloadStatus={setDownloadStatus}
+              onScrollToBlock={handleScrollToBlock}
             />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a0f', padding: '20px', borderLeft: '1px solid rgba(255,255,255,0.05)', userSelect: 'none' }}>
@@ -2211,6 +2706,8 @@ graph TD
           onToggleTab={handleToggleRightTab}
           hasChatUnread={hasChatUnread}
           installedPlugins={settings.installedPlugins || []}
+          hotkeys={settings.hotkeys}
+          isProPlan={isProPlan}
         />
       </div>
 
@@ -2226,6 +2723,13 @@ graph TD
           wordWrap={settings.wordWrap}
           onToggleWordWrap={() => handleUpdateSettings({ wordWrap: !settings.wordWrap })}
           onOpenSettings={() => setIsSettingsOpen(true)}
+          downloadStatus={downloadStatus}
+          isDirty={currentContent !== originalContent}
+          lastSavedTime={lastSavedTime}
+          aiSettings={aiSettings}
+          aiAvailable={isAvailable}
+          mcpServers={mcpServersState} // [FIX-MCP-UI] 실시간 MCP 서버 목록 전달
+          isProPlan={isProPlan}
         />
       )}
 
@@ -2308,7 +2812,10 @@ graph TD
       />
       <SettingsModal
         isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
+        onClose={() => {
+          setIsSettingsOpen(false)
+          refreshMcpServers() // [FIX-MCP-UI] 닫힐 때 설정 명세 동기화 리로드
+        }}
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
         username={username}
@@ -2339,6 +2846,12 @@ graph TD
         installedPlugins={settings.installedPlugins || []}
         onInstallPlugin={handleInstallPlugin}
         onUninstallPlugin={handleUninstallPlugin}
+        isProPlan={isProPlan}
+      />
+
+      <PricingModal
+        isOpen={showPricingModal}
+        onClose={() => setShowPricingModal(false)}
       />
 
       {/* 내보내기 진행 모달 */}
@@ -2372,6 +2885,67 @@ graph TD
           onClearUnread={() => setHasChatUnread(false)}
         />
       )}
+
+      {/* 🤖 AIPanel이 닫혔거나 비활성화인 상태에서도 셋팅창 등에서 모델 허브 모달을 띄울 수 있도록 보완 */}
+      {showModelHub && (!showAIPanel || !isAIPanelReady) && (
+        <AIPanel
+          isOpen={false}
+          onClose={() => {}}
+          messages={[]}
+          isGenerating={false}
+          isAvailable={isAvailable}
+          models={models}
+          settings={aiSettings}
+          onSend={() => {}}
+          onAbort={() => {}}
+          onClear={() => {}}
+          onUpdateSettings={() => {}}
+          currentContent={currentContent}
+          showModelHub={showModelHub}
+          setShowModelHub={setShowModelHub}
+          refreshModels={refreshModels}
+          downloadStatus={downloadStatus}
+          setDownloadStatus={setDownloadStatus}
+          taggedBlocks={taggedBlocks}
+          setTaggedBlocks={setTaggedBlocks}
+          onScrollToBlock={handleScrollToBlock}
+        />
+      )}
+
+      {/* 📥 글로벌 모델 다운로드 토스트 알림 */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          bottom: '46px',
+          right: '20px',
+          background: 'rgba(5, 5, 10, 0.85)',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(6, 182, 212, 0.4)',
+          borderRadius: '8px',
+          padding: '10px 16px',
+          color: '#fff',
+          fontSize: '12.5px',
+          fontWeight: 600,
+          boxShadow: '0 8px 32px rgba(6, 182, 212, 0.15)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          animation: 'slideUp 0.3s ease-out',
+        }}>
+          <Sparkles size={14} style={{ color: 'var(--secondary)' }} />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* 🔍 찾기 및 바꾸기 (Find & Replace) 플로팅 바 */}
+      <FindReplaceBar
+        isOpen={showFindReplace}
+        onClose={() => setShowFindReplace(false)}
+        editor={editor}
+        onScrollToBlock={handleScrollToBlock}
+        initialMode={findReplaceMode}
+      />
     </div>
   )
 }

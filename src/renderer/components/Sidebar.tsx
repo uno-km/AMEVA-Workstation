@@ -8,6 +8,7 @@ import {
 import type { EditorMode, ExportFormat, DocumentSnapshot, PeerState } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useChat'
 import { ChatPanel } from './ChatPanel'
+import type { HotkeyConfig } from './SettingsModal'
 
 interface SidebarProps {
   filePath: string | null
@@ -57,6 +58,7 @@ interface SidebarProps {
   userColor: string
   isChatFloating: boolean
   onToggleChatFloat: () => void
+  hotkeys?: HotkeyConfig
 }
 
 type TabId = 'files' | 'history' | 'collab' | 'chat'
@@ -91,7 +93,31 @@ export function Sidebar({
   onToggleSidebar,
   chatMessages, onChatSend, onChatClear, username, userColor,
   isChatFloating, onToggleChatFloat,
+  hotkeys,
 }: SidebarProps) {
+  const formatHotkey = (raw: string | undefined): string => {
+    if (!raw) return ''
+    return raw
+      .replace('Control', 'Ctrl')
+      .replace('Shift', 'Shift')
+      .replace('Alt', 'Alt')
+      .replace('Meta', 'Cmd')
+      .split('+')
+      .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(' + ')
+  }
+
+  const hkeys = hotkeys || {
+    save: 'Control+s',
+    open: 'Control+o',
+    newFile: 'Control+n',
+    pdfExport: 'Control+p',
+    toggleAI: 'Control+\\',
+    toggleMode: 'Control+h',
+    zoomIn: 'Control+=',
+    zoomOut: 'Control+-',
+    zoomReset: 'Control+0'
+  }
   const [activeTab, setActiveTab] = useState<TabId>('files')
   const [snapTitle, setSnapTitle] = useState('')
   const [exportOpen, setExportOpen] = useState(false)
@@ -228,6 +254,7 @@ export function Sidebar({
                   className={`btn btn-glass ${editorMode === 'edit' ? 'active' : ''}`}
                   style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
                   onClick={() => setEditorMode('edit')}
+                  title={`에디터 모드 전환 (${formatHotkey(hkeys.toggleMode)})`}
                 >
                   <Terminal size={12} /> 편집
                 </button>
@@ -235,6 +262,7 @@ export function Sidebar({
                   className={`btn btn-glass ${editorMode === 'preview' ? 'active' : ''}`}
                   style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
                   onClick={() => setEditorMode('preview')}
+                  title={`미리보기 모드 전환 (${formatHotkey(hkeys.toggleMode)})`}
                 >
                   <Eye size={12} /> 미리보기
                 </button>
@@ -242,6 +270,7 @@ export function Sidebar({
                   className={`btn btn-glass ${editorMode === 'raw' ? 'active' : ''}`}
                   style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
                   onClick={() => setEditorMode('raw')}
+                  title={`원문(Markdown) 보기`}
                 >
                   <FileText size={12} /> 원문보기
                 </button>
@@ -252,11 +281,21 @@ export function Sidebar({
             <div>
               {sectionLabel('파일 관리')}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <button className="btn btn-glass" style={{ justifyContent: 'flex-start', fontSize: '13px' }} onClick={onOpenFile}>
+                <button
+                  className="btn btn-glass"
+                  style={{ justifyContent: 'flex-start', fontSize: '13px' }}
+                  onClick={onOpenFile}
+                  title={`문서 파일 열기 (${formatHotkey(hkeys.open)})`}
+                >
                   <FileText size={14} /> 파일 열기...
                 </button>
-                <button className="btn btn-primary" style={{ justifyContent: 'flex-start', fontSize: '13px' }} onClick={onSaveFile}>
-                  <Save size={14} /> 저장 (Ctrl+S)
+                <button
+                  className="btn btn-primary"
+                  style={{ justifyContent: 'flex-start', fontSize: '13px' }}
+                  onClick={onSaveFile}
+                  title={`문서 파일 저장 (${formatHotkey(hkeys.save)})`}
+                >
+                  <Save size={14} /> 저장 ({formatHotkey(hkeys.save)})
                 </button>
               </div>
             </div>

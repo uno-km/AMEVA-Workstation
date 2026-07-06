@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── 🤖 로컬 LLM (llama.cpp) ──
   llmGenerate: (payload: {
+    sessionId: string     // [FIX-IPC-001] 세션 격리를 위한 ID 추가
     modelPath: string
     prompt: string
     context?: string
@@ -58,22 +59,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     contextSize?: number
     apiType?: 'local' | 'api'
     apiKey?: string
+    apiEndpoint?: string  // [FIX-W-003] 동적 API 엔드포인트
+    apiModel?: string     // [FIX-W-003] 동적 API 모델명
     gpuOnly?: boolean
     history?: { role: string; content: string }[]
   }) => ipcRenderer.invoke('llm:generate', payload),
 
-  llmAbort: () => ipcRenderer.send('llm:abort'),
+  llmAbort: (sessionId: string) => ipcRenderer.send(`llm:abort:${sessionId}`),
 
-  onLLMToken: (callback: (token: string) => void) => {
+  onLLMToken: (sessionId: string, callback: (token: string) => void) => {
     const subscription = (_event: any, data: { token: string }) => callback(data.token)
-    ipcRenderer.on('llm:token', subscription)
-    return () => ipcRenderer.removeListener('llm:token', subscription)
+    ipcRenderer.on(`llm:token:${sessionId}`, subscription)
+    return () => ipcRenderer.removeListener(`llm:token:${sessionId}`, subscription)
   },
 
-  onLLMDone: (callback: (data: { success: boolean; fullText?: string; error?: string }) => void) => {
+  onLLMDone: (sessionId: string, callback: (data: { success: boolean; fullText?: string; error?: string }) => void) => {
     const subscription = (_event: any, data: any) => callback(data)
-    ipcRenderer.on('llm:done', subscription)
-    return () => ipcRenderer.removeListener('llm:done', subscription)
+    ipcRenderer.on(`llm:done:${sessionId}`, subscription)
+    return () => ipcRenderer.removeListener(`llm:done:${sessionId}`, subscription)
   },
 
   onLLMLog: (callback: (data: { text: string }) => void) => {
@@ -84,6 +87,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   llmListModels: () => ipcRenderer.invoke('llm:listModels'),
   llmGetGpuName: () => ipcRenderer.invoke('llm:getGpuName'),
+  llmDownloadModel: (payload: { url: string; filename: string }) => ipcRenderer.invoke('llm:downloadModel', payload),
+  onLLMDownloadProgress: (callback: (status: any) => void) => {
+    const subscription = (_event: any, status: any) => callback(status)
+    ipcRenderer.on('llm:download-progress', subscription)
+    return () => ipcRenderer.removeListener('llm:download-progress', subscription)
+  },
+  llmImportModel: (sourcePath: string) => ipcRenderer.invoke('llm:importModel', sourcePath),
 
   // ── 🎤 Whisper STT ──
   sttTranscribe: (payload: { audioPath: string; language?: string }) =>
@@ -91,7 +101,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   sttGetTempPath: () => ipcRenderer.invoke('stt:getTempPath'),
 
-  // ── 📄 분산 문서 변환 브리지 ──
   exportConvert: (payload: { blocks: any; format: string; defaultName: string }) =>
     ipcRenderer.invoke('export:convert', payload),
+  appReady: () => ipcRenderer.invoke('app:ready'),
+  webSearch: (query: string) => ipcRenderer.invoke('action:webSearch', query),
+
+  // ── 🤖 동적 MCP 연동 브릿지 ──
+  mcpSpawn: (serverId: string, command: string, args: string[]) => ipcRenderer.invoke('mcp:spawn', serverId, command, args),
+  mcpCall: (serverId: string, request: any) => ipcRenderer.invoke('mcp:call', serverId, request),
+  mcpKill: (serverId: string) => ipcRenderer.invoke('mcp:kill', serverId),
+  isFreeMode: () => ipcRenderer.invoke('llm:is-free-mode'),
+  planGetStatus: () => ipcRenderer.invoke('plan:get-status'),
+  planSetStatus: (isPro: boolean) => ipcRenderer.invoke('plan:set-status', isPro),
 })

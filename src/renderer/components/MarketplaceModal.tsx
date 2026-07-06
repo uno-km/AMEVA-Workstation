@@ -16,6 +16,7 @@ interface MarketplaceModalProps {
   installedPlugins: string[]
   onInstallPlugin: (id: string, scriptUrl: string) => Promise<void>
   onUninstallPlugin: (id: string) => void
+  isProPlan?: boolean
 }
 
 export function MarketplaceModal({
@@ -24,15 +25,58 @@ export function MarketplaceModal({
   installedPlugins,
   onInstallPlugin,
   onUninstallPlugin,
+  isProPlan = false,
 }: MarketplaceModalProps) {
   const [plugins, setPlugins] = useState<PluginMetadata[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
 
+  // 🦾 SaaS 유료 기능 토글 상태 관리
+  const [enabledPlugins, setEnabledPlugins] = useState<Record<string, boolean>>({
+    webSearch: false,
+    pythonConsole: false,
+    requestQueue: false,
+  })
+
   // 검색 및 카테고리 탭 상태
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'tool' | 'feature' | 'collab'>('all')
+
+  useEffect(() => {
+    if (isOpen) {
+      try {
+        const stored = localStorage.getItem('enabled-plugins')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (!isProPlan) {
+            setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false })
+          } else {
+            setEnabledPlugins(parsed)
+          }
+        } else {
+          if (isProPlan) {
+            setEnabledPlugins({ webSearch: true, pythonConsole: true, requestQueue: false })
+          } else {
+            setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false })
+          }
+        }
+      } catch (e) {}
+    }
+  }, [isOpen, isProPlan])
+
+  const handleToggleSaaSPlugin = (id: string) => {
+    if (!isProPlan) {
+      alert('⚠️ 해당 기능은 Pro 플랜 이상에서만 활성화할 수 있는 프리미엄 도구입니다. 가격 플랜 탭에서 업그레이드를 진행하세요.')
+      return
+    }
+    const updated = {
+      ...enabledPlugins,
+      [id]: !enabledPlugins[id]
+    }
+    setEnabledPlugins(updated)
+    localStorage.setItem('enabled-plugins', JSON.stringify(updated))
+  }
 
   // 마켓플레이스 서버 플러그인 로드
   const fetchPlugins = async () => {
@@ -265,6 +309,116 @@ export function MarketplaceModal({
               조건에 맞는 플러그인이 없습니다.
             </div>
           )}
+
+          {/* 👑 SaaS Premium Toggles (DuckDuckGo, Python Sandbox, Request Queue) */}
+          {!loading && categories.length > 0 && (() => {
+            const saasItems = [
+              {
+                id: 'webSearch',
+                name: 'DuckDuckGo Web Search API (Pro)',
+                description: 'ReAct 에이전트가 외부 웹 검색(실시간 인터넷 정보 및 뉴스)을 통해 추론하고 결과를 조합할 수 있게 권한을 위임합니다.',
+                type: 'tool' as const,
+                version: '1.2.0'
+              },
+              {
+                id: 'pythonConsole',
+                name: 'Python Sandbox Executor (Pro)',
+                description: '로컬 파이썬 샌드박스를 연동하여 복잡한 수식 연산 및 데이터 처리 알고리즘 코드를 실제 런타임에서 실행해 줍니다.',
+                type: 'tool' as const,
+                version: '2.0.4'
+              },
+              {
+                id: 'requestQueue',
+                name: 'Sequential Request Queue (Pro)',
+                description: '질문을 연달아 우다다닥 보낼 때 취소되지 않고 안전하게 백그라운드 큐 버퍼에 쌓여 차례로 실행해 주는 순차 처리기입니다.',
+                type: 'feature' as const,
+                version: '1.0.1'
+              }
+            ]
+
+            const filteredSaas = saasItems.filter(p => {
+              const matchesCategory = selectedCategory === 'all' || p.type === selectedCategory
+              const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase())
+              return matchesCategory && matchesSearch
+            })
+
+            return filteredSaas.map(p => {
+              const isEnabled = enabledPlugins[p.id] ?? false
+              return (
+                <div
+                  key={p.id}
+                  style={{
+                    padding: '14px 16px',
+                    background: 'linear-gradient(135deg, #130f1e 0%, #0f0f11 100%)',
+                    border: '1px dashed rgba(139, 92, 246, 0.25)',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '16px',
+                    transition: 'border-color 0.15s, box-shadow 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--primary)'
+                    e.currentTarget.style.boxShadow = '0 0 8px rgba(139,92,246,0.2)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.25)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                      <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#f8fafc' }}>
+                        👑 {p.name}
+                      </span>
+                      <span style={{ fontSize: '9px', color: 'var(--primary)', background: 'rgba(139,92,246,0.1)', padding: '1px 5px', borderRadius: '4px' }}>
+                        v{p.version}
+                      </span>
+                      <span style={{
+                        fontSize: '9px',
+                        color: '#a855f7',
+                        background: 'rgba(168,85,247,0.15)',
+                        border: '1px solid rgba(168,85,247,0.2)',
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        textTransform: 'uppercase',
+                        fontWeight: 700,
+                        letterSpacing: '0.3px'
+                      }}>
+                        {p.type}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      {p.description}
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => handleToggleSaaSPlugin(p.id)}
+                    style={{
+                      padding: '5px 12px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+                      background: isEnabled ? 'rgba(168,85,247,0.2)' : '#1c1c24',
+                      border: isEnabled ? '1px solid rgba(168,85,247,0.4)' : '1px solid #2e2e38',
+                      color: isEnabled ? 'var(--primary)' : 'var(--text-muted)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.15s',
+                      outline: 'none',
+                      flexShrink: 0
+                    }}
+                  >
+                    {isEnabled ? 'ENABLED' : 'DISABLED'}
+                  </button>
+                </div>
+              )
+            })
+          })()}
 
           {!loading && !error && filteredPlugins.map((p) => {
             const isInstalled = installedPlugins.includes(p.id)

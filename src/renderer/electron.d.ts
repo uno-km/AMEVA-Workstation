@@ -72,9 +72,18 @@ export interface IElectronAPI {
 
   llmDownloadModel: (payload: { url: string; filename: string }) => Promise<{ success: boolean; error?: string }>
   onLLMDownloadProgress: (callback: (data: { filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number }) => void) => () => void
+  llmImportModel: (sourcePath: string) => Promise<{ success: boolean; path?: string; error?: string }>
 
   // 분산 문서 변환 브리지
   exportConvert: (payload: { blocks: any[]; format: string; defaultName: string }) => Promise<{ success: boolean; savedPath?: string; error?: string }>
+  appReady: () => Promise<{ success: boolean }>
+  webSearch: (query: string) => Promise<{ success: boolean; result?: string; error?: string }>
+  mcpSpawn: (serverId: string, command: string, args: string[]) => Promise<{ success: boolean; error?: string }>
+  mcpCall: (serverId: string, request: any) => Promise<any>
+  mcpKill: (serverId: string) => Promise<{ success: boolean }>
+  isFreeMode: () => Promise<boolean>
+  planGetStatus: () => Promise<boolean>
+  planSetStatus: (isPro: boolean) => Promise<{ success: boolean; isPro?: boolean; error?: string }>
 }
 
 declare global {

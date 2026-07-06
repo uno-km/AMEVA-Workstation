@@ -3,9 +3,9 @@ import {
   Bot, Send, Square, Trash2, Sparkles, ChevronDown, ChevronUp, Brain,
   Mic, MicOff, Settings2, Copy, Check, X, AlertCircle,
   Wand2, Languages, FileText, Expand, Lightbulb, Lock, Terminal,
-  Loader2, CheckCircle2, Circle
+  Loader2, CheckCircle2, Circle, ArrowUp, ArrowDown, Plus
 } from 'lucide-react'
-import type { AIMessage } from '../hooks/useAI'
+import type { AIMessage, InsertSuggestion } from '../hooks/useAI'
 
 interface AIPanelProps {
   isOpen: boolean
@@ -14,17 +14,19 @@ interface AIPanelProps {
   isGenerating: boolean
   isAvailable: boolean
   models: { name: string; filename: string; path: string; size: number }[]
-  settings: { modelPath: string; temperature: number; maxTokens: number; systemPrompt: string }
+  settings: { modelPath: string; temperature: number; maxTokens: number; systemPrompt: string; apiType?: string; apiKey?: string; apiEndpoint?: string; apiModel?: string; gpuOnly?: boolean }
   onSend: (message: string, context?: string, originalText?: string, blockId?: string, runtimeSettings?: any) => void
   onAbort: () => void
   onClear: () => void
-  onUpdateSettings: (s: Partial<{ modelPath: string; temperature: number; maxTokens: number; systemPrompt: string }>) => void
+  onUpdateSettings: (s: any) => void
   currentContent: string
   panelWidth?: number
   selectedText?: string
   onClearSelectedText?: () => void
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string) => void
   onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void
+  onApplyInsertSuggestion?: (msgId: string, afterBlockId: string, blockType: string, content: string, level?: number) => void
+  onUpdateInsertSuggestionStatus?: (msgId: string, status: 'pending' | 'accepted' | 'rejected', newAfterBlockId?: string, newSiblingIndex?: number) => void
   activeBlockId?: string
   editor?: any
   blocks?: any[]
@@ -33,6 +35,13 @@ interface AIPanelProps {
   engineLogs?: string
   showModelHub?: boolean
   setShowModelHub?: (show: boolean) => void
+  refreshModels?: () => Promise<void>
+  importModel?: () => Promise<void>
+  downloadStatus?: any
+  setDownloadStatus?: (val: any) => void
+  taggedBlocks: { id: string; text: string }[]
+  setTaggedBlocks: React.Dispatch<React.SetStateAction<{ id: string; text: string }[]>>
+  onScrollToBlock: (blockId: string) => void
 }
 
 const QUICK_ACTIONS = [
@@ -198,6 +207,329 @@ function getThoughtSummary(text: string, isStreaming: boolean) {
   return { totalSteps, completedSteps, activeStep }
 }
 
+// ══════════════════════════════════════════════════════
+// InsertPreviewCard — AI 삽입 제안 승인/거절 + 위아래 이동 UI
+// 판단 근거 접힌 글 + 경로 + 완료 후 상세 로그 포함
+// ══════════════════════════════════════════════════════
+function InsertPreviewCard({
+  msg,
+  ins,
+  blocks,
+  onApply,
+  onReject,
+  onMove,
+}: {
+  msg: AIMessage
+  ins: InsertSuggestion
+  blocks: any[]
+  onApply: () => void
+  onReject: () => void
+  onMove: (direction: 'up' | 'down') => void
+}) {
+  const [logExpanded, setLogExpanded] = useState(false)
+
+  // 인접 블록 레이블 추출 (pending/done 공통 사용)
+  const flatBlocks: any[] = (function flatten(bks: any[]): any[] {
+    return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
+  })(blocks || [])
+
+  function getBlockLabel(b: any): string {
+    if (!b) return ''
+    const txt = Array.isArray(b.content)
+      ? b.content.map((c: any) => c.text || '').join('').slice(0, 40)
+      : ''
+    return txt || `[${b.type}]`
+  }
+
+  const siblingIds = ins.siblingBlockIds ?? flatBlocks.map((b: any) => b.id)
+  const currentIdx = ins.siblingIndex ?? siblingIds.indexOf(ins.afterBlockId)
+  const prevBlockId = currentIdx > 0 ? siblingIds[currentIdx - 1] : null
+  const nextBlockId = siblingIds[currentIdx + 1] ?? null
+  const prevBlock = prevBlockId ? flatBlocks.find((b: any) => b.id === prevBlockId) : null
+  const nextBlock = nextBlockId ? flatBlocks.find((b: any) => b.id === nextBlockId) : null
+
+  const typeLabel = ins.blockType === 'heading'
+    ? `제목 H${ins.level ?? 1}`
+    : ins.blockType === 'paragraph' ? '단락'
+    : ins.blockType === 'bulletListItem' ? '글머리 목록'
+    : ins.blockType === 'numberedListItem' ? '번호 목록' : ins.blockType
+
+  const positionLabel = ins.afterBlockId === 'START'
+    ? '문서 맨 앞'
+    : ins.afterBlockId === 'END'
+    ? '문서 맨 끝'
+    : prevBlock
+    ? `"${getBlockLabel(prevBlock)}" 다음`
+    : '해당 위치'
+
+  // 추론 경로 텍스트 (thinking trace + reasonText 합산)
+  const thinkingText = (msg.reasoningTrace || [])
+    .filter(t => t.type === 'thinking' || t.type === 'step')
+    .map(t => t.text || '')
+    .filter(Boolean)
+    .join('\n\n')
+  const hasReasonLog = !!(ins.reasonText || thinkingText)
+
+  // ── 완료 상태: 접힌 결과 로그 ──────────────────
+  if (ins.status !== 'pending') {
+    const accepted = ins.status === 'accepted'
+    return (
+      <div style={{
+        marginBottom: '8px', borderRadius: '8px', overflow: 'hidden',
+        border: `1px solid ${accepted ? 'rgba(16,185,129,0.22)' : 'rgba(239,68,68,0.18)'}`,
+        background: accepted ? 'rgba(16,185,129,0.04)' : 'rgba(239,68,68,0.04)',
+      }}>
+        {/* 결과 헤더 — 클릭으로 펼침 */}
+        <div
+          onClick={() => setLogExpanded(v => !v)}
+          style={{
+            padding: '7px 10px',
+            display: 'flex', alignItems: 'center', gap: '6px',
+            cursor: hasReasonLog ? 'pointer' : 'default',
+            fontSize: '11px', color: accepted ? '#10b981' : '#f87171',
+            fontWeight: 600,
+          }}
+        >
+          {accepted ? <Check size={11} /> : <X size={11} />}
+          <span>{accepted ? '삽입 완료' : '삽입 취소'}</span>
+          <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '10px' }}>
+            · {typeLabel} / {positionLabel}
+          </span>
+          <span style={{ flex: 1 }} />
+          {hasReasonLog && (
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+              {logExpanded ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+              {logExpanded ? '접기' : '판단 로그'}
+            </span>
+          )}
+        </div>
+
+        {/* 펼쳐진 판단 로그 */}
+        {logExpanded && hasReasonLog && (
+          <div style={{
+            borderTop: `1px solid ${accepted ? 'rgba(16,185,129,0.12)' : 'rgba(239,68,68,0.1)'}`,
+            background: 'rgba(0,0,0,0.12)',
+            padding: '8px 12px',
+            fontSize: '11px',
+            color: 'var(--text-muted)',
+            lineHeight: '1.6',
+          }}>
+            {/* 위치 결정 경로 */}
+            <div style={{ marginBottom: '6px', fontWeight: 600, fontSize: '10px', color: 'rgba(167,139,250,0.7)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              📍 삽입 경로
+            </div>
+            <div style={{ fontFamily: 'monospace', fontSize: '10px', marginBottom: '8px', color: 'rgba(255,255,255,0.5)' }}>
+              {prevBlock && <div>↑ {getBlockLabel(prevBlock)}</div>}
+              <div style={{ color: accepted ? '#10b981' : '#f87171', fontWeight: 700 }}>
+                → [{typeLabel}] {ins.content.slice(0, 50)}{ins.content.length > 50 ? '...' : ''}
+              </div>
+              {nextBlock && <div>↓ {getBlockLabel(nextBlock)}</div>}
+            </div>
+
+            {/* AI 판단 근거 */}
+            {ins.reasonText && (
+              <>
+                <div style={{ marginBottom: '4px', fontWeight: 600, fontSize: '10px', color: 'rgba(167,139,250,0.7)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  🤖 AI 판단 근거
+                </div>
+                <div style={{ marginBottom: '8px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                  {ins.reasonText}
+                </div>
+              </>
+            )}
+
+            {/* 생각 과정 (thinking trace) — AI 판단 근거와 다른 내용일 때만 보조적으로 노출 */}
+            {thinkingText && thinkingText.trim() !== ins.reasonText?.trim() && (
+              <>
+                <div style={{ marginBottom: '4px', fontWeight: 600, fontSize: '10px', color: 'rgba(167,139,250,0.7)', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  🧠 추론 과정
+                </div>
+                <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', opacity: 0.75 }}>
+                  {thinkingText}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── pending 상태: 삽입 위치 미리보기 + 버튼 ────────────
+  const canMoveUp = ins.afterBlockId !== 'START' && currentIdx > 0
+  const canMoveDown = ins.afterBlockId !== 'END' && nextBlockId !== null
+
+  const previewFontSize = ins.blockType === 'heading'
+    ? (ins.level === 1 ? '15px' : ins.level === 2 ? '13px' : '12px')
+    : '12px'
+
+  return (
+    <div style={{
+      marginBottom: '10px',
+      borderRadius: '8px',
+      border: '1px solid rgba(139,92,246,0.3)',
+      overflow: 'hidden',
+      background: 'rgba(139,92,246,0.03)',
+    }}>
+      {/* 헤더 */}
+      <div style={{
+        padding: '5px 10px',
+        background: 'rgba(139,92,246,0.1)',
+        borderBottom: '1px solid rgba(139,92,246,0.18)',
+        display: 'flex', alignItems: 'center', gap: '5px',
+        fontSize: '10px', fontWeight: 700, color: 'rgba(167,139,250,0.9)',
+        textTransform: 'uppercase', letterSpacing: '0.4px',
+      }}>
+        <Plus size={10} />
+        삽입 제안 · {typeLabel}
+        <span style={{
+          marginLeft: 'auto', fontWeight: 400,
+          textTransform: 'none', color: 'var(--text-muted)', fontSize: '10px',
+        }}>
+          위치: {positionLabel}
+        </span>
+      </div>
+
+      {/* AI 판단 근거 접힌 글 */}
+      {ins.reasonText && (
+        <div
+          onClick={() => setLogExpanded(v => !v)}
+          style={{
+            padding: '4px 10px',
+            borderBottom: '1px solid rgba(255,255,255,0.04)',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: '5px',
+            fontSize: '10px', color: 'rgba(167,139,250,0.7)',
+          }}
+        >
+          <Brain size={9} />
+          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {logExpanded ? ins.reasonText : ins.reasonText.slice(0, 60) + (ins.reasonText.length > 60 ? '...' : '')}
+          </span>
+          {logExpanded ? <ChevronUp size={9} /> : <ChevronDown size={9} />}
+        </div>
+      )}
+
+      {/* 추론 과정 (thinking trace) — 펼쳐진 상태일 때 표시 */}
+      {logExpanded && thinkingText && (
+        <div style={{
+          padding: '6px 10px',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
+          background: 'rgba(0,0,0,0.1)',
+          fontSize: '10px', color: 'var(--text-muted)',
+          lineHeight: '1.5', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+        }}>
+          {thinkingText}
+        </div>
+      )}
+
+      {/* 위 블록 컨텍스트 */}
+      {prevBlock && (
+        <div style={{
+          padding: '3px 12px', fontSize: '10px',
+          color: 'var(--text-muted)', borderBottom: '1px dashed rgba(255,255,255,0.04)',
+          opacity: 0.55, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          ↑ {getBlockLabel(prevBlock)}
+        </div>
+      )}
+
+      {/* 삽입 내용 미리보기 */}
+      <div style={{
+        padding: '8px 14px',
+        fontSize: previewFontSize,
+        fontWeight: ins.blockType === 'heading' ? 700 : 400,
+        color: 'var(--text-main)',
+        lineHeight: '1.55',
+        whiteSpace: 'pre-wrap',
+        borderLeft: ins.blockType === 'heading'
+          ? '3px solid var(--primary)'
+          : '3px solid rgba(255,255,255,0.08)',
+        background: 'rgba(0,0,0,0.06)',
+      }}>
+        {ins.blockType === 'bulletListItem' && '• '}
+        {ins.blockType === 'numberedListItem' && '1. '}
+        {ins.content}
+      </div>
+
+      {/* 아래 블록 컨텍스트 */}
+      {nextBlock && (
+        <div style={{
+          padding: '3px 12px', fontSize: '10px',
+          color: 'var(--text-muted)', borderTop: '1px dashed rgba(255,255,255,0.04)',
+          opacity: 0.55, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+        }}>
+          ↓ {getBlockLabel(nextBlock)}
+        </div>
+      )}
+
+      {/* 액션 버튼 바 */}
+      <div style={{
+        padding: '6px 10px',
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        display: 'flex', alignItems: 'center', gap: '5px',
+        background: 'rgba(0,0,0,0.12)',
+      }}>
+        <button
+          onClick={() => onMove('up')}
+          disabled={!canMoveUp}
+          title="위로 이동"
+          style={{
+            padding: '3px 8px', borderRadius: '4px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: canMoveUp ? 'rgba(255,255,255,0.05)' : 'transparent',
+            color: canMoveUp ? 'var(--text-main)' : 'var(--text-muted)',
+            cursor: canMoveUp ? 'pointer' : 'not-allowed',
+            fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px',
+          }}
+        >
+          <ArrowUp size={9} /> 위
+        </button>
+        <button
+          onClick={() => onMove('down')}
+          disabled={!canMoveDown}
+          title="아래로 이동"
+          style={{
+            padding: '3px 8px', borderRadius: '4px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: canMoveDown ? 'rgba(255,255,255,0.05)' : 'transparent',
+            color: canMoveDown ? 'var(--text-main)' : 'var(--text-muted)',
+            cursor: canMoveDown ? 'pointer' : 'not-allowed',
+            fontSize: '10px', display: 'flex', alignItems: 'center', gap: '3px',
+          }}
+        >
+          <ArrowDown size={9} /> 아래
+        </button>
+        <span style={{ flex: 1 }} />
+        <button
+          onClick={onReject}
+          style={{
+            padding: '3px 10px', borderRadius: '4px',
+            border: '1px solid rgba(239,68,68,0.3)',
+            background: 'rgba(239,68,68,0.08)', color: '#f87171',
+            cursor: 'pointer', fontSize: '11px', fontWeight: 600,
+            display: 'flex', alignItems: 'center', gap: '3px',
+          }}
+        >
+          <X size={10} /> 거절
+        </button>
+        <button
+          onClick={onApply}
+          style={{
+            padding: '3px 12px', borderRadius: '4px',
+            border: '1px solid rgba(16,185,129,0.4)',
+            background: 'rgba(16,185,129,0.12)', color: '#10b981',
+            cursor: 'pointer', fontSize: '11px', fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: '3px',
+          }}
+        >
+          <Check size={10} /> 삽입
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function ThoughtNodeItem({ node, isLast: _isLast }: { node: ThoughtNode; isLast: boolean }) {
   const isHeader = node.isHeader
   const hasChildren = node.children && node.children.length > 0
@@ -324,33 +656,40 @@ function MessageBubble({
   onApplySuggestion,
   hasSelection,
   onUpdateDiffState,
+  onApplyInsertSuggestion,
+  onUpdateInsertSuggestionStatus,
+  blocks,
+  onScrollToBlock,
 }: {
   msg: AIMessage
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string) => void
   hasSelection: boolean
   onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void
+  onApplyInsertSuggestion?: (msgId: string, afterBlockId: string, blockType: string, content: string, level?: number) => void
+  onUpdateInsertSuggestionStatus?: (msgId: string, status: 'pending' | 'accepted' | 'rejected', newAfterBlockId?: string, newSiblingIndex?: number) => void
+  blocks?: any[]
+  onScrollToBlock?: (blockId: string) => void
 }) {
   const [copied, setCopied] = useState(false)
   const [thoughtExpanded, setThoughtExpanded] = useState(false)
   const isUser = msg.role === 'user'
 
-  // 생각 과정 (Thought Process) 파싱
-  const thoughtMatch = msg.content.match(/<thought>([\s\S]*?)<\/thought>([\s\S]*)/i)
-  let thoughtText = ''
-  let cleanContent = msg.content
-  
-  if (thoughtMatch) {
-    thoughtText = thoughtMatch[1].trim()
-    cleanContent = thoughtMatch[2].trim()
-  } else if (msg.content.includes('<thought>')) {
-    const partialMatch = msg.content.match(/<thought>([\s\S]*)/i)
-    if (partialMatch) {
-      thoughtText = partialMatch[1].trim()
-      cleanContent = ''
-    }
-  }
+  // 스트리밍 중 생각 과정 자동 펼침
+  useEffect(() => {
+    if (msg.isStreaming) setThoughtExpanded(true)
+  }, [msg.isStreaming])
 
-  const thoughtSummary = thoughtText ? getThoughtSummary(thoughtText, !!msg.isStreaming) : null
+  // 실제 reasoning trace 사용 (삸니타이저가 content에서 내부 태그를 이미 제거함)
+  // msg.reasoningTrace를 우선 사용, 없으면 표시 안 함
+  const traceEvents = msg.reasoningTrace || []
+  const hasRealTrace = traceEvents.length > 0
+  // thinking 타입 trace 파스만 모아서 표시할 텍스트 생성
+  const thinkingText = traceEvents
+    .filter(t => t.type === 'thinking' || t.type === 'step')
+    .map(t => t.text || '')
+    .filter(Boolean)
+    .join('\n\n---\n\n')
+  const cleanContent = msg.content  // content는 삸니타이저를 통해 이미 정제된 최종 답변
 
   const handleCopy = async () => {
     try {
@@ -458,8 +797,48 @@ function MessageBubble({
           userSelect: 'text',
           WebkitUserSelect: 'text',
         }}>
-          {/* 생각 과정 (Thought Process) 박스 표출 */}
-          {thoughtText && (
+          {/* 🏷️ 사용자 지정 참조 태그 목록 표시 */}
+          {isUser && msg.taggedBlocks && msg.taggedBlocks.length > 0 && (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '4px',
+              marginBottom: '8px',
+              padding: '4px 6px',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: '1px dashed rgba(255, 255, 255, 0.1)',
+              borderRadius: '6px',
+              boxSizing: 'border-box',
+              width: 'fit-content'
+            }}>
+              {msg.taggedBlocks.map(block => (
+                <span
+                  key={block.id}
+                  onClick={() => onScrollToBlock?.(block.id)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(139, 92, 246, 0.22)',
+                    color: '#d8b4fe',
+                    fontSize: '9px',
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    cursor: onScrollToBlock ? 'pointer' : 'default',
+                    border: '1px solid rgba(139, 92, 246, 0.35)',
+                    userSelect: 'none',
+                  }}
+                  title="클릭 시 에디터 상의 해당 위치로 이동 및 하이라이트"
+                >
+                  💜 #{block.text}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Reasoning Trace 표시 — 스트리밍 중이거나 실제 trace가 있을 때 표시 */}
+          {!isUser && (hasRealTrace || msg.isStreaming) && (
             <div style={{
               marginBottom: '8px',
               borderRadius: '6px',
@@ -492,14 +871,14 @@ function MessageBubble({
                   />
                   <span>
                     {msg.isStreaming 
-                      ? `생각 과정 (${thoughtSummary?.activeStep}번째 추론 중...)` 
-                      : `생각 과정 (총 ${thoughtSummary?.totalSteps}단계 추론 완료)`
+                      ? (thinkingText ? `생각 과정 (추론 중...)` : `응답 대기 중...`)
+                      : `생각 과정 (추론 완료, ${traceEvents.filter(t => t.type === 'thinking' || t.type === 'step').length}단계)`
                     }
                   </span>
                 </div>
-                {thoughtExpanded || msg.isStreaming ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {thoughtExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </div>
-              {(thoughtExpanded || msg.isStreaming) && (
+              {thoughtExpanded && (
                 <div style={{
                   padding: '8px 10px',
                   fontSize: '11px',
@@ -507,11 +886,128 @@ function MessageBubble({
                   lineHeight: '1.5',
                   borderTop: '1px solid rgba(255,255,255,0.04)',
                   background: 'rgba(0,0,0,0.12)',
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                  minHeight: msg.isStreaming && !thinkingText ? '28px' : undefined,
+                  display: 'flex',
+                  alignItems: msg.isStreaming && !thinkingText ? 'center' : 'flex-start',
                 }}>
-                  <ThoughtTreeView text={thoughtText} isStreaming={!!msg.isStreaming} />
+                  {thinkingText || (msg.isStreaming
+                    ? <span style={{ color: 'rgba(255,255,255,0.25)', fontStyle: 'italic', fontSize: '10px' }}>{"<think> 태그 대기 중..."}</span>
+                    : null
+                  )}
                 </div>
               )}
             </div>
+          )}
+
+          {/* AI 삽입 제안 카드 (INSERT_SUGGESTION) */}
+          {!isUser && msg.insertSuggestions && msg.insertSuggestions.length > 0 ? (
+            msg.insertSuggestions.map((ins, idx) => (
+              <InsertPreviewCard
+                key={idx}
+                msg={msg}
+                ins={ins}
+                blocks={blocks || []}
+                onApply={() => {
+                  onApplyInsertSuggestion?.(msg.id, ins.afterBlockId, ins.blockType, ins.content, ins.level, idx)
+                }}
+                onReject={() => {
+                  onUpdateInsertSuggestionStatus?.(msg.id, 'rejected', undefined, undefined, idx)
+                }}
+                onMove={(direction) => {
+                  const flatAll: any[] = (function flatten(bks: any[]): any[] {
+                    return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
+                  })(blocks || [])
+                  const ids = ins.siblingBlockIds ?? flatAll.map((b: any) => b.id)
+                  const currIdx = ins.siblingIndex ?? ids.indexOf(ins.afterBlockId)
+
+                  // 에디터 타겟 블록 하이라이트 & 스크롤 공통 헬퍼
+                  const highlightBlock = (targetId: string) => {
+                    setTimeout(() => {
+                      try {
+                        const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
+                        if (!resolvedId) return
+                        const el = document.querySelector(`[data-id="${resolvedId}"], [data-block-id="${resolvedId}"]`)
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                          const outer = el.closest('.bn-block-outer') || el
+                          outer.setAttribute('data-highlighted-temp', 'true')
+                          setTimeout(() => outer.removeAttribute('data-highlighted-temp'), 1200)
+                        }
+                      } catch (e) {
+                        console.warn('에디터 블록 포커싱 에러:', e)
+                      }
+                    }, 50)
+                  }
+
+                  if (direction === 'up' && currIdx > 0) {
+                    const newIdx = currIdx - 1
+                    const newId = newIdx === 0 ? 'START' : ids[newIdx - 1]
+                    onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx, idx)
+                    highlightBlock(newId)
+                  } else if (direction === 'down') {
+                    const newIdx = currIdx + 1
+                    const newId = newIdx >= ids.length ? 'END' : ids[newIdx]
+                    onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx, idx)
+                    highlightBlock(newId)
+                  }
+                }}
+              />
+            ))
+          ) : (
+            !isUser && msg.insertSuggestion && (
+              <InsertPreviewCard
+                msg={msg}
+                ins={msg.insertSuggestion}
+                blocks={blocks || []}
+                onApply={() => {
+                  const ins = msg.insertSuggestion!
+                  onApplyInsertSuggestion?.(msg.id, ins.afterBlockId, ins.blockType, ins.content, ins.level)
+                }}
+                onReject={() => {
+                  onUpdateInsertSuggestionStatus?.(msg.id, 'rejected')
+                }}
+                onMove={(direction) => {
+                  const ins = msg.insertSuggestion!
+                  const flatAll: any[] = (function flatten(bks: any[]): any[] {
+                    return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
+                  })(blocks || [])
+                  const ids = ins.siblingBlockIds ?? flatAll.map((b: any) => b.id)
+                  const currIdx = ins.siblingIndex ?? ids.indexOf(ins.afterBlockId)
+
+                  const highlightBlock = (targetId: string) => {
+                    setTimeout(() => {
+                      try {
+                        const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
+                        if (!resolvedId) return
+                        const el = document.querySelector(`[data-id="${resolvedId}"], [data-block-id="${resolvedId}"]`)
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                          const outer = el.closest('.bn-block-outer') || el
+                          outer.setAttribute('data-highlighted-temp', 'true')
+                          setTimeout(() => outer.removeAttribute('data-highlighted-temp'), 1200)
+                        }
+                      } catch (e) {
+                        console.warn('에디터 블록 포커싱 에러:', e)
+                      }
+                    }, 50)
+                  }
+
+                  if (direction === 'up' && currIdx > 0) {
+                    const newIdx = currIdx - 1
+                    const newId = newIdx === 0 ? 'START' : ids[newIdx - 1]
+                    onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx)
+                    highlightBlock(newId)
+                  } else if (direction === 'down') {
+                    const newIdx = currIdx + 1
+                    const newId = newIdx >= ids.length ? 'END' : ids[newIdx]
+                    onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx)
+                    highlightBlock(newId)
+                  }
+                }}
+              />
+            )
           )}
 
           {/* 스트리밍 완료 후 Diff 제안이 있는 경우 DiffRenderer 표출 */}
@@ -551,19 +1047,13 @@ function MessageBubble({
             </div>
           ) : (
             cleanContent || (msg.isStreaming ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)' }}>
-                  {/* 도트 바운스 스피너 */}
-                  <span style={{ display: 'flex', gap: '3px' }}>
-                    <span className="dot-thinking" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)', animation: 'dot-blink 1.4s infinite both' }} />
-                    <span className="dot-thinking" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)', animation: 'dot-blink 1.4s infinite both 0.2s' }} />
-                    <span className="dot-thinking" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)', animation: 'dot-blink 1.4s infinite both 0.4s' }} />
-                  </span>
-                  <span style={{ fontSize: '11px', fontWeight: 600 }}>AMEVA AI 엔진 추론 시작 중...</span>
-                </div>
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                  엔진 로딩 및 로컬 CPU/GPU 가속 연산을 조율하고 있습니다. 잠시만 기다려주세요.
-                </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
+                <span style={{ display: 'flex', gap: '3px' }}>
+                  <span className="dot-thinking" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)', animation: 'dot-blink 1.4s infinite both' }} />
+                  <span className="dot-thinking" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)', animation: 'dot-blink 1.4s infinite both 0.2s' }} />
+                  <span className="dot-thinking" style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'var(--primary)', animation: 'dot-blink 1.4s infinite both 0.4s' }} />
+                </span>
+                <span style={{ fontSize: '11px' }}>응답 생성 중...</span>
               </div>
             ) : '')
           )}
@@ -872,6 +1362,8 @@ export function AIPanel({
   onClearSelectedText,
   onApplySuggestion,
   onUpdateDiffState,
+  onApplyInsertSuggestion,
+  onUpdateInsertSuggestionStatus,
   activeBlockId,
   editor,
   blocks = [],
@@ -880,6 +1372,13 @@ export function AIPanel({
   engineLogs = '', // 🤖 실시간 원시 로그 데이터 매핑
   showModelHub = false,
   setShowModelHub,
+  refreshModels,
+  importModel,
+  downloadStatus,
+  setDownloadStatus,
+  taggedBlocks = [],
+  setTaggedBlocks,
+  onScrollToBlock,
 }: AIPanelProps) {
   const [input, setInput] = useState('')
   const [manualMode, setManualMode] = useState<'auto' | 'edit' | 'summary' | 'chat'>('auto')
@@ -896,23 +1395,23 @@ export function AIPanel({
   const apiType = settings.apiType || 'local'
   const gpuOnly = settings.gpuOnly !== false
   const apiKey = settings.apiKey || ''
+  // [FIX-W-003] 동적 API 엔드포인트/모델명 상태 도입
+  const apiEndpoint = settings.apiEndpoint || ''
+  const apiModel = settings.apiModel || ''
 
   const [gpuName, setGpuName] = useState('')
-  const [downloadStatus, setDownloadStatus] = useState<any>(null)
   const [showDownloadDetail, setShowDownloadDetail] = useState(false)
   const [showLogs, setShowLogs] = useState(false) // 🤖 실시간 터미널 로그창 토글 상태
 
   // 🤖 로컬 엔진 유효 여부 또는 무설치 모드(WASM, API, Ollama) 활성화 여부 판정
   const isInputEnabled = isAvailable || apiType === 'wasm' || apiType === 'api' || apiType === 'ollama'
 
+  // 모달이 열릴 때마다 로컬 모델 목록 스캔 동기화
   useEffect(() => {
-    if (window.electronAPI?.onLLMDownloadProgress) {
-      const unsub = window.electronAPI.onLLMDownloadProgress((status: any) => {
-        setDownloadStatus(status)
-      })
-      return () => unsub()
+    if (showModelHub && refreshModels) {
+      refreshModels()
     }
-  }, [])
+  }, [showModelHub, refreshModels])
 
   useEffect(() => {
     if (window.electronAPI?.llmGetGpuName) {
@@ -933,11 +1432,37 @@ export function AIPanel({
     }
   }, [messages])
 
-  const getContextWithRAG = (query: string, useFullFallback = false) => {
-    if (selectedText) {
-      return `[선택한 부분 텍스트]\n${selectedText}\n\n[문서 내용 전체]\n${currentContent}`
+  // 🤖 태그가 추가되거나 AI 패널이 활성화(열림)될 때 채팅 입력창(textarea) 포커싱 유지
+  useEffect(() => {
+    if (isOpen && taggedBlocks.length > 0) {
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
     }
-    if (!useContext && !useFullFallback) return undefined
+  }, [taggedBlocks.length, isOpen])
+
+  const getContextWithRAG = (query: string, useFullFallback = false) => {
+    // 항상 문서 블록 구조 인덱스를 포함 (WRITE/EDIT 모드에서 afterBlockId 선택에 필수)
+    const buildBlockIndex = () => {
+      if (!blocks || blocks.length === 0) return ''
+      const flatAll: any[] = (function flatten(bks: any[]): any[] {
+        return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
+      })(blocks)
+      const lines = flatAll.map((b: any) => {
+        const txt = Array.isArray(b.content)
+          ? b.content.map((c: any) => c.text || '').join('').slice(0, 60)
+          : ''
+        const extra = b.type === 'heading' && b.props?.level ? ` level=${b.props.level}` : ''
+        return `[Block ID: ${b.id}, Type: ${b.type}${extra}] ${txt}`
+      })
+      return `[문서 블록 구조 목록 — 삽입 위치(afterBlockId) 선택 시 사용]\n` + lines.join('\n')
+    }
+
+    if (selectedText) {
+      return `[선택한 부분 텍스트]\n${selectedText}\n\n[문서 내용 전체]\n${currentContent}\n\n${buildBlockIndex()}`
+    }
+    if (!useContext && !useFullFallback) return buildBlockIndex() || undefined
 
     if (blocks && blocks.length > 0) {
       try {
@@ -945,13 +1470,14 @@ export function AIPanel({
         const relevant = retrieveRelevantBlocks(query, flat, 5)
         if (relevant.length > 0) {
           return `[참조된 관련 문서 내용 (RAG 검색 결과)]\n아래는 사용자의 질문과 가장 연관성이 높은 문서 내 블록들입니다. 해당 정보를 정확히 파악하여 답변에 반영하고, 필요 시 명시된 Block ID를 사용해 수정 제안을 하십시오.\n\n` +
-            relevant.map(b => `[Block ID: ${b.id}, Type: ${b.type}]\n${b.text}`).join('\n\n')
+            relevant.map((b: any) => `[Block ID: ${b.id}, Type: ${b.type}]\n${b.text}`).join('\n\n') +
+            `\n\n${buildBlockIndex()}`
         }
       } catch (e) {
         console.warn('RAG 검색 실패, 전체 본문 폴백:', e)
       }
     }
-    return currentContent
+    return (currentContent ? currentContent + '\n\n' : '') + buildBlockIndex()
   }
 
   // 🤖 로그 수신 시 스마트 자동 스크롤
@@ -965,17 +1491,27 @@ export function AIPanel({
     }
   }, [engineLogs])
 
-  const getActiveMode = (queryText: string): 'edit' | 'summary' | 'chat' => {
-    if (manualMode !== 'auto') return manualMode
+  const getActiveMode = (queryText: string): 'write' | 'edit' | 'summary' | 'chat' => {
+    if (manualMode !== 'auto') return manualMode as any
 
     const cleanInput = queryText.toLowerCase().trim()
     const summaryKeywords = ['요약', '정리', '줄여', 'summarize', 'summary', 'brief']
     if (summaryKeywords.some(k => cleanInput.includes(k))) return 'summary'
 
-    // 선택 영역이 활성화되어 있으면 기본적으로 수정/편집 모드(EDIT)로 자동 분류
+    const writeKeywords = [
+      '써줘', '써', '작성', '보고서', '리포트', '문서 만들어', '글 써줘',
+      '제목', '본문', '넣어줘', '넣어', '입력해', '추가해줘', '만들어줘',
+      '생성해', '도입말', '서론', '결론',
+      'write', 'draft', 'create', 'compose', 'generate', 'insert',
+    ]
+    if (writeKeywords.some(k => cleanInput.includes(k))) return 'write'
+
     if (selectedText) return 'edit'
 
-    const editKeywords = ['수정', '변경', '바꿔', '고쳐', '삽입', '지워', '추가', '작성해', 'edit', 'modify', 'replace', 'rewrite', 'correct']
+    const editKeywords = [
+      '수정', '변경', '바꿔', '고쳐', '삽입', '지워', '교체', '고쳐줘',
+      'edit', 'modify', 'replace', 'rewrite', 'correct'
+    ]
     if (editKeywords.some(k => cleanInput.includes(k))) return 'edit'
 
     return 'chat'
@@ -1001,6 +1537,9 @@ export function AIPanel({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
+    } else if (e.key === 'Backspace' && input === '' && taggedBlocks.length > 0) {
+      e.preventDefault()
+      setTaggedBlocks(prev => prev.slice(0, prev.length - 1))
     }
   }
 
@@ -1051,6 +1590,9 @@ export function AIPanel({
         alignItems: 'center',
         gap: '8px',
         flexShrink: 0,
+        flexWrap: 'nowrap',
+        width: '100%',
+        boxSizing: 'border-box'
       }}>
         <div style={{
           width: '28px', height: '28px', borderRadius: '8px',
@@ -1061,15 +1603,16 @@ export function AIPanel({
         }}>
           <Sparkles size={14} color="#fff" />
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.3px' }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.3px', flexShrink: 0 }}>
               AMEVA <span style={{ color: 'var(--primary)' }}>AI</span>
             </span>
             {/* AI 모드별 상태 배지 */}
             <span style={{
               fontSize: '8px', fontWeight: 800, padding: '1px 4px', borderRadius: '4px',
               color: '#fff',
+              flexShrink: 0,
               background: apiType === 'wasm'
                 ? 'linear-gradient(135deg, #0284c7, #0369a1)' // WASM 블루
                 : apiType === 'api'
@@ -1085,6 +1628,7 @@ export function AIPanel({
               <span style={{
                 fontSize: '8px', fontWeight: 800, padding: '1px 4px', borderRadius: '4px',
                 color: '#fff',
+                flexShrink: 0,
                 background: gpuOnly
                   ? 'linear-gradient(135deg, #a855f7, #7c3aed)' // GPU 가속 보라
                   : 'linear-gradient(135deg, #4b5563, #374151)', // CPU 그레이
@@ -1093,7 +1637,7 @@ export function AIPanel({
               </span>
             )}
           </div>
-          <div style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '170px' }}>
+          <div style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
             {apiType === 'api'
               ? 'OpenAI GPT-4o 연결됨'
               : apiType === 'ollama'
@@ -1115,6 +1659,7 @@ export function AIPanel({
               display: 'flex', alignItems: 'center',
               padding: '4px', borderRadius: '5px', transition: 'all 0.15s',
               marginRight: '2px',
+              flexShrink: 0,
             }}
             title="AI 엔진 터미널 로그 실시간 감시"
           >
@@ -1128,6 +1673,7 @@ export function AIPanel({
             border: 'none', cursor: 'pointer',
             color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
             padding: '4px', borderRadius: '5px', transition: 'all 0.15s',
+            flexShrink: 0,
           }}
           title="AI 설정"
         >
@@ -1139,6 +1685,7 @@ export function AIPanel({
             background: 'transparent', border: 'none', cursor: 'pointer',
             color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
             padding: '4px', borderRadius: '5px',
+            flexShrink: 0,
           }}
         >
           <X size={14} />
@@ -1181,24 +1728,66 @@ export function AIPanel({
 
           {/* API Key 입력란 */}
           {apiType === 'api' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>OpenAI API Key</label>
-              <input
-                type="password"
-                value={apiKey}
-                onChange={e => onUpdateSettings({ apiKey: e.target.value })}
-                placeholder="sk-..."
-                style={{
-                  width: '100%',
-                  background: 'var(--bg-glass)',
-                  border: '1px solid var(--border-muted)',
-                  borderRadius: '6px',
-                  padding: '5px 8px',
-                  color: 'var(--text-main)',
-                  fontSize: '11px',
-                  outline: 'none',
-                }}
-              />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API Key</label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={e => onUpdateSettings({ apiKey: e.target.value })}
+                  placeholder="sk-... (OpenAI) | sk-ant-... (Claude)"
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-glass)',
+                    border: '1px solid var(--border-muted)',
+                    borderRadius: '6px',
+                    padding: '5px 8px',
+                    color: 'var(--text-main)',
+                    fontSize: '11px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              {/* [FIX-W-003] 엔드포인트 입력란 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 엔드포인트 (URL)</label>
+                <input
+                  type="text"
+                  value={apiEndpoint}
+                  onChange={e => onUpdateSettings({ apiEndpoint: e.target.value })}
+                  placeholder="https://api.openai.com/v1/chat/completions"
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-glass)',
+                    border: '1px solid var(--border-muted)',
+                    borderRadius: '6px',
+                    padding: '5px 8px',
+                    color: 'var(--text-main)',
+                    fontSize: '10px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+              {/* [FIX-W-003] 모델명 입력란 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 모델명</label>
+                <input
+                  type="text"
+                  value={apiModel}
+                  onChange={e => onUpdateSettings({ apiModel: e.target.value })}
+                  placeholder="gpt-4o-mini | claude-3-5-sonnet-20241022"
+                  style={{
+                    width: '100%',
+                    background: 'var(--bg-glass)',
+                    border: '1px solid var(--border-muted)',
+                    borderRadius: '6px',
+                    padding: '5px 8px',
+                    color: 'var(--text-main)',
+                    fontSize: '10px',
+                    outline: 'none',
+                  }}
+                />
+              </div>
             </div>
           )}
 
@@ -1241,25 +1830,39 @@ export function AIPanel({
                   </button>
                 </div>
               ) : (
-                <select
-                  value={settings.modelPath}
-                  onChange={e => onUpdateSettings({ modelPath: e.target.value })}
-                  style={{
-                    width: '100%',
-                    background: 'var(--bg-glass)',
-                    border: '1px solid var(--border-muted)',
-                    borderRadius: '6px',
-                    padding: '5px 8px',
-                    color: 'var(--text-main)',
-                    fontSize: '11px',
-                  }}
-                >
-                  {models.map(m => (
-                    <option key={m.path} value={m.path} style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
-                      {m.name} ({formatBytes(m.size)})
-                    </option>
-                  ))}
-                </select>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                  <select
+                    value={settings.modelPath}
+                    onChange={e => onUpdateSettings({ modelPath: e.target.value })}
+                    style={{
+                      width: '100%',
+                      background: 'var(--bg-glass)',
+                      border: '1px solid var(--border-muted)',
+                      borderRadius: '6px',
+                      padding: '5px 8px',
+                      color: 'var(--text-main)',
+                      fontSize: '11px',
+                    }}
+                  >
+                    {models.map(m => (
+                      <option key={m.path} value={m.path} style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
+                        {m.name} ({formatBytes(m.size)})
+                      </option>
+                    ))}
+                  </select>
+                  {importModel && (
+                    <button
+                      onClick={importModel}
+                      style={{
+                        alignSelf: 'flex-start',
+                        fontSize: '9.5px', color: 'rgba(167,139,250,0.85)', background: 'none', border: 'none',
+                        cursor: 'pointer', padding: '1px 0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'
+                      }}
+                    >
+                      + 외부 다운로드한 모델 파일(.gguf) 직접 가져오기
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -1535,6 +2138,10 @@ export function AIPanel({
               onApplySuggestion={onApplySuggestion}
               hasSelection={!!selectedText}
               onUpdateDiffState={onUpdateDiffState}
+              onApplyInsertSuggestion={onApplyInsertSuggestion}
+              onUpdateInsertSuggestionStatus={onUpdateInsertSuggestionStatus}
+              blocks={blocks}
+              onScrollToBlock={onScrollToBlock}
             />
           ))}
           <div ref={messagesEndRef} />
@@ -1646,15 +2253,16 @@ export function AIPanel({
       }}>
         {/* 🤖 에이전트 작업 모드 수동 지정 / 자동 라우팅 제어 패널 */}
         <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: '2px',
           background: 'rgba(0,0,0,0.2)',
           border: '1px solid var(--border-muted)',
           borderRadius: '8px',
           padding: '2px',
           marginBottom: '2px',
           width: '100%',
+          boxSizing: 'border-box',
         }}>
           {([
             { id: 'auto', label: '자동 (Auto)' },
@@ -1680,19 +2288,24 @@ export function AIPanel({
                 key={tab.id}
                 onClick={() => setManualMode(tab.id)}
                 style={{
-                  flex: 1,
-                  padding: '5px 4px',
+                  width: '100%',
+                  padding: '5px 2px',
                   borderRadius: '6px',
                   background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
                   border: isActive ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
                   color: isActive ? activeColor : 'var(--text-muted)',
-                  fontSize: '9px',
+                  fontSize: '9.5px',
                   fontWeight: isActive ? 800 : 500,
                   cursor: 'pointer',
                   textAlign: 'center',
                   transition: 'all 0.15s',
                   outline: 'none',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  boxSizing: 'border-box'
                 }}
+                title={resolvedLabel}
               >
                 {resolvedLabel}
               </button>
@@ -1796,6 +2409,59 @@ export function AIPanel({
             </button>
           )}
         </div>
+
+        {/* 🤖 참조된 태그 배지 목록UI */}
+        {taggedBlocks.length > 0 && (
+          <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '4px',
+            padding: '6px',
+            background: 'rgba(139, 92, 246, 0.06)',
+            border: '1px dashed rgba(139, 92, 246, 0.22)',
+            borderRadius: '6px',
+            marginBottom: '4px',
+            maxHeight: '65px',
+            overflowY: 'auto',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}>
+            {taggedBlocks.map(block => (
+              <span
+                key={block.id}
+                onClick={() => onScrollToBlock(block.id)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'rgba(139, 92, 246, 0.16)',
+                  color: '#c084fc',
+                  fontSize: '9.5px',
+                  fontWeight: 700,
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  border: '1px solid rgba(139, 92, 246, 0.25)',
+                  transition: 'background 0.2s',
+                  userSelect: 'none',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.3)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(139, 92, 246, 0.16)'}
+                title="클릭 시 에디터 상의 해당 위치로 이동 및 하이라이트"
+              >
+                💜 #{block.text}
+                <X
+                  size={10}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setTaggedBlocks(prev => prev.filter(b => b.id !== block.id))
+                  }}
+                  style={{ cursor: 'pointer', opacity: 0.7 }}
+                />
+              </span>
+            ))}
+          </div>
+        )}
 
         {/* 텍스트 입력 + 버튼 */}
         <div
@@ -2189,7 +2855,7 @@ export function AIPanel({
 
             <div style={{
               display: 'flex', flexDirection: 'column', gap: '8px',
-              maxHeight: '240px', overflowY: 'auto', paddingRight: '4px',
+              maxHeight: '380px', overflowY: 'auto', paddingRight: '4px',
             }}>
               {[
                 {
@@ -2209,8 +2875,8 @@ export function AIPanel({
                 {
                   name: 'EXAONE 3.0 2.4B (국산 최고 모델)',
                   size: '1.7 GB',
-                  desc: 'LG AI 연구원의 뛰어난 한국어 특화 성능',
-                  url: 'https://huggingface.co/LGAI-EXAONE/EXAONE-3.0-2.4B-Instruct-GGUF/resolve/main/exaone-3.0-2.4b-instruct-q4_k_m.gguf',
+                  desc: 'LG AI 연구원의 뛰어난 한국어 특화 성능 (Public)',
+                  url: 'https://huggingface.co/mradermacher/EXAONE-3.0-2.4B-Instruct-GGUF/resolve/main/EXAONE-3.0-2.4B-Instruct.Q4_K_M.gguf',
                   filename: 'exaone-3.0-2.4b-instruct-q4_k_m.gguf',
                 },
                 {
@@ -2221,71 +2887,97 @@ export function AIPanel({
                   filename: 'qwen2.5-3b-instruct-q4_k_m.gguf',
                 },
                 {
-                  name: 'Llama 3.2 8B (고성능 모델)',
+                  name: 'Qwen 2.5 7B (고성능 대화형 모델)',
                   size: '4.7 GB',
-                  desc: '강력한 논리력, 외장 GPU 장착 권장',
+                  desc: '코딩 및 복잡한 추론 지원, 외장 GPU 권장',
+                  url: 'https://huggingface.co/lmstudio-community/Qwen2.5-7B-Instruct-GGUF/resolve/main/Qwen2.5-7B-Instruct-Q4_K_M.gguf',
+                  filename: 'Qwen2.5-7B-Instruct-Q4_K_M.gguf',
+                },
+                {
+                  name: 'EXAONE 3.0 7.8B (국산 대형 모델)',
+                  size: '4.9 GB',
+                  desc: 'LG의 7.8B 최고 한국어 성능 및 문서 작업 특화 (Public)',
+                  url: 'https://huggingface.co/mradermacher/EXAONE-3.0-7.8B-Instruct-GGUF/resolve/main/EXAONE-3.0-7.8B-Instruct.Q4_K_M.gguf',
+                  filename: 'exaone-3.0-7.8b-instruct-q4_k_m.gguf',
+                },
+                {
+                  name: 'Llama 3.2 8B (글로벌 표준 모델)',
+                  size: '4.7 GB',
+                  desc: '강력한 글로벌 코어 논리력, 외장 GPU 권장',
                   url: 'https://huggingface.co/lmstudio-community/Llama-3.2-8B-Instruct-GGUF/resolve/main/Llama-3.2-8B-Instruct-Q4_K_M.gguf',
                   filename: 'Llama-3.2-8B-Instruct-Q4_K_M.gguf',
+                },
+                {
+                  name: 'Gemma 2 9B (구글 프리미엄 모델)',
+                  size: '5.6 GB',
+                  desc: '동급 모델 최강 성능 및 자연스러운 대화형 응답',
+                  url: 'https://huggingface.co/lmstudio-community/gemma-2-9b-it-GGUF/resolve/main/gemma-2-9b-it-Q4_K_M.gguf',
+                  filename: 'gemma-2-9b-it-q4_k_m.gguf',
                 }
               ].map((model) => {
                 const isDownloadingThis = downloadStatus && downloadStatus.filename === model.filename
+                const isInstalled = models.some(m => m.filename.toLowerCase() === model.filename.toLowerCase())
                 return (
                   <div key={model.filename} style={{
                     padding: '10px', borderRadius: '8px',
-                    background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                    background: 'var(--bg-glass)', 
+                    border: isInstalled ? '1px solid rgba(16,185,129,0.35)' : '1px solid var(--border-muted)',
+                    boxShadow: isInstalled ? '0 0 10px rgba(16,185,129,0.05)' : 'none',
                     display: 'flex', flexDirection: 'column', gap: '6px',
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 700 }}>{model.name}</span>
-                      <span style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 800 }}>{model.size}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700 }}>{model.name}</span>
+                        {isInstalled && (
+                          <span style={{ fontSize: '8.5px', background: 'rgba(16,185,129,0.15)', color: '#10b981', padding: '1px 4px', borderRadius: '4px', fontWeight: 700 }}>
+                            설치됨
+                          </span>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '10px', color: isInstalled ? '#10b981' : 'var(--primary)', fontWeight: 800 }}>{model.size}</span>
                     </div>
                     <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{model.desc}</div>
 
                     <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                      <button
-                        onClick={() => {
-                          if (window.electronAPI?.openExternalLink) {
-                            window.electronAPI.openExternalLink(model.url)
-                          } else {
-                            window.open(model.url, '_blank')
-                          }
-                        }}
-                        style={{
+                      {isInstalled ? (
+                        <div style={{
                           flex: 1, padding: '5px 8px', borderRadius: '4px',
-                          background: 'rgba(255,255,255,0.06)', color: 'var(--text-main)',
-                          border: '1px solid var(--border-muted)', fontSize: '10px',
-                          cursor: 'pointer', fontWeight: 600, textAlign: 'center',
-                        }}
-                      >
-                        브라우저 다운로드 🌐
-                      </button>
-
-                      {window.electronAPI?.llmDownloadModel && (
-                        <button
-                          disabled={!!downloadStatus}
-                          onClick={async () => {
-                            if (window.electronAPI?.llmDownloadModel) {
-                              setDownloadStatus({ filename: model.filename, progress: 0, speed: 0 })
-                              const res = await window.electronAPI.llmDownloadModel({
-                                url: model.url,
-                                filename: model.filename,
-                              })
-                              if (res && !res.success) {
-                                alert(`다운로드 실패: ${res.error}`)
-                                setDownloadStatus(null)
+                          background: 'rgba(16,185,129,0.12)', color: '#10b981',
+                          border: '1px solid rgba(16,185,129,0.3)', fontSize: '10px',
+                          fontWeight: 700, textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px'
+                        }}>
+                          <Check size={10} /> 사용 가능 ✓
+                        </div>
+                      ) : (
+                        window.electronAPI?.llmDownloadModel && (
+                          <button
+                            disabled={!!downloadStatus}
+                            onClick={async () => {
+                              if (window.electronAPI?.llmDownloadModel && setDownloadStatus) {
+                                setDownloadStatus({ filename: model.filename, progress: 0, speed: 0 })
+                                const res = await window.electronAPI.llmDownloadModel({
+                                  url: model.url,
+                                  filename: model.filename,
+                                })
+                                if (res && res.success) {
+                                  if (refreshModels) await refreshModels()
+                                } else if (res && !res.success) {
+                                  alert(`다운로드 실패: ${res.error}`)
+                                  setDownloadStatus(null)
+                                }
                               }
-                            }
-                          }}
-                          style={{
-                            flex: 1, padding: '5px 8px', borderRadius: '4px',
-                            background: 'var(--primary)', color: '#fff',
-                            border: 'none', fontSize: '10px',
-                            cursor: !!downloadStatus ? 'not-allowed' : 'pointer',
-                            fontWeight: 700, opacity: !!downloadStatus ? 0.5 : 1,
-                          }}
-                        >
-                          앱 내 자동 설치 📥
-                        </button>
+                            }}
+                            style={{
+                              flex: 1, padding: '5px 8px', borderRadius: '4px',
+                              background: 'var(--primary)', color: '#fff',
+                              border: 'none', fontSize: '10px',
+                              cursor: !!downloadStatus ? 'not-allowed' : 'pointer',
+                              fontWeight: 700, opacity: !!downloadStatus ? 0.5 : 1,
+                            }}
+                          >
+                            모델 다운로드 📥
+                          </button>
+                        )
                       )}
                     </div>
 
@@ -2305,7 +2997,7 @@ export function AIPanel({
               })}
             </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+            <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
               <button
                 onClick={() => {
                   if (window.electronAPI?.openExternalLink) {
@@ -2313,20 +3005,34 @@ export function AIPanel({
                   }
                 }}
                 style={{
-                  flex: 1, padding: '7px 10px', borderRadius: '6px',
+                  flex: 1, padding: '7px 8px', borderRadius: '6px',
                   background: 'none', border: '1px solid var(--border-muted)',
-                  color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer',
+                  color: 'var(--text-main)', fontSize: '10.5px', cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
               >
                 폴더 열기 📂
               </button>
+              {importModel && (
+                <button
+                  onClick={importModel}
+                  style={{
+                    flex: 1.2, padding: '7px 8px', borderRadius: '6px',
+                    background: 'rgba(6, 182, 212, 0.12)', border: '1px solid rgba(6, 182, 212, 0.3)',
+                    color: '#22d3ee', fontSize: '10.5px', cursor: 'pointer',
+                    fontWeight: 700, whiteSpace: 'nowrap'
+                  }}
+                >
+                  로컬 파일 복사/추가 📂
+                </button>
+              )}
               <button
                 onClick={() => setShowModelHub?.(false)}
                 style={{
-                  flex: 1, padding: '7px 10px', borderRadius: '6px',
+                  flex: 1, padding: '7px 8px', borderRadius: '6px',
                   background: 'var(--bg-glass-active)', border: '1px solid var(--border-muted)',
-                  color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer',
-                  fontWeight: 700,
+                  color: 'var(--text-main)', fontSize: '10.5px', cursor: 'pointer',
+                  fontWeight: 700, whiteSpace: 'nowrap'
                 }}
               >
                 완료 및 닫기

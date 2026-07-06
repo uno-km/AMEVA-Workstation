@@ -1,4 +1,28 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import type { ReasoningTraceEvent } from '../../shared/reasoningTypes'
+import { StreamingSanitizer } from '../utils/responseSanitizer'
+import { AgentEngine } from '../utils/agentEngine'
+import { MCPClientManager } from '../utils/mcpClient' // [FIX-MCP-001] MCP 관리 유틸 임포트
+
+/** 블록 삽입 제안 — AI가 문서에 새 블록을 삽입할 위치와 내용을 제안 */
+export interface InsertSuggestion {
+  /** 이 블록 다음에 삽입. 'START' = 문서 맨 앞, 'END' = 문서 맨 끝 */
+  afterBlockId: string
+  /** 삽입할 블록의 BlockNote 타입 */
+  blockType: 'heading' | 'paragraph' | 'bulletListItem' | 'numberedListItem' | 'table'
+  /** heading일 때 레벨 (1~3) */
+  level?: 1 | 2 | 3
+  /** 삽입할 텍스트 내용 */
+  content: string
+  /** AI가 해당 위치를 선택한 이유 (태그 앞 설명 텍스트) */
+  reasonText?: string
+  /** 제안 처리 상태 */
+  status: 'pending' | 'accepted' | 'rejected'
+  /** 현재 삽입 커서 위치에서의 주변 블록 ID들 (상하 이동 시 사용) */
+  siblingBlockIds?: string[]
+  /** 현재 afterBlockId가 siblingBlockIds 배열에서 몇 번째 인덱스인지 */
+  siblingIndex?: number
+}
 
 export interface AIMessage {
   id: string
@@ -8,11 +32,34 @@ export interface AIMessage {
   isStreaming?: boolean
   error?: boolean
   aborted?: boolean
+  taggedBlocks?: { id: string; text: string }[]
   // 인라인 Diff 제안용 메타데이터
   originalText?: string
   proposedText?: string
   diffState?: 'pending' | 'accepted' | 'rejected'
   blockId?: string
+  /** 새 블록 삽입 제안 (INSERT_SUGGESTION 파싱 결과) */
+  insertSuggestion?: InsertSuggestion
+  insertSuggestions?: InsertSuggestion[]
+  /**
+   * 실제 LLM/Provider 출력 기반 추론 추적 이벤트 배열.
+   * UI가 만든 문구가 아닌 모델/pipeline 실제 출력만 포함.
+   * final answer와 분리 저장/렌더링한다.
+   */
+  reasoningTrace?: ReasoningTraceEvent[]
+  /**
+   * reasoning pipeline이 생성한 최종 답변.
+   * reasoningTrace와 분리 저장.
+   */
+  finalAnswer?: string
+  /**
+   * 추론 추적 상태:
+   * - 'ok': trace 정상 생성
+   * - 'reasoning_trace_unavailable': 미지원 — fake step 대체 금지
+   * - 'error': 오류
+   * - undefined: 단순 스트리밍 모드 (pipeline 미사용)
+   */
+  reasoningStatus?: 'ok' | 'reasoning_trace_unavailable' | 'error'
 }
 
 export interface AISettings {
@@ -22,42 +69,76 @@ export interface AISettings {
   systemPrompt: string
   apiType?: 'local' | 'api' | 'wasm'
   apiKey?: string
+  /** [FIX-W-003] 클라우드 API 엔드포인트 (OpenAI 호환 대체 다이나믹, Claude 등 지원) */
+  apiEndpoint?: string
+  /** [FIX-W-003] 클라우드 API 모델명 (gpt-4o-mini, claude-3-5-sonnet 등) */
+  apiModel?: string
   gpuOnly?: boolean
 }
 
 const DEFAULT_SETTINGS: AISettings = {
   modelPath: 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf',
   temperature: 0.7,
-  maxTokens: 512,
-  systemPrompt: `당신은 AMEVA 문서 에디터의 전문 AI 어시스턴트입니다.
+  maxTokens: 1024,
+  systemPrompt: `당신은 AMEVA 문서 에디터에 내장된 AI 문서 편집 에이전트입니다.
+사용자의 문서를 직접 읽고, 분석하고, 수정하거나 새로운 내용을 삽입하는 것이 당신의 주 역할입니다.
 
-# 사고 과정 지침 (Thinking Process)
-- 답변을 생성하기 전에, 반드시 가장 먼저 \`<thought>\` 태그를 열어 질문의 의도 분석, 관련 정보 매핑, 답변 구상 및 단계별 추론/검증 과정을 한국어로 상세히 적으십시오.
-- 생각을 작성할 때는 반드시 대괄호를 사용한 대분류 헤더(예: [분석], [추론], [수행 계획], [검증] 등)를 작성하고, 그 아래에 하이픈(-)과 들여쓰기를 사용하여 여러 단계의 세부 생각(Chain of Thought)을 기술하십시오.
-- 복잡한 문제일수록 깊이 있게 생각하며 여러 단계(예: 1단계, 2단계, 3단계 등)로 나누어 상세히 추론하십시오.
-- 생각이 완료되면 반드시 \`</thought>\` 태그를 닫고 실제 답변 본문을 작성하십시오.
-- 예시:
-  \`<thought>
-  [분석]
-  - 사용자가 문서 요약 요청함.
-    - 입력 텍스트의 크기는 약 500자이며, 프로젝트 일정에 관한 내용임.
-  [추론]
-  - 프로젝트 일정에서 가장 중요한 마일스톤 3가지를 추출하는 것이 핵심임.
-  [수행 계획]
-  - 1단계: RAG 본문을 검토하여 날짜와 마일스톤 매핑.
-  - 2단계: 각 마일스톤의 중요도를 평가하여 순위 지정.
-  - 3단계: 가독성을 높이기 위해 요약 결과를 3줄 목록 형태로 구성.
-  </thought>
-  요청하신 요약본입니다...\`
+# CoT 사고 과정 지침
+답변하기 전에 반드시 <think>...</think> 태그 안에 한국어로 사고 과정을 작성하십시오.
+- 사용자 요청을 분석하고
+- 문서 구조(블록 목록)를 검토하며
+- 어떤 액션(WRITE/EDIT/CHAT)이 적합한지 판단하고
+- 삽입 위치나 수정 대상 블록을 결정하는 이유를 설명하십시오.
+예시:
+<think>
+사용자가 치즈 보고서 제목을 요청했다. 문서가 비어있으므로 afterBlockId=START, type=heading, level=1이 적합하다.
+</think>
 
-# 핵심 지침 (Core Directives)
-1. **전문적이고 간결한 응답**: 불필요한 인사말, 잡담, 서론("도와드릴까요?", "여기 결과입니다")은 완전히 생략하고 요청받은 결과물만 즉시 출력하십시오.
-2. **콘텍스트 인식 & RAG**: 제공되는 컨텍스트 블록 \`[Block ID: <id>, Type: <type>]\` 정보를 적극 참조하십시오.
-3. **수정 제안 (Edit Suggestion)**: 사용자가 특정 블록이나 텍스트의 변경/교체/수정을 요구하는 경우, 수정된 본문을 제안하되 답변 맨 마지막에 반드시 아래 형식의 수정 제안 태그를 추가하십시오:
-   [EDIT_SUGGESTION: 대상블록ID]
-   수정된 코드 또는 텍스트 본문
-   (블록 ID는 컨텍스트에 명시된 ID와 정확히 일치해야 합니다. 마음대로 지셔서는 안 됩니다.)
-4. **한국어 답변**: 사용자의 질문 언어에 상관없이 **반드시 한국어(Korean)로 답변**하십시오.`,
+# 절대 금지 사항
+- JavaScript/Python/코드 예시를 답변에 포함하지 마십시오. 절대 금지.
+- "AMEVA Nexus", "코드 실행", "실시간 협업 기능"을 소개하지 마십시오.
+- 인사말, 서론, "도와드릴게요" 같은 문구를 생략하십시오.
+- 존재하지 않는 Block ID를 임의로 만들지 마십시오.
+
+# 당신이 할 수 있는 것
+1. 문서의 특정 블록 텍스트를 수정/교체 → [EDIT_SUGGESTION] 태그 사용
+2. 문서에 새 블록(제목/단락/목록 등)을 삽입 → [INSERT_SUGGESTION] 태그 사용
+3. 문서 내용을 분석하여 요약하거나 질문에 답변
+
+# [EDIT_SUGGESTION] 형식 (기존 블록 내용 수정)
+답변 맨 끝에 다음 형식을 추가하십시오:
+[EDIT_SUGGESTION: 대상블록ID]
+수정된 텍스트 내용
+(블록 ID는 컨텍스트에서 제공된 것과 정확히 일치해야 합니다.)
+
+# [INSERT_SUGGESTION] 형식 (새 블록 삽입)
+문서에 새 내용을 추가할 때는 답변 끝에 다음 형식을 사용하십시오:
+[INSERT_SUGGESTION: afterBlockId=<블록ID 또는 START 또는 END>, type=<블록타입>, level=<1~3>]
+삽입할 내용
+
+블록ID 규칙:
+- afterBlockId=START : 문서 맨 앞에 삽입
+- afterBlockId=END : 문서 맨 끝에 삽입
+- afterBlockId=<실제ID> : 해당 블록 바로 다음에 삽입
+
+블록 타입(type):
+- heading : 제목 (level=1,2,3 중 선택)
+- paragraph : 일반 단락
+- bulletListItem : 글머리 기호 목록
+- numberedListItem : 번호 목록
+
+예시:
+[INSERT_SUGGESTION: afterBlockId=START, type=heading, level=1]
+치즈의 종류와 특징
+
+# 문서 구조 분석 지침 (WRITE 모드)
+- 컨텍스트에서 제공된 블록 목록과 ID를 보고 적절한 삽입 위치를 선택하십시오.
+- 이미 Heading 1이 있으면 그 아래에 Heading 2로 삽입하는 것을 권장하십시오.
+- 문서가 비어있으면 afterBlockId=START를 사용하십시오.
+- 본문 요청이면 관련 제목 블록 다음에 paragraph를 삽입하십시오.
+
+# 한국어 답변
+반드시 한국어로 답변하십시오.`,
   apiType: 'local',
   apiKey: '',
   gpuOnly: true,
@@ -71,13 +152,16 @@ export function useAI() {
       const stored = localStorage.getItem('ai-settings')
       if (stored) {
         const parsed = JSON.parse(stored)
-        // 기존 구버전 및 한국어 강제성이 빠졌거나 사고 과정 지침이 빠진 옛 프롬프트 교체 마이그레이션
+        // 구버전 프롬프트 마이그레이션: fake thought 지침이 있거나 CoT 지침 누락 시 교체
         if (parsed.systemPrompt && (
-          parsed.systemPrompt.includes('간결하고 명확하게 답하세요') || 
+          parsed.systemPrompt.includes('간결하고 명확하게 답하세요') ||
           parsed.systemPrompt.includes('친근하고 유연하게') ||
           parsed.systemPrompt.includes('AMEVA AI입니다.') ||
           !parsed.systemPrompt.includes('한국어 답변') ||
-          !parsed.systemPrompt.includes('사고 과정 지침')
+          !parsed.systemPrompt.includes('INSERT_SUGGESTION') ||
+          !parsed.systemPrompt.includes('CoT 사고 과정 지침') ||  // CoT 지침 미포함 → 강제 교체
+          parsed.systemPrompt.includes('사고 과정 지침') ||
+          parsed.systemPrompt.includes('<thought>')
         )) {
           parsed.systemPrompt = DEFAULT_SETTINGS.systemPrompt
           localStorage.setItem('ai-settings', JSON.stringify(parsed))
@@ -96,6 +180,25 @@ export function useAI() {
   const unsubDoneRef = useRef<(() => void) | null>(null)
   const unsubLogRef = useRef<(() => void) | null>(null)
   const currentAssistantIdRef = useRef<string | null>(null)
+  const currentSessionIdRef = useRef<string | null>(null) // [FIX-IPC-001] 현재 대화 세션 ID 트래킹 레프
+
+  // 🤖 StreamingSanitizer instance — one per generation session
+  const sanitizerRef = useRef<StreamingSanitizer>(new StreamingSanitizer())
+  // 🤖 Raw accumulated text (un-sanitized) — used for EDIT_SUGGESTION parsing
+  const rawAccumRef = useRef<string>('')
+  // 🤖 에이전트 구동 중 전역 토큰 리스너(onLLMToken)와의 충돌을 제어하기 위한 레프 락
+  const isAgentRunningRef = useRef<boolean>(false)
+
+  // 🦾 [SaaS 유료 기능] 연속 요청 큐 및 실행 레프
+  const pendingQueueRef = useRef<Array<{
+    userMessage: string
+    context?: string
+    originalText?: string
+    blockId?: string
+    runtimeSettings?: Partial<AISettings>
+    editorInstance?: any
+    taggedBlocks?: { id: string; text: string }[]
+  }>>([])
 
   // 모델 목록 로드
   useEffect(() => {
@@ -120,19 +223,92 @@ export function useAI() {
     })
   }, [])
 
-  // 이벤트 리스너 설정
+  // 모델 목록 갱신 함수 (수동 리스캔)
+  const refreshModels = useCallback(async () => {
+    if (!window.electronAPI) return
+    try {
+      const list = await window.electronAPI.llmListModels()
+      setModels(list)
+    } catch (e) {
+      console.warn('모델 목록 갱신 실패:', e)
+    }
+  }, [])
+
+  // 외부 모델 수동 파일 선택하여 로컬에 추가
+  const importModel = useCallback(async () => {
+    if (!window.electronAPI) return
+    try {
+      // 1. GGUF 파일 선택 대화상자 열기
+      const filePaths = await window.electronAPI.selectLocalFile([
+        { name: 'GGUF 언어모델', extensions: ['gguf'] }
+      ])
+      if (!filePaths || filePaths.length === 0) return
+
+      const sourcePath = filePaths[0]
+      // 2. 메인 프로세스에 복사 요청
+      const res = await window.electronAPI.llmImportModel(sourcePath)
+      if (res && res.success) {
+        alert('모델 가져오기 완료! 즉시 AI 사용이 가능합니다.')
+        await refreshModels()
+        // 자동으로 선택 지정
+        if (res.path) {
+          setSettings(prev => {
+            const next = { ...prev, modelPath: res.path }
+            localStorage.setItem('ai-settings', JSON.stringify(next))
+            return next
+          })
+        }
+      } else if (res && !res.success) {
+        alert(`가져오기 실패: ${res.error}`)
+      }
+    } catch (e: any) {
+      alert(`가져오기 에러: ${e.message}`)
+    }
+  }, [refreshModels])
+
+  // 이벤트 리스너 설정 (세션 격리를 위해 비활성화됨)
   useEffect(() => {
+    return; // [FIX-IPC-001] 즉시 반환하여 전역 리스너 비활성화
     if (!window.electronAPI) return
 
     // 스트리밍 토큰 수신
     const unsubToken = window.electronAPI.onLLMToken((token) => {
+      // 에이전트 구동 중일 때는 전역 토큰 리스너의 간섭을 완전히 배제하고 즉시 무시
+      if (isAgentRunningRef.current) return
+
+      // Accumulate raw text (un-sanitized) for EDIT_SUGGESTION parsing at done time
+      rawAccumRef.current += token
       setStreamingText(prev => prev + token)
+
       if (currentAssistantIdRef.current) {
-        setMessages(prev => prev.map(m =>
-          m.id === currentAssistantIdRef.current
-            ? { ...m, content: m.content + token, isStreaming: true }
-            : m
-        ))
+        // Feed token through sanitizer
+        sanitizerRef.current.appendChunk(token)
+        const safeText = sanitizerRef.current.getSafeOutput()
+        const thinkingText = sanitizerRef.current.getThinkingBuffer()
+
+        setMessages(prev => prev.map(m => {
+          if (m.id !== currentAssistantIdRef.current) return m
+
+          // Live reasoning trace from accumulated thinking text
+          const liveTrace: ReasoningTraceEvent[] = thinkingText
+            ? [{
+                id: `trace_live_${m.id}`,
+                source: 'model' as const,
+                type: 'thinking' as const,
+                text: thinkingText,
+                model: 'streaming',
+                timestamp: new Date().toISOString(),
+              }]
+            : []
+
+          return {
+            ...m,
+            // Only show sanitized output — internal tags never appear in content
+            content: safeText,
+            isStreaming: true,
+            reasoningTrace: liveTrace,
+          }
+        }))
       }
     })
 
@@ -140,37 +316,63 @@ export function useAI() {
     const unsubDone = window.electronAPI.onLLMDone((data) => {
       setIsGenerating(false)
       setStreamingText('')
-      
+
+      // 🤖 Finalize sanitizer — get clean final content and extracted thinking content
+      const sanitizeResult = sanitizerRef.current.finalize()
+
+      // 🤖 EDIT_SUGGESTION must be parsed from the RAW accumulated text
+      // (before sanitization; the tag may be inside or after a <thought> block)
+      const rawForEdit = rawAccumRef.current
+
       const targetId = currentAssistantIdRef.current
       setMessages(prev => {
         let updated = false
         const next = prev.map(m => {
           if (targetId && m.id === targetId) {
             updated = true
-            
-            // 🤖 [안전 장치] 만약 <thought>는 있는데 </thought>로 안 닫혔으면 자동 보정
-            if (data.success && m.content.includes('<thought>') && !m.content.toLowerCase().includes('</thought>')) {
-              const editIdx = m.content.indexOf('[EDIT_SUGGESTION')
-              if (editIdx !== -1) {
-                m.content = m.content.substring(0, editIdx).trim() + '\n</thought>\n' + m.content.substring(editIdx)
-              } else {
-                m.content = m.content.trim() + '\n</thought>\n'
-              }
+
+            const isAbortError = !data.success && (
+              data.error === '사용자에 의해 중단됨' ||
+              data.error === 'Aborted' ||
+              data.error?.includes('중단')
+            )
+
+            // Determine the clean display content
+            let cleanContent: string
+            if (!data.success) {
+              cleanContent = isAbortError
+                ? (sanitizeResult.finalContent.trim() || m.content || '사용자가 답변을 중단했습니다')
+                : (data.error || '오류가 발생했습니다.')
+            } else {
+              cleanContent = sanitizeResult.finalContent
             }
+
+            // Build the final reasoning trace
+            const finalTrace: ReasoningTraceEvent[] = sanitizeResult.thinkingContent
+              ? [{
+                  id: `trace_final_${m.id}`,
+                  source: 'model' as const,
+                  type: 'thinking' as const,
+                  text: sanitizeResult.thinkingContent,
+                  model: 'streaming',
+                  timestamp: new Date().toISOString(),
+                }]
+              : (m.reasoningTrace ?? [])
 
             let blockId = m.blockId
             let originalText = m.originalText
-            let proposedText = m.content
-            
-            // 🤖 [수정 제안 자동 감지] [EDIT_SUGGESTION: blockId] 구문 파싱 및 에디터 연동
-            const match = m.content.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
-            if (match && data.success) {
-              blockId = match[1]
-              proposedText = match[2].trim()
-              
-              // 채팅 말풍선 텍스트 청소 (메타태그 영역 제거)
-              m.content = m.content.replace(/\[EDIT_SUGGESTION:\s*[a-zA-Z0-9_\-]+\](?:\r?\n)?[\s\S]*/i, '').trim()
-              
+            let proposedText = cleanContent
+            let insertSuggestion: InsertSuggestion | undefined
+
+            // 🤖 [수정 제안 자동 감지] Parse EDIT_SUGGESTION from RAW (un-sanitized) text.
+            const editMatch = rawForEdit.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
+            if (editMatch && data.success) {
+              blockId = editMatch[1]
+              proposedText = editMatch[2].trim()
+              cleanContent = cleanContent
+                .replace(/\[EDIT_SUGGESTION:\s*[a-zA-Z0-9_\-]+\](?:\r?\n)?[\s\S]*/i, '')
+                .trim()
+
               if (editorRef.current) {
                 try {
                   const block = editorRef.current.getBlock(blockId)
@@ -188,16 +390,99 @@ export function useAI() {
                 }
               }
             }
-            
-            const isAbortError = !data.success && (data.error === '사용자에 의해 중단됨' || data.error === 'Aborted' || data.error?.includes('중단'));
-            
-            let finalContent = m.content
-            if (!data.success) {
-              if (isAbortError) {
-                finalContent = m.content.trim() ? m.content : '사용자가 답변을 중단했습니다'
-              } else {
-                finalContent = data.error || '오류가 발생했습니다.'
+
+            // 🤖 [다중 삽입 제안 자동 감지] Parse multiple INSERT_SUGGESTION instances from RAW text.
+            let insertSuggestions: InsertSuggestion[] = []
+            if (!editMatch && data.success) {
+              const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
+              let match;
+              const parsedMatches: any[] = []
+
+              while ((match = tagRegex.exec(rawForEdit)) !== null) {
+                parsedMatches.push({
+                  tag: match[0],
+                  afterBlockIdRaw: match[1].trim(),
+                  typeRaw: match[2].trim().toLowerCase(),
+                  level: match[3] ? (parseInt(match[3]) as 1 | 2 | 3) : undefined,
+                  startIndex: match.index,
+                  endIndex: tagRegex.lastIndex
+                })
               }
+
+              if (parsedMatches.length > 0) {
+                // 첫 번째 제안 이전의 텍스트가 제안 이유(reasonText)로 매핑됨
+                const firstTagIdx = parsedMatches[0].startIndex
+                const preTagText = rawForEdit.slice(0, firstTagIdx).trim()
+                const reasonText = preTagText
+                  .replace(/<\/?(thinking|reasoning|thought|though|think)\s*>/gi, '') // <think> 태그 제거
+                  .replace(/^지금 요청은[^\n]*\n?/m, '')
+                  .replace(/^컨텍스트의 블록[^\n]*\n?/m, '')
+                  .trim()
+
+                // [BUG FIX] 표시용 본문은 이미 완벽하게 생각과정이 소독된 sanitizeResult.finalContent를 기준으로
+                // [INSERT_SUGGESTION] 코드와 그 하위 제안 본문을 제거하여 깨끗한 설명만 남김
+                cleanContent = sanitizeResult.finalContent
+                  .replace(/\[INSERT_SUGGESTION:[^\]]*\]?(?:\r?\n)?[\s\S]*/i, '')
+                  .trim()
+
+                // 에디터 블록 목록 조회 (up/down 이동용)
+                let siblingBlockIds: string[] = []
+                if (editorRef.current) {
+                  try {
+                    const flatBlocks = (function flatten(blocks: any[]): any[] {
+                      return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
+                    })(editorRef.current.document || [])
+                    siblingBlockIds = flatBlocks.map((b: any) => b.id)
+                  } catch {}
+                }
+
+                // 각 매치별로 본문 내용(content)을 분할 추출
+                for (let i = 0; i < parsedMatches.length; i++) {
+                  const curr = parsedMatches[i]
+                  const nextStart = (i + 1 < parsedMatches.length) ? parsedMatches[i + 1].startIndex : rawForEdit.length
+                  const insertContent = rawForEdit.slice(curr.endIndex, nextStart).trim()
+
+                  // afterBlockId 정규화: '...' 또는 빈값 → 'END', 대소문자 통일
+                  let afterBlockId = curr.afterBlockIdRaw
+                  if (!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined') {
+                    afterBlockId = 'END'
+                  }
+
+                  const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table']
+                  const blockType = validTypes.includes(curr.typeRaw) ? curr.typeRaw as InsertSuggestion['blockType'] : 'paragraph'
+
+                  let siblingIndex = siblingBlockIds.length - 1
+                  const foundIdx = siblingBlockIds.indexOf(afterBlockId)
+                  if (foundIdx >= 0) {
+                    siblingIndex = foundIdx
+                  }
+
+                  insertSuggestions.push({
+                    afterBlockId,
+                    blockType,
+                    level: curr.level,
+                    content: insertContent,
+                    reasonText: reasonText || undefined,
+                    status: 'pending',
+                    siblingBlockIds,
+                    siblingIndex,
+                  })
+                }
+              } else {
+                // 파싱 실패 시에도 raw 태그 노출 방지를 위해 잔여 태그 제거
+                cleanContent = cleanContent
+                  .replace(/\[INSERT_SUGGESTION:[^\]]*\]?(?:\r?\n)?[\s\S]*/i, '')
+                  .trim()
+              }
+            }
+
+            // 모드 에코 패턴 최종 제거 (소형 모델이 [WRITE], [EDIT] 등을 응답에 븼이는 현상)
+            if (data.success && cleanContent) {
+              cleanContent = cleanContent
+                .replace(/^\[(WRITE|EDIT|CHAT|SUMMARY)\]\s*/i, '')
+                .replace(/^현재 작업 모드:.*\n?/m, '')
+                .replace(/^지금 요청은.*\n?/m, '')
+                .trim()
             }
 
             return {
@@ -205,52 +490,74 @@ export function useAI() {
               isStreaming: false,
               error: !data.success && !isAbortError,
               aborted: isAbortError || m.aborted,
-              content: finalContent,
-              proposedText: data.success || (isAbortError && m.content.trim()) ? (match ? proposedText : m.content) : undefined,
-              originalText: data.success || (isAbortError && m.content.trim()) ? (match ? originalText : m.originalText) : undefined,
-              blockId: blockId
+              content: cleanContent,
+              finalAnswer: data.success ? sanitizeResult.finalContent : undefined,
+              reasoningTrace: finalTrace,
+              reasoningStatus: sanitizeResult.hadInternalTags ? 'ok' : m.reasoningStatus,
+              proposedText: data.success || (isAbortError && cleanContent.trim())
+                ? (editMatch ? proposedText : cleanContent)
+                : undefined,
+              originalText: data.success || (isAbortError && cleanContent.trim())
+                ? (editMatch ? originalText : m.originalText)
+                : undefined,
+              blockId,
+              insertSuggestion: data.success ? insertSuggestions[0] : undefined,
+              insertSuggestions: data.success ? insertSuggestions : undefined,
             }
           }
           return m
         })
 
-        // 폴백: 명시적인 변경이 없었고 마지막 메시지가 assistant 이면 업데이트
+        // 폴백: 명시적인 변경이 없었고 마지막 메시지가 assistant이면 업데이트
         if (!updated && next.length > 0 && next[next.length - 1].role === 'assistant') {
           const lastIdx = next.length - 1
           const lastMsg = next[lastIdx]
-          
-          const isAbortError = !data.success && (data.error === '사용자에 의해 중단됨' || data.error === 'Aborted' || data.error?.includes('중단'));
-          let finalContent = lastMsg.content
+
+          const isAbortError = !data.success && (
+            data.error === '사용자에 의해 중단됨' ||
+            data.error === 'Aborted' ||
+            data.error?.includes('중단')
+          )
+
+          let cleanContent: string
           if (!data.success) {
-            if (isAbortError) {
-              finalContent = lastMsg.content.trim() ? lastMsg.content : '사용자가 답변을 중단했습니다'
-            } else {
-              finalContent = data.error || '오류가 발생했습니다.'
-            }
+            cleanContent = isAbortError
+              ? (sanitizeResult.finalContent.trim() || lastMsg.content || '사용자가 답변을 중단했습니다')
+              : (data.error || '오류가 발생했습니다.')
           } else {
-            // 🤖 [안전 장치] 만약 <thought>는 있는데 </thought>로 안 닫혔으면 자동 보정
-            if (finalContent.includes('<thought>') && !finalContent.toLowerCase().includes('</thought>')) {
-              const editIdx = finalContent.indexOf('[EDIT_SUGGESTION')
-              if (editIdx !== -1) {
-                finalContent = finalContent.substring(0, editIdx).trim() + '\n</thought>\n' + finalContent.substring(editIdx)
-              } else {
-                finalContent = finalContent.trim() + '\n</thought>\n'
-              }
-            }
+            cleanContent = sanitizeResult.finalContent
           }
+
+          const finalTrace: ReasoningTraceEvent[] = sanitizeResult.thinkingContent
+            ? [{
+                id: `trace_final_${lastMsg.id}`,
+                source: 'model' as const,
+                type: 'thinking' as const,
+                text: sanitizeResult.thinkingContent,
+                model: 'streaming',
+                timestamp: new Date().toISOString(),
+              }]
+            : (lastMsg.reasoningTrace ?? [])
 
           next[lastIdx] = {
             ...lastMsg,
             isStreaming: false,
             error: !data.success && !isAbortError,
             aborted: isAbortError || lastMsg.aborted,
-            content: finalContent,
-            proposedText: data.success || (isAbortError && lastMsg.content.trim()) ? finalContent : undefined
+            content: cleanContent,
+            finalAnswer: data.success ? sanitizeResult.finalContent : undefined,
+            reasoningTrace: finalTrace,
+            reasoningStatus: sanitizeResult.hadInternalTags ? 'ok' : lastMsg.reasoningStatus,
+            proposedText: data.success || (isAbortError && cleanContent.trim()) ? cleanContent : undefined,
           }
         }
         return next
       })
+
+      // Reset per-session state
       currentAssistantIdRef.current = null
+      sanitizerRef.current = new StreamingSanitizer()
+      rawAccumRef.current = ''
     })
 
     // 🤖 실시간 원시 콘솔 로그 수신
@@ -272,17 +579,87 @@ export function useAI() {
   const editorRef = useRef<any>(null)
 
   const generateResponse = useCallback(async (
-    userMessage: string, 
-    context?: string, 
-    originalText?: string, 
+    userMessage: string,
+    context?: string,
+    originalText?: string,
     blockId?: string,
     runtimeSettings?: Partial<AISettings>,
-    editorInstance?: any
+    editorInstance?: any,
+    taggedBlocks?: { id: string; text: string }[]
   ) => {
     if (editorInstance) {
       editorRef.current = editorInstance
     }
-    if (!window.electronAPI || isGenerating) return
+    if (!window.electronAPI) return
+
+    // 🦾 [SaaS 플러그인] 마켓플레이스 요금제 및 요청 큐 플러그인 상태 동적 파싱
+    let isPro = false
+    let enabledPlugins: Record<string, boolean> = { webSearch: true, pythonConsole: true, requestQueue: false }
+    try {
+      isPro = localStorage.getItem('is-pro-plan') === 'true'
+      const storedPlugins = localStorage.getItem('enabled-plugins')
+      if (storedPlugins) {
+        enabledPlugins = JSON.parse(storedPlugins)
+      }
+    } catch {}
+
+    // 🦾 [무료 플랜] 일일 AI 생성 10회 제한 실구현 가드
+    if (!isPro) {
+      const todayStr = new Date().toISOString().split('T')[0]
+      const lastDate = localStorage.getItem('ai-usage-date')
+      let usageCount = parseInt(localStorage.getItem('ai-daily-usage-count') || '0', 10)
+
+      if (lastDate !== todayStr) {
+        localStorage.setItem('ai-usage-date', todayStr)
+        localStorage.setItem('ai-daily-usage-count', '0')
+        usageCount = 0
+      }
+
+      if (usageCount >= 10) {
+        const limitMessageId = `msg_limit_${Date.now()}`
+        setMessages(prev => [
+          ...prev,
+          {
+            id: limitMessageId,
+            role: 'assistant',
+            content: `❌ **[무료 요금제 한도 도달]** 무료 플랜의 일일 AI 생성 한도(10회)를 모두 소진하셨습니다. 계속 이용하시려면 Pro Plan으로 구독을 업그레이드해주세요.`,
+            timestamp: Date.now()
+          }
+        ])
+        return
+      }
+
+      localStorage.setItem('ai-daily-usage-count', String(usageCount + 1))
+    }
+
+    if (isGenerating) {
+      // Pro 플랜이고 요청 큐 플러그인이 ON인 경우에만 큐 작동
+      if (isPro && enabledPlugins.requestQueue) {
+        pendingQueueRef.current.push({
+          userMessage,
+          context,
+          originalText,
+          blockId,
+          runtimeSettings,
+          editorInstance,
+          taggedBlocks
+        })
+        const queueNoticeId = `msg_queue_${Date.now()}`
+        setMessages(prev => [
+          ...prev,
+          {
+            id: queueNoticeId,
+            role: 'assistant',
+            content: `⏳ [Request Queue] 연속 요청이 수신되었습니다. 대기열에 추가되었습니다. (현재 대기: ${pendingQueueRef.current.length}개)`,
+            timestamp: Date.now()
+          }
+        ])
+        return
+      } else {
+        // 무료 모드이거나 플러그인이 꺼진 경우: 즉시 차단
+        return
+      }
+    }
 
     setEngineLogs('') // [디버그] 이전 LLM 세션 로그 비우기
     console.log('[useAI] generateResponse 호출됨. 런타임 세팅:', runtimeSettings)
@@ -292,84 +669,712 @@ export function useAI() {
       role: 'user',
       content: userMessage,
       timestamp: Date.now(),
+      taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined,
     }
 
-    // 🤖 [하이브리드 에이전트 의도 분석 & 플래닝]
+    // 의도 분석 (UI 라우팅용 — fake thinking 주입 목적 아님)
     const intent = (runtimeSettings as any)?.resolvedMode
-      ? (runtimeSettings as any).resolvedMode.toUpperCase() as 'EDIT' | 'SUMMARY' | 'CHAT'
+      ? (runtimeSettings as any).resolvedMode.toUpperCase() as 'WRITE' | 'EDIT' | 'SUMMARY' | 'CHAT'
       : (() => {
           const cleanPrompt = userMessage.toLowerCase().trim()
           const summaryKeywords = ['요약', '정리', '줄여', 'summarize', 'summary', 'brief']
           if (summaryKeywords.some(k => cleanPrompt.includes(k))) return 'SUMMARY'
-          
-          const editKeywords = ['수정', '변경', '바꿔', '고쳐', '삽입', '지워', '추가', '작성해', 'edit', 'modify', 'replace', 'rewrite', 'correct']
-          if (editKeywords.some(k => cleanPrompt.includes(k))) return 'EDIT'
-          
+
+          // 🤖 태그된 블록이 있으면 EDIT(기존 블록 수정)를 WRITE(새 블록 삽입)보다 최우선하여 체크!
+          const hasTags = taggedBlocks && taggedBlocks.length > 0
+          const editKeywords = [
+            '수정', '변경', '바꿔', '고쳐', '지워', '교체', '고쳐줘',
+            'edit', 'modify', 'replace', 'rewrite', 'correct'
+          ]
+          const isEditQuery = editKeywords.some(k => cleanPrompt.includes(k))
+          if (hasTags && isEditQuery) return 'EDIT'
+
+          // 🤖 작명/제목 추천 연쇄 대화용 예외 필터링 (CHAT으로 유도)
+          const isTitleGenerationOnly = cleanPrompt.includes('제목') && 
+            (cleanPrompt.includes('지어') || cleanPrompt.includes('추천') || cleanPrompt.includes('후보') || cleanPrompt.includes('어때') || cleanPrompt.includes('정해')) &&
+            !cleanPrompt.includes('추가') && !cleanPrompt.includes('넣어') && !cleanPrompt.includes('삽입')
+
+          if (isTitleGenerationOnly) return 'CHAT'
+
+          // WRITE: 새 내용 작성/삽입
+          const writeKeywords = [
+            '써줘', '써', '작성', '보고서', '리포트', '문서 만들어', '글 써줘',
+            '제목', '본문', '넣어줘', '넣어', '입력해', '추가해줘', '만들어줘',
+            '생성해', '쓰기', 'write', 'draft', 'create', 'compose', 'generate'
+          ]
+          if (writeKeywords.some(k => cleanPrompt.includes(k))) return 'WRITE'
+
+          // 일반적인 EDIT 체크 (태그가 없을 때)
+          if (isEditQuery) return 'EDIT'
+
           return 'CHAT'
         })()
 
     // 호출 시점 런타임 세팅 최우선 병합
     const finalSettings = { ...settings, ...runtimeSettings }
 
-    const modelName = finalSettings.modelPath ? finalSettings.modelPath.split(/[\\/]/).pop() || 'Qwen-3B' : 'Qwen-3B'
-    const initialThought = `<thought>
-[의도 분석 (Intent Router)]
-- 활성화된 의도 모드: ${intent}
-
-[시스템 플래닝 (System Planner)]
-- 1단계: RAG 컨텍스트 동적 로드 및 블록 매핑 완료
-- 2단계: 최근 ${messages.length > 0 ? messages.length : 0}개 메시지 히스토리 세션 동기화 완료
-- 3단계: 로컬 추론 엔진 (${modelName}) 실시간 추론 구동 시작
-
-[모델 실시간 사고 과정 (LLM Thinking Process)]
-`
-
+    // ✅ 빈 content로 시작 — fake initialThought 주입 제거
     const assistantId = `msg_${Date.now()}_assistant`
     const assistantMsg: AIMessage = {
       id: assistantId,
       role: 'assistant',
-      content: initialThought, // 생각 과정 박스를 실시간으로 보장하기 위해 초기값으로 삽입
+      content: '', // 모델 스트리밍 토큰이 올 때까지 비워둠
       timestamp: Date.now(),
       isStreaming: true,
       originalText,
       diffState: originalText ? 'pending' : undefined,
-      blockId
+      blockId,
+      reasoningTrace: [], // pipeline 결과가 오면 채워짐
+      finalAnswer: undefined,
+      reasoningStatus: undefined,
     }
 
     currentAssistantIdRef.current = assistantId
+    // Reset sanitizer and raw buffer for this new generation session
+    sanitizerRef.current = new StreamingSanitizer()
+    rawAccumRef.current = ''
     setMessages(prev => [...prev, userMsg, assistantMsg])
     setIsGenerating(true)
     setStreamingText('')
 
-    // 의도에 따라 특화된 에이전트 실행 지침을 시스템 프롬프트에 동적 결합
-    let dynamicSystemPrompt = finalSettings.systemPrompt
-    dynamicSystemPrompt += `\n\n[사고 과정 및 출력 규격 지침]\n- 답변을 생성하기 전에 질문의 의도 파악, 문맥 해석, 답변 계획 및 여러 단계에 걸친 상세 추론 과정을 한국어로 작성하십시오.\n- 생각 과정(Thinking Process)은 [분석], [추론], [수행 계획] 등의 대분류 섹션을 대괄호로 적고, 그 아래에 하이픈(-)과 2칸 들여쓰기를 사용해 단계별로 구체화하여 적으십시오 (예: 1단계: ..., 2단계: ...).\n- 중요: 생각 과정의 시작인 <thought> 태그는 시스템이 이미 생성하여 제공했으므로 절대 직접 출력하지 마십시오. 곧바로 첫 대분류인 [분석]부터 시작해 생각을 작성하십시오.\n- 생각이 끝나면 반드시 </thought> 태그를 출력하여 닫은 뒤, 본문 답변을 작성하십시오.`
+    const sessId = crypto.randomUUID()
+    currentSessionIdRef.current = sessId
 
-    if (intent === 'EDIT') {
-      dynamicSystemPrompt += `\n\n[현재 작업 모드: 문서 부분 수정(EDIT)]\n- 당신은 사용자의 문서 수정 요청을 받았습니다.\n- 본문 답변에 반드시 수정 제안 태그([EDIT_SUGGESTION: 블록ID])를 올바른 양식으로 포함시키십시오.`
+    // [FIX-IPC-001] 기존 세션 리스너가 살아있다면 해제 처리
+    if (unsubTokenRef.current) { unsubTokenRef.current(); unsubTokenRef.current = null }
+    if (unsubDoneRef.current) { unsubDoneRef.current(); unsubDoneRef.current = null }
+
+    if (window.electronAPI) {
+      // 🎯 실시간 개별 세션 토큰 리스너 바인딩
+      unsubTokenRef.current = window.electronAPI.onLLMToken(sessId, (token) => {
+        if (sessId !== currentSessionIdRef.current) return // 타 세션 토큰 무시
+        if (isAgentRunningRef.current) return
+
+        rawAccumRef.current += token
+        setStreamingText(prev => prev + token)
+
+        if (currentAssistantIdRef.current) {
+          sanitizerRef.current.appendChunk(token)
+          const safeText = sanitizerRef.current.getSafeOutput()
+          const thinkingText = sanitizerRef.current.getThinkingBuffer()
+
+          setMessages(prev => prev.map(m => {
+            if (m.id !== currentAssistantIdRef.current) return m
+
+            const liveTrace: ReasoningTraceEvent[] = thinkingText
+              ? [{
+                  id: `trace_live_${m.id}`,
+                  source: 'model' as const,
+                  type: 'thinking' as const,
+                  text: thinkingText,
+                  model: 'streaming',
+                  timestamp: new Date().toISOString(),
+                }]
+              : []
+
+            return {
+              ...m,
+              content: safeText,
+              isStreaming: true,
+              reasoningTrace: liveTrace,
+            }
+          }))
+        }
+      })
+
+      // 🎯 실시간 개별 세션 완료 리스너 바인딩
+      unsubDoneRef.current = window.electronAPI.onLLMDone(sessId, (data) => {
+        if (sessId !== currentSessionIdRef.current) return
+        
+        setIsGenerating(false)
+        setStreamingText('')
+
+        const sanitizeResult = sanitizerRef.current.finalize()
+        const rawForEdit = rawAccumRef.current
+        const targetId = currentAssistantIdRef.current
+
+        setMessages(prev => {
+          let updated = false
+          const next = prev.map(m => {
+            if (targetId && m.id === targetId) {
+              updated = true
+
+              const isAbortError = !data.success && (
+                data.error === '사용자에 의해 중단됨' ||
+                data.error === 'Aborted' ||
+                data.error?.includes('중단')
+              )
+
+              let cleanContent: string
+              if (!data.success) {
+                cleanContent = isAbortError
+                  ? (sanitizeResult.finalContent.trim() || m.content || '사용자가 답변을 중단했습니다')
+                  : (data.error || '오류가 발생했습니다.')
+              } else {
+                cleanContent = sanitizeResult.finalContent
+              }
+
+              const finalTrace: ReasoningTraceEvent[] = sanitizeResult.thinkingContent
+                ? [{
+                    id: `trace_final_${m.id}`,
+                    source: 'model' as const,
+                    type: 'thinking' as const,
+                    text: sanitizeResult.thinkingContent,
+                    model: 'streaming',
+                    timestamp: new Date().toISOString(),
+                  }]
+                : (m.reasoningTrace ?? [])
+
+              let blockId = m.blockId
+              let originalText = m.originalText
+              let proposedText = cleanContent
+              let insertSuggestion: InsertSuggestion | undefined
+
+              // EDIT_SUGGESTION 파싱
+              const editMatch = rawForEdit.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
+              if (editMatch && data.success) {
+                blockId = editMatch[1]
+                proposedText = editMatch[2].trim()
+                cleanContent = cleanContent
+                  .replace(/\[EDIT_SUGGESTION:\s*[a-zA-Z0-9_\-]+\](?:\r?\n)?[\s\S]*/i, '')
+                  .trim()
+
+                if (editorRef.current) {
+                  try {
+                    const block = editorRef.current.getBlock(blockId)
+                    if (block) {
+                      if (block.type === 'jupyter') {
+                        originalText = block.props?.code || ''
+                      } else if (Array.isArray(block.content)) {
+                        originalText = block.content.map((c: any) => c.text || '').join('')
+                      } else {
+                        originalText = String(block.content || '')
+                      }
+                    }
+                  } catch (e) {
+                    console.warn('에디터 블록 조회 실패:', e)
+                  }
+                }
+              }
+
+              // 다중 INSERT_SUGGESTION 파싱
+              let insertSuggestions: InsertSuggestion[] = []
+              if (!editMatch && data.success) {
+                const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
+                let match;
+                const parsedMatches: any[] = []
+
+                while ((match = tagRegex.exec(rawForEdit)) !== null) {
+                  parsedMatches.push({
+                    tag: match[0],
+                    afterBlockIdRaw: match[1].trim(),
+                    typeRaw: match[2].trim().toLowerCase(),
+                    level: match[3] ? (parseInt(match[3]) as 1 | 2 | 3) : undefined,
+                    startIndex: match.index,
+                    endIndex: tagRegex.lastIndex
+                  })
+                }
+
+                if (parsedMatches.length > 0) {
+                  const firstTagIdx = parsedMatches[0].startIndex
+                  const preTagText = rawForEdit.slice(0, firstTagIdx).trim()
+                  const reasonText = preTagText
+                    .replace(/<\/?(thinking|reasoning|thought|though|think)\s*>/gi, '')
+                    .replace(/^지금 요청은[^\n]*\n?/m, '')
+                    .replace(/^컨텍스트의 블록[^\n]*\n?/m, '')
+                    .trim()
+
+                  cleanContent = sanitizeResult.finalContent
+                    .replace(/\[INSERT_SUGGESTION:[^\]]*\]?(?:\r?\n)?[\s\S]*/i, '')
+                    .trim()
+
+                  let siblingBlockIds: string[] = []
+                  if (editorRef.current) {
+                    try {
+                      const flatBlocks = (function flatten(blocks: any[]): any[] {
+                        return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
+                      })(editorRef.current.document || [])
+                      siblingBlockIds = flatBlocks.map((b: any) => b.id)
+                    } catch {}
+                  }
+
+                  for (let i = 0; i < parsedMatches.length; i++) {
+                    const curr = parsedMatches[i]
+                    const nextStart = (i + 1 < parsedMatches.length) ? parsedMatches[i + 1].startIndex : rawForEdit.length
+                    const insertContent = rawForEdit.slice(curr.endIndex, nextStart).trim()
+
+                    let afterBlockId = curr.afterBlockIdRaw
+                    if (!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined') {
+                      afterBlockId = 'END'
+                    }
+
+                    const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table']
+                    const blockType = validTypes.includes(curr.typeRaw) ? curr.typeRaw as InsertSuggestion['blockType'] : 'paragraph'
+
+                    let siblingIndex = siblingBlockIds.length - 1
+                    const foundIdx = siblingBlockIds.indexOf(afterBlockId)
+                    if (foundIdx >= 0) {
+                      siblingIndex = foundIdx
+                    }
+
+                    insertSuggestions.push({
+                      afterBlockId,
+                      blockType,
+                      level: curr.level,
+                      content: insertContent,
+                      reasonText: reasonText || undefined,
+                      status: 'pending',
+                      siblingBlockIds,
+                      siblingIndex,
+                    })
+                  }
+                } else {
+                  cleanContent = cleanContent
+                    .replace(/\[INSERT_SUGGESTION:[^\]]*\]?(?:\r?\n)?[\s\S]*/i, '')
+                    .trim()
+                }
+              }
+
+              if (data.success && cleanContent) {
+                cleanContent = cleanContent
+                  .replace(/^\[(WRITE|EDIT|CHAT|SUMMARY)\]\s*/i, '')
+                  .replace(/^현재 작업 모드:.*\n?/m, '')
+                  .replace(/^지금 요청은.*\n?/m, '')
+                  .trim()
+              }
+
+              return {
+                ...m,
+                isStreaming: false,
+                error: !data.success && !isAbortError,
+                aborted: isAbortError || m.aborted,
+                content: cleanContent,
+                finalAnswer: data.success ? sanitizeResult.finalContent : undefined,
+                reasoningTrace: finalTrace,
+                reasoningStatus: sanitizeResult.hadInternalTags ? 'ok' : m.reasoningStatus,
+                proposedText: data.success || (isAbortError && cleanContent.trim())
+                  ? (editMatch ? proposedText : cleanContent)
+                  : undefined,
+                originalText: data.success || (isAbortError && cleanContent.trim())
+                  ? (editMatch ? originalText : m.originalText)
+                  : undefined,
+                blockId,
+                insertSuggestion: data.success ? insertSuggestions[0] : undefined,
+                insertSuggestions: data.success ? insertSuggestions : undefined,
+              }
+            }
+            return m
+          })
+
+          if (!updated && next.length > 0 && next[next.length - 1].role === 'assistant') {
+            const lastIdx = next.length - 1
+            const lastMsg = next[lastIdx]
+
+            const isAbortError = !data.success && (
+              data.error === '사용자에 의해 중단됨' ||
+              data.error === 'Aborted' ||
+              data.error?.includes('중단')
+            )
+
+            let cleanContent: string
+            if (!data.success) {
+              cleanContent = isAbortError
+                ? (sanitizeResult.finalContent.trim() || lastMsg.content || '사용자가 답변을 중단했습니다')
+                : (data.error || '오류가 발생했습니다.')
+            } else {
+              cleanContent = sanitizeResult.finalContent
+            }
+
+            const finalTrace: ReasoningTraceEvent[] = sanitizeResult.thinkingContent
+              ? [{
+                  id: `trace_final_${lastMsg.id}`,
+                  source: 'model' as const,
+                  type: 'thinking' as const,
+                  text: sanitizeResult.thinkingContent,
+                  model: 'streaming',
+                  timestamp: new Date().toISOString(),
+                }]
+              : (lastMsg.reasoningTrace ?? [])
+
+            next[lastIdx] = {
+              ...lastMsg,
+              isStreaming: false,
+              error: !data.success && !isAbortError,
+              aborted: isAbortError || lastMsg.aborted,
+              content: cleanContent,
+              finalAnswer: data.success ? sanitizeResult.finalContent : undefined,
+              reasoningTrace: finalTrace,
+              reasoningStatus: sanitizeResult.hadInternalTags ? 'ok' : lastMsg.reasoningStatus,
+              proposedText: data.success || (isAbortError && cleanContent.trim()) ? cleanContent : undefined,
+            }
+          }
+          return next
+        })
+
+        // 세션 리스너 자동 해제
+        if (unsubTokenRef.current) { unsubTokenRef.current(); unsubTokenRef.current = null }
+        if (unsubDoneRef.current) { unsubDoneRef.current(); unsubDoneRef.current = null }
+        setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 완료 시 다음 항목 기동
+      })
+    }
+
+    // 🎯 로컬 소형 모델 시간 왜곡 방지 및 유동적인 날짜 추론을 위한 동적 시스템 시간 정보 수집/주입
+    const sysDate = new Date()
+    const sysYear = sysDate.getFullYear()
+    const sysMonth = sysDate.getMonth() + 1
+    const sysDay = sysDate.getDate()
+    let dynamicSystemPrompt = `${finalSettings.systemPrompt}\n\n` +
+      `[System Time Info]\n` +
+      `- 현재 시스템 날짜: ${sysYear}년 ${sysMonth}월 ${sysDay}일\n` +
+      `- 지침: 사용자가 과거 시점(예: 2025년 트렌드, 2024년 통계 등)을 명시하여 요청할 경우 반드시 사용자가 지정한 연도의 데이터와 맥락에 맞추어 답변하십시오. ` +
+      `반면, 구체적인 시점 지정 없이 '요즘', '현재', '최신 트렌드'를 작성해달라고 요청하는 경우에는 반드시 현재 시스템 기준 연도(${sysYear}년)를 기반으로 작성하십시오.`
+
+    // 🤖 참조된 본문 블록(태그) 컨텍스트 주입
+    if (taggedBlocks && taggedBlocks.length > 0) {
+      const referencedContent = taggedBlocks.map((b, i) => `[참조 블록 ${i+1}] (ID: ${b.id}): "${b.text}"`).join('\n')
+      dynamicSystemPrompt = `[⚠️ 초강력 절대 지침: 참조 본문 우선순위]\n` +
+        `현재 사용자가 문서 본문에서 특정 영역을 마우스 블록 지정하거나 별표 버튼을 눌러 아래의 본문 구절들(Reference)을 특별히 지정하여 태깅했습니다:\n` +
+        `${referencedContent}\n\n` +
+        `AI는 에디터 문서 전체 내용(Context)이 주어지더라도 이를 절대 요약/수정 대상으로 삼아서는 안 됩니다. ` +
+        `반드시 위에 명시된 [참조 블록]들의 텍스트만을 유일한 분석, 수정, 요약 대상으로 한정하십시오. ` +
+        `예를 들어, 사용자가 "요약해줘"라고 하면 전체 문서가 아닌 오직 위의 [참조 블록] 텍스트들만 요약하고, ` +
+        `"수정해줘"라고 하면 오직 위의 [참조 블록] 내용만 대상으로 삼아 [EDIT_SUGGESTION]을 작성해야 합니다. ` +
+        `수정 제안(EDIT_SUGGESTION)을 보낼 때 참조 블록의 ID 중 알맞은 ID를 명확하게 매칭하여 태그로 돌려주어야 합니다.\n\n` +
+        `[⚠️ 초강력 절대 지침: 수정 텍스트 정제 규격]\n` +
+        `문서를 수정할 때, 사용자가 지시한 명령조 문구(예: "~로 수정 ㄱ", "수정해줘", "바꿔줘", "~라고 고쳐", "~라고 수정")를 절대 수정 결과 텍스트 자체에 포함하지 마십시오.\n` +
+        `반드시 사용자가 의도한 "수정 후 완성될 깔끔한 최종 본문 문장/단어 자체"만을 정제하여 수정안으로 제시해야 합니다.\n` +
+        `예를 들어, "주요기능말고 주요주요로 수정 ㄱ" 라고 요청받았고 대상 텍스트가 "주요 기능"이라면, 수정안 텍스트는 오직 "주요주요" 또는 완결된 문장이어야 하지 "주요주요로 수정"이나 "수정 ㄱ" 같은 지시어가 포함되어서는 절대 안 됩니다.\n\n` +
+        dynamicSystemPrompt
+    }
+
+    // 🤖 멀티턴 연쇄 작명 지침 추가
+    dynamicSystemPrompt += `\n\n[⚠️ 멀티턴 연쇄 작명 지침]\n` +
+      `만약 사용자가 "이걸 제목으로 지어줘", "제목 지어줘", "제목으로 정제해줘" 등 이전 대화 및 검색 결과에 대한 작명(Title Generation)을 요구하는 경우:\n` +
+      `- 절대 에디터 문서 맨 앞에 삽입 제안([INSERT_SUGGESTION])을 함부로 띄우지 마십시오. 사용자가 명시적으로 문서에 "넣어줘"라고 지시하기 전까지는 일반 대화 답변으로 제목 후보들(예: 3~4개 테마별 제목 안)을 멋지게 추천하여 보여주고, 그 제목들이 왜 좋은지 이전 검색 결과를 근거로 설명하십시오.\n` +
+      `- 만약 사용자가 에디터의 특정 블록을 태그하고 "이걸 제목으로 바꿔줘"라고 요청한 상태라면, 당연히 그 블록 ID에 맞추어 깔끔한 정제 제목으로 [EDIT_SUGGESTION]을 제안하십시오.`
+
+    if (intent === 'WRITE') {
+      dynamicSystemPrompt += `\n\n지금 요청은 새로운 내용을 문서에 추가하는 작업입니다.\n컨텍스트의 블록 목록을 분석하여 가장 적절한 삽입 위치를 결정하십시오.\n왜 그 위치를 선택했는지 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[INSERT_SUGGESTION: afterBlockId=..., type=..., level=...]\n삽입할 내용\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
+    } else if (intent === 'EDIT') {
+      dynamicSystemPrompt += `\n\n지금 요청은 문서의 기존 내용을 수정하는 작업입니다.\n수정 이유를 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[EDIT_SUGGESTION: 블록ID]\n수정된 내용 (명령어나 요청 사항을 제거하고 깔끔하게 정제된 수정 결과문 자체만 작성하십시오.)\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
     } else if (intent === 'SUMMARY') {
-      dynamicSystemPrompt += `\n\n[현재 작업 모드: 문서 요약(SUMMARY)]\n- 당신은 문서 요약 요청을 받았습니다.\n- 본문 답변에 명확하고 가독성 높은 3줄 요약본을 작성하십시오.`
+      dynamicSystemPrompt += `\n\n지금 요청은 문서 요약 작업입니다. 만약 사용자가 지정하여 태깅한 [참조 블록]들이 있다면, 절대 문서 전체를 요약하지 말고 오직 해당 [참조 블록]들의 내용만을 요약하십시오. 3~5줄로 간결하게 요약하십시오.\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
     } else {
-      dynamicSystemPrompt += `\n\n[현재 작업 모드: 일반 대화(CHAT)]\n- 당신은 일반 질문이나 조언 요청을 받았습니다.\n- 본문 답변은 친절하고 전문적인 톤으로 작성하십시오.`
+      dynamicSystemPrompt += `\n\n지금은 일반 질문 또는 이전 검색 결과에 대한 연쇄 질의입니다. 이전 대화 기록을 참고하여 사용자의 의도에 맞게 간결하고 명확하게 답변하십시오. 만약 제목 추천 요청인 경우 근사한 제목 후보들을 리스트로 추천하십시오.\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
     }
 
     // 최근 5개 대화쌍 (최대 10개 메시지)의 내역을 백엔드로 전달하기 위해 매핑
     const historyPayload = messages.slice(-10).map(m => ({
       role: m.role === 'user' ? 'user' : 'assistant',
-      content: m.content
+      content: m.finalAnswer ?? m.content
     }))
 
+    // 🤖 에이전트 구동이 필요한 질문 감지 (검색, 파이썬 실행, 파일 연동 등)
+    // 문서 삽입(WRITE)이나 수정(EDIT) 중이더라도 검색/실행 키워드가 있으면 에이전트가 도구를 사용해 최종 결과를 도출하도록 유도
+    const agentKeywords = ['검색', '찾아줘', '구글', '네이버', '실행', '파이썬', '계산', 'search', 'run']
+    const needsAgent = agentKeywords.some(k => userMessage.toLowerCase().includes(k))
+
+    if (needsAgent) {
+      isAgentRunningRef.current = true
+      setEngineLogs(prev => prev + `\n[System] 에이전트 모드가 감지되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다...\n`)
+      
+      try {
+        const agent = new AgentEngine({
+          providerType: finalSettings.apiType === 'ollama' ? 'ollama' : 'llama.cpp',
+          endpointUrl: finalSettings.apiType === 'ollama' ? 'http://localhost:11434' : 'http://localhost:3010',
+          modelName: finalSettings.modelPath,
+          temperature: 0.1,
+          maxTurns: 5
+        }, sessId) // [FIX-IPC-001] 세션 격리 ID 바인딩
+
+        // 🦾 [BM-MARKETPLACE] 마켓플레이스 플러그인 온오프 조건 동적 파싱
+        let enabledPlugins: Record<string, boolean> = { webSearch: true, pythonConsole: true }
+        try {
+          const storedPlugins = localStorage.getItem('enabled-plugins')
+          if (storedPlugins) {
+            enabledPlugins = JSON.parse(storedPlugins)
+          }
+        } catch {}
+
+        if (enabledPlugins.webSearch) {
+          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (ON)\n`)
+        } else {
+          agent.unregisterTool('web_search')
+          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+        }
+
+        if (enabledPlugins.pythonConsole) {
+          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (ON)\n`)
+        } else {
+          agent.unregisterTool('run_python')
+          setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+        }
+
+        // [FIX-MCP-001] 활성 상태인 외부 MCP 서버들의 도구 동적 주입 및 에이전트 바인딩
+        try {
+          const mcpTools = await MCPClientManager.fetchAllTools()
+          for (const tool of mcpTools) {
+            agent.registerTool({
+              name: tool.name,
+              description: tool.description,
+              parameters: tool.inputSchema as any,
+              execute: async (args) => {
+                const res = await MCPClientManager.callTool(tool.serverId, tool.name, args)
+                return {
+                  success: res.success,
+                  result: res.result,
+                  error: res.error
+                }
+              }
+            })
+          }
+          if (mcpTools.length > 0) {
+            setEngineLogs(prev => prev + `  - [System] MCP 도구 ${mcpTools.length}개 연동 완료.\n`)
+          }
+        } catch (e: any) {
+          console.warn('[useAI] MCP 도구 바인딩 오류:', e)
+        }
+
+        // 실시간 터미널 로그 스트리밍을 연동하여 ReAct 과정을 CLI 패널 및 채팅 말풍선에 실시간으로 반영
+        let accumulatedLogs = ''
+        let agentQuery = userMessage
+        
+        // 에이전트에게 이전 대화 내역(최대 10개 메시지)을 전달하여 멀티턴 맥락 유지
+        if (historyPayload && historyPayload.length > 0) {
+          const formattedHistory = historyPayload
+            .map(h => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.content}`)
+            .join('\n')
+          agentQuery = `[이전 대화 내역]\n${formattedHistory}\n\n[현재 사용자 질의]: ${userMessage}`
+        }
+
+        if (taggedBlocks && taggedBlocks.length > 0) {
+          const referencedContent = taggedBlocks.map((b, i) => `[참조 ${i+1}] ID ${b.id}: "${b.text}"`).join('\n')
+          agentQuery = `[참조 본문]\n${referencedContent}\n\n${agentQuery}`
+        }
+        const agentResult = await agent.executeSession(agentQuery, (log) => {
+          setEngineLogs(prev => prev + log)
+          accumulatedLogs += log
+
+          setMessages(prev => prev.map(m => {
+            if (m.id === assistantId) {
+              let statusText = '🤖 에이전트 추론 루프 기동 중...'
+              
+              if (accumulatedLogs.includes('Action:')) {
+                const lines = accumulatedLogs.split('\n')
+                const actionLine = lines.find(l => l.includes('Action:'))
+                if (actionLine) {
+                  const actName = actionLine.replace(/Action:\s*/i, '').trim()
+                  statusText = `⚙️ [도구 실행] 에이전트가 '${actName}' 도구를 기동하고 있습니다...`
+                }
+              } else if (accumulatedLogs.includes('[Thought]')) {
+                const thoughtIdx = accumulatedLogs.lastIndexOf('[Thought]')
+                const sub = accumulatedLogs.slice(thoughtIdx)
+                const match = sub.match(/:\s*"([^"]+)"/)
+                if (match) {
+                  statusText = `🧠 [생각] "${match[1]}"`
+                }
+              } else if (accumulatedLogs.includes('Turn')) {
+                const turnMatch = accumulatedLogs.match(/Turn\s*(\d+\/\d+)/)
+                if (turnMatch) {
+                  statusText = `▶ 에이전트 추론 진행 중 (단계 ${turnMatch[1]})...`
+                }
+              }
+
+              return {
+                ...m,
+                content: '', // 본문은 어수선한 중복 출력 없이 조용히 대기
+                isStreaming: true,
+                reasoningTrace: [
+                  {
+                    id: `trace_agent_${m.id}_realtime`,
+                    source: 'model',
+                    type: 'thinking',
+                    text: statusText,
+                    timestamp: new Date().toISOString()
+                  }
+                ]
+              }
+            }
+            return m
+          }))
+        })
+
+        if (agentResult.success && agentResult.finalAnswer) {
+          const finalAnswer = agentResult.finalAnswer
+          
+          // 🤖 일반 LLM과 동일하게 에이전트 결과 텍스트에서도 삽입/수정 제안 감지
+          let blockId = ''
+          let originalText = ''
+          let proposedText = finalAnswer
+          let insertSuggestions: InsertSuggestion[] = []
+          let cleanContent = finalAnswer
+
+          // 수정 제안 파싱
+          const editMatch = finalAnswer.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
+          if (editMatch) {
+            blockId = editMatch[1]
+            proposedText = editMatch[2].trim()
+            cleanContent = cleanContent.replace(/\[EDIT_SUGGESTION:\s*[a-zA-Z0-9_\-]+\](?:\r?\n)?[\s\S]*/i, '').trim()
+            
+            if (editorRef.current) {
+              try {
+                const block = editorRef.current.getBlock(blockId)
+                if (block) {
+                  if (block.type === 'jupyter') {
+                    originalText = block.props?.code || ''
+                  } else if (Array.isArray(block.content)) {
+                    originalText = block.content.map((c: any) => c.text || '').join('')
+                  } else {
+                    originalText = String(block.content || '')
+                  }
+                }
+              } catch (e) {}
+            }
+          }
+
+          // 다중 삽입 제안 파싱
+          if (!editMatch) {
+            const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
+            let match;
+            const parsedMatches: any[] = []
+
+            while ((match = tagRegex.exec(finalAnswer)) !== null) {
+              parsedMatches.push({
+                tag: match[0],
+                afterBlockIdRaw: match[1].trim(),
+                typeRaw: match[2].trim().toLowerCase(),
+                level: match[3] ? (parseInt(match[3]) as 1 | 2 | 3) : undefined,
+                startIndex: match.index,
+                endIndex: tagRegex.lastIndex
+              })
+            }
+
+            if (parsedMatches.length > 0) {
+              const firstTagIdx = parsedMatches[0].startIndex
+              cleanContent = finalAnswer.slice(0, firstTagIdx).trim()
+
+              let siblingBlockIds: string[] = []
+              if (editorRef.current) {
+                try {
+                  const flatBlocks = (function flatten(blocks: any[]): any[] {
+                    return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
+                  })(editorRef.current.document || [])
+                  siblingBlockIds = flatBlocks.map((b: any) => b.id)
+                } catch {}
+              }
+
+              for (let i = 0; i < parsedMatches.length; i++) {
+                const curr = parsedMatches[i]
+                const nextStart = (i + 1 < parsedMatches.length) ? parsedMatches[i + 1].startIndex : finalAnswer.length
+                const insertContent = finalAnswer.slice(curr.endIndex, nextStart).trim()
+
+                let afterBlockId = curr.afterBlockIdRaw
+                if (!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined') {
+                  afterBlockId = 'END'
+                }
+
+                const validTypes = ['heading', 'paragraph', 'bulletListItem', 'numberedListItem', 'table']
+                const blockType = validTypes.includes(curr.typeRaw) ? curr.typeRaw as InsertSuggestion['blockType'] : 'paragraph'
+
+                let siblingIndex = siblingBlockIds.length - 1
+                const foundIdx = siblingBlockIds.indexOf(afterBlockId)
+                if (foundIdx >= 0) {
+                  siblingIndex = foundIdx
+                }
+
+                insertSuggestions.push({
+                  afterBlockId,
+                  blockType,
+                  level: curr.level,
+                  content: insertContent,
+                  reasonText: cleanContent || undefined,
+                  status: 'pending',
+                  siblingBlockIds,
+                  siblingIndex,
+                })
+              }
+            }
+          }
+
+          // 성공 시 말풍선 내용 업데이트 및 스트리밍 완료 처리
+          setMessages(prev => prev.map(m =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  content: cleanContent,
+                  isStreaming: false,
+                  finalAnswer: cleanContent,
+                  blockId: blockId || undefined,
+                  originalText: originalText || undefined,
+                  proposedText: editMatch ? proposedText : undefined,
+                  diffState: editMatch ? 'pending' : undefined,
+                  insertSuggestion: insertSuggestions[0],
+                  insertSuggestions: insertSuggestions,
+                  reasoningTrace: agentResult.steps.flatMap((s, sIdx) => {
+                    const traces = [
+                      {
+                        id: `trace_agent_${m.id}_${sIdx}_thought`,
+                        source: 'model' as const,
+                        type: 'thinking' as const,
+                        text: `[사고 단계 ${sIdx + 1}] ${s.thought}`,
+                        timestamp: new Date().toISOString()
+                      }
+                    ]
+                    
+                    if (s.action) {
+                      let actionText = `🎯 도구 실행: ${s.action}\n인자 데이터 (Action Input): ${s.actionInput}`
+                      if (s.observation) {
+                        const cleanObs = s.observation.replace(/^Observation:\s*/i, '').trim()
+                        actionText += `\n\n🔍 실행 결과 (Observation):\n${cleanObs}`
+                      }
+                      traces.push({
+                        id: `trace_agent_${m.id}_${sIdx}_action`,
+                        source: 'model' as const,
+                        type: 'thinking' as const,
+                        text: actionText,
+                        timestamp: new Date().toISOString()
+                      })
+                    }
+                    
+                    return traces
+                  })
+                }
+              : m
+          ))
+        }
+ else {
+          throw new Error(agentResult.error || '에이전트가 솔루션을 도출하지 못했습니다.')
+        }
+      } catch (err: any) {
+        console.error('[useAI] 에이전트 구동 실패:', err)
+        setMessages(prev => prev.map(m =>
+          m.id === assistantId
+            ? { ...m, content: `❌ 에이전트 실행 실패: ${err.message}`, isStreaming: false, error: true }
+            : m
+        ))
+      } finally {
+        isAgentRunningRef.current = false
+        setIsGenerating(false)
+        currentAssistantIdRef.current = null
+        setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 에이전트 종료 시 다음 항목 기동
+      }
+      return
+    }
+
     const result = await window.electronAPI.llmGenerate({
+      sessionId: sessId, // [FIX-IPC-001] 일반 챗 모드에서도 세션 ID 격리 전송
       modelPath: finalSettings.modelPath,
       prompt: userMessage,
       context: context || undefined,
-      systemPrompt: dynamicSystemPrompt, // 동적 시스템 프롬프트 전달
+      systemPrompt: dynamicSystemPrompt,
       maxTokens: finalSettings.maxTokens,
       temperature: finalSettings.temperature,
-      apiType: finalSettings.apiType === 'wasm' ? 'local' : finalSettings.apiType, // WASM 모드도 로컬 추론 기반 스태프
+      apiType: finalSettings.apiType === 'wasm' ? 'local' : finalSettings.apiType,
       apiKey: finalSettings.apiKey,
+      apiEndpoint: finalSettings.apiEndpoint,
+      apiModel: finalSettings.apiModel,
       gpuOnly: finalSettings.gpuOnly,
-      history: historyPayload, // 🤖 대화 내역 전달
+      history: historyPayload,
     })
 
     // 에러면 즉시 처리
@@ -382,8 +1387,9 @@ export function useAI() {
           : m
       ))
       currentAssistantIdRef.current = null
+      setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 에러 시 다음 항목 기동
     }
-  }, [isGenerating, settings])
+  }, [isGenerating, settings, messages])
 
   // 블록 단위 AI 작업 (단발성 텍스트 반환)
   const processBlock = useCallback(async (
@@ -401,18 +1407,37 @@ export function useAI() {
       explain: `다음 내용을 쉽게 설명하세요:\n\n${content}`,
     }
 
+    // [FIX-C-001] 리스너 누수 방지: llm:done이 오지 않으면 60초 후 강제 해제와 함께 메모리를 해제하는 Timeout Guard 적용
     return new Promise<string>((resolve) => {
       let result = ''
+      let settled = false
 
+      const cleanup = (unsubToken: () => void, unsubDone: () => void) => {
+        if (!settled) {
+          settled = true
+          unsubToken()
+          unsubDone()
+        }
+      }
+
+      // [FIX-C-001] 리스너를 먼저 등록하고 나서 llmGenerate 호출 (레이스 컨디션 차단)
       const unsubToken = window.electronAPI!.onLLMToken((token) => {
-        result += token
+        if (!settled) result += token
       })
 
       const unsubDone = window.electronAPI!.onLLMDone((data) => {
-        unsubToken()
-        unsubDone()
+        if (settled) return
+        cleanup(unsubToken, unsubDone)
         resolve(data.success ? result.trim() : (data.error || ''))
       })
+
+      // [FIX-C-001] 60초 Timeout 안전망: llm:done이 많으면 리스너 강제 해제
+      const timeoutId = setTimeout(() => {
+        if (!settled) {
+          cleanup(unsubToken, unsubDone)
+          resolve(result.trim() || '')
+        }
+      }, 60_000)
 
       window.electronAPI!.llmGenerate({
         modelPath: settings.modelPath,
@@ -422,15 +1447,41 @@ export function useAI() {
         temperature: 0.5,
         apiType: settings.apiType === 'wasm' ? 'local' : settings.apiType,
         apiKey: settings.apiKey,
+        apiEndpoint: settings.apiEndpoint, // [FIX-W-003] 동적 엔드포인트 전달
+        apiModel: settings.apiModel,       // [FIX-W-003] 동적 모델명 전달
         gpuOnly: settings.gpuOnly,
+      }).catch(() => {
+        clearTimeout(timeoutId)
+        cleanup(unsubToken, unsubDone)
+        resolve('')
       })
     })
-  }, [settings.modelPath])
+  // [FIX-C-002] 의존성 배열 보완: apiType, apiKey, apiEndpoint, apiModel, gpuOnly 누락 방지
+  }, [settings.modelPath, settings.apiType, settings.apiKey, settings.apiEndpoint, settings.apiModel, settings.gpuOnly])
+
+  // 🦾 [SaaS 유료 기능] 큐에서 대기 중인 다음 질문을 꺼내 순차 실행
+  const checkAndProcessNextQueue = useCallback(() => {
+    if (pendingQueueRef.current.length === 0) return
+    const nextReq = pendingQueueRef.current.shift()
+    if (nextReq) {
+      // 대기 큐 안내 메시지 필터 제거
+      setMessages(prev => prev.filter(m => !m.id.startsWith('msg_queue_')))
+      generateResponse(
+        nextReq.userMessage,
+        nextReq.context,
+        nextReq.originalText,
+        nextReq.blockId,
+        nextReq.runtimeSettings,
+        nextReq.editorInstance,
+        nextReq.taggedBlocks
+      )
+    }
+  }, [generateResponse])
 
   const abortGeneration = useCallback(() => {
     if (!window.electronAPI || !isGenerating) return
-    window.electronAPI.llmAbort()
-    // 프로세스 중단 신호를 보내고, 실제 상태 정리는 llm:done 수신 시 통합 처리합니다.
+    const currentSessionId = currentSessionIdRef.current || 'default'
+    window.electronAPI.llmAbort(currentSessionId) // [FIX-IPC-001] 세션별 중단 요청 전달
   }, [isGenerating])
 
   const clearHistory = useCallback(() => {
@@ -456,6 +1507,67 @@ export function useAI() {
     ))
   }, [])
 
+  /** 삽입 제안 상태 업데이트 (다중 카드 독립 제어 지원) */
+  const updateInsertSuggestionStatus = useCallback((
+    msgId: string,
+    status: 'pending' | 'accepted' | 'rejected',
+    newAfterBlockId?: string,
+    newSiblingIndex?: number,
+    suggestionIndex?: number
+  ) => {
+    setMessages(prev => prev.map(m => {
+      if (m.id !== msgId) return m
+
+      // 1. 다중 제안 배열이 존재하는 경우 특정 인덱스 업데이트
+      if (m.insertSuggestions && m.insertSuggestions.length > 0 && suggestionIndex !== undefined) {
+        const updatedSuggestions = [...m.insertSuggestions]
+        const target = updatedSuggestions[suggestionIndex]
+        if (target) {
+          updatedSuggestions[suggestionIndex] = {
+            ...target,
+            status,
+            ...(newAfterBlockId !== undefined ? { afterBlockId: newAfterBlockId } : {}),
+            ...(newSiblingIndex !== undefined ? { siblingIndex: newSiblingIndex } : {}),
+          }
+
+          // [BUG FIX] 연속적인 다중 삽입 제안 시, 이전 블록이 삽입된 직후 후속 블록의 기준점(afterBlockId)을
+          // 방금 새로 삽입된 신규 블록의 ID로 승계 체이닝하여 순서가 뒤바뀌는 버그를 차단함
+          if (status === 'accepted' && newAfterBlockId) {
+            const oldAfterBlockId = target.afterBlockId
+            for (let i = suggestionIndex + 1; i < updatedSuggestions.length; i++) {
+              const pendingSuggestion = updatedSuggestions[i]
+              if (pendingSuggestion.status === 'pending') {
+                if (pendingSuggestion.afterBlockId === oldAfterBlockId) {
+                  updatedSuggestions[i] = {
+                    ...pendingSuggestion,
+                    afterBlockId: newAfterBlockId
+                  }
+                }
+              }
+            }
+          }
+        }
+        return {
+          ...m,
+          insertSuggestions: updatedSuggestions,
+          insertSuggestion: updatedSuggestions[0] // 하위 호환용
+        }
+      }
+
+      // 2. 단수형 폴백 호환성 처리
+      if (!m.insertSuggestion) return m
+      return {
+        ...m,
+        insertSuggestion: {
+          ...m.insertSuggestion,
+          status,
+          ...(newAfterBlockId !== undefined ? { afterBlockId: newAfterBlockId } : {}),
+          ...(newSiblingIndex !== undefined ? { siblingIndex: newSiblingIndex } : {}),
+        }
+      }
+    }))
+  }, [])
+
   return {
     messages,
     isGenerating,
@@ -463,7 +1575,7 @@ export function useAI() {
     models,
     settings,
     streamingText,
-    engineLogs, // 🤖 실시간 터미널 콘솔 로그 텍스트
+    engineLogs,
     setEngineLogs,
     generateResponse,
     processBlock,
@@ -471,5 +1583,8 @@ export function useAI() {
     clearHistory,
     updateSettings,
     updateMessageDiffState,
+    updateInsertSuggestionStatus,
+    refreshModels,
+    importModel,
   }
 }

@@ -1,4 +1,5 @@
 import { Sparkles, List, Calculator, TrendingUp, Play, Globe, Search, Calendar, HardDrive } from 'lucide-react'
+import type { HotkeyConfig } from './SettingsModal'
 
 interface RightTabStripProps {
   activeTab: string
@@ -6,9 +7,36 @@ interface RightTabStripProps {
   onToggleTab: (tab: string) => void
   hasChatUnread?: boolean
   installedPlugins?: string[]
+  hotkeys?: HotkeyConfig
+  isProPlan?: boolean
 }
 
-export function RightTabStrip({ activeTab, isOpen, onToggleTab, hasChatUnread = false, installedPlugins = [] }: RightTabStripProps) {
+export function RightTabStrip({
+  activeTab, isOpen, onToggleTab, hasChatUnread = false, installedPlugins = [], hotkeys, isProPlan = false
+}: RightTabStripProps) {
+  const formatHotkey = (raw: string | undefined): string => {
+    if (!raw) return ''
+    return raw
+      .replace('Control', 'Ctrl')
+      .replace('Shift', 'Shift')
+      .replace('Alt', 'Alt')
+      .replace('Meta', 'Cmd')
+      .split('+')
+      .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+      .join(' + ')
+  }
+
+  const hkeys = hotkeys || {
+    save: 'Control+s',
+    open: 'Control+o',
+    newFile: 'Control+n',
+    pdfExport: 'Control+p',
+    toggleAI: 'Control+\\',
+    toggleMode: 'Control+h',
+    zoomIn: 'Control+=',
+    zoomOut: 'Control+-',
+    zoomReset: 'Control+0'
+  }
   const isOutlineSubscribed = installedPlugins.includes('outline')
   const isCalculatorSubscribed = installedPlugins.includes('calculator')
   const isFinanceSubscribed = installedPlugins.includes('finance-dashboard')
@@ -18,7 +46,7 @@ export function RightTabStrip({ activeTab, isOpen, onToggleTab, hasChatUnread = 
   const isCalendarSubscribed = installedPlugins.includes('calendar')
   const isGoogleDriveSubscribed = installedPlugins.includes('google-drive')
   
-  const tabs = [
+  const tabs = isProPlan ? [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
     ...(isOutlineSubscribed ? [{ id: 'outline', icon: List, label: '문서 구조도 (TOC)', badge: false }] : []),
     ...(isCalculatorSubscribed ? [{ id: 'calculator', icon: Calculator, label: '계산기 도구', badge: false }] : []),
@@ -28,6 +56,8 @@ export function RightTabStrip({ activeTab, isOpen, onToggleTab, hasChatUnread = 
     ...(isGoogleSubscribed ? [{ id: 'google', icon: Search, label: '구글 검색', badge: false }] : []),
     ...(isCalendarSubscribed ? [{ id: 'calendar', icon: Calendar, label: '스케줄 캘린더', badge: false }] : []),
     ...(isGoogleDriveSubscribed ? [{ id: 'google-drive', icon: HardDrive, label: '구글 드라이브', badge: false }] : []),
+  ] : [
+    { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
   ]
 
   return (
@@ -55,7 +85,7 @@ export function RightTabStrip({ activeTab, isOpen, onToggleTab, hasChatUnread = 
           <button
             key={t.id}
             onClick={() => onToggleTab(t.id)}
-            title={t.label}
+            title={t.id === 'ai' ? `${t.label} (${formatHotkey(hkeys.toggleAI)})` : t.label}
             style={{
               width: '28px',
               height: '32px',

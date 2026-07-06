@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Check, ChevronRight } from 'lucide-react'
+import type { EditorMode } from '../../shared/types'
+import type { HotkeyConfig } from './SettingsModal'
 
 interface MenuBarProps {
   onOpenFile: () => void
@@ -9,8 +11,8 @@ interface MenuBarProps {
   onCloseApp: () => void
   onNewWindow: () => void
 
-  editorMode: 'edit' | 'preview'
-  setEditorMode: (mode: 'edit' | 'preview') => void
+  editorMode: EditorMode
+  setEditorMode: (mode: EditorMode) => void
   showStatusBar: boolean
   setShowStatusBar: (val: boolean) => void
   showConsole: boolean
@@ -28,6 +30,9 @@ interface MenuBarProps {
   onOpenGuide: () => void
   onOpenGithub: () => void
   onOpenMarketplace: () => void
+  onOpenPricing?: () => void
+  hotkeys?: HotkeyConfig
+  isProPlan?: boolean // [BM-FREE-MODE] 유료 전용 여부
 }
 
 export function MenuBar({
@@ -54,7 +59,33 @@ export function MenuBar({
   onOpenGuide,
   onOpenGithub,
   onOpenMarketplace,
+  onOpenPricing,
+  hotkeys,
+  isProPlan = false,
 }: MenuBarProps) {
+  const formatHotkey = (raw: string | undefined): string => {
+    if (!raw) return ''
+    return raw
+      .replace('Control', 'Ctrl')
+      .replace('Shift', 'Shift')
+      .replace('Alt', 'Alt')
+      .replace('Meta', 'Cmd')
+      .split('+')
+      .map(p => p.charAt(0).toUpperCase() + p.slice(1))
+      .join('+')
+  }
+
+  const hkeys = hotkeys || {
+    save: 'Control+s',
+    open: 'Control+o',
+    newFile: 'Control+n',
+    pdfExport: 'Control+p',
+    toggleAI: 'Control+\\',
+    toggleMode: 'Control+h',
+    zoomIn: 'Control+=',
+    zoomOut: 'Control+-',
+    zoomReset: 'Control+0'
+  }
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
@@ -164,16 +195,16 @@ export function MenuBar({
           <div style={dropdownStyle}>
             <button style={itemStyle} onClick={() => triggerAction(onNewWindow)}>
               <span>새 창 열기</span>
-              <span style={shortcutStyle}>Ctrl+N</span>
+              <span style={shortcutStyle}>{formatHotkey(hkeys.newFile)}</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={itemStyle} onClick={() => triggerAction(onOpenFile)}>
               <span>열기...</span>
-              <span style={shortcutStyle}>Ctrl+O</span>
+              <span style={shortcutStyle}>{formatHotkey(hkeys.open)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onSaveFile)}>
               <span>저장</span>
-              <span style={shortcutStyle}>Ctrl+S</span>
+              <span style={shortcutStyle}>{formatHotkey(hkeys.save)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onSaveAs)}>
               <span>다른 이름으로 저장...</span>
@@ -181,7 +212,7 @@ export function MenuBar({
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={itemStyle} onClick={() => triggerAction(onPrint)}>
               <span>인쇄 (PDF 변환)</span>
-              <span style={shortcutStyle}>Ctrl+P</span>
+              <span style={shortcutStyle}>{formatHotkey(hkeys.pdfExport)}</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={{ ...itemStyle, color: 'var(--danger)' }} onClick={() => triggerAction(onCloseApp)}>
@@ -207,9 +238,9 @@ export function MenuBar({
           <div style={dropdownStyle}>
             <button
               style={itemStyle}
-              onClick={() => triggerAction(() => setEditorMode(editorMode === 'edit' ? 'preview' : 'edit'))}
+              onClick={() => triggerAction(() => setEditorMode(editorMode === 'preview' ? 'edit' : 'preview'))}
             >
-              <span>{editorMode === 'edit' ? '뷰어 모드로 전환' : '편집 모드로 전환'}</span>
+              <span>{editorMode === 'preview' ? '편집 모드로 전환' : '뷰어 모드로 전환'}</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             {/* 상태바 체크박스 */}
@@ -252,15 +283,15 @@ export function MenuBar({
           <div style={dropdownStyle}>
             <button style={itemStyle} onClick={() => triggerAction(onZoomIn)}>
               <span>확대</span>
-              <span style={shortcutStyle}>Ctrl++</span>
+              <span style={shortcutStyle}>{formatHotkey(hkeys.zoomIn)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onZoomOut)}>
               <span>축소</span>
-              <span style={shortcutStyle}>Ctrl+-</span>
+              <span style={shortcutStyle}>{formatHotkey(hkeys.zoomOut)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onZoomReset)}>
               <span>원래 크기로</span>
-              <span style={shortcutStyle}>Ctrl+0</span>
+              <span style={shortcutStyle}>{formatHotkey(hkeys.zoomReset)}</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={itemStyle} onClick={() => triggerAction(onToggleFullscreen)}>
@@ -281,15 +312,17 @@ export function MenuBar({
         </button>
       </div>
 
-      {/* 4.5 Marketplace 메뉴 (단독 버튼으로 즉시 마켓플레이스 팝업 노출) */}
-      <div style={{ position: 'relative' }}>
-        <button
-          style={menuStyle}
-          onClick={onOpenMarketplace}
-        >
-          Marketplace
-        </button>
-      </div>
+      {/* 4.5 Marketplace 메뉴 (단독 버튼으로 즉시 마켓플레이스 팝업 노출 - 유료 플랜 전용) */}
+      {isProPlan && (
+        <div style={{ position: 'relative' }}>
+          <button
+            style={menuStyle}
+            onClick={onOpenMarketplace}
+          >
+            Marketplace
+          </button>
+        </div>
+      )}
 
       {/* 5. Help 메뉴 */}
       <div style={{ position: 'relative' }}>
@@ -311,6 +344,9 @@ export function MenuBar({
               <span>마크다운 작성 가이드</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+            <button style={itemStyle} onClick={() => triggerAction(onOpenPricing)}>
+              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>💰 Pricing Plans...</span>
+            </button>
             <button style={itemStyle} onClick={() => triggerAction(onOpenGithub)}>
               <span>문의하기 (Contact Us)...</span>
             </button>
