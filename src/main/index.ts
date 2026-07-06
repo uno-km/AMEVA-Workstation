@@ -170,7 +170,7 @@ app.whenReady().then(() => {
       }
     }
     if (llamaPath && fs.existsSync(defaultModelPath)) {
-      startLlamaServerWithFallback(llamaPath, defaultModelPath, 4096, true)
+      startLlamaServerWithFallback(llamaPath, defaultModelPath, 8192, true)
         .then(ok => console.log('Background Warmup Status:', ok))
         .catch(err => console.error('Background Warmup Failed:', err))
     }
@@ -568,10 +568,13 @@ function logToRenderer(text: string) {
   if (llamaLogBuffer.length > 200000) {
     llamaLogBuffer = llamaLogBuffer.slice(-200000)
   }
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.webContents.send('llm:log', { text })
-  }
-  process.stderr.write(text) // 개발 터미널에도 출력
+  const { webContents } = require('electron')
+  webContents.getAllWebContents().forEach((wc: any) => {
+    if (!wc.isDestroyed()) {
+      wc.send('llm:log', { text })
+    }
+  })
+  process.stderr.write("[CAPTURED] " + text) // 개발 터미널에도 출력
 }
 
 ipcMain.handle('llm:get-logs', () => {
@@ -618,6 +621,11 @@ async function startLlamaServerWithFallback(
       '--host', '127.0.0.1',
       '-ngl', String(ngl),
     ]
+    if (ngl > 0) {
+      sArgs.push('-fa', 'on')
+      sArgs.push('-ctk', 'q8_0')
+      sArgs.push('-ctv', 'q8_0')
+    }
     if (ngl === 0) sArgs.push('-t', String(threads))
 
     logToRenderer(`[System] llama-server 기동 시도 (ngl=${ngl}, threads=${threads})\n모델: ${basename(modelPath)}\n경로: ${llamaPath}\n`)
@@ -811,7 +819,7 @@ ipcMain.handle('llm:restart', async () => {
     forceCleanupLocalLLMProcesses()
     
     logToRenderer('[System] 수동 재구동 요청 수신. llama-server 웜업 재기동...\n')
-    const ok = await startLlamaServerWithFallback(llamaPath, modelPath, 4096, true)
+    const ok = await startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
     return { success: ok, error: ok ? undefined : '재기동 실패 (CPU 폴백 포함)' }
   } catch (err: any) {
     return { success: false, error: err.message }
@@ -905,6 +913,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           options: {
             temperature: payload.temperature ?? 0.7,
             num_predict: payload.maxTokens ?? 512,
+            stop: ['<|im_end|>', '<|im_start|>', '<|eot_id|>', '<|endoftext|>']
           },
           stream: true
         })
@@ -1012,19 +1021,71 @@ ipcMain.handle('llm:generate', async (event, payload: {
   const systemPrompt = payload.systemPrompt || 'You are AMEVA AI, a helpful assistant integrated into AMEVA document editor. Respond in the same language as the user. Be concise and helpful.'
   const temperature = payload.temperature ?? 0.7
   const maxTokens = payload.maxTokens ?? 512
-  const contextSize = payload.contextSize ?? 4096
+  const contextSize = payload.contextSize ?? 8192
 
-  // Qwen 2.5 채팅 형식으로 프롬프트 구성 (컨텍스트 분리 구성으로 이중 래핑 방지)
-  let fullPrompt = `<|im_start|>system\n${systemPrompt}<|im_end|>\n`
-  if (payload.context) {
-    fullPrompt += `<|im_start|>context\n${payload.context.slice(0, 2000)}<|im_end|>\n`
+  // 모델 브랜드(Qwen, Llama, Gemma, Generic) 자동 판별
+  const modelNameLower = basename(modelPath).toLowerCase()
+  let modelType: 'qwen' | 'llama' | 'gemma' | 'generic' = 'generic'
+  if (modelNameLower.includes('qwen')) {
+    modelType = 'qwen'
+  } else if (modelNameLower.includes('llama')) {
+    modelType = 'llama'
+  } else if (modelNameLower.includes('gemma')) {
+    modelType = 'gemma'
   }
-  if (payload.history && payload.history.length > 0) {
-    for (const h of payload.history) {
-      fullPrompt += `<|im_start|>${h.role}\n${h.content}<|im_end|>\n`
+
+  let fullPrompt = ''
+  let stopTokens: string[] = []
+
+  if (modelType === 'llama') {
+    // Llama 3/3.1/3.2 chat template format
+    fullPrompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${systemPrompt}<|eot_id|>`
+    if (payload.context) {
+      fullPrompt += `<|start_header_id|>context<|end_header_id|>\n\n${payload.context.slice(0, 2000)}<|eot_id|>`
     }
+    if (payload.history && payload.history.length > 0) {
+      for (const h of payload.history) {
+        fullPrompt += `<|start_header_id|>${h.role === 'assistant' ? 'assistant' : 'user'}<|end_header_id|>\n\n${h.content}<|eot_id|>`
+      }
+    }
+    fullPrompt += `<|start_header_id|>user<|end_header_id|>\n\n${payload.prompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n`
+    stopTokens = ['<|eot_id|>', '<|start_header_id|>', '<|end_of_text|>']
+  } else if (modelType === 'gemma') {
+    // Gemma 2 instruction format
+    fullPrompt = `<start_of_turn>user\n${systemPrompt}\n\n`
+    if (payload.context) {
+      fullPrompt += `[Context]\n${payload.context.slice(0, 2000)}\n\n`
+    }
+    if (payload.history && payload.history.length > 0) {
+      let currentTurn: 'user' | 'model' = 'user'
+      for (const h of payload.history) {
+        const role = h.role === 'assistant' ? 'model' : 'user'
+        if (role !== currentTurn) {
+          fullPrompt += `<end_of_turn>\n<start_of_turn>${role}\n`
+          currentTurn = role
+        }
+        fullPrompt += `${h.content}\n`
+      }
+      if (currentTurn !== 'user') {
+        fullPrompt += `<end_of_turn>\n<start_of_turn>user\n`
+      }
+    }
+    fullPrompt += `${payload.prompt}<end_of_turn>\n<start_of_turn>model\n`
+    stopTokens = ['<end_of_turn>', '<eos>', '<start_of_turn>']
+  } else {
+    // Qwen / ChatML / Generic
+    fullPrompt = `<|im_start|>system\n${systemPrompt}<|im_end|>\n`
+    if (payload.context) {
+      fullPrompt += `<|im_start|>context\n${payload.context.slice(0, 2000)}<|im_end|>\n`
+    }
+    if (payload.history && payload.history.length > 0) {
+      for (const h of payload.history) {
+        fullPrompt += `<|im_start|>${h.role}\n${h.content}<|im_end|>\n`
+      }
+    }
+    fullPrompt += `<|im_start|>user\n${payload.prompt}<|im_end|>\n<|im_start|>assistant\n`
+    stopTokens = ['<|im_end|>', '<|im_start|>', '<|endoftext|>']
   }
-  fullPrompt += `<|im_start|>user\n${payload.prompt}<|im_end|>\n<|im_start|>assistant\n`
 
   if (payload.apiType === 'api') {
     // ── 💡 OpenAI 호환 클라우드 API 모드 (엔드포인트/모델 동적화) ──
@@ -1183,7 +1244,8 @@ ipcMain.handle('llm:generate', async (event, payload: {
           prompt: fullPrompt,
           n_predict: maxTokens,
           temperature: temperature,
-          stream: true
+          stream: true,
+          stop: stopTokens
         })
 
         const reqOptions = {
@@ -1199,22 +1261,33 @@ ipcMain.handle('llm:generate', async (event, payload: {
 
         const req = http.request(reqOptions, (res: any) => {
           let buffer = ''
+          let sseBuffer = ''
           res.on('data', (chunk: Buffer) => {
-            const chunkText = chunk.toString()
-            const lines = chunkText.split('\n')
-            for (const line of lines) {
-              const cleaned = line.trim()
-              if (cleaned.startsWith('data:')) {
-                try {
-                  const dataStr = cleaned.slice(5).trim()
-                  if (dataStr === '[DONE]') continue
-                  const parsed = JSON.parse(dataStr)
-                  const token = parsed.content
-                  if (token) {
-                    buffer += token
-                    tokenSender.send(token)
+            sseBuffer += chunk.toString()
+            
+            // SSE 형식은 빈 줄(\n\n)로 이벤트를 구분하므로 완전한 이벤트만 파싱
+            let eolIndex = -1
+            while ((eolIndex = sseBuffer.indexOf('\n\n')) >= 0) {
+              const part = sseBuffer.slice(0, eolIndex)
+              sseBuffer = sseBuffer.slice(eolIndex + 2) // 남은 버퍼 보존
+              
+              const lines = part.split('\n')
+              for (const line of lines) {
+                const cleaned = line.trim()
+                if (cleaned.startsWith('data:')) {
+                  try {
+                    const dataStr = cleaned.slice(5).trim()
+                    if (dataStr === '[DONE]') continue
+                    const parsed = JSON.parse(dataStr)
+                    const token = parsed.content
+                    if (token !== undefined && token !== null) {
+                      buffer += token
+                      tokenSender.send(token)
+                    }
+                  } catch (err) {
+                    console.error('SSE JSON Parse Error:', err, 'Data:', cleaned)
                   }
-                } catch {}
+                }
               }
             }
           })
@@ -1285,6 +1358,9 @@ ipcMain.handle('llm:generate', async (event, payload: {
     '-ngl', payload.gpuOnly !== false ? '99' : '0', // GPU 가속 인자 전달
     '-t', '4', // 스레드 4개 사용 지정
   ]
+  for (const token of stopTokens) {
+    args.push('--stop', token)
+  }
 
   return new Promise<{ success: boolean; error?: string }>((resolve) => {
     // 🤖 [AI 셋업] 스폰 직전 물리 파일 유효성 최종 검사
