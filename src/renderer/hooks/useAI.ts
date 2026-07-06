@@ -1164,6 +1164,35 @@ export function useAI() {
       `- 절대 에디터 문서 맨 앞에 삽입 제안([INSERT_SUGGESTION])을 함부로 띄우지 마십시오. 사용자가 명시적으로 문서에 "넣어줘"라고 지시하기 전까지는 일반 대화 답변으로 제목 후보들(예: 3~4개 테마별 제목 안)을 멋지게 추천하여 보여주고, 그 제목들이 왜 좋은지 이전 검색 결과를 근거로 설명하십시오.\n` +
       `- 만약 사용자가 에디터의 특정 블록을 태그하고 "이걸 제목으로 바꿔줘"라고 요청한 상태라면, 당연히 그 블록 ID에 맞추어 깔끔한 정제 제목으로 [EDIT_SUGGESTION]을 제안하십시오.`
 
+    // 🤖 주식 쿼리 및 HTML 카드 렌더링에 관한 강력 지침 주입
+    dynamicSystemPrompt += `\n\n[⚠️ 초강력 절대 지침: Stock Query Tool & HTML Card Rendering]\n` +
+      `만약 사용자가 주식 시세나 주가를 물어보고 이를 "본문에 요약/삽입/추가"해 달라고 하는 경우:\n` +
+      `1. 먼저 'query_stock_info' 도구를 호출하여 주가 데이터를 획득하십시오.\n` +
+      `2. 획득한 주가 데이터(회사명, 주가, 변동액, 변동률, 전일가, 고가, 거래량, 외인비중 등)를 기반으로, 에디터 본문에 삽입될 아름답고 세련된 주식 시세 요약 카드 HTML/CSS 코드를 작성하십시오.\n` +
+      `3. 이 HTML 코드는 반드시 아래와 같은 jupyter HTML 셀 규격으로 [INSERT_SUGGESTION]을 제안하여 본문에 삽입되게 만들어야 합니다. (language는 html이어야 함)\n\n` +
+      `예시 규격 (이 디자인을 그대로 따르되 실제 획득한 수치와 상승/하락 여부에 맞추어 화살표(▲/▼), 색상(상승은 #22c55e/녹색테마 #f0fdf4, 하락은 #ef4444/적색테마 #fef2f2)을 정확히 변경하십시오):\n` +
+      `[INSERT_SUGGESTION: afterBlockId=START, type=jupyter]\n` +
+      `//# [AMEVA_LANG:html]\n` +
+      `<div style="background: #f0fdf4; border: 1.5px solid #bbf7d0; border-radius: 12px; padding: 20px; color: #1e293b; font-family: sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative; max-width: 580px; box-sizing: border-box;">\n` +
+      `  <div style="position: absolute; top: 16px; right: 16px; background: #22c55e; color: white; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 20px; display: flex; align-items: center; gap: 4px;">\n` +
+      `    <span>⚡ MCP Live</span>\n` +
+      `  </div>\n` +
+      `  <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 12px;">\n` +
+      `    <span style="font-size: 14px; font-weight: bold; color: #15803d;">📈 {회사명} ({종목코드}) 시세 정보</span>\n` +
+      `  </div>\n` +
+      `  <div style="display: flex; align-items: baseline; gap: 10px; margin-bottom: 16px;">\n` +
+      `    <span style="font-size: 28px; font-weight: 800; color: #0f172a;">{현재가}</span>\n` +
+      `    <span style="font-size: 14px; font-weight: bold; color: #22c55e;">{변동액} ({변동률})</span>\n` +
+      `  </div>\n` +
+      `  <div style="width: 100%; height: 1px; background: #e2e8f0; margin-bottom: 12px;"></div>\n` +
+      `  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: #475569;">\n` +
+      `    <div>전일가: <strong style="color: #1e293b;">{전일가}</strong></div>\n` +
+      `    <div>고가: <strong style="color: #1e293b;">{고가}</strong></div>\n` +
+      `    <div>거래량: <strong style="color: #1e293b;">{거래량}</strong></div>\n` +
+      `    <div>외인비중: <strong style="color: #1e293b;">{외인비중}</strong></div>\n` +
+      `  </div>\n` +
+      `</div>`
+
     if (intent === 'WRITE') {
       dynamicSystemPrompt += `\n\n지금 요청은 새로운 내용을 문서에 추가하는 작업입니다.\n컨텍스트의 블록 목록을 분석하여 가장 적절한 삽입 위치를 결정하십시오.\n왜 그 위치를 선택했는지 한 문장으로 설명한 뒤, 답변 맨 끝에 반드시 다음 태그를 추가하십시오:\n[INSERT_SUGGESTION: afterBlockId=..., type=..., level=...]\n삽입할 내용\n코드나 프로그래밍 예시는 절대 출력하지 마십시오.`
     } else if (intent === 'EDIT') {
@@ -1182,7 +1211,7 @@ export function useAI() {
 
     // 🤖 에이전트 구동이 필요한 질문 감지 (검색, 파이썬 실행, 파일 연동 등)
     // 문서 삽입(WRITE)이나 수정(EDIT) 중이더라도 검색/실행 키워드가 있으면 에이전트가 도구를 사용해 최종 결과를 도출하도록 유도
-    const agentKeywords = ['검색', '찾아줘', '구글', '네이버', '실행', '파이썬', '계산', 'search', 'run']
+    const agentKeywords = ['검색', '찾아줘', '구글', '네이버', '실행', '파이썬', '계산', 'search', 'run', '주가', '주식', '시세', 'stock']
     const needsAgent = agentKeywords.some(k => userMessage.toLowerCase().includes(k))
 
     if (needsAgent) {
