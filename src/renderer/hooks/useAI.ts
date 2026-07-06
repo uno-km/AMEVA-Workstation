@@ -1202,14 +1202,13 @@ export function useAI() {
 
         // [BUG FIX] 만약 EDIT_SUGGESTION 이나 INSERT_SUGGESTION 같은 사용자 승인이 필요한 제안이 있다면
         // 승인이 완료될 때까지 다음 큐를 기동하지 않는다.
-        const rawForEdit = rawAccumRef.current
-        const editMatch = rawForEdit.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
+        const hasEditMatch = rawForEdit.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
         let hasInsertSuggestion = false
-        if (!editMatch && data.success) {
+        if (!hasEditMatch && data.success) {
           const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
           hasInsertSuggestion = tagRegex.test(rawForEdit)
         }
-        const hasPendingDecision = data.success && (!!editMatch || hasInsertSuggestion)
+        const hasPendingDecision = data.success && (!!hasEditMatch || hasInsertSuggestion)
 
         if (!hasPendingDecision) {
           setTimeout(() => checkAndProcessNextQueue(), 80) // [SaaS 큐] 대기 결정이 없으면 완료 시 즉시 다음 항목 기동
