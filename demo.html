@@ -44,6 +44,7 @@
       <button class="solution-tab-btn" data-slide="1"><i class="fab fa-python"></i> Python</button>
       <button class="solution-tab-btn" data-slide="2"><i class="fab fa-html5"></i> HTML Live</button>
       <button class="solution-tab-btn" data-slide="3"><i class="fas fa-database"></i> WASM SQL</button>
+      <button class="solution-tab-btn" data-slide="4"><i class="fas fa-robot"></i> AI & Marketplace</button>
     </div>
 
     <!-- 🎪 캐러셀 오버플로우 트랙 -->
@@ -123,6 +124,71 @@ SELECT * FROM developers;</textarea>
           </div>
         </div>
 
+        <!-- 슬라이드 5: AI & Marketplace -->
+        <div class="carousel-slide">
+          <!-- 상단 시나리오 선택 단추 -->
+          <div style="display:flex; gap:10px; margin-bottom:12px; justify-content:center; flex-wrap:wrap;">
+            <button id="btn-scenario-1" class="run-btn" style="margin:0; background:linear-gradient(135deg, var(--primary), var(--secondary)); font-size:11px; padding:6px 14px; color:white; border-radius:6px; cursor:pointer;">
+              <i class="fas fa-hand-pointer"></i> [시나리오 1] 확장 앱 수동 연동 (Manual Extension)
+            </button>
+            <button id="btn-scenario-2" class="run-btn" style="margin:0; background:var(--bg-glass); border:1px solid var(--border-muted); color:var(--text-muted); font-size:11px; padding:6px 14px; border-radius:6px; cursor:pointer;">
+              <i class="fas fa-robot"></i> [시나리오 2] AI 에이전트 MCP 자동화 (AI MCP Agent)
+            </button>
+          </div>
+
+          <div class="simulator-box" style="margin-top:0; min-height:430px; display:flex; flex-direction:row; gap:20px;">
+            <!-- 좌측: AMEVA Mock Editor -->
+            <div style="flex:1.2; background:var(--bg-main); border:1px solid var(--border-glow); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:12px; position:relative; min-height:400px; box-shadow:0 8px 30px rgba(0,0,0,0.15);">
+              <!-- 에디터 헤더 및 툴바 -->
+              <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-muted); padding-bottom:8px;">
+                <div style="font-size:12px; font-weight:800; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                  <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981;"></span>
+                  AMEVA Editor <span style="font-size:9px; color:var(--text-muted); font-weight:normal;">(글로벌_테크_보고서.md)</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;" id="mock-editor-tools">
+                  <span style="font-size:11px; background:var(--bg-glass); border:1px solid var(--border-muted); padding:3px 6px; border-radius:4px; color:var(--text-main);"><i class="fas fa-bold"></i></span>
+                  <span style="font-size:11px; background:var(--bg-glass); border:1px solid var(--border-muted); padding:3px 6px; border-radius:4px; color:var(--text-main);"><i class="fas fa-italic"></i></span>
+                  <span style="font-size:11px; background:var(--bg-glass); border:1px solid var(--border-muted); padding:3px 6px; border-radius:4px; color:var(--text-main);"><i class="fas fa-underline"></i></span>
+                </div>
+              </div>
+              
+              <!-- 에디터 바디 -->
+              <div id="mock-editor-body" style="flex:1; overflow-y:auto; font-size:13px; line-height:1.7; color:var(--text-main); padding:4px; font-family:'Inter', sans-serif; transition: all 0.5s ease;">
+                <h3 style="font-size:18px; font-weight:800; margin-bottom:8px; color:var(--primary); background:linear-gradient(135deg, var(--primary), var(--secondary)); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">글로벌 테크 마켓 트렌드 보고서</h3>
+                <p style="color:var(--text-muted); font-size:12px; margin-bottom:12px;">아래에 시장 조사 결과 및 참고 자료를 추가할 예정입니다. 마켓플레이스에서 도구를 다운로드하고 AI 어시스턴트에게 필요한 데이터를 요청하세요.</p>
+                <div id="editor-insertion-point" style="display:flex; flex-direction:column; gap:12px; transition: all 0.5s ease;">
+                  <!-- 동적 검색 결과 및 유튜브 카드 들어갈 영역 -->
+                </div>
+              </div>
+            </div>
+
+            <!-- 우측: AI Panel & Marketplace Hub -->
+            <div style="flex:1; display:flex; flex-direction:column; gap:12px; min-height:400px;">
+              <!-- 탭 헤더 -->
+              <div style="display:flex; border-bottom:1px solid var(--border-muted); padding-bottom:4px; gap:8px;">
+                <button id="mcp-tab-btn-market" class="solution-tab-btn active" style="font-size:11px; font-weight:700; padding:4px 10px; margin:0; border:none; background:transparent; cursor:default;">
+                  <i class="fas fa-store"></i> Marketplace
+                </button>
+                <button id="mcp-tab-btn-ai" class="solution-tab-btn" style="font-size:11px; font-weight:700; padding:4px 10px; margin:0; border:none; background:transparent; cursor:default; color:var(--text-muted);">
+                  <i class="fas fa-robot"></i> AI Assistant
+                </button>
+              </div>
+
+              <!-- 우측 콘텐츠 박스 -->
+              <div id="mcp-right-panel" style="flex:1; background:var(--bg-glass); border:1px solid var(--border-muted); border-radius:12px; padding:16px; display:flex; flex-direction:column; min-height:300px; position:relative; overflow-y:auto; transition: all 0.3s ease;">
+                <!-- 초기 마켓플레이스 상태 -->
+              </div>
+              
+              <!-- 다시보기 버튼 -->
+              <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button id="mcp-replay-btn" class="run-btn" style="margin:0; background:linear-gradient(135deg, var(--primary), var(--secondary)); font-size:11px; padding:6px 14px; border:none; color:white; border-radius:6px; display:none; cursor:pointer;">
+                  <i class="fas fa-redo"></i> 다시보기 (Replay)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -150,6 +216,7 @@ SELECT * FROM developers;</textarea>
     import { initDemoHTML } from './js/pages/demo-html.js';
     import { initDemoSQL } from './js/pages/demo-sql.js';
     import { runAISimulation } from './js/utils/ai-sim.js';
+    import { initMcpSimulation } from './js/pages/demo-mcp-sim.js';
 
     initTheme();
     initNavigation();
@@ -159,6 +226,7 @@ SELECT * FROM developers;</textarea>
     initDemoPy();
     initDemoHTML();
     initDemoSQL();
+    initMcpSimulation();
 
     // 🎪 캐러셀 제어 로직
     const track = document.getElementById('playground-track');
@@ -174,8 +242,8 @@ SELECT * FROM developers;</textarea>
         tabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
 
-        // 트랙 휙휙 미끄러지는 transform 연출
-        track.style.transform = `translateX(-${slideIdx * 25}%)`;
+        // 트랙 휙휙 미끄러지는 transform 연출 (5개 탭이므로 20% 간격)
+        track.style.transform = `translateX(-${slideIdx * 20}%)`;
       });
     });
 
@@ -189,6 +257,7 @@ SELECT * FROM developers;</textarea>
       if (activeSlideIndex === 1) targetTextareaId = 'py-code-input';
       else if (activeSlideIndex === 2) targetTextareaId = 'html-code-input';
       else if (activeSlideIndex === 3) targetTextareaId = 'sql-code-input';
+      else if (activeSlideIndex === 4) return; // 5번째 슬라이드는 자체 시뮬레이션
 
       const targetArea = document.getElementById(targetTextareaId);
       const originalText = targetArea.value;
