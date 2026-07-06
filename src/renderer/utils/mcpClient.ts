@@ -49,29 +49,37 @@ export class MCPClientManager {
   /** 로컬 설정 로드 */
   static loadConfigs(): MCPServerConfig[] {
     const isPro = localStorage.getItem('is-pro-plan') === 'true'
-    if (!isPro) {
-      this.servers = []
-      return []
+    
+    // 기본 로컬 WASM 게이트웨이는 플랜과 무관하게 상시 존재
+    const defaultGateway: MCPServerConfig = {
+      id: 'mcp-wasm-gateway',
+      name: 'AMEVA OS WASM Gateway',
+      type: 'http',
+      url: 'http://127.0.0.1:11553/mcp',
+      enabled: true
     }
+
+    if (!isPro) {
+      // 무료 플랜일 경우 외부 추가 Stdio 서버들은 로드하지 않고 기본 로컬 게이트웨이만 허용
+      this.servers = [defaultGateway]
+      return this.servers
+    }
+
     try {
       const stored = localStorage.getItem('mcp-servers-config')
       if (stored) {
         this.servers = JSON.parse(stored)
+        // 로드된 설정에 mcp-wasm-gateway가 누락되어 있다면 병합 보정
+        if (!this.servers.find(s => s.id === 'mcp-wasm-gateway')) {
+          this.servers.unshift(defaultGateway)
+        }
       } else {
-        // 기본값: AMEVA OS WASM 게이트웨이가 추가된 상태로 폴백
-        this.servers = [
-          {
-            id: 'mcp-wasm-gateway',
-            name: 'AMEVA OS WASM Gateway',
-            type: 'http',
-            url: 'http://127.0.0.1:11553/mcp',
-            enabled: true
-          }
-        ]
+        this.servers = [defaultGateway]
         this.saveConfigs()
       }
     } catch (e) {
       console.error('[MCPClientManager] 설정 로드 오류:', e)
+      this.servers = [defaultGateway]
     }
     return this.servers
   }
@@ -93,8 +101,7 @@ export class MCPClientManager {
 
   /** 모든 활성화된 MCP 서버들로부터 도구 목록 동적 페치 */
   static async fetchAllTools(): Promise<MCPTool[]> {
-    const isPro = await this.syncPlanStatus()
-    if (!isPro) return []
+    // 무료 회원이라도 loadConfigs()를 통해 기본 mcp-wasm-gateway 도구는 긁어오도록 허용
     this.loadConfigs()
     const allTools: MCPTool[] = []
     this.cachedTools.clear()
@@ -108,14 +115,10 @@ export class MCPClientManager {
         if (server.type === 'http') {
           // HTTP Gateway 방식 (WASM Toolkit 등)
           if (!server.url) continue
-          const response = await fetch(server.url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              jsonrpc: '2.0',
-              method: 'tools/list',
-              id: `list-${Date.now()}`
-            })
+          const response = await this.safeMcpFetch(server.url, {
+            jsonrpc: '2.0',
+            method: 'tools/list',
+            id: `list-${Date.now()}`
           })
           if (response.ok) {
             const data = await response.json()
@@ -162,8 +165,9 @@ export class MCPClientManager {
   /** 특정 MCP 도구 동적 실행 */
   static async callTool(serverId: string, toolName: string, args: any): Promise<{ success: boolean; result: string; error?: string }> {
     const isPro = await this.syncPlanStatus()
-    if (!isPro) {
-      return { success: false, result: '', error: '무료 버전에서는 MCP 도구를 호출할 수 없습니다.' }
+    // 기본 로컬 WASM 게이트웨이가 아닌 다른 stdio 서버 도구일 때만 pro 제한을 적용
+    if (!isPro && serverId !== 'mcp-wasm-gateway') {
+      return { success: false, result: '', error: '무료 버전에서는 외부 MCP 도구를 호출할 수 없습니다.' }
     }
     this.loadConfigs()
     const server = this.servers.find(s => s.id === serverId)
@@ -184,11 +188,7 @@ export class MCPClientManager {
 
       if (server.type === 'http') {
         if (!server.url) throw new Error('엔드포인트 URL이 없습니다.')
-        const response = await fetch(server.url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(callPayload)
-        })
+        const response = await this.safeMcpFetch(server.url, callPayload)
         if (!response.ok) {
           throw new Error(`HTTP 에러 발생: ${response.status}`)
         }
@@ -224,6 +224,40 @@ export class MCPClientManager {
       if (server.type === 'stdio') {
         await window.electronAPI.mcpKill(server.id)
       }
+    }
+  }
+
+  /** localhost / 127.0.0.1 네트워크 바인딩 실패 시 상호 폴백 재시도 헬퍼 */
+  private static async safeMcpFetch(url: string, body: any): Promise<Response> {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      })
+      return res
+    } catch (e) {
+      // 127.0.0.1 -> localhost 폴백
+      if (url.includes('127.0.0.1')) {
+        const fallbackUrl = url.replace('127.0.0.1', 'localhost')
+        console.warn(`[MCPClientManager] 127.0.0.1 fetch 실패. localhost 폴백 재시도... URL: ${fallbackUrl}`)
+        return await fetch(fallbackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+      }
+      // localhost -> 127.0.0.1 폴백
+      if (url.includes('localhost')) {
+        const fallbackUrl = url.replace('localhost', '127.0.0.1')
+        console.warn(`[MCPClientManager] localhost fetch 실패. 127.0.0.1 폴백 재시도... URL: ${fallbackUrl}`)
+        return await fetch(fallbackUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+      }
+      throw e
     }
   }
 }
