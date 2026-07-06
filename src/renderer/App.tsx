@@ -1072,9 +1072,35 @@ export default function App() {
     }
   }, [])
 
-  const handleApplySuggestion = useCallback((text: string, mode: 'replace' | 'insert', blockId?: string) => {
+  const handleApplySuggestion = useCallback((text: string, mode: 'replace' | 'insert', blockId?: string, isCodeBlock?: boolean, lang?: string) => {
     if (!editor) return
     try {
+      // 🦾 [Jupyter 삽입 연동] 챗봇의 코드블럭에서 '본문에 삽입'을 누른 경우, 실행 가능한 에디터 고유의 jupyter 블록으로 인서트
+      if (isCodeBlock) {
+        try {
+          const finalLang = lang === 'js' ? 'javascript' : lang === 'ts' ? 'typescript' : lang === 'py' ? 'python' : (lang || 'javascript')
+          const blockPayload = {
+            type: 'jupyter',
+            props: {
+              language: finalLang,
+              code: text,
+              runState: JSON.stringify({ hasRun: false, success: null, outputLines: [] })
+            }
+          }
+          
+          const doc = editor.document || []
+          const activeBlock = editor.getTextCursorPosition()?.block
+          if (activeBlock) {
+            editor.insertBlocks([blockPayload], activeBlock, 'after')
+          } else {
+            editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
+          }
+          return
+        } catch (jErr) {
+          console.error('[Jupyter Auto-Insert Failed]', jErr)
+        }
+      }
+
       if (blockId) {
         try {
           const targetBlock = editor.getBlock(blockId)

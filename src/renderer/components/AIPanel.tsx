@@ -3059,11 +3059,46 @@ export function AIPanel({
   )
 }
 
+// ─── 챗봇용 언어 메타 및 색상 연동 정의 (JupyterCodeViewer와 100% 동일) ───
+interface LangMeta {
+  color: string
+  label: string
+}
+
+const CHAT_LANG_META: Record<string, LangMeta> = {
+  javascript: { color: '#f59e0b', label: 'JavaScript' },
+  js:         { color: '#f59e0b', label: 'JavaScript' },
+  typescript: { color: '#60a5fa', label: 'TypeScript' },
+  ts:         { color: '#60a5fa', label: 'TypeScript' },
+  python:     { color: '#3b82f6', label: 'Python' },
+  py:         { color: '#3b82f6', label: 'Python' },
+  html:       { color: '#f97316', label: 'HTML' },
+  css:        { color: '#a78bfa', label: 'CSS' },
+  mermaid:    { color: '#8b5cf6', label: 'Mermaid' },
+  markdown:   { color: '#34d399', label: 'Markdown' },
+  json:       { color: '#34d399', label: 'JSON' },
+  xml:        { color: '#fb923c', label: 'XML' },
+  sql:        { color: '#e879f9', label: 'SQL' },
+  bash:       { color: '#94a3b8', label: 'Bash' },
+  sh:         { color: '#94a3b8', label: 'Shell' },
+  c:          { color: '#10b981', label: 'C' },
+  cpp:        { color: '#10b981', label: 'C++' },
+  java:       { color: '#f43f5e', label: 'Java' },
+  text:       { color: '#6b7280', label: 'Text' },
+  plaintext:  { color: '#6b7280', label: 'Text' },
+}
+
+function getChatLangMeta(lang: string): LangMeta {
+  return CHAT_LANG_META[lang.toLowerCase()] ?? {
+    color: '#6b7280', label: lang
+  }
+}
+
 // 🦾 챗봇 답변 내 코드블럭 마크다운 파싱 및 에디터 본문 즉각 삽입/복사 연동 컴포넌트
 interface MessageCodeBlockProps {
   lang: string
   code: string
-  onInsert?: (text: string, mode: 'replace' | 'insert') => void
+  onInsert?: (text: string, mode: 'replace' | 'insert', blockId?: string, isCodeBlock?: boolean, lang?: string) => void
 }
 
 function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps) {
@@ -3079,81 +3114,88 @@ function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps) {
 
   const handleInsert = () => {
     if (onInsert) {
-      onInsert(code, 'insert')
+      onInsert(code, 'insert', undefined, true, lang)
     }
   }
 
+  const meta = getChatLangMeta(lang)
+  const accentColor = meta.color
+
   return (
     <div style={{
-      margin: '12px 0',
-      borderRadius: '8px',
+      margin: '14px 0',
+      borderRadius: '10px',
+      border: `1.5px solid ${accentColor}33`,
+      background: 'rgba(10,12,20,0.85)',
       overflow: 'hidden',
-      border: '1px solid var(--border-muted)',
-      background: '#0d0e12',
-      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-      fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+      boxShadow: `0 4px 24px rgba(0,0,0,0.4), 0 0 0 1px ${accentColor}22`,
+      fontFamily: '"JetBrains Mono","Fira Code","Cascadia Code",monospace',
       textAlign: 'left',
+      position: 'relative',
     }}>
-      {/* 코드 헤더 */}
+      {/* ── 헤더 바 ── */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '6px 12px',
-        background: '#15161e',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+        padding: '7px 12px',
+        background: `linear-gradient(90deg, ${accentColor}22 0%, transparent 100%)`,
+        borderBottom: `1px solid ${accentColor}33`,
         userSelect: 'none',
       }}>
-        <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-          {lang}
-        </span>
+        {/* 언어 라벨 배지 */}
+        <div style={{
+          fontSize: '10px',
+          fontWeight: 800,
+          padding: '3px 8px',
+          borderRadius: '4px',
+          background: `${accentColor}22`,
+          color: accentColor,
+          border: `1px solid ${accentColor}44`,
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          ● {meta.label}
+        </div>
+        
         <div style={{ display: 'flex', gap: '6px' }}>
           {/* 복사 버튼 */}
           <button
             onClick={handleCopy}
             style={{
-              background: 'rgba(255, 255, 255, 0.05)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '4px',
               padding: '3px 8px',
-              color: '#d1d5db',
+              color: copied ? '#10b981' : '#d1d5db',
               fontSize: '10px',
               cursor: 'pointer',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
               gap: '4px',
               transition: 'all 0.15s ease',
             }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
-              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'
-            }}
           >
-            {copied ? <span style={{ color: '#10b981', display: 'inline-flex', alignItems: 'center' }}>✓</span> : <span style={{ fontSize: '9px' }}>📋</span>}
-            <span>{copied ? '복사됨' : '복사'}</span>
+            <span>{copied ? '✓ 복사됨' : '📋 복사'}</span>
           </button>
           
-          {/* 본문 삽입 버튼 (마켓플레이스 내 도구들처럼 즉각 에디터 삽입 연동) */}
+          {/* 본문 삽입 버튼 (Jupyter 블록으로 다이렉트 변환 삽입) */}
           {onInsert && (
             <button
               onClick={handleInsert}
               style={{
-                background: 'linear-gradient(135deg, var(--primary), #7c3aed)',
+                background: accentColor,
+                color: '#fff',
                 border: 'none',
                 borderRadius: '4px',
                 padding: '3px 8px',
-                color: '#fff',
                 fontSize: '10px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '4px',
-                boxShadow: '0 2px 6px var(--primary-glow)',
+                boxShadow: `0 2px 8px ${accentColor}40`,
                 transition: 'all 0.15s ease',
               }}
               onMouseEnter={e => {
@@ -3163,8 +3205,7 @@ function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps) {
                 e.currentTarget.style.filter = 'none'
               }}
             >
-              <span style={{ fontSize: '9px' }}>📥</span>
-              <span>본문에 삽입</span>
+              <span>📥 본문에 삽입</span>
             </button>
           )}
         </div>
@@ -3178,7 +3219,7 @@ function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps) {
         lineHeight: '1.6',
         color: '#e5e7eb',
         whiteSpace: 'pre',
-        background: '#0a0b0e',
+        background: '#0a0c14',
       }}>
         <code>{code}</code>
       </div>
@@ -3186,7 +3227,7 @@ function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps) {
   )
 }
 
-function renderMessageContent(content: string, onApplySuggestion?: (text: string, mode: 'replace' | 'insert') => void) {
+function renderMessageContent(content: string, onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string, isCodeBlock?: boolean, lang?: string) => void) {
   if (!content) return null
 
   // 마크다운 fenced code block (```) 기준 파싱
