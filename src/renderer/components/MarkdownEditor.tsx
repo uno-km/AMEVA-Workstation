@@ -42,7 +42,7 @@ interface MarkdownEditorProps {
   setCurrentContent: (content: string) => void
   wordWrap: boolean
   showCodeRunner: boolean
-  theme: 'dark' | 'gray' | 'white' | 'hacker'
+  theme: 'dark' | 'gray' | 'white' | 'hacker' | 'nature' | 'win98'
   onSelectedTextChange?: (text: string) => void
   installedPlugins?: string[]
   onOpenFile?: () => void

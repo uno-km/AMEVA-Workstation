@@ -13,6 +13,12 @@
   box-shadow: inset 5px 0 10px -5px color-mix(in srgb, var(--primary) 15%, transparent) !important;
 }
 
+.bn-block-outer:hover:not([data-bn-active="true"]) {
+  border-left: 3px solid color-mix(in srgb, var(--primary) 40%, transparent);
+  background-color: color-mix(in srgb, var(--primary) 1.5%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
 
 /* 줄바꿈 해제(가로 스크롤 고정) 모드 스타일링 */
 .wrap-disabled .bn-editor,

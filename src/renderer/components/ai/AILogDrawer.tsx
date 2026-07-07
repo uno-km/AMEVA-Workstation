@@ -49,36 +49,54 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
       display: 'flex', flexDirection: 'column',
       height: '35vh'
     }}>
-      <div 
-        onClick={onToggle}
+      {/* Hover Trigger Wrapper */}
+      <div
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        title={isExpanded ? '터미널 닫기' : '터미널 열기'}
         style={{
-          position: 'absolute', 
-          top: '0px', 
+          position: 'absolute',
+          top: '0px',
           left: '50%',
-          transform: `translate(-50%, ${translateY}) scale(${scale})`,
-          width: '42px',
-          height: '42px',
+          transform: `translate(-50%, -50%)`,
+          width: '180px',
+          height: '180px',
           borderRadius: '50%',
-          background: isHovered ? '#111827' : '#0a0a0f', 
-          border: '1.5px solid rgba(6, 182, 212, 0.8)',
-          boxShadow: isHovered 
-            ? '0 6px 20px rgba(6, 182, 212, 0.4)' 
-            : '0 4px 16px rgba(0,0,0,0.7)',
-          cursor: 'pointer', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          color: 'var(--primary)', 
-          opacity: opacity,
-          transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
           zIndex: 101,
-          backdropFilter: 'blur(8px)'
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'auto'
         }}
       >
-        <Terminal size={20} strokeWidth={2.5} />
+        <div 
+          onClick={onToggle}
+          title={isExpanded ? '터미널 닫기' : '터미널 열기'}
+          style={{
+            transform: `translateY(${isExpanded ? '-20px' : (isHovered ? '-20px' : '0px')}) scale(${scale})`,
+            width: '42px',
+            height: '42px',
+            borderRadius: '50%',
+            background: isHovered ? 'linear-gradient(135deg, rgba(6,182,212,1), rgba(139,92,246,1))' : 'rgba(6, 182, 212, 0.4)',
+            padding: '2px', // Gradient border thickness
+            boxShadow: isHovered 
+              ? '0 0 24px rgba(6, 182, 212, 0.8), 0 0 12px rgba(139, 92, 246, 0.5)' 
+              : '0 4px 16px rgba(0,0,0,0.7)',
+            cursor: 'pointer', 
+            opacity: opacity,
+            transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
+
+          }}
+        >
+          <div style={{
+            width: '100%', height: '100%', borderRadius: '50%',
+            background: isHovered ? '#111827' : '#0a0a0f',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--primary)',
+            transition: 'background 0.3s ease',
+          }}>
+            <Terminal size={isHovered ? 20 : 18} style={{ transition: 'all 0.3s ease' }} />
+          </div>
+        </div>
       </div>
       <div style={{
         padding: '8px 12px', background: 'rgba(0,0,0,0.3)',

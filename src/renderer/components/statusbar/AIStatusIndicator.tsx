@@ -103,6 +103,13 @@ export function AIStatusIndicator({
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
+                    if (type === 'ollama') {
+                      ipc.llmAddLog({ text: '[System] Ollama 서버 상태를 확인합니다 (Ping)...', prefix: 'System' })
+                      fetch(aiSettings?.apiEndpoint || 'http://localhost:11434/api/tags')
+                        .then(() => ipc.llmAddLog({ text: '[System] Ollama 서버 응답 정상.', prefix: 'System' }))
+                        .catch(err => ipc.llmAddLog({ text: `[Error] Ollama 연결 실패: ${err.message}`, prefix: 'System' }))
+                      return
+                    }
                     ipc.llmAddLog({ text: '[System] 재구동 요청을 메인 프로세스로 전송합니다...', prefix: 'System' })
                     ipc.llmRestart().then((res: any) => {
                       ipc.llmAddLog({ 

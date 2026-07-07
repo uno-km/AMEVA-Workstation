@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import {
-  X, Settings, Sliders, ToggleLeft, ToggleRight, Monitor, Move,
+  X, Settings, Sliders, Monitor, Move,
   Bot, ToyBrick, User, Shield, Keyboard, ShieldAlert, Key
 } from 'lucide-react'
 import * as ipc from '../services/ipc/electronApiAdapter'
@@ -32,7 +32,7 @@ export interface AppSettings {
   showPeersDrag: boolean
   showCodeConsole: boolean
   autoSnapshot: boolean
-  theme: 'dark' | 'gray' | 'white' | 'hacker'
+  theme: 'dark' | 'gray' | 'white' | 'hacker' | 'nature' | 'win98'
   wordWrap: boolean
   showMinimap: boolean
   installedPlugins?: string[]
@@ -184,10 +184,18 @@ export function SettingsModal({
         const codeList = await ipc.llmListModels('code')
         setLocalCodeModels(codeList)
       } else {
-        alert(`다운로드 실패: ${res.error}`)
+        if (res.error && res.error.includes('401')) {
+          alert(`[다운로드 실패 401] Hugging Face 토큰 인증이 필요하거나 모델 라이선스(Gated) 동의가 필요합니다.\n\n해당 모델의 홈페이지에서 라이선스에 동의하시거나 토큰을 발급받아 환경 변수(HUGGINGFACE_API_KEY)에 설정해주세요.`);
+        } else {
+          alert(`다운로드 실패: ${res.error}`);
+        }
       }
     } catch (err: any) {
-      alert(`다운로드 중 오류가 발생했습니다: ${err.message}`)
+      if (err.message && err.message.includes('401')) {
+        alert(`[다운로드 오류 401] 모델 접근 권한이 없습니다. Hugging Face 토큰이 필요합니다.`);
+      } else {
+        alert(`다운로드 중 오류가 발생했습니다: ${err.message}`);
+      }
     } finally {
       setDownloadStatus(null)
     }
@@ -228,6 +236,8 @@ export function SettingsModal({
     { id: 'gray', label: 'Carbon Gray', previewColor: '#1e1e2e' },
     { id: 'white', label: 'Light White', previewColor: '#f3f4f6' },
     { id: 'hacker', label: 'Hacker Green', previewColor: '#000000' },
+    { id: 'nature', label: 'Fairytale Nature', previewColor: '#f0fdf4' },
+    { id: 'win98', label: 'Retro Windows 98', previewColor: '#c0c0c0' },
   ]
 
   const handleThemeChange = (theme: AppSettings['theme']) => {

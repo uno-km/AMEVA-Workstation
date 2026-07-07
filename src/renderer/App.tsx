@@ -219,7 +219,13 @@ export default function App() {
 
   useGlobalShortcuts({
     settings, editor, filePath, currentContent, editorMode,
-    onSave: handleSaveFile, onOpen: handleOpenFile, onNewTab: handleNewTab,
+    onSave: handleSaveFile, onOpen: handleOpenFile, 
+    onNewTab: () => {
+      handleNewTab();
+      if (editorMode === 'welcome') {
+        setEditorMode('edit');
+      }
+    },
     onToggleAI: toggleAIPanel,
     onToggleMode: () => { setEditorMode(editorMode === 'edit' ? 'preview' : 'edit') },
     onZoomIn: handleZoomIn, onZoomOut: handleZoomOut, onZoomReset: handleZoomReset

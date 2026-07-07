@@ -255,16 +255,18 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           </button>
         )}
 
-        {showSidebar && (
-          <div
-            style={{
-              width: sidebarWidth,
-              flexShrink: 0,
-              flexGrow: 0,
-              height: '100%',
-              position: 'relative',
-            }}
-          >
+        <div
+          style={{
+            width: showSidebar ? sidebarWidth : 0,
+            opacity: showSidebar ? 1 : 0,
+            flexShrink: 0,
+            flexGrow: 0,
+            height: '100%',
+            position: 'relative',
+            overflow: 'hidden',
+            transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+          }}
+        >
             {isSidebarReady ? (
               <Sidebar
                 filePath={filePath}
@@ -322,8 +324,6 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
               placement="right"
             />
           </div>
-        )}
-
         <div
           className="editor-zoom-wrapper"
           data-focus-region="editor"
