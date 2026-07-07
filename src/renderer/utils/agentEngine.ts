@@ -70,7 +70,12 @@ export interface ILLMAdapter {
 }
 
 class LlamaCppAdapter implements ILLMAdapter {
-  constructor(private endpoint: string, private modelName: string) {}
+  private endpoint: string;
+  private modelName: string;
+  constructor(endpoint: string, modelName: string) {
+    this.endpoint = endpoint;
+    this.modelName = modelName;
+  }
 
   async generate(prompt: string, systemPrompt: string, temperature: number, sessionId?: string): Promise<string> {
     // 일렉트론 IPC 브릿지를 타서 llama-server로 요청 전송
@@ -105,9 +110,14 @@ class LlamaCppAdapter implements ILLMAdapter {
 }
 
 class OllamaAdapter implements ILLMAdapter {
-  constructor(private endpoint: string, private modelName: string) {}
+  private endpoint: string;
+  private modelName: string;
+  constructor(endpoint: string, modelName: string) {
+    this.endpoint = endpoint;
+    this.modelName = modelName;
+  }
 
-  async generate(prompt: string, systemPrompt: string, temperature: number, sessionId?: string): Promise<string> {
+  async generate(prompt: string, systemPrompt: string, temperature: number, _sessionId?: string): Promise<string> {
     // Ollama의 경우 api/generate 대신 api/chat을 쓰도록 index.ts 메인이 업데이트되었으므로 로컬 REST 호출도 /api/chat 스펙에 대응합니다.
     const response = await fetch(`${this.endpoint}/api/chat`, {
       method: 'POST',
@@ -195,7 +205,7 @@ export class AgentEngine {
           }
           const res = await window.electronAPI.runPythonCode(code)
           if (res.success) {
-            return { success: true, result: res.stdout || res.result || '성공 (반환값 없음)' }
+            return { success: true, result: res.result || '성공 (반환값 없음)' }
           } else {
             return { success: false, result: '', error: res.error || '코드 런타임 실행 에러' }
           }
@@ -543,5 +553,4 @@ function tryHealJSON(jsonStr: string): string {
   return healed;
 }
 
-
-console.debug(sessionId);
+

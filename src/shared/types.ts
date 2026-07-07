@@ -35,3 +35,16 @@ export interface PeerState {
   /** 블록 단위 하이라이트 (협업 모드) */
   blockHighlight?: PeerBlockHighlight
 }
+
+/** 내보내기 단계 (공통 타입) */
+export type ExportPhase = 'idle' | 'converting' | 'uploading' | 'running' | 'success' | 'done' | 'error' | string
+
+/** 내보내기 진행 상태 (공통 타입) */
+export interface ExportProgress {
+  phase: ExportPhase
+  format: string
+  percent: number
+  message: string
+  savedPath?: string
+  error?: string
+}

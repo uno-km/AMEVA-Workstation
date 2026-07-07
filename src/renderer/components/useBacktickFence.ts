@@ -24,10 +24,11 @@ export function useBacktickFence(editor: BlockNoteEditor | null) {
         const block = pos.block
         if (block.type !== 'paragraph') return
 
-        const text = Array.isArray(block.content)
-          ? block.content.map((c: any) => c.text || '').join('')
-          : typeof block.content === 'string'
-            ? block.content
+        const content = (block as { content?: unknown }).content
+        const text = Array.isArray(content)
+          ? content.map((c: any) => c.text || c.type === 'text' ? c.text : '').join('')
+          : typeof content === 'string'
+            ? content
             : ''
 
         if (text.startsWith('```')) {

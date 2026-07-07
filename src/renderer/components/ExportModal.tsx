@@ -10,16 +10,7 @@
 import { useEffect, useRef } from 'react'
 import { X, Minus, FileOutput, CheckCircle, XCircle, Loader } from 'lucide-react'
 
-export type ExportPhase = 'idle' | 'running' | 'success' | 'error'
-
-export interface ExportProgress {
-  phase: ExportPhase
-  format: string
-  percent: number        // 0–100
-  message: string
-  savedPath?: string
-  error?: string
-}
+import type { ExportPhase, ExportProgress } from '../../shared/types'
 
 export const IDLE_PROGRESS: ExportProgress = {
   phase: 'idle',

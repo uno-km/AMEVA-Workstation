@@ -29,6 +29,8 @@ export interface AppSettings {
   securityPreset?: 'paranoiac' | 'turbo' | 'restricted'
   artifactReviewPolicy?: 'always' | 'never' | 'ask'
   hotkeys?: HotkeyConfig
+  modelPath?: string
+  codeModelPath?: string
 }
 
 interface SettingsModalProps {
@@ -69,8 +71,8 @@ export function SettingsModal({
   const [tempColor, setTempColor] = useState(userColor)
 
   // 4. 모델 탭 스캔 상태
-  const [localModels, setLocalModels] = useState<{ name: string; filename: string; path: string; size: number }[]>([])
-  const [localCodeModels, setLocalCodeModels] = useState<{ name: string; filename: string; path: string; size: number }[]>([])
+  const [localModels, setLocalModels] = useState<import('../services/ipc/ipcTypes').ModelInfo[]>([])
+  const [localCodeModels, setLocalCodeModels] = useState<import('../services/ipc/ipcTypes').ModelInfo[]>([])
   const [downloadStatus, setDownloadStatus] = useState<{ filename: string; progress: number; speed?: string } | null>(null)
 
   // 🦾 Pro Plan 상태 (마켓플레이스 및 MCP 노출을 제어)
@@ -104,10 +106,10 @@ export function SettingsModal({
     if (!window.electronAPI) return
     
     // 비동기로 각 키가 존재하는지 복호화 테스트를 통해 검사
-    const geminiVal = await window.electronAPI.keychainGet('gemini-api-key')
-    const openaiVal = await window.electronAPI.keychainGet('openai-api-key')
-    const claudeVal = await window.electronAPI.keychainGet('claude-api-key')
-    const githubVal = await window.electronAPI.keychainGet('github-token')
+    const geminiVal = await window.electronAPI.keychainGet?.('gemini-api-key')
+    const openaiVal = await window.electronAPI.keychainGet?.('openai-api-key')
+    const claudeVal = await window.electronAPI.keychainGet?.('claude-api-key')
+    const githubVal = await window.electronAPI.keychainGet?.('github-token')
 
     setCredStatus({
       gemini: !!geminiVal,
@@ -130,7 +132,7 @@ export function SettingsModal({
     if (!value || !value.trim()) return
     if (!window.electronAPI) return
 
-    const res = await window.electronAPI.keychainSet(keychainKey, value.trim())
+    const res = await window.electronAPI.keychainSet?.(keychainKey, value.trim())
     if (res && res.success) {
       setNewKeyInput(prev => ({ ...prev, [service]: '' }))
       loadCredentials()
@@ -141,7 +143,7 @@ export function SettingsModal({
 
   // 키 삭제 핸들러
   const handleClearCredential = async (service: string, keychainKey: string) => {
-    if (!window.electronAPI) return
+    if (!window.electronAPI || !window.electronAPI.keychainDelete) return
     if (!confirm('해당 자격 증명을 영구히 삭제하시겠습니까?')) return
 
     await window.electronAPI.keychainDelete(keychainKey)
@@ -275,7 +277,7 @@ export function SettingsModal({
   const handleDeleteMcp = async (id: string) => {
     const updated = mcpServers.filter(s => s.id !== id)
     if (window.electronAPI) {
-      await window.electronAPI.mcpKill(id)
+      await window.electronAPI.mcpKill?.(id)
     }
     MCPClientManager.setConfigs(updated)
     setMcpServers(updated)
@@ -911,7 +913,7 @@ export function SettingsModal({
                     >
                       <option value="">(활성 모델 없음)</option>
                       {localModels.map(m => (
-                        <option key={m.path} value={m.path}>{m.name} ({formatBytes(m.size)})</option>
+                        <option key={m.path} value={m.path}>{m.name} ({formatBytes(m.size || 0)})</option>
                       ))}
                     </select>
                   </div>
@@ -928,7 +930,7 @@ export function SettingsModal({
                         {localModels.map(m => (
                           <div key={m.path} style={{ padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-glass)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }} title={m.filename}>{m.filename}</span>
-                            <span style={{ fontSize: '9.5px', color: 'var(--primary)', flexShrink: 0 }}>{formatBytes(m.size)}</span>
+                            <span style={{ fontSize: '9.5px', color: 'var(--primary)', flexShrink: 0 }}>{formatBytes(m.size || 0)}</span>
                           </div>
                         ))}
                       </div>
@@ -1012,7 +1014,7 @@ export function SettingsModal({
                     >
                       <option value="">(코딩 시 일반 모델로 폴백)</option>
                       {localCodeModels.map(m => (
-                        <option key={m.path} value={m.path}>{m.name} ({formatBytes(m.size)})</option>
+                        <option key={m.path} value={m.path}>{m.name} ({formatBytes(m.size || 0)})</option>
                       ))}
                     </select>
                   </div>
@@ -1029,7 +1031,7 @@ export function SettingsModal({
                         {localCodeModels.map(m => (
                           <div key={m.path} style={{ padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-glass)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }} title={m.filename}>{m.filename}</span>
-                            <span style={{ fontSize: '9.5px', color: '#34d399', flexShrink: 0 }}>{formatBytes(m.size)}</span>
+                            <span style={{ fontSize: '9.5px', color: '#34d399', flexShrink: 0 }}>{formatBytes(m.size || 0)}</span>
                           </div>
                         ))}
                       </div>

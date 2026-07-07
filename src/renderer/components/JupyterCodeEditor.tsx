@@ -10,13 +10,13 @@ mermaid.initialize({
   startOnLoad: false,
   theme: 'dark',
   securityLevel: 'loose',
-  suppressErrors: true,
 })
 
 export interface RunState {
   hasRun: boolean
   success: boolean | null
   outputLines: { type: 'stdout' | 'stderr' | 'info'; text: string }[]
+  tableData?: any
 }
 
 // ─── 1. 에디터 상단 헤더 배너 ─────────────────────────────────────────
@@ -140,13 +140,13 @@ export function JupyterCodeEditorHeader({
           onChange={(e) => {
             const val = e.target.value
             editor.updateBlock(blockId, {
-              type: 'jupyter',
+              type: 'jupyter' as any,
               props: {
                 ...editor.getBlock(blockId)?.props,
                 language: val,
                 runState: JSON.stringify({ hasRun: false, success: null, outputLines: [] })
               }
-            })
+            } as any)
           }}
           style={{
             background: 'transparent',
@@ -469,7 +469,7 @@ export function JupyterCodeEditorTerminal({
                 </thead>
                 <tbody>
                   {runState.tableData.values.map((row: any[], ri: number) => (
-                    <tr key={ri} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)', hover: { background: 'rgba(255,255,255,0.02)' } }}>
+                    <tr key={ri} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                       {row.map((val: any, ci: number) => (
                         <td key={ci} style={{ padding: '8px 12px', fontFamily: 'monospace' }}>{val !== null ? String(val) : <span style={{color:'#6b7280', fontStyle:'italic'}}>NULL</span>}</td>
                       ))}

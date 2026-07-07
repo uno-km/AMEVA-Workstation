@@ -1,6 +1,6 @@
 import React from 'react';
 import { Sparkles, Terminal, Settings2, X } from 'lucide-react';
-import type { AISettings } from '../../hooks/useAI';
+import type { AISettings } from '../../types/aiTypes';
 
 /**
  * AIHeaderProps 인터페이스 정의

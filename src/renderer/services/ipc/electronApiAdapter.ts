@@ -50,7 +50,7 @@ declare global {
       openFile: () => Promise<FileOpenEventData | null>
       saveFile: (content: string, filePath?: string | null) => Promise<{ filePath?: string; success: boolean }>
       saveFileAs: (content: string, filePath?: string | null) => Promise<{ filePath?: string; success: boolean }>
-      selectLocalFile: (filters?: Array<{ name: string; extensions: string[] }>) => Promise<string[]>
+      selectLocalFile: (filters?: Array<{ name: string; extensions: string[] }>) => Promise<{ filePath: string; base64: string } | null>
       onFileOpenArgv: (callback: (event: any, file: FileOpenEventData) => void) => () => void
       fetchUrlMetadata: (url: string) => Promise<UrlMetadata>
       openExternalLink: (url: string) => void
@@ -66,16 +66,17 @@ declare global {
       showMessageBox?: (options: any) => Promise<{ response: number }>
       // OS 키체인 (API Key 암호화 저장)
       keychainGet?: (key: string) => Promise<string | null>
-      keychainSet?: (key: string, value: string) => Promise<void>
-      keychainDelete?: (key: string) => Promise<void>
+      keychainSet?: (key: string, value: string) => Promise<{ success: boolean; error?: string }>
+      keychainDelete?: (key: string) => Promise<{ success: boolean; error?: string }>
       // GPU
       llmGetGpuName?: () => Promise<string>
       llmRestart?: () => Promise<{ success: boolean; error?: string }>
       // 모델 다운로드 (허브 통합)
-      llmDownloadModel?: (payload: { url: string; filename: string }) => Promise<{ success: boolean; error?: string }>
+      llmDownloadModel?: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>
       onLLMDownloadProgress?: (callback: (data: any) => void) => () => void
       // 플랜/구독
       planGetStatus?: () => Promise<boolean>
+      planSetStatus?: (isPro: boolean) => Promise<{ success: boolean; isPro?: boolean; error?: string }>
       isFreeMode?: () => Promise<boolean>
       // MCP
       getMcpServers?: () => Promise<any[]>
@@ -255,16 +256,17 @@ export async function keychainGet(key: string): Promise<string | null> {
 /**
  * keychainSet
  */
-export async function keychainSet(key: string, value: string): Promise<void> {
-  if (!window.electronAPI?.keychainSet) return;
+export async function keychainSet(key: string, value: string): Promise<{ success: boolean; error?: string }> {
+  if (!window.electronAPI?.keychainSet) return { success: false, error: 'API not available' };
   return window.electronAPI.keychainSet(key, value);
 }
 
 /**
  * keychainDelete
+ * OS 키체인에서 값을 삭제한다.
  */
-export async function keychainDelete(key: string): Promise<void> {
-  if (!window.electronAPI?.keychainDelete) return;
+export async function keychainDelete(key: string): Promise<{ success: boolean; error?: string }> {
+  if (!window.electronAPI?.keychainDelete) return { success: false, error: 'API not available' };
   return window.electronAPI.keychainDelete(key);
 }
 
@@ -311,8 +313,8 @@ export async function saveFileAs(
  */
 export async function selectLocalFile(
   filters?: Array<{ name: string; extensions: string[] }>
-): Promise<string[]> {
-  if (!window.electronAPI) return []
+): Promise<{ filePath: string; base64: string } | null> {
+  if (!window.electronAPI) return null
   return window.electronAPI.selectLocalFile(filters)
 }
 
@@ -383,7 +385,7 @@ export async function getMcpServers(): Promise<any[]> {
  * llmDownloadModel
  * LLM 모델을 허브로부터 다운로드한다.
  */
-export async function llmDownloadModel(payload: { url: string; filename: string }): Promise<{ success: boolean; error?: string }> {
+export async function llmDownloadModel(payload: { url: string; filename: string; type?: 'llm' | 'code' }): Promise<{ success: boolean; error?: string }> {
   if (!window.electronAPI?.llmDownloadModel) {
     return { success: false, error: 'API not available' }
   }

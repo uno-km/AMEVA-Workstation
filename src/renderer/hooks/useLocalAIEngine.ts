@@ -56,12 +56,12 @@ export function useLocalAIEngine() {
   const importModel = useCallback(async () => {
     if (!window.electronAPI) return;
     try {
-      const filePaths = await window.electronAPI.selectLocalFile([
+      const resObj = await window.electronAPI.selectLocalFile([
         { name: 'GGUF Models', extensions: ['gguf', 'bin'] },
         { name: 'All Files', extensions: ['*'] }
       ]);
-      if (filePaths && filePaths.length > 0) {
-        const sourcePath = filePaths[0];
+      if (resObj && resObj.filePath) {
+        const sourcePath = resObj.filePath;
         const res = await window.electronAPI.llmImportModel(sourcePath);
         if (res.success) {
           await loadModels('chat');

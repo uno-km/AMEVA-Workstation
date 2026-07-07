@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Bot, Brain, ChevronUp, ChevronDown, Check, X, Copy } from 'lucide-react';
-import type { AIMessage } from '../../../hooks/useAI';
+import type { AIMessage } from '../../../types/aiTypes';
 import { getThoughtSummary } from '../../../utils/aiFormatters';
 import { ThoughtTreeView } from './ThoughtProcess';
 import { renderMessageContent } from './MessageContent';
@@ -50,15 +50,15 @@ export function MessageBubble({
   const hasRealTrace = traceEvents.length > 0;
   
   const thinkingText = traceEvents
-    .filter(t => t.type === 'thinking')
-    .map(t => t.text || '')
-    .filter(Boolean)
+    .filter((t: any) => t.type === 'thinking')
+    .map((t: any) => t.text || '')
+    .filter((t: any) => Boolean(t))
     .join('\n\n---\n\n');
     
   const cleanContent = msg.content; // sanitization을 거친 최종 응답 본문 텍스트
 
   // AI의 추론 텍스트의 볼륨과 단계를 요약(분석)하여 UI에 표시할 메타데이터 생성
-  const thoughtSummary = getThoughtSummary(thinkingText, !!msg.isStreaming);
+  const _thoughtSummary = getThoughtSummary(thinkingText, !!msg.isStreaming);
 
   /**
    * 클립보드 전체 메시지 복사 핸들러
@@ -169,7 +169,7 @@ export function MessageBubble({
               border: '1px dashed rgba(255, 255, 255, 0.1)', borderRadius: '6px',
               boxSizing: 'border-box', width: 'fit-content'
             }}>
-              {msg.taggedBlocks.map(block => (
+              {msg.taggedBlocks.map((block: any) => (
                 <span
                   key={block.id}
                   onClick={() => onScrollToBlock?.(block.id)}
@@ -241,7 +241,7 @@ export function MessageBubble({
 
           {/* 🧩 AI 자동 코드/블록 삽입 제안 카드 (Insert Suggestions) */}
           {!isUser && msg.insertSuggestions && msg.insertSuggestions.length > 0 ? (
-            msg.insertSuggestions.map((ins, idx) => (
+            msg.insertSuggestions.map((ins: any, idx: number) => (
               <InsertPreviewCard
                 key={idx}
                 msg={msg}

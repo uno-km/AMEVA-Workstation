@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { X, Check, Trash2, AlertCircle } from 'lucide-react'
 import { PROVIDER_MODELS, API_ENDPOINTS } from "../../../shared/constants/aiSettings"
 
@@ -11,6 +11,17 @@ export interface AISettingsPanelProps {
   handleSaveKey: () => void
   handleDeleteKey: () => void
   onClose: () => void
+  setShowModelHub?: (val: boolean) => void
+  importModel?: () => void
+  gpuName?: string
+}
+
+const formatBytes = (bytes: number) => {
+  if (!bytes) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 export function AISettingsPanel({
@@ -21,10 +32,16 @@ export function AISettingsPanel({
   handleApiKeyChange,
   handleSaveKey,
   handleDeleteKey,
-  onClose
+  onClose,
+  setShowModelHub,
+  importModel,
+  gpuName
 }: AISettingsPanelProps) {
   const { apiType = 'wasm', apiProvider = 'gemini', apiKey = '', apiEndpoint = '', apiModel = '', gpuOnly = true } = settings
   const isWhiteTheme = settings.theme === 'white'
+  
+  const [downloadStatus, setDownloadStatus] = useState<{ filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number } | null>(null)
+  const isAvailable = true
 
   return (
     <div style={{
@@ -83,7 +100,7 @@ export function AISettingsPanel({
                 <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 제공사</label>
                 <select
                   value={apiProvider}
-                  onChange={e => handleProviderChange(e.target.value as any)}
+                  onChange={e => onUpdateSettings({ apiProvider: e.target.value })}
                   style={{
                     width: '100%',
                     background: 'var(--bg-glass)',
@@ -176,7 +193,7 @@ export function AISettingsPanel({
                       fontSize: '11px',
                     }}
                   >
-                    {(PROVIDER_MODELS[apiProvider] || []).map((m: any) => (
+                    {((PROVIDER_MODELS as Record<string, {value: string; label: string}[]>)[apiProvider] || []).map((m: any) => (
                       <option key={m.value} value={m.value}>{m.label}</option>
                     ))}
                   </select>
@@ -197,7 +214,7 @@ export function AISettingsPanel({
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                 <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>모델 선택</label>
                 <button
-                  onClick={() => setShowModelHub(true)}
+                  onClick={() => setShowModelHub?.(true)}
                   style={{
                     fontSize: '9px', color: 'var(--primary)', background: 'none', border: 'none',
                     cursor: 'pointer', padding: 0, fontWeight: 700,
@@ -218,7 +235,7 @@ export function AISettingsPanel({
                     <span>C:\ameva\models\llm 에 모델 없음</span>
                   </div>
                   <button
-                    onClick={() => setShowModelHub(true)}
+                    onClick={() => setShowModelHub?.(true)}
                     style={{
                       width: '100%', padding: '4px 8px', borderRadius: '4px',
                       background: 'var(--primary)', color: '#fff', border: 'none',

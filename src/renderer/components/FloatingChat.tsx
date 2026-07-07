@@ -85,7 +85,7 @@ export function FloatingChat({
     setPos({ x: newX, y: newY })
   }
 
-  const handleDragMouseUp = (e: MouseEvent) => {
+  const handleDragMouseUp = () => {
     document.removeEventListener('mousemove', handleDragMouseMove)
     document.removeEventListener('mouseup', handleDragMouseUp)
     if (!dragStartRef.current) return

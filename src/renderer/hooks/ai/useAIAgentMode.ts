@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
-import { AgentEngine } from '../../services/ai/agentEngine'
+import { AgentEngine } from '../../utils/agentEngine'
 import type { AIMessage, AISettings } from '../../types/aiTypes'
 import { registerAgentTools } from '../../services/ai/agentTools'
 import { buildAgentQuery, getAgentSystemPrompt } from '../../services/ai/agentPromptFactory'
@@ -68,7 +68,7 @@ export function useAIAgentMode() {
       const agentQuery = buildAgentQuery(userMessage, messages, taggedBlocks)
       const agentSystemPrompt = getAgentSystemPrompt()
 
-      const agentResult = await agent.executeSession(agentQuery, (log) => {
+      const agentResult = await agent.executeSession(agentQuery, (log: string) => {
         ipc.llmAddLog({ text: log, prefix: 'ReAct' })
         accumulatedLogs += log
 
@@ -119,7 +119,7 @@ export function useAIAgentMode() {
                 finalAnswer: cleanContent,
                 insertSuggestion: insertSuggestions[0],
                 insertSuggestions: insertSuggestions,
-                reasoningTrace: agentResult.steps.flatMap((s, sIdx) => {
+                reasoningTrace: agentResult.steps.flatMap((s: { thought: string; action?: string; actionInput?: string; observation?: string }, sIdx: number) => {
                   const traces = [{
                     id: `trace_agent_${m.id}_${sIdx}_thought`,
                     source: 'model' as const,

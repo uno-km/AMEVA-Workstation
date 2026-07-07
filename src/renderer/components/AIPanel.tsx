@@ -1,5 +1,5 @@
 
-import React from 'react'
+import React, { useRef } from 'react'
 import { FileText, Wand2, Languages, Expand, Lightbulb } from 'lucide-react'
 import { useAIPanelLogic } from '../hooks/ai/useAIPanelLogic'
 import { AIChatList } from './ai-panel/AIChatList'
@@ -53,6 +53,8 @@ export function AIPanel(props: any) {
 
   if (!isOpen) return null
 
+  const chatContainerRef = useRef<HTMLDivElement | null>(null)
+  const resizeRef = useRef<HTMLDivElement | null>(null)
   const isWhiteTheme = settings.theme === 'white'
   const displayModelLabel = settings.apiModel || (gpuName ? `GPU: ${gpuName}` : 'auto')
 

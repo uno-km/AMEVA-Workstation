@@ -6,7 +6,7 @@ export interface AIInputBarProps {
   disabled: boolean
   isGenerating: boolean
   placeholder?: string
-  textareaRef?: React.RefObject<HTMLTextAreaElement>
+  textareaRef?: React.RefObject<HTMLTextAreaElement | null>
   onChange: (value: string) => void
   onSubmit: () => void
   onAbort: () => void

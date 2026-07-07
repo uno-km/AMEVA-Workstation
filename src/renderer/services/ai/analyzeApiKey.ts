@@ -1,6 +1,6 @@
-import { API_KEY_PATTERNS } from "../../shared/constants/aiSettings"
+import { API_KEY_PATTERNS } from "../../../shared/constants/aiSettings"
 
-export type ApiKeyProvider = typeof API_KEY_PATTERNS[number]['provider']
+export type ApiKeyProvider = (typeof API_KEY_PATTERNS)[number]['provider']
 
 export interface ApiKeyAnalysisResult {
   provider: ApiKeyProvider | 'unknown'
@@ -12,7 +12,7 @@ export interface ApiKeyAnalysisResult {
 export function analyzeApiKey(apiKey: string): ApiKeyAnalysisResult {
   const normalizedKey = apiKey.trim()
   for (const pattern of API_KEY_PATTERNS) {
-    const matched = pattern.prefixes.some((prefix) =>
+    const matched = pattern.prefixes.some((prefix: string) =>
       normalizedKey.startsWith(prefix)
     )
     if (matched) {

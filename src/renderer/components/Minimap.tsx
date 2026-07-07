@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 
 interface MinimapProps {
   editor: any
-  editorContainerRef: React.RefObject<HTMLDivElement>
+  editorContainerRef: React.RefObject<HTMLDivElement | null>
   blocks: any[]
 }
 

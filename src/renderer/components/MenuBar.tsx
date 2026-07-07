@@ -108,8 +108,8 @@ export function MenuBar({
     }
   }
 
-  const triggerAction = (action: () => void) => {
-    action()
+  const triggerAction = (action?: () => void) => {
+    if (action) action()
     setActiveMenu(null)
   }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AIMessage } from '../../hooks/useAI';
+import type { AIMessage } from '../../types/aiTypes';
 import { MessageBubble } from './chat-list/MessageBubble';
 
 /**
@@ -7,8 +7,8 @@ import { MessageBubble } from './chat-list/MessageBubble';
  */
 interface AIChatListProps {
   messages: AIMessage[];
-  messagesContainerRef: React.RefObject<HTMLDivElement>;
-  messagesEndRef: React.RefObject<HTMLDivElement>;
+  messagesContainerRef: React.RefObject<HTMLDivElement | null>;
+  messagesEndRef: React.RefObject<HTMLDivElement | null>;
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string) => void;
   selectedText?: string;
   onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void;

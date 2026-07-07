@@ -45,14 +45,14 @@ export function useCollaborationHighlight(
     const markActive = () => {
       if (!isEditorMounted()) return
       try {
-        const selection = editor.selection
-        if (!selection) {
+        const selection = typeof editor.getSelection === 'function' ? editor.getSelection() : undefined
+        if (!selection || !selection.blocks || selection.blocks.length === 0) {
           clearActive()
           if (prevActiveId && cbRef.current) cbRef.current(null, false)
           prevActiveId = null
           return
         }
-        const blockId = selection.focusBlock.id
+        const blockId = selection.blocks[selection.blocks.length - 1].id
         if (blockId === prevActiveId && isCurrentlyEditing) return
 
         clearActive()

@@ -8,9 +8,7 @@ import mermaid from 'mermaid'
 // Mermaid 초기화
 mermaid.initialize({
   startOnLoad: false,
-  theme: 'dark',
-  securityLevel: 'loose',
-  suppressErrors: true,
+  theme: 'dark'
 })
 
 import hljs from 'highlight.js'
@@ -180,7 +178,7 @@ function InlineMermaidRenderer({ code }: { code: string }) {
         document.querySelectorAll('[id^="dmermaid"]').forEach(el => el.remove())
 
         try {
-          await mermaid.parse(cleanCode, { suppressErrors: true })
+          await mermaid.parse(cleanCode)
         } catch (parseErr: any) {
           if (active) {
             setError(parseErr.message || 'Mermaid 문법 오류가 감지되었습니다.')
@@ -227,11 +225,11 @@ function InlineMermaidRenderer({ code }: { code: string }) {
 export function JupyterCodeViewer({
   code,
   language,
-  blockId,
+  onRunFailure,
 }: {
   code: string
   language: string
-  blockId: string
+  onRunFailure?: (err: any) => void
 }) {
   // 메타데이터 주석 해독
   const lines = (code || '').split('\n')

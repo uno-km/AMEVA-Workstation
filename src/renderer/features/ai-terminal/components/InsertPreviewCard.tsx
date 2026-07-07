@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Check, X, ChevronUp, ChevronDown, Plus, Brain, ArrowUp, ArrowDown 
 } from 'lucide-react';

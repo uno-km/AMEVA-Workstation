@@ -81,7 +81,7 @@ export function useCodeRuntime() {
   const [isRunning, setIsRunning] = useState(false)
 
   // ── JS: Web Worker 상주형 세션 유지 샌드박스 실행 ──
-  const runJSCode = (code: string): Promise<{ success: boolean; output: string }> => {
+  const runJSCode = (code: string): Promise<{ success: boolean; output: string; tableData?: any }> => {
     return new Promise((resolve) => {
       setIsRunning(true)
       const worker = getOrCreateJSWorker()
@@ -112,7 +112,7 @@ export function useCodeRuntime() {
   }
 
   // ── Python: 브라우저 WebAssembly(Pyodide WASM) 격리형 샌드박스 실행 ──
-  const runPythonCode = async (code: string): Promise<{ success: boolean; output: string }> => {
+  const runPythonCode = async (code: string): Promise<{ success: boolean; output: string; tableData?: any }> => {
     setIsRunning(true)
 
     // 느낌표 명령어 (!pip install 및 가상 cmd 쉘 명령어) 전처리

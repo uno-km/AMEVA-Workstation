@@ -7,14 +7,7 @@
  */
 
 import { create } from 'zustand'
-
-/** 내보내기 진행 상태 타입 */
-export interface ExportProgress {
-  phase: 'idle' | 'converting' | 'uploading' | 'done' | 'error' | string
-  format: string
-  percent: number
-  message: string
-}
+import type { ExportProgress } from '../../shared/types'
 
 /** 기본 내보내기 상태 (idle 상태) */
 export const IDLE_EXPORT_PROGRESS: ExportProgress = {

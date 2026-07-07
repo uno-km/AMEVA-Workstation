@@ -45,7 +45,7 @@ function initDB(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve(request.result)
 
-    request.onupgradeneeded = (event) => {
+    request.onupgradeneeded = (_event) => {
       const db = request.result
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })

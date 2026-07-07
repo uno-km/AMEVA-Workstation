@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Check, X, ChevronUp, ChevronDown, Plus, Brain, ArrowUp, ArrowDown
 } from 'lucide-react';
-import type { AIMessage, InsertSuggestion } from '../../hooks/useAI';
+import type { AIMessage, InsertSuggestion } from '../../types/aiTypes';
 
 /**
  * InsertPreviewCardProps 인터페이스 정의
@@ -100,8 +100,8 @@ export const InsertPreviewCard: React.FC<InsertPreviewCardProps> = ({
 
   // AI 추론 과정(Thinking Trace)을 추출하여 문자열로 결합합니다.
   const thinkingText = (msg.reasoningTrace || [])
-    .filter(t => t.type === 'thinking')
-    .map(t => t.text || '')
+    .filter((t: any) => t.type === 'thinking')
+    .map((t: any) => t.text || '')
     .filter(Boolean)
     .join('\n\n');
   const hasReasonLog = !!(ins.reasonText || thinkingText);

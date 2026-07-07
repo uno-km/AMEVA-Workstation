@@ -77,14 +77,14 @@ export interface IElectronAPI {
   llmRestart: () => Promise<{ success: boolean; error?: string }>
 
   llmListModels: (type?: 'llm' | 'code' | 'ollama') => Promise<LLMModel[]>
-  selectLocalFile: (filters: { name: string; extensions: string[] }[]) => Promise<string[] | null>
+  selectLocalFile: (filters?: { name: string; extensions: string[] }[]) => Promise<{ filePath: string; base64: string } | null>
   llmGetGpuName: () => Promise<string>
 
   // 홍 Whisper STT
   sttTranscribe: (payload: { audioPath: string; language?: string }) => Promise<{ success: boolean; text?: string; error?: string }>
   sttGetTempPath: () => Promise<string>
 
-  llmDownloadModel: (payload: { url: string; filename: string }) => Promise<{ success: boolean; error?: string }>
+  llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>
   onLLMDownloadProgress: (callback: (data: { filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number }) => void) => () => void
   onModelDownloadProgress?: (callback: (data: any) => void) => () => void
   llmImportModel: (sourcePath: string, type?: 'llm' | 'code') => Promise<{ success: boolean; path?: string; error?: string }>

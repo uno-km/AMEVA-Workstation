@@ -343,7 +343,7 @@ async function convertMarkdownToBinary(editorInstance: any, filePath: string): P
     const html = blocksToHTML(rawBlocks)
     if (window.electronAPI?.printToPDF) {
       const base64 = await window.electronAPI.printToPDF(html)
-      return base64
+      return base64 || ''
     }
     // [HIGH-002] 브라우저 환경: 숨김젠 iframe + window.print() fallback
     // Electron 없으면 브라우저 인쇄 대화상자를 연다
@@ -661,7 +661,7 @@ export default function App() {
         setActiveRightTab('ai')
         setToastMessage('선택한 블록이 AI 어시스턴트에 참조 태그되었습니다.')
         setTimeout(() => {
-          setToastMessage(prev => prev === '선택한 블록이 AI 어시스턴트에 참조 태그되었습니다.' ? null : prev)
+          setToastMessage(null)
         }, 3000)
       }
       return next
@@ -1926,18 +1926,24 @@ graph TD
             setP(40, 'Markdown 생성 중...')
             const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
             setP(65, '저장 대화상자 열기...')
-            savedPath = await window.electronAPI.saveExportedFile(
-              markdown, false, 'document.md',
-              [{ name: 'Markdown', extensions: ['md', 'markdown'] }]
-            )
+            const api = window.electronAPI
+            if (api && api.saveExportedFile) {
+              savedPath = await api.saveExportedFile(
+                markdown, false, 'document.md',
+                [{ name: 'Markdown', extensions: ['md', 'markdown'] }]
+              )
+            }
             break
           }
 
           case 'html': {
             setP(40, 'HTML 변환 중...')
-            const res = await window.electronAPI.exportConvert({ blocks, format: 'html', defaultName: 'document.html' })
-            savedPath = res.success ? res.savedPath : undefined
-            if (!res.success && res.error) throw new Error(res.error)
+            const api = window.electronAPI
+            if (api && api.exportConvert) {
+              const res = await api.exportConvert({ blocks, format: 'html', defaultName: 'document.html' })
+              savedPath = res.success ? (res.savedPath ?? null) : null
+              if (!res.success && res.error) throw new Error(res.error)
+            }
             break
           }
 
@@ -1945,47 +1951,65 @@ graph TD
             setP(30, 'HTML 렌더링 중...')
             const html = blocksToHTML(blocks)
             setP(50, 'PDF 렌더링 (Chromium)...')
-            savedPath = await window.electronAPI.printToPDF(html)
+            const api = window.electronAPI
+            if (api && api.printToPDF) {
+              savedPath = await api.printToPDF(html)
+            }
             break
           }
 
           case 'docx': {
             setP(40, 'Word 변환 중...')
-            const res = await window.electronAPI.exportConvert({ blocks, format: 'docx', defaultName: 'document.docx' })
-            savedPath = res.success ? res.savedPath : undefined
-            if (!res.success && res.error) throw new Error(res.error)
+            const api = window.electronAPI
+            if (api && api.exportConvert) {
+              const res = await api.exportConvert({ blocks, format: 'docx', defaultName: 'document.docx' })
+              savedPath = res.success ? (res.savedPath ?? null) : null
+              if (!res.success && res.error) throw new Error(res.error)
+            }
             break
           }
 
           case 'xlsx': {
             setP(40, 'Excel 변환 중...')
-            const res = await window.electronAPI.exportConvert({ blocks, format: 'xlsx', defaultName: 'tables.xlsx' })
-            savedPath = res.success ? res.savedPath : undefined
-            if (!res.success && res.error) throw new Error(res.error)
+            const api = window.electronAPI
+            if (api && api.exportConvert) {
+              const res = await api.exportConvert({ blocks, format: 'xlsx', defaultName: 'tables.xlsx' })
+              savedPath = res.success ? (res.savedPath ?? null) : null
+              if (!res.success && res.error) throw new Error(res.error)
+            }
             break
           }
 
           case 'pptx': {
             setP(40, 'PowerPoint 변환 중...')
-            const res = await window.electronAPI.exportConvert({ blocks, format: 'pptx', defaultName: 'presentation.pptx' })
-            savedPath = res.success ? res.savedPath : undefined
-            if (!res.success && res.error) throw new Error(res.error)
+            const api = window.electronAPI
+            if (api && api.exportConvert) {
+              const res = await api.exportConvert({ blocks, format: 'pptx', defaultName: 'presentation.pptx' })
+              savedPath = res.success ? (res.savedPath ?? null) : null
+              if (!res.success && res.error) throw new Error(res.error)
+            }
             break
           }
 
           case 'hwpx': {
             setP(40, '한글 변환 중...')
-            const res = await window.electronAPI.exportConvert({ blocks, format: 'hwpx', defaultName: 'document.hwpx' })
-            savedPath = res.success ? res.savedPath : undefined
-            if (!res.success && res.error) throw new Error(res.error)
+            const api = window.electronAPI
+            if (api && api.exportConvert) {
+              const res = await api.exportConvert({ blocks, format: 'hwpx', defaultName: 'document.hwpx' })
+              savedPath = res.success ? (res.savedPath ?? null) : null
+              if (!res.success && res.error) throw new Error(res.error)
+            }
             break
           }
 
           case 'xml': {
             setP(40, 'XML 변환 중...')
-            const res = await window.electronAPI.exportConvert({ blocks, format: 'xml', defaultName: 'document.xml' })
-            savedPath = res.success ? res.savedPath : undefined
-            if (!res.success && res.error) throw new Error(res.error)
+            const api = window.electronAPI
+            if (api && api.exportConvert) {
+              const res = await api.exportConvert({ blocks, format: 'xml', defaultName: 'document.xml' })
+              savedPath = res.success ? (res.savedPath ?? null) : null
+              if (!res.success && res.error) throw new Error(res.error)
+            }
             break
           }
 
@@ -2217,8 +2241,9 @@ graph TD
   }
 
   const handleCloseApp = () => {
-    if (window.electronAPI?.closeApp) {
-      window.electronAPI.closeApp()
+    const api = window.electronAPI
+    if (api && api.closeApp) {
+      api.closeApp()
     }
     // 브라우저에서는 창 닫기 불가 — 조용히 무시
   }
@@ -2243,7 +2268,7 @@ graph TD
         onSaveAs={handleSaveAsFile}
         onPrint={() => handleExport('pdf')}
         onCloseApp={handleCloseApp}
-        onNewWindow={() => window.electronAPI?.newWindow()}
+        onNewWindow={() => window.electronAPI?.newWindow?.()}
         editorMode={editorMode}
         setEditorMode={handleSwitchMode}
         showStatusBar={showStatusBar}
@@ -2429,7 +2454,7 @@ graph TD
               isAvailable={isAvailable}
               models={models}
               settings={aiSettings}
-              onSend={(msg, ctx, orig, bId, runtimeSettings) => {
+              onSend={(msg: string, ctx?: string, orig?: string, bId?: string, runtimeSettings?: Parameters<typeof generateResponse>[4]) => {
                 generateResponse(msg, ctx, orig, bId, runtimeSettings, editor, taggedBlocks)
                 setTaggedBlocks([])
               }}
@@ -2622,10 +2647,10 @@ graph TD
 
       {/* 내보내기 진행 모달 */}
       <ExportModal
-        progress={exportProgress as any}
+        progress={exportProgress}
         minimized={exportMinimized}
         onMinimize={() => setExportMinimized(prev => !prev)}
-        onClose={() => { setExportProgress(IDLE_PROGRESS as any); setExportMinimized(false) }}
+        onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
         onOpenFile={(path) => {
           const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
           if (window.electronAPI?.openExternalLink) {

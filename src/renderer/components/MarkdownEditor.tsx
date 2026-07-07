@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { createPortal } from 'react-dom'
 import { BlockNoteView } from '@blocknote/mantine'
 import { BlockNoteEditor } from '@blocknote/core'
 import { getDefaultReactSlashMenuItems, SuggestionMenuController } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import type { PeerState } from '../../shared/types'
 import { ImageLightbox } from './ImageLightbox'
-import { Terminal, Code2, Eye, Globe, X, Users, FileText, Sparkles } from 'lucide-react'
+import { Terminal, Code2, Eye, Globe, X, Users, FileText, Sparkles, FileImage } from 'lucide-react'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 
@@ -22,9 +21,7 @@ try {
 }
 
 // ─── 기능별 이원화 컴포넌트 및 커스텀 훅 임포트 ─────────────────────
-import { JupyterCodeViewer, getLangMeta } from './JupyterCodeViewer'
-import { JupyterCodeEditorHeader, JupyterCodeEditorTerminal } from './JupyterCodeEditor'
-import type { RunState } from './JupyterCodeEditor'
+import { JupyterCodeViewer } from './JupyterCodeViewer'
 import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
 import { useNativeUploadIntercept } from './useNativeUploadIntercept'
@@ -397,13 +394,12 @@ function MarkdownPreview({ markdown, editor }: { markdown: string; editor: Block
                 <JupyterCodeViewer
                   code={seg.code || ''}
                   language={runnerLang}
-                  blockId={`preview-cell-${idx}`}
                 />
               </div>
             )
           }
         }
-        return <div key={idx} dangerouslySetInnerHTML={{ __html: seg.html || '' }} />
+        return <div key={idx} dangerouslySetInnerHTML={{ __html: 'html' in seg ? seg.html : '' }} />
       })}
     </div>
   )
@@ -559,9 +555,9 @@ export function MarkdownEditor({
       onSelectedTextChange(selText)
     }
 
-    const sel = editor.selection
-    if (sel) {
-      onSelectionChange({ anchorBlockId: sel.anchorBlock.id, focusBlockId: sel.focusBlock.id })
+    const sel = editor.getSelection()
+    if (sel && sel.blocks && sel.blocks.length > 0) {
+      onSelectionChange({ anchorBlockId: sel.blocks[0].id, focusBlockId: sel.blocks[sel.blocks.length - 1].id })
     } else {
       onSelectionChange(null)
     }
@@ -587,7 +583,7 @@ export function MarkdownEditor({
             code: '',
             runState: JSON.stringify({ hasRun: false, success: null, outputLines: [] })
           },
-        })
+        } as any)
         editorInstance.setTextCursorPosition(pos.block.id, 'start')
         editorInstance.focus()
       } catch {}
@@ -600,7 +596,7 @@ export function MarkdownEditor({
         editorInstance.updateBlock(pos.block.id, {
           type: 'drawing',
           props: { data: '[]' }
-        })
+        } as any)
         editorInstance.setTextCursorPosition(pos.block.id, 'start')
         editorInstance.focus()
       } catch {}

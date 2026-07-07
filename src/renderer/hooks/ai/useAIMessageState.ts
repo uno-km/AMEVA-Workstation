@@ -75,7 +75,7 @@ export function useAIMessageState() {
     editSuggestion: { blockId: string; proposedText: string; cleanContent: string } | null
     insertSuggestions: InsertSuggestion[]
   }) => {
-    const { targetId, sanitizeResult, rawForEdit, success, error, editSuggestion, insertSuggestions } = params
+    const { targetId, sanitizeResult, rawForEdit: _rawForEdit, success, error, editSuggestion, insertSuggestions } = params
 
     setIsGenerating(false)
     setStreamingText('')
