@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react'
+﻿import React, { useState, useRef, useEffect } from 'react'
 import {
   Bot, Send, Trash2, Sparkles,
-  Settings2, Copy, Check, X, AlertCircle,
+  Settings2, Check, X, AlertCircle,
   Wand2, Languages, FileText, Expand, Lightbulb, Lock, Terminal
 } from 'lucide-react'
 import type { AIMessage } from '../types/aiTypes'
@@ -78,7 +78,7 @@ export function AIPanel({
   activeTab = 'ai',
   installedPlugins = [],
   engineLogs = '', // 🤖 실시간 원시 로그 데이터 매핑
-  setEngineLogs,
+  setEngineLogs: _setEngineLogs,
   showModelHub = false,
   setShowModelHub,
   refreshModels,
@@ -2018,10 +2018,7 @@ export function AIPanel({
                             onClick={async () => {
                               if (window.electronAPI?.llmDownloadModel && setDownloadStatus) {
                                 setDownloadStatus({ filename: model.filename, progress: 0, speed: 0 })
-                                const res = await window.electronAPI.llmDownloadModel({
-                                  url: model.url,
-                                  filename: model.filename,
-                                })
+                                const res = await window.electronAPI.llmDownloadModel(model.filename, { url: model.url })
                                 if (res && res.success) {
                                   if (refreshModels) await refreshModels()
                                 } else if (res && !res.success) {
