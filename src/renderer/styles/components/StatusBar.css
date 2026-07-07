@@ -1,0 +1,13 @@
+/* 상태바(StatusBar) 컴포넌트 독립 스타일 */
+.status-bar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  padding: 0 12px;
+  background: var(--bg-deep);
+  border-top: 1px solid var(--border-muted);
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+}

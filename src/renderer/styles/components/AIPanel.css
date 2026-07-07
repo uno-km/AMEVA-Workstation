@@ -1,0 +1,30 @@
+/* AI 패널 포커스 영역 */
+[data-focus-region="ai-panel"] {
+  --region-color: var(--primary);
+  --region-glow: var(--primary-glow);
+}
+
+/* ── AI 패널 ── */
+.ai-panel-slide-enter {
+  animation: ai-slide-in 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes ai-slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);   opacity: 1; }
+}
+
+/* AI 스트리밍 커서 깜빡임 */
+.streaming-cursor::after {
+  content: '▋';
+  display: inline-block;
+  animation: blink 0.7s steps(1) infinite;
+  color: var(--primary);
+  margin-left: 2px;
+  font-weight: 400;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}

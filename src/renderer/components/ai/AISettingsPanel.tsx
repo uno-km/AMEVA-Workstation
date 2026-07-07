@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
-import { X, Check, Trash2, AlertCircle } from 'lucide-react'
-import { PROVIDER_MODELS, API_ENDPOINTS } from "../../../shared/constants/aiSettings"
+import { X, AlertCircle } from 'lucide-react'
+import { PROVIDER_MODELS } from "../../../shared/constants/aiSettings"
 import type { AISettings } from '../../types/aiTypes'
+import * as ipc from '../../services/ipc/electronApiAdapter'
 
 export interface LocalModelInfo {
   name: string
@@ -50,7 +51,7 @@ export function AISettingsPanel({
   
   const [downloadStatus, setDownloadStatus] = useState<{ filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number } | null>(null)
   const isAvailable = true
-  console.debug("Unused vars (AISettingsPanel):", { React, Check, Trash2, API_ENDPOINTS, isKeySaved, handleSaveKey, handleDeleteKey, isWhiteTheme });
+  console.debug("Unused vars (AISettingsPanel):", { React, isKeySaved, handleSaveKey, handleDeleteKey, isWhiteTheme });
 
   return (
     <div style={{
@@ -83,7 +84,7 @@ export function AISettingsPanel({
             <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI 실행 유형</label>
             <select
               value={apiType}
-              onChange={e => onUpdateSettings({ apiType: e.target.value as any })}
+              onChange={e => onUpdateSettings({ apiType: e.target.value as AISettings['apiType'] })}
               style={{
                 width: '100%',
                 background: 'var(--bg-glass)',
@@ -369,14 +370,12 @@ export function AISettingsPanel({
                     <button
                       disabled={!!isDownloading}
                       onClick={async () => {
-                        if ((window as any).electron) {
-                          setDownloadStatus({ filename: m.file, progress: 0, speed: 0, downloadedBytes: 0, totalBytes: 0, timeRemaining: 0 })
-                          const res = await (window as any).electron.invoke('llm:downloadModel', { url: m.url, filename: m.file })
-                          if (res.success) {
-                            alert('다운로드 완료! AI 모델이 활성화되었습니다.')
-                          } else {
-                            alert(`다운로드 실패: ${res.error}`)
-                          }
+                        setDownloadStatus({ filename: m.file, progress: 0, speed: 0, downloadedBytes: 0, totalBytes: 0, timeRemaining: 0 })
+                        const res = await ipc.llmDownloadModel({ url: m.url, filename: m.file })
+                        if (res.success) {
+                          alert('다운로드 완료! AI 모델이 활성화되었습니다.')
+                        } else {
+                          alert(`다운로드 실패: ${res.error}`)
                         }
                       }}
                       style={{

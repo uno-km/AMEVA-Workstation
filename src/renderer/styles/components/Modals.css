@@ -1,0 +1,5 @@
+/* 모달 (일반) 포커스 영역 및 스타일 */
+[data-focus-region="modal"] {
+  --region-color: var(--secondary);
+  --region-glow: var(--secondary-glow);
+}

@@ -1,0 +1,179 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--bg-deep);
+  color: var(--text-main);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+/* 스크롤바 커스터마이징 (초슬림 & 글로우) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.15);
+  border-radius: 99px;
+  transition: var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.45) !important;
+}
+
+/* 네온 글로우 및 애니메이션 유틸리티 */
+.glow-primary {
+  box-shadow: 0 0 15px var(--primary-glow);
+}
+
+.glow-secondary {
+  box-shadow: 0 0 15px var(--secondary-glow);
+}
+
+.glass-panel {
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--blur-val));
+  -webkit-backdrop-filter: blur(var(--blur-val));
+  border: 1px solid var(--border-muted);
+}
+
+.glass-panel-interactive {
+  background: var(--bg-card);
+  backdrop-filter: blur(var(--blur-val));
+  -webkit-backdrop-filter: blur(var(--blur-val));
+  border: 1px solid var(--border-muted);
+  transition: var(--transition-smooth);
+}
+
+.glass-panel-interactive:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.15);
+  transform: translateY(-2px);
+}
+
+/* 버튼 스타일링 */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: var(--transition-fast);
+  outline: none;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  color: #ffffff;
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--primary-glow);
+  filter: brightness(1.1);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, var(--secondary), #0891b2);
+  color: #ffffff;
+  box-shadow: 0 4px 14px var(--secondary-glow);
+}
+
+.btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px var(--secondary-glow);
+  filter: brightness(1.1);
+}
+
+.btn-glass {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-muted);
+  color: var(--text-main);
+}
+
+.btn-glass:hover {
+  background: var(--bg-glass-active);
+  border-color: var(--primary);
+}
+
+.btn-glass.active {
+  background: var(--bg-glass-active);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* Electron 타이틀바 패딩 보정 */
+.titlebar-spacer {
+  height: 38px;
+  background-color: var(--bg-deep);
+  -webkit-app-region: drag;
+  width: 100%;
+}
+
+.titlebar-spacer * {
+  -webkit-app-region: no-drag;
+}
+
+/* ── 범용 애니메이션 ── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--primary-glow); }
+  50%       { box-shadow: 0 0 0 6px transparent; }
+}
+
+.pulse-indicator {
+  animation: pulse-glow 1.5s infinite;
+}
+
+@keyframes fadeInUp {
+  from { transform: translateY(10px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.25s ease-out forwards;
+}
+
+/* ── 입력 필드 공통 ── */
+.input-glass {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border-muted);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+
+.input-glass:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+.input-glass::placeholder {
+  color: var(--text-dark);
+}

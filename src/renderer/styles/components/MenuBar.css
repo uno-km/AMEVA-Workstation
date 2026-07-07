@@ -1,0 +1,10 @@
+/* 메뉴바(MenuBar) 컴포넌트 독립 스타일 */
+.menu-bar-container {
+  display: flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 8px;
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-muted);
+  user-select: none;
+}

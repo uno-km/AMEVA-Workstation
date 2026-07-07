@@ -1,0 +1,106 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
+:root {
+  /* 안티그래비티 IDE 스타일의 극도로 세련된 모노크롬 매트 차콜 & 슬레이트 실버 팔레트 */
+  --bg-deep: #0f0f11;
+  --bg-main: #18181c;
+  --bg-card: rgba(30, 30, 35, 0.35);
+  --bg-glass: rgba(24, 24, 28, 0.75);
+  --bg-glass-active: rgba(255, 255, 255, 0.05);
+  
+  --border-glow: rgba(255, 255, 255, 0.12);
+  --border-muted: rgba(255, 255, 255, 0.05);
+  
+  --text-main: #e3e3e6;
+  --text-muted: #8e9196;
+  --text-dark: #52545c;
+  
+  --primary: #94a3b8; /* Slate Silver */
+  --primary-glow: rgba(148, 163, 184, 0.15);
+  --secondary: #475569; /* Slate Dark */
+  --secondary-glow: rgba(71, 85, 105, 0.15);
+  
+  --accent: #cbd5e1;
+  --danger: #ef4444;
+  --success: #10b981;
+  
+  --font-sans: 'Pretendard', 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'Fira Code', 'D2Coding', Consolas, Monaco, monospace;
+  
+  --blur-val: 18px;
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-fast: all 0.15s ease;
+  
+  --sidebar-width: 280px;
+  --header-height: 52px;
+}
+
+/* 테마 스위칭 지원 */
+[data-theme='dark'] {
+  --bg-deep: #0f0f11;
+  --bg-main: #18181c;
+  --bg-card: rgba(30, 30, 35, 0.35);
+  --bg-glass: rgba(24, 24, 28, 0.75);
+  --bg-glass-active: rgba(255, 255, 255, 0.05);
+  --border-glow: rgba(255, 255, 255, 0.12);
+  --border-muted: rgba(255, 255, 255, 0.05);
+  --text-main: #e3e3e6;
+  --text-muted: #8e9196;
+  --text-dark: #52545c;
+  --primary: #94a3b8;
+  --primary-glow: rgba(148, 163, 184, 0.15);
+  --secondary: #475569;
+  --secondary-glow: rgba(71, 85, 105, 0.15);
+}
+
+[data-theme='gray'] {
+  --bg-deep: #1e1e2e;
+  --bg-main: #2b2b3c;
+  --bg-card: rgba(45, 45, 60, 0.5);
+  --bg-glass: rgba(40, 40, 55, 0.7);
+  --bg-glass-active: rgba(99, 102, 241, 0.15);
+  --border-glow: rgba(99, 102, 241, 0.25);
+  --border-muted: rgba(255, 255, 255, 0.06);
+  --text-main: #e2e8f0;
+  --text-muted: #94a3b8;
+  --text-dark: #64748b;
+  --primary: #6366f1;
+  --primary-glow: rgba(99, 102, 241, 0.3);
+  --secondary: #38bdf8;
+  --secondary-glow: rgba(56, 189, 248, 0.3);
+}
+
+[data-theme='white'] {
+  --bg-deep: #dcdfe4;
+  --bg-main: #f5f6f8;
+  --bg-card: #ffffff;
+  --bg-glass: #ffffff;
+  --bg-glass-active: rgba(109, 40, 217, 0.08);
+  --border-glow: rgba(109, 40, 217, 0.35);
+  --border-muted: #b8c0cc;
+  --text-main: #0c0f16;
+  --text-muted: #242b35;
+  --text-dark: #4b5563;
+  --primary: #6d28d9;
+  --primary-glow: rgba(109, 40, 217, 0.25);
+  --secondary: #0891b2;
+  --secondary-glow: rgba(8, 145, 178, 0.25);
+}
+
+[data-theme='hacker'] {
+  --bg-deep: #000000;
+  --bg-main: #050505;
+  --bg-card: rgba(0, 25, 0, 0.35);
+  --bg-glass: rgba(0, 15, 0, 0.75);
+  --bg-glass-active: rgba(0, 255, 0, 0.2);
+  --border-glow: rgba(0, 255, 0, 0.45);
+  --border-muted: rgba(0, 255, 0, 0.18);
+  --text-main: #39ff14; /* Matrix Green */
+  --text-muted: #00dd00;
+  --text-dark: #006600;
+  --primary: #00ff00;
+  --primary-glow: rgba(0, 255, 0, 0.5);
+  --secondary: #00aa00;
+  --secondary-glow: rgba(0, 170, 0, 0.4);
+}
