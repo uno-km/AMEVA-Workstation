@@ -228,6 +228,31 @@ export function onModelDownloadProgress(callback: (data: ModelDownloadProgressEv
   return window.electronAPI.onModelDownloadProgress(callback)
 }
 
+
+/**
+ * keychainGet
+ */
+export async function keychainGet(key: string): Promise<string | null> {
+  if (!window.electronAPI?.keychainGet) return null;
+  return window.electronAPI.keychainGet(key);
+}
+
+/**
+ * keychainSet
+ */
+export async function keychainSet(key: string, value: string): Promise<void> {
+  if (!window.electronAPI?.keychainSet) return;
+  return window.electronAPI.keychainSet(key, value);
+}
+
+/**
+ * keychainDelete
+ */
+export async function keychainDelete(key: string): Promise<void> {
+  if (!window.electronAPI?.keychainDelete) return;
+  return window.electronAPI.keychainDelete(key);
+}
+
 // ──────────────────────────────────────────────
 // 파일 시스템 관련 어댑터 메서드
 // ──────────────────────────────────────────────

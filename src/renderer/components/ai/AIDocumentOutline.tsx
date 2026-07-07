@@ -1,0 +1,66 @@
+
+import React from 'react'
+
+export function AIDocumentOutline({ blocks }: any) {
+  const getDocumentOutline = (items: any[]) => {
+    let list: any[] = []
+    const traverse = (nodes: any[]) => {
+      for (const item of nodes) {
+        if (item.type === 'heading') {
+          let text = ''
+          if (Array.isArray(item.content)) {
+            text = item.content.map((c: any) => c.text).join('')
+          } else if (typeof item.content === 'string') {
+            text = item.content
+          }
+          list.push({ id: item.id, text, level: item.props?.level || 1 })
+        }
+        if (item.children) traverse(item.children)
+      }
+    }
+    if (items && Array.isArray(items)) traverse(items)
+    return list
+  }
+
+  const outline = getDocumentOutline(blocks)
+
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '8px' }}>
+        문서 개요 (총 {outline.length}개 제목)
+      </div>
+      {outline.length === 0 ? (
+        <div style={{ fontSize: '11px', color: 'var(--text-dark)', fontStyle: 'italic', textAlign: 'center', marginTop: '24px' }}>
+          작성된 제목(Heading)이 없습니다.
+        </div>
+      ) : (
+        outline.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => {
+              const el = document.querySelector(`[data-id="${item.id}"]`)
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                el.classList.add('pulse-indicator')
+                setTimeout(() => el.classList.remove('pulse-indicator'), 1000)
+              }
+            }}
+            style={{
+              padding: '6px 10px', borderRadius: '6px', fontSize: '12px',
+              color: item.level === 1 ? 'var(--text-main)' : 'var(--text-muted)',
+              fontWeight: item.level === 1 ? 700 : item.level === 2 ? 600 : 500,
+              paddingLeft: `${(item.level - 1) * 12 + 10}px`,
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
+              transition: 'background 0.15s',
+              borderLeft: item.level === 1 ? '2px solid var(--primary)' : '2px solid transparent',
+              background: 'rgba(255,255,255,0.01)',
+            }}
+          >
+            <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: item.level === 1 ? 'var(--primary)' : 'var(--text-dark)', display: 'inline-block' }} />
+            {item.text}
+          </div>
+        ))
+      )}
+    </div>
+  )
+}
