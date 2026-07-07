@@ -1,7 +1,7 @@
 
 import React from 'react'
 
-export function AIModelHubModal({ show, onClose, models, onDownload, downloadStatus }: any) {
+export function AIModelHubModal({ show, onClose, models, onDownload, downloadStatus, importModel }: any) {
   if (!show) return null;
 
   return (
@@ -26,7 +26,7 @@ export function AIModelHubModal({ show, onClose, models, onDownload, downloadSta
             <div style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: '13px' }}>{m.name}</div>
             <div style={{ color: 'var(--text-muted)', fontSize: '11px', marginTop: '4px' }}>{m.description}</div>
             <button 
-              onClick={() => onDownload(m.id)}
+              onClick={() => onDownload(m.id, m.url, m.filename)}
               disabled={!!downloadStatus?.status}
               style={{
                 marginTop: '12px', width: '100%', padding: '8px',
@@ -38,7 +38,19 @@ export function AIModelHubModal({ show, onClose, models, onDownload, downloadSta
             </button>
           </div>
         ))}
+
       </div>
+      {importModel && (
+        <div style={{ padding: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+          <button 
+            onClick={importModel}
+            style={{ width: '100%', padding: '10px', background: 'var(--bg-glass-active)', color: 'var(--text-main)', border: '1px solid var(--border-muted)', borderRadius: '6px', cursor: 'pointer' }}
+          >
+            + 로컬 GGUF 모델 불러오기
+          </button>
+        </div>
+      )}
     </div>
   )
 }
+

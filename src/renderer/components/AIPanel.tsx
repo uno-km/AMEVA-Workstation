@@ -1,5 +1,5 @@
 
-import React, { useRef } from 'react'
+import React from 'react'
 import { FileText, Wand2, Languages, Expand, Lightbulb } from 'lucide-react'
 import { useAIPanelLogic } from '../hooks/ai/useAIPanelLogic'
 import { AIChatList } from './ai-panel/AIChatList'
@@ -112,6 +112,7 @@ export function AIPanel(props: any) {
           <AILogDrawer 
             isExpanded={isLogsExpanded} 
             onToggle={() => setIsLogsExpanded(!isLogsExpanded)} 
+            logContainerRef={logContainerRef}
             logEndRef={logEndRef} 
           />
           
@@ -159,6 +160,7 @@ export function AIPanel(props: any) {
         models={models} 
         onDownload={handleDownloadModel} 
         downloadStatus={downloadStatus} 
+        importModel={importModel} 
       />
     </div>
   )

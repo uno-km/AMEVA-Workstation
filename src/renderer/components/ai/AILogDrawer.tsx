@@ -1,15 +1,15 @@
 
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect } from 'react'
 import { Terminal } from 'lucide-react'
 import { useAILogStore } from '../../stores/useAILogStore'
 
-export function AILogDrawer({ isExpanded, onToggle, logEndRef }: any) {
-  const sensorLogContainerRef = useRef<HTMLDivElement>(null)
+export function AILogDrawer({ isExpanded, onToggle, logContainerRef, logEndRef }: any) {
+  
 
   useEffect(() => {
     const unsubscribe = useAILogStore.subscribe((state, prevState) => {
       if (state.sensorLogs === prevState.sensorLogs) return;
-      const container = sensorLogContainerRef.current;
+      const container = logContainerRef.current;
       if (!container) return;
       let htmlString = '';
       const logs = state.sensorLogs;
@@ -67,7 +67,7 @@ export function AILogDrawer({ isExpanded, onToggle, logEndRef }: any) {
         </div>
       </div>
       <div 
-        ref={sensorLogContainerRef}
+        ref={logContainerRef}
         style={{
           flex: 1, overflowY: 'auto', padding: '12px',
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
