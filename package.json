@@ -36,7 +36,8 @@
     "react-dom": "^19.2.7",
     "ws": "^8.21.0",
     "y-websocket": "^3.0.0",
-    "yjs": "^13.6.31"
+    "yjs": "^13.6.31",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@types/canvas-confetti": "^1.9.0",
@@ -48,6 +49,7 @@
     "electron": "^43.0.0",
     "electron-builder": "^26.15.3",
     "oxlint": "^1.71.0",
+    "ts-morph": "^28.0.0",
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vite-plugin-electron": "^1.1.0",
@@ -67,7 +69,9 @@
       {
         "from": "resources",
         "to": "resources",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {

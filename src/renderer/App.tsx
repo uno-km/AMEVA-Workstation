@@ -38,35 +38,10 @@ import { DrawingBlock } from './components/DrawingBlock'
 import { FindReplaceBar } from './components/FindReplaceBar'
 import { LinkPreviewBlock } from './components/LinkPreviewBlock'
 import { YoutubeBlock } from './components/YoutubeBlock'
+import { convertJupyterToCodeBlocks, normalizeMarkdown, cleanCodeBlocks, ensureBlockIds, cleanMarkdownCodeBlocks } from './utils/markdownUtils'
+import { matchHotkey, blobToBase64 } from './utils/appUtils'
 
-// ── 키보드 단축키 동적 매칭 헬퍼 함수 ───────────────────────────
-const matchHotkey = (e: KeyboardEvent, hotkeyStr: string) => {
-  if (!hotkeyStr) return false
-  
-  const parts = hotkeyStr.toLowerCase().split('+')
-  const key = parts.pop()
-  
-  const needCtrl = parts.includes('control') || parts.includes('ctrl')
-  const needShift = parts.includes('shift')
-  const needAlt = parts.includes('alt')
-  const needMeta = parts.includes('meta') || parts.includes('cmd')
-  
-  const hasCtrl = e.ctrlKey || e.metaKey
-  const hasShift = e.shiftKey
-  const hasAlt = e.altKey
-  const hasMeta = e.metaKey
-  
-  if (needCtrl && !hasCtrl) return false
-  if (needShift && !hasShift) return false
-  if (needAlt && !hasAlt) return false
-  if (needMeta && !hasMeta) return false
-  
-  // 보조키를 요구하지 않는데 눌려있다면 일치하지 않는 것으로 처리
-  if (!needCtrl && hasCtrl) return false
-  if (!needShift && hasShift) return false
-  
-  return e.key.toLowerCase() === key
-}
+
 
 const schema = BlockNoteSchema.create({
   blockSpecs: {
@@ -78,177 +53,14 @@ const schema = BlockNoteSchema.create({
   }
 })
 
-// jupyter 블록을 마크다운 변환 시 표준 codeBlock으로 복구하는 도우미 (drawing 블록 포함)
-function convertJupyterToCodeBlocks(blocks: any[]): any[] {
-  return blocks.map(block => {
-    const copy = { ...block }
-    if (copy.type === 'jupyter') {
-      copy.type = 'codeBlock'
-      const lang = copy.props?.language || 'javascript'
-      const finalCodeText = copy.props?.code || ''
-      copy.content = [{ type: 'text', text: finalCodeText, styles: {} }]
-      copy.props = {
-        language: lang
-      }
-    } else if (copy.type === 'drawing') {
-      copy.type = 'codeBlock'
-      const dataText = copy.props?.data || '[]'
-      copy.content = [{ type: 'text', text: dataText, styles: {} }]
-      copy.props = {
-        language: 'ameva-drawing'
-      }
-    } else if (copy.children) {
-      copy.children = convertJupyterToCodeBlocks(copy.children)
-    }
-    return copy
-  })
-}
+
 
 // ── 랜덤 사용자 설정 ─────────────────────────────────────────
 const COLLAB_COLORS = ['#a855f7', '#06b6d4', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#f43f5e']
 const randomColor = COLLAB_COLORS[Math.floor(Math.random() * COLLAB_COLORS.length)]
 const randomUsername = `User_${Math.random().toString(36).substring(2, 7).toUpperCase()}`
 
-// ── 마크다운 전처리 ───────────────────────────────────────────
-function normalizeMarkdown(raw: string): string {
-  let content = raw.replace(/\r\n/g, '\n')
-  content = content.replace(/^(#{1,6})([^\s#])/gm, '$1 $2')
 
-  const parts = content.split('```')
-  for (let i = 1; i < parts.length; i += 2) {
-    if (parts[i]) {
-      parts[i] = parts[i].replace(/\n\s*\n/g, '\n\u200B\n')
-      parts[i] = parts[i].replace(/</g, '__LT_TEMP__')
-      parts[i] = parts[i].replace(/>/g, '__GT_TEMP__')
-    }
-  }
-  content = parts.join('```')
-  
-  // opening fence 정밀 매칭 (뒤에 알파벳/숫자 언어명이 오고 개행이 오는 경우)
-  content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, (match, lang) => {
-    const l = lang.toLowerCase()
-    const mapped = l === 'js' ? 'javascript' : l === 'ts' ? 'typescript' : l === 'py' ? 'python' : l
-    return `\n\n\`\`\`${mapped}\n`
-  })
-  // closing fence 또는 언어가 없는 fence 정밀 매칭
-  content = content.replace(/\n*```[ \t]*\n+/g, '\n```\n\n')
-  
-  content = content.replace(/\n{3,}/g, '\n\n')
-  return content.trim()
-}
-
-function cleanCodeBlocks(blocks: any[]) {
-  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing']
-  blocks.forEach(block => {
-    if (block.type === 'codeBlock') {
-      const text = block.content ? block.content.map((c: any) => c.text).join('') : ''
-      let cleaned = text.replace(/\u200B/g, '').replace(/__LT_TEMP__/g, '<').replace(/__GT_TEMP__/g, '>')
-      const lines = cleaned.split('\n')
-      const firstLine = lines[0]?.trim()
-      
-      let lang = 'javascript'
-      let finalCode = cleaned
-      
-      // 1단계: 정밀 주석 메타데이터 매칭 시도
-      const amevaLangMatch = firstLine ? firstLine.match(/^(?:\/\/#|--|<!--)\s*\[AMEVA_LANG:([a-zA-Z0-9_-]+)\](?:\s*-->)?/) || firstLine.match(/^(?:\/\/|#|--)\s*\[AMEVA_LANG:([a-zA-Z0-9_-]+)\]/) : null
-      if (amevaLangMatch) {
-        lang = amevaLangMatch[1].toLowerCase()
-        finalCode = lines.slice(1).join('\n')
-      } 
-      // 2단계: 첫 번째 줄 단어 매칭 시도 (지원 언어명 매칭 또는 블록의 설정 언어와 일치하는 경우 강제 스트립)
-      else if (firstLine && (
-        supportedLangs.includes(firstLine.toLowerCase()) ||
-        (block.props?.language && firstLine.toLowerCase() === block.props.language.toLowerCase()) ||
-        (block.props?.language && firstLine.toLowerCase() === 'py' && block.props.language.toLowerCase() === 'python') ||
-        (block.props?.language && firstLine.toLowerCase() === 'js' && block.props.language.toLowerCase() === 'javascript') ||
-        (block.props?.language && firstLine.toLowerCase() === 'ts' && block.props.language.toLowerCase() === 'typescript')
-      )) {
-        lang = firstLine.toLowerCase() === 'py' ? 'python' : firstLine.toLowerCase() === 'js' ? 'javascript' : firstLine.toLowerCase() === 'ts' ? 'typescript' : firstLine.toLowerCase()
-        if (block.props?.language && !supportedLangs.includes(firstLine.toLowerCase())) {
-          lang = block.props.language.toLowerCase()
-        }
-        finalCode = lines.slice(1).join('\n')
-      } 
-      // 3단계: 기본 block.props.language 매칭 시도 (js, ts, py 단축어 매핑 포함)
-      else {
-        const rawLang = (block.props?.language || 'javascript').toLowerCase()
-        lang = rawLang === 'js' ? 'javascript' : rawLang === 'ts' ? 'typescript' : rawLang === 'py' ? 'python' : rawLang
-      }
-      
-      // ameva-drawing 인 경우 jupyter 로 가는 대신 drawing 블록으로 다이렉트 변환
-      if (lang === 'ameva-drawing') {
-        block.type = 'drawing'
-        block.props = {
-          data: finalCode
-        }
-        block.content = undefined
-        return
-      }
-
-      block.type = 'jupyter'
-      block.props = {
-        language: lang,
-        code: finalCode,
-        runState: JSON.stringify({ hasRun: false, success: null, outputLines: [] })
-      }
-      block.content = undefined
-    }
-    if (block.type === 'image' && block.props?.url) {
-      const url = block.props.url.toLowerCase()
-      const isVideo = url.endsWith('.mp4') || 
-                      url.endsWith('.webm') || 
-                      url.endsWith('.mov') || 
-                      url.endsWith('.ogg') ||
-                      url.startsWith('data:video/')
-      if (isVideo) {
-        block.type = 'video'
-      }
-    }
-    if (block.children) {
-      cleanCodeBlocks(block.children)
-    }
-  })
-}
-
-function ensureBlockIds(blocks: any[]) {
-  const generateId = () => Math.random().toString(36).substring(2, 10)
-  blocks.forEach(block => {
-    if (!block.id) {
-      block.id = generateId()
-    }
-    if (block.children) {
-      ensureBlockIds(block.children)
-    }
-  })
-}
-
-function cleanMarkdownCodeBlocks(markdown: string): string {
-  const norm = (l: string) => {
-    const low = l.toLowerCase()
-    if (low === 'js') return 'javascript'
-    if (low === 'ts') return 'typescript'
-    if (low === 'py') return 'python'
-    if (low === 'txt') return 'text'
-    if (low === 'sh') return 'bash'
-    return low
-  }
-  return markdown.replace(/```([a-zA-Z0-9_-]+)\n\s*([a-zA-Z0-9_-]+)\n/g, (match, lang1, lang2) => {
-    if (norm(lang1) === norm(lang2)) {
-      return `\`\`\`${lang1}\n`
-    }
-    return match
-  })
-}
-
-
-async function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => resolve((reader.result as string).split(',')[1])
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
-}
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
   let binary = ''

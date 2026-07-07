@@ -1,6 +1,4 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { useAILogStore } from '../stores/useAILogStore'
-import { useAIState } from '../stores/useAIState'
 import type { ReasoningTraceEvent } from '../../shared/reasoningTypes'
 import { StreamingSanitizer } from '../utils/responseSanitizer'
 import { AgentEngine } from '../utils/agentEngine'
@@ -149,8 +147,8 @@ const DEFAULT_SETTINGS: AISettings = {
 }
 
 export function useAI() {
-  const { messages, setMessages } = useAILogStore()
-  const { isGenerating, setIsGenerating: _setIsGenerating } = useAIState()
+  const [messages, setMessages] = useState<AIMessage[]>([])
+  const [isGenerating, _setIsGenerating] = useState(false)
   const isGeneratingRef = useRef(false)
   const setIsGenerating = useCallback((val: boolean) => {
     _setIsGenerating(val)
@@ -180,12 +178,12 @@ export function useAI() {
     } catch {}
     return DEFAULT_SETTINGS
   })
-  const { streamingText, setStreamingText } = useAILogStore()
-  const { isAvailable, setIsAvailable } = useAIState()
-  const { models, setModels } = useAIState()
-  const { codeModels, setCodeModels } = useAIState()
-  const { sensorLogs: engineLogs, addSensorLog: setEngineLogs } = useAILogStore()
-  const { pendingQueue, setPendingQueue } = useAIState()
+  const [streamingText, setStreamingText] = useState('')
+  const [isAvailable, setIsAvailable] = useState(false)
+  const [models, setModels] = useState<{ name: string; filename: string; path: string; size: number }[]>([])
+  const [codeModels, setCodeModels] = useState<{ name: string; filename: string; path: string; size: number }[]>([])
+  const [engineLogs, setEngineLogs] = useState<string>('') // 🤖 로컬 터미널 로그 데이터 저장소
+  const [pendingQueue, setPendingQueue] = useState<Array<any>>([])
 
   const unsubTokenRef = useRef<(() => void) | null>(null)
   const unsubDoneRef = useRef<(() => void) | null>(null)
@@ -643,7 +641,7 @@ export function useAI() {
 
     // 1. 메인 프로세스 로그 수신
     const unsubLog = window.electronAPI.onLLMLog((data) => {
-      setEngineLogs(data.text)
+      setEngineLogs(prev => prev + data.text)
     })
 
     // 2. 누락된 초기 로그 가져오기
@@ -718,8 +716,8 @@ export function useAI() {
 
     // (일일 10회 제한 가드를 finalSettings 결합 시점인 하단으로 이동시킴)
 
-    if (isGeneratingRef.current) {
-      // 🦾 [FEAT] 사용자 요청에 따라 플랜/옵션 무관 상시 대기열(Request Queue) 작동
+    if (isGeneratingRef.current && enabledPlugins.requestQueue) {
+      // 🦾 [FEAT] 사용자 요청 플러그인(Request Queue) 활성화 시에만 대기열 작동
       const queueId = `q_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
       const newQueueItem = {
         id: queueId,
@@ -867,7 +865,7 @@ export function useAI() {
     setMessages(prev => [...prev, userMsg, assistantMsg])
     if (codeModelUsed) {
       const modelNameOnly = finalSettings.modelPath.split(/[\\/]/).pop()
-      setEngineLogs(`[System] 코딩 요청이 감지되었습니다. 코딩 특화 모델(${modelNameOnly})로 전환하여 응답을 생성합니다.\n`)
+      setEngineLogs(prev => prev + `[System] 코딩 요청이 감지되었습니다. 코딩 특화 모델(${modelNameOnly})로 전환하여 응답을 생성합니다.\n`)
     }
     setIsGenerating(true)
     setStreamingText('')
@@ -1417,7 +1415,7 @@ export function useAI() {
         window.electronAPI.llmAddLog({ text: 'Initializing LangChain ReAct Agent Executor...', prefix: 'langchain' })
         window.electronAPI.llmAddLog({ text: '에이전트 모드가 활성화되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다.', prefix: 'ReAct' })
       } else {
-        setEngineLogs(`\n[System] 에이전트 모드가 감지되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다...\n`)
+        setEngineLogs(prev => prev + `\n[System] 에이전트 모드가 감지되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다...\n`)
       }
       
       let agentHasPendingDecision = false
@@ -1443,14 +1441,14 @@ export function useAI() {
           if (window.electronAPI?.llmAddLog) {
             window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 웹검색 도구 (ON)', prefix: 'ReAct' })
           } else {
-            setEngineLogs(`  - [Marketplace Plugin] 웹검색 도구 (ON)\n`)
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (ON)\n`)
           }
         } else {
           agent.unregisterTool('web_search')
           if (window.electronAPI?.llmAddLog) {
             window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 웹검색 도구 (OFF - 마켓플레이스 플러그인 제한)', prefix: 'ReAct' })
           } else {
-            setEngineLogs(`  - [Marketplace Plugin] 웹검색 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 웹검색 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
           }
         }
 
@@ -1458,14 +1456,14 @@ export function useAI() {
           if (window.electronAPI?.llmAddLog) {
             window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 파이썬 콘솔 도구 (ON)', prefix: 'ReAct' })
           } else {
-            setEngineLogs(`  - [Marketplace Plugin] 파이썬 콘솔 도구 (ON)\n`)
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (ON)\n`)
           }
         } else {
           agent.unregisterTool('run_python')
           if (window.electronAPI?.llmAddLog) {
             window.electronAPI.llmAddLog({ text: '- [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)', prefix: 'ReAct' })
           } else {
-            setEngineLogs(`  - [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
+            setEngineLogs(prev => prev + `  - [Marketplace Plugin] 파이썬 콘솔 도구 (OFF - 마켓플레이스 플러그인 제한)\n`)
           }
         }
 
@@ -1494,7 +1492,7 @@ export function useAI() {
           if (window.electronAPI?.llmAddLog) {
             window.electronAPI.llmAddLog({ text: '- [System] 실시간 주식 MCP 툴 (query_stock_info) 명시적 강제 연동 완료.', prefix: 'ReAct' })
           } else {
-            setEngineLogs(`  - [System] 실시간 주식 MCP 툴 (query_stock_info) 명시적 강제 연동 완료.\n`)
+            setEngineLogs(prev => prev + `  - [System] 실시간 주식 MCP 툴 (query_stock_info) 명시적 강제 연동 완료.\n`)
           }
         } catch (stErr) {
           console.warn('[useAI] 주식 MCP 바인딩 오류:', stErr)
@@ -1522,7 +1520,7 @@ export function useAI() {
             if (window.electronAPI?.llmAddLog) {
               window.electronAPI.llmAddLog({ text: `- [System] MCP 도구 ${mcpTools.length}개 연동 완료.`, prefix: 'ReAct' })
             } else {
-              setEngineLogs(`  - [System] MCP 도구 ${mcpTools.length}개 연동 완료.\n`)
+              setEngineLogs(prev => prev + `  - [System] MCP 도구 ${mcpTools.length}개 연동 완료.\n`)
             }
           }
         } catch (e: any) {
@@ -1554,7 +1552,7 @@ export function useAI() {
           if (window.electronAPI?.llmAddLog) {
             window.electronAPI.llmAddLog({ text: log, prefix: 'ReAct' })
           } else {
-            setEngineLogs(log)
+            setEngineLogs(prev => prev + log)
           }
           accumulatedLogs += log
 
@@ -2079,7 +2077,10 @@ export function useAI() {
     })
   }, [checkAndProcessNextQueue])
 
-  const { removeFromQueue } = useAIState()
+  const removeFromQueue = useCallback((itemId: string) => {
+    pendingQueueRef.current = pendingQueueRef.current.filter(item => item.id !== itemId)
+    setPendingQueue([...pendingQueueRef.current])
+  }, [])
 
   return {
     messages,
