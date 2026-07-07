@@ -1,4 +1,4 @@
-import React from 'react'
+
 
 export interface SettingsTabAccountProps {
   activeTab: string
@@ -24,7 +24,7 @@ export function SettingsTabAccount({
       <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Account Settings</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>사용자 닉네임</label>
+          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>?�용???�네??/label>
           <input
             type="text"
             value={tempName}
@@ -38,7 +38,7 @@ export function SettingsTabAccount({
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>나의 식별 배지 테마 컬러</label>
+          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>?�의 ?�별 배�? ?�마 컬러</label>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
             <input
               type="color"
@@ -61,7 +61,7 @@ export function SettingsTabAccount({
             fontSize: '11px', fontWeight: 700, cursor: 'pointer', marginTop: '8px',
           }}
         >
-          프로필 저장 적용
+          ?�로???�???�용
         </button>
       </div>
     </>

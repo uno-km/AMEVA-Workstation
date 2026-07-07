@@ -10,7 +10,7 @@ export interface AILogState {
 
   // 2. AI 채팅 메시지 목록 (기존 useState 완전 대체)
   messages: AIMessage[];
-  setMessages: (messages: AIMessage[]) => void;
+  setMessages: (updater: AIMessage[] | ((prev: AIMessage[]) => AIMessage[])) => void;
   addMessage: (msg: AIMessage) => void;
   updateMessage: (id: string, updater: (msg: AIMessage) => AIMessage) => void;
   deleteMessage: (id: string) => void;
@@ -79,7 +79,9 @@ export const useAILogStore = create<AILogState>((set) => ({
   clearSensorLogs: () => set({ sensorLogs: [] }),
 
   messages: [],
-  setMessages: (messages) => set({ messages }),
+  setMessages: (updater) => set((state) => ({ 
+    messages: typeof updater === 'function' ? updater(state.messages) : updater 
+  })),
   addMessage: (msg) => set((state) => ({ messages: [...state.messages, msg] })),
   updateMessage: (id, updater) => set((state) => ({
     messages: state.messages.map((m) => (m.id === id ? updater(m) : m)),

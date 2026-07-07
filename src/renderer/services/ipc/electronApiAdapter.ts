@@ -14,8 +14,7 @@ import type {
   FileOpenEventData,
   HealthCheckResult,
   ModelImportResult,
-  ModelDownloadProgressEvent,
-  ExportProgressEvent
+  ModelDownloadProgressEvent
 } from './ipcTypes'
 
 import type { MessageBoxOptions } from './adapters/appAdapter'
@@ -78,6 +77,7 @@ declare global {
       mcpKill?: (serverId: string) => Promise<MCPKillResult | null>
       mcpGetToken?: () => Promise<string | null>
       // 내보내기
+      onExportProgress?: (callback: (data: any) => void) => () => void
       printToPDF?: (htmlContent: string) => Promise<string | null>
       newWindow?: () => void
       closeApp?: () => void
