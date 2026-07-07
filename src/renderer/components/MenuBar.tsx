@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
-import { Check, ChevronRight } from 'lucide-react'
+import { Check } from 'lucide-react'
 import type { EditorMode } from '../../shared/types'
 import type { HotkeyConfig } from './SettingsModal'
+import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 
 interface MenuBarProps {
   onOpenFile: () => void
@@ -87,30 +88,60 @@ export function MenuBar({
     zoomReset: 'Control+0'
   }
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
+  const [isAltMode, setIsAltMode] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
-  // 외부 클릭 시 드롭다운 메뉴 닫기 (디테일 퀄리티)
+  // 외부 클릭 시 드롭다운 메뉴 및 Alt 모드 해제
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setActiveMenu(null)
+        setIsAltMode(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const handleMenuClick = (menu: string) => {
-    if (activeMenu === menu) {
-      setActiveMenu(null)
-    } else {
-      setActiveMenu(menu)
-    }
-  }
-
   const triggerAction = (action?: () => void) => {
     if (action) action()
     setActiveMenu(null)
+    setIsAltMode(false)
+  }
+
+  // Alt 메뉴 핫키 라우팅 커스텀 훅으로 위임 (관심사 분리)
+  useMenuBarShortcuts({
+    isAltMode, activeMenu, editorMode, showStatusBar, showSidebar, showConsole, isProPlan,
+    setIsAltMode, setActiveMenu, triggerAction,
+    onNewWindow, onOpenFile, onSaveFile, onSaveAs, onPrint, onCloseApp,
+    setEditorMode, setShowStatusBar, setShowSidebar, setShowConsole,
+    onZoomIn, onZoomOut, onZoomReset, onToggleFullscreen,
+    onOpenSettings, onOpenMarketplace, onOpenAbout, onOpenGuide, onOpenPricing, onOpenGithub
+  })
+
+  const handleMenuClick = (menu: string) => {
+    if (activeMenu === menu) {
+      setActiveMenu(null)
+      setIsAltMode(false)
+    } else {
+      setActiveMenu(menu)
+      setIsAltMode(true)
+    }
+  }
+
+  const renderLabel = (text: string, shortcut: string) => {
+    if (!isAltMode) return <span>{text}</span>
+    
+    const index = text.toLowerCase().indexOf(shortcut.toLowerCase())
+    if (index === -1) return <span>{text}</span>
+    
+    return (
+      <span>
+        {text.slice(0, index)}
+        <u style={{ textUnderlineOffset: '3px' }}>{text[index]}</u>
+        {text.slice(index + 1)}
+      </span>
+    )
   }
 
   const menuStyle: React.CSSProperties = {
@@ -137,7 +168,7 @@ export function MenuBar({
     boxShadow: '0 10px 25px rgba(0,0,0,0.5)',
     borderRadius: '6px',
     padding: '4px 0',
-    minWidth: '180px',
+    minWidth: '200px',
     display: 'flex',
     flexDirection: 'column',
     zIndex: 1000,
@@ -189,41 +220,41 @@ export function MenuBar({
           }}
           onClick={() => handleMenuClick('file')}
         >
-          File
+          {renderLabel('File', 'f')}
         </button>
         {activeMenu === 'file' && (
           <div style={dropdownStyle}>
             <button style={itemStyle} onClick={() => triggerAction(onNewWindow)}>
-              <span>새 창 열기</span>
+              {renderLabel('새 창 열기', 'n')}
               <span style={shortcutStyle}>{formatHotkey(hkeys.newFile)}</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={itemStyle} onClick={() => triggerAction(onOpenFile)}>
-              <span>열기...</span>
+              {renderLabel('열기...', 'o')}
               <span style={shortcutStyle}>{formatHotkey(hkeys.open)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onSaveFile)}>
-              <span>저장</span>
+              {renderLabel('저장', 's')}
               <span style={shortcutStyle}>{formatHotkey(hkeys.save)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onSaveAs)}>
-              <span>다른 이름으로 저장...</span>
+              {renderLabel('다른 이름으로 저장...', 'a')}
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={itemStyle} onClick={() => triggerAction(onPrint)}>
-              <span>인쇄 (PDF 변환)</span>
+              {renderLabel('인쇄 (PDF 변환)', 'p')}
               <span style={shortcutStyle}>{formatHotkey(hkeys.pdfExport)}</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={{ ...itemStyle, color: 'var(--danger)' }} onClick={() => triggerAction(onCloseApp)}>
-              <span>종료</span>
+              {renderLabel('종료', 'x')}
               <span style={shortcutStyle}>Alt+F4</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* 2. View 메뉴 (토글 및 모드 제어) */}
+      {/* 2. View 메뉴 */}
       <div style={{ position: 'relative' }}>
         <button
           style={{
@@ -232,7 +263,7 @@ export function MenuBar({
           }}
           onClick={() => handleMenuClick('view')}
         >
-          View
+          {renderLabel('View', 'v')}
         </button>
         {activeMenu === 'view' && (
           <div style={dropdownStyle}>
@@ -240,28 +271,25 @@ export function MenuBar({
               style={itemStyle}
               onClick={() => triggerAction(() => setEditorMode(editorMode === 'preview' ? 'edit' : 'preview'))}
             >
-              <span>{editorMode === 'preview' ? '편집 모드로 전환' : '뷰어 모드로 전환'}</span>
+              {renderLabel(editorMode === 'preview' ? '편집 모드로 전환' : '뷰어 모드로 전환', 'e')}
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-            {/* 상태바 체크박스 */}
-            <button style={itemStyle} onClick={() => setShowStatusBar(!showStatusBar)}>
+            <button style={itemStyle} onClick={() => triggerAction(() => setShowStatusBar(!showStatusBar))}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {showStatusBar ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
-                상태바 표시
+                {renderLabel('상태바 표시', 't')}
               </span>
             </button>
-            {/* 사이드바 체크박스 */}
-            <button style={itemStyle} onClick={() => setShowSidebar(!showSidebar)}>
+            <button style={itemStyle} onClick={() => triggerAction(() => setShowSidebar(!showSidebar))}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {showSidebar ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
-                사이드바 표시
+                {renderLabel('사이드바 표시', 'b')}
               </span>
             </button>
-            {/* 코드 콘솔 체크박스 */}
-            <button style={itemStyle} onClick={() => setShowConsole(!showConsole)}>
+            <button style={itemStyle} onClick={() => triggerAction(() => setShowConsole(!showConsole))}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 {showConsole ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
-                코드 콘솔 표시
+                {renderLabel('코드 콘솔 표시', 'c')}
               </span>
             </button>
           </div>
@@ -277,49 +305,49 @@ export function MenuBar({
           }}
           onClick={() => handleMenuClick('window')}
         >
-          Window
+          {renderLabel('Window', 'w')}
         </button>
         {activeMenu === 'window' && (
           <div style={dropdownStyle}>
             <button style={itemStyle} onClick={() => triggerAction(onZoomIn)}>
-              <span>확대</span>
+              {renderLabel('확대', 'i')}
               <span style={shortcutStyle}>{formatHotkey(hkeys.zoomIn)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onZoomOut)}>
-              <span>축소</span>
+              {renderLabel('축소', 'o')}
               <span style={shortcutStyle}>{formatHotkey(hkeys.zoomOut)}</span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onZoomReset)}>
-              <span>원래 크기로</span>
+              {renderLabel('원래 크기로', 'r')}
               <span style={shortcutStyle}>{formatHotkey(hkeys.zoomReset)}</span>
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={itemStyle} onClick={() => triggerAction(onToggleFullscreen)}>
-              <span>전체 화면 토글</span>
+              {renderLabel('전체 화면 토글', 'f')}
               <span style={shortcutStyle}>F11</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* 4. Settings 메뉴 (단일 버튼으로 클릭 즉시 환경 설정 팝업 노출) */}
+      {/* 4. Settings 메뉴 */}
       <div style={{ position: 'relative' }}>
         <button
           style={menuStyle}
-          onClick={onOpenSettings}
+          onClick={() => triggerAction(onOpenSettings)}
         >
-          Settings
+          {renderLabel('Settings', 's')}
         </button>
       </div>
 
-      {/* 4.5 Marketplace 메뉴 (단독 버튼으로 즉시 마켓플레이스 팝업 노출 - 유료 플랜 전용) */}
+      {/* 4.5 Marketplace 메뉴 */}
       {isProPlan && (
         <div style={{ position: 'relative' }}>
           <button
             style={menuStyle}
-            onClick={onOpenMarketplace}
+            onClick={() => triggerAction(onOpenMarketplace)}
           >
-            Marketplace
+            {renderLabel('Marketplace', 'm')}
           </button>
         </div>
       )}
@@ -333,22 +361,24 @@ export function MenuBar({
           }}
           onClick={() => handleMenuClick('help')}
         >
-          Help
+          {renderLabel('Help', 'h')}
         </button>
         {activeMenu === 'help' && (
           <div style={dropdownStyle}>
             <button style={itemStyle} onClick={() => triggerAction(onOpenAbout)}>
-              <span>아메바 생태계 소개...</span>
+              {renderLabel('아메바 생태계 소개...', 'a')}
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onOpenGuide)}>
-              <span>마크다운 작성 가이드</span>
+              {renderLabel('마크다운 작성 가이드', 'g')}
             </button>
             <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
             <button style={itemStyle} onClick={() => triggerAction(onOpenPricing)}>
-              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>💰 Pricing Plans...</span>
+              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                {renderLabel('💰 Pricing Plans...', 'p')}
+              </span>
             </button>
             <button style={itemStyle} onClick={() => triggerAction(onOpenGithub)}>
-              <span>문의하기 (Contact Us)...</span>
+              {renderLabel('문의하기 (Contact Us)...', 'c')}
             </button>
           </div>
         )}

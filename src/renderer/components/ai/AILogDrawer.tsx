@@ -30,10 +30,6 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
     return () => unsubscribe();
   }, []);
 
-  const translateY = isExpanded
-    ? (isHovered ? '-54px' : '-42px')
-    : (isHovered ? '-54px' : '-14px');
-    
   const scale = isHovered ? '1.1' : '1';
   const opacity = isHovered || isExpanded ? 1 : 0.4;
 

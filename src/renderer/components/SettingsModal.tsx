@@ -14,6 +14,8 @@ import { SettingsTabPermissions } from './settings/SettingsTabPermissions'
 import { SettingsTabAppearance } from './settings/SettingsTabAppearance'
 import { SettingsTabModels } from './settings/SettingsTabModels'
 import { SettingsTabCustomizations } from './settings/SettingsTabCustomizations'
+import { useSettingsDraft } from '../hooks/app/useSettingsDraft'
+import { SettingsTransitionOverlay } from './overlay/SettingsTransitionOverlay'
 
 export interface HotkeyConfig {
   save: string
@@ -69,6 +71,10 @@ export function SettingsModal({
   if (!isOpen) return null
   void { Move, ShieldAlert, onOpenModelHub };
 
+  // 0. 설정 Draft 및 전환 상태
+  const { draftSettings, updateDraft, resetDraft, isDirty } = useSettingsDraft(settings, isOpen)
+  const [isApplying, setIsApplying] = useState(false)
+
   // 1. 드래그 가능한 포지션 상태
   const [pos, setPos] = useState({ x: 100, y: 100 })
   const [isDragging, setIsDragging] = useState(false)
@@ -97,6 +103,24 @@ export function SettingsModal({
   const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
 
   const { modalSize, handleResizeMouseDown } = useSettingsModalResize()
+
+  const handleSaveAndApply = () => {
+    if (!isDirty) {
+      onClose()
+      return
+    }
+    setIsApplying(true)
+    setTimeout(() => {
+      onUpdateSettings(draftSettings)
+      setIsApplying(false)
+      onClose()
+    }, 1800)
+  }
+
+  const handleCancel = () => {
+    resetDraft()
+    onClose()
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -227,7 +251,6 @@ export function SettingsModal({
     }
     return () => {
       window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
     }
   }, [isDragging])
 
@@ -239,11 +262,6 @@ export function SettingsModal({
     { id: 'nature', label: 'Fairytale Nature', previewColor: '#f0fdf4' },
     { id: 'win98', label: 'Retro Windows 98', previewColor: '#c0c0c0' },
   ]
-
-  const handleThemeChange = (theme: AppSettings['theme']) => {
-    onUpdateSettings({ theme })
-    document.body.setAttribute('data-theme', theme)
-  }
 
   const handleSaveUser = () => {
     if (onUpdateUser) {
@@ -377,8 +395,8 @@ export function SettingsModal({
           {/* General Tab */}
           <SettingsTabGeneral
             activeTab={activeTab}
-            settings={settings}
-            onUpdateSettings={onUpdateSettings}
+            settings={draftSettings}
+            onUpdateSettings={updateDraft}
             isProPlan={isProPlan}
             handleToggleProPlan={handleToggleProPlan}
           />
@@ -396,8 +414,8 @@ export function SettingsModal({
           {/* Permissions Tab */}
           <SettingsTabPermissions
             activeTab={activeTab}
-            settings={settings}
-            onUpdateSettings={onUpdateSettings}
+            settings={draftSettings}
+            onUpdateSettings={updateDraft}
           />
 
           {/* Credentials Tab */}
@@ -406,16 +424,16 @@ export function SettingsModal({
           {/* Appearance Tab */}
           <SettingsTabAppearance
             activeTab={activeTab}
-            settings={settings}
-            handleThemeChange={handleThemeChange}
+            settings={draftSettings}
+            handleThemeChange={(theme) => updateDraft({ theme })}
             themes={themes}
           />
 
           {/* Models Tab */}
           <SettingsTabModels
             activeTab={activeTab}
-            settings={settings}
-            onUpdateSettings={onUpdateSettings}
+            settings={draftSettings}
+            onUpdateSettings={updateDraft}
             downloadStatus={downloadStatus}
             localModels={localModels}
             localCodeModels={localCodeModels}
@@ -426,11 +444,11 @@ export function SettingsModal({
           {/* Customizations Tab */}
           <SettingsTabCustomizations
             activeTab={activeTab}
-            settings={settings}
+            settings={draftSettings}
           />
 
           {/* Hotkeys Tab */}
-          <SettingsTabHotkeys activeTab={activeTab} settings={settings} onUpdateSettings={onUpdateSettings} />
+          <SettingsTabHotkeys activeTab={activeTab} settings={draftSettings} onUpdateSettings={updateDraft} />
 
           {/* MCP Manager Tab (Pro Plan Only) */}
           {activeTab === 'MCP' && (
@@ -448,16 +466,26 @@ export function SettingsModal({
           borderTop: '1px solid var(--border-muted)',
           display: 'flex',
           justifyContent: 'flex-end',
+          gap: '8px',
           backgroundColor: 'rgba(255, 255, 255, 0.01)',
           flexShrink: 0,
         }}
       >
         <button
-          className="btn btn-primary"
-          style={{ padding: '5px 16px', fontSize: '11px', borderRadius: '6px', fontWeight: 700 }}
-          onClick={onClose}
+          className="btn btn-secondary"
+          style={{ padding: '5px 16px', fontSize: '11px', borderRadius: '6px', fontWeight: 600, border: '1px solid var(--border-muted)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+          onClick={handleCancel}
+          disabled={isApplying}
         >
-          적용 및 저장
+          취소
+        </button>
+        <button
+          className="btn btn-primary"
+          style={{ padding: '5px 16px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, opacity: isApplying ? 0.7 : 1, cursor: isApplying ? 'wait' : 'pointer' }}
+          onClick={handleSaveAndApply}
+          disabled={isApplying}
+        >
+          {isDirty ? '적용 및 저장' : '닫기'}
         </button>
       </div>
 
@@ -492,6 +520,9 @@ export function SettingsModal({
           borderRadius: '0 0 12px 0'
         }}
       />
+      
+      {/* 🚀 Transition Overlay */}
+      <SettingsTransitionOverlay isVisible={isApplying} />
     </div>
   )
 }

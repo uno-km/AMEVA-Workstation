@@ -108,18 +108,18 @@
 [data-theme='nature'] {
   --bg-deep: #e8f5e9;
   --bg-main: #f1f8f1;
-  --bg-card: rgba(255, 255, 255, 0.7);
-  --bg-glass: rgba(255, 255, 255, 0.85);
-  --bg-glass-active: rgba(76, 175, 80, 0.1);
-  --border-glow: rgba(76, 175, 80, 0.3);
-  --border-muted: rgba(0, 0, 0, 0.08);
-  --text-main: #1b5e20;
-  --text-muted: #388e3c;
-  --text-dark: #66bb6a;
-  --primary: #4caf50;
-  --primary-glow: rgba(76, 175, 80, 0.25);
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --bg-glass: rgba(255, 255, 255, 0.95);
+  --bg-glass-active: rgba(76, 175, 80, 0.15);
+  --border-glow: rgba(76, 175, 80, 0.4);
+  --border-muted: rgba(0, 0, 0, 0.1);
+  --text-main: #0f3014; /* Much darker for contrast */
+  --text-muted: #2d5a35; /* Darker muted */
+  --text-dark: #1b4d24;
+  --primary: #4caf50; /* Base color, will be overridden by JS */
+  --primary-glow: rgba(76, 175, 80, 0.3);
   --secondary: #8bc34a;
-  --secondary-glow: rgba(139, 195, 74, 0.25);
+  --secondary-glow: rgba(139, 195, 74, 0.3);
 }
 
 [data-theme='win98'] {

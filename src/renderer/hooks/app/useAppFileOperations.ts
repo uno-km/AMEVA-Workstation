@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
-import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds } from '../../utils/markdownUtils'
+import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds, convertJupyterToCodeBlocks } from '../../utils/markdownUtils'
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
 import { type AmevaEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
 import type { EditorMode } from '../../../shared/types'

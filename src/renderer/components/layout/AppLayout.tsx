@@ -17,6 +17,7 @@ import { FloatingPiPVideo } from './FloatingPiPVideo'
 import { ModalManager } from './ModalManager'
 import { type EditorMode, type DocumentSnapshot } from '../../../shared/types'
 import { type AmevaEditor as AppEditor } from '../../editor/amevaBlockSchema'
+import { useNatureThemeColors } from '../../hooks/app/useNatureThemeColors'
 
 export interface AppLayoutProps {
   settings: AppSettings
@@ -194,6 +195,9 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
     isConnected, snapshots, createSnapshot, deleteSnapshot, handleSelectSnapshotForDiff, toastMessage,
     showFindReplace, setShowFindReplace, findReplaceMode, mcpServersState,
   } = props
+
+  // 🌿 자연산 테마 반응형 컬러 훅 연결
+  useNatureThemeColors(settings.theme)
 
   return (
     <div
