@@ -1,11 +1,11 @@
 import { useCallback } from 'react'
-import * as ipc from '../../../services/ipc/electronApiAdapter'
-import { determineIntent } from '../../../services/ai/determineIntent'
-import { detectCodingRequest } from '../../../services/ai/detectCodingRequest'
-import { checkUsageLimit, incrementUsageCount } from '../../../services/ai/checkUsageLimit'
-import { buildSystemPrompt } from '../../../services/ai/buildSystemPrompt'
+import * as ipc from '../../services/ipc/electronApiAdapter'
+import { determineIntent } from '../../services/ai/determineIntent'
+import { detectCodingRequest } from '../../services/ai/detectCodingRequest'
+import { checkUsageLimit, incrementUsageCount } from '../../services/ai/checkUsageLimit'
+import { buildSystemPrompt } from '../../services/ai/buildSystemPrompt'
 import { useAILogStore } from '../../stores/useAILogStore'
-import type { AIMessage, AISettings } from '../../../types/aiTypes'
+import type { AIMessage, AISettings } from '../../types/aiTypes'
 
 export function useAIGenerator(
   settings: AISettings,

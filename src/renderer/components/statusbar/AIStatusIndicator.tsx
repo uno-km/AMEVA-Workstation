@@ -1,5 +1,5 @@
 import React from 'react'
-import * as ipc from '../../../services/ipc/electronApiAdapter'
+import * as ipc from '../../services/ipc/electronApiAdapter'
 
 interface AIStatusIndicatorProps {
   aiSettings: any

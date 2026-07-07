@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { useState } from 'react'
 import { Play, Copy, ChevronDown } from 'lucide-react'
 import { type AmevaEditor } from '../../editor/amevaBlockSchema'
 import { useCodeRuntime } from '../../hooks/useCodeRuntime'
