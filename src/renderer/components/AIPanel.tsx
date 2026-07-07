@@ -51,10 +51,10 @@ export function AIPanel(props: any) {
     importModel,
   } = props
 
-  if (!isOpen) return null
-
   const chatContainerRef = useRef<HTMLDivElement | null>(null)
   const resizeRef = useRef<HTMLDivElement | null>(null)
+
+  if (!isOpen) return null
   const isWhiteTheme = settings.theme === 'white'
   const displayModelLabel = settings.apiModel || (gpuName ? `GPU: ${gpuName}` : 'auto')
 

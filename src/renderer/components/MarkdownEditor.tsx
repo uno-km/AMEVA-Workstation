@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { BlockNoteView } from '@blocknote/mantine'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
 import { SuggestionMenuController } from '@blocknote/react'

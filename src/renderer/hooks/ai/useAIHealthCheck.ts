@@ -7,7 +7,6 @@ export function useAIHealthCheck(
   setIsAvailable: (val: boolean) => void
 ) {
   useEffect(() => {
-    if (!ipc.isElectronEnv()) return
 
     const checkHealth = async () => {
       const type = settings.apiType || 'local'
@@ -32,7 +31,23 @@ export function useAIHealthCheck(
 
       // 'local' 또는 'wasm' 모드: llama-server 헬스 체크
       const result = await ipc.llmCheckHealth()
-      setIsAvailable(result.status === 'ok' || result.status === 'loading model')
+      
+      if (result.status === 'ok' || result.status === 'loading model') {
+        setIsAvailable(true)
+      } else {
+        setIsAvailable(false)
+        
+        // Lazy On: 백그라운드 자동 기동
+        const win = window as any
+        if (!win.__ameva_hasAttemptedAutoStart && settings.modelPath) {
+          win.__ameva_hasAttemptedAutoStart = true
+          console.log('[System] 백그라운드 자동 기동(Lazy On)을 시도합니다.')
+          if (ipc.llmAddLog) {
+            ipc.llmAddLog({ text: '[System] 백그라운드 자동 기동(Lazy On)을 시작합니다.', prefix: 'System' })
+          }
+          ipc.llmStart(settings.modelPath).catch(err => console.error('자동 기동 실패:', err))
+        }
+      }
     }
 
     checkHealth()

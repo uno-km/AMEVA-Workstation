@@ -42,19 +42,35 @@ export function AILogDrawer({ isExpanded, onToggle, logContainerRef, logEndRef }
     }}>
       <div 
         onClick={onToggle}
+        title={isExpanded ? '터미널 닫기' : '터미널 열기'}
         style={{
-          position: 'absolute', top: '-28px', left: '50%', transform: 'translateX(-50%)',
-          background: 'rgba(15, 23, 42, 0.95)', padding: '4px 16px',
-          borderTopLeftRadius: '8px', borderTopRightRadius: '8px',
-          borderTop: '1px solid rgba(6, 182, 212, 0.3)',
-          borderLeft: '1px solid rgba(6, 182, 212, 0.3)',
-          borderRight: '1px solid rgba(6, 182, 212, 0.3)',
-          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px',
-          color: 'var(--primary)', fontSize: '11px', fontWeight: 600
+          position: 'absolute', 
+          top: '-50px', 
+          left: '16px',
+          width: '38px',
+          height: '38px',
+          borderRadius: '50%',
+          background: 'rgba(15, 23, 42, 0.95)', 
+          border: '1px solid rgba(6, 182, 212, 0.5)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          cursor: 'pointer', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center',
+          color: 'var(--primary)', 
+          transition: 'all 0.2s ease',
+          zIndex: 101
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
+          e.currentTarget.style.transform = 'scale(1.05)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(15, 23, 42, 0.95)'
+          e.currentTarget.style.transform = 'scale(1)'
         }}
       >
-        <Terminal size={12} />
-        {isExpanded ? '터미널 닫기' : '터미널 열기'}
+        <Terminal size={18} />
       </div>
       <div style={{
         padding: '8px 12px', background: 'rgba(0,0,0,0.3)',
