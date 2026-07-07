@@ -1,6 +1,6 @@
 import React from 'react'
 import { Check } from 'lucide-react'
-import { PluginMetadata } from './types'
+import type { PluginMetadata } from './types'
 
 interface PluginCardProps {
   plugin: PluginMetadata

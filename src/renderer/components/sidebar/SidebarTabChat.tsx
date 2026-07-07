@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { MessageCircle, Share2 } from 'lucide-react'
 import type { ChatMessage } from '../../hooks/useChat'
 import { ChatPanel } from '../ChatPanel'

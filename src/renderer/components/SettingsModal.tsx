@@ -354,7 +354,17 @@ export function SettingsModal({
                   cursor: 'pointer', textAlign: 'left',
                   transition: 'background 0.15s, color 0.15s',
                 }}
-                  {/* General Tab */}
+              >
+                <Icon size={14} />
+                <span>{t.label}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 우측 설정 내용 컨테이너 */}
+        <div style={{ flex: 1, padding: '24px', overflowY: 'auto' }}>
+          {/* General Tab */}
           <SettingsTabGeneral
             activeTab={activeTab}
             settings={settings}
@@ -416,42 +426,7 @@ export function SettingsModal({
           {activeTab === 'MCP' && (
             <SettingsTabMCP isProPlan={isProPlan} isOpen={isOpen} />
           )}
-        </div>픽 미니맵 로딩' },
-                  { id: 'canvas', name: 'Free Drawing Canvas', desc: '자유 드로잉 및 다이어그램 스케치 삽입 플러그인' }
-                ].map(p => {
-                  const isInstalled = (settings.installedPlugins || []).includes(p.id)
-                  return (
-                    <div key={p.id} style={{
-                      padding: '8px 12px', borderRadius: '6px',
-                      background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    }}>
-                      <div>
-                        <div style={{ fontSize: '11px', fontWeight: 700 }}>{p.name}</div>
-                        <div style={{ fontSize: '9px', color: 'var(--text-muted)', marginTop: '2px' }}>{p.desc}</div>
-                      </div>
-                      <span style={{
-                        fontSize: '9px', fontWeight: 800, padding: '2px 6px', borderRadius: '4px',
-                        background: isInstalled ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
-                        color: isInstalled ? '#10b981' : 'var(--text-muted)',
-                        border: isInstalled ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--border-muted)',
-                      }}>
-                        {isInstalled ? 'Loaded' : 'Inactive'}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </>
-          )}
 
-          {/* Hotkeys Tab */}
-          <SettingsTabHotkeys activeTab={activeTab} settings={settings} onUpdateSettings={onUpdateSettings} />
-
-          {/* MCP Manager Tab (Pro Plan Only) */}
-          {activeTab === 'MCP' && (
-            <SettingsTabMCP isProPlan={isProPlan} isOpen={isOpen} />
-          )}
 
         </div>
       </div>

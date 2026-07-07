@@ -1,4 +1,4 @@
-import React from 'react'
+
 import type { AppSettings } from '../SettingsModal'
 
 export interface SettingsTabCustomizationsProps {

@@ -1,4 +1,4 @@
-import React from 'react'
+
 import type { AppSettings } from '../SettingsModal'
 import type { ModelInfo } from '../../services/ipc/ipcTypes'
 

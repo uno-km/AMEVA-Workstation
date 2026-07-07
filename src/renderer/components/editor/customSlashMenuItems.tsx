@@ -1,7 +1,7 @@
-import React from 'react'
+
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { Code2, Globe, Eye, Terminal, FileImage } from 'lucide-react'
-import { type AmevaEditor } from './amevaBlockSchema'
+import { type AmevaEditor } from '../../editor/amevaBlockSchema'
 
 export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPlugins: string[] = []) {
   const defaultItems = getDefaultReactSlashMenuItems(editorInstance)

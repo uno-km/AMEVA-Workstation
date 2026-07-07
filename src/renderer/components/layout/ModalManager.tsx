@@ -1,5 +1,5 @@
-import React from 'react'
-import * as ipc from '../../../services/ipc/electronApiAdapter'
+
+import * as ipc from '../../services/ipc/electronApiAdapter'
 import { DiffModal } from '../DiffModal'
 import { SettingsModal, type AppSettings } from '../SettingsModal'
 import { AboutModal } from '../AboutModal'
@@ -7,7 +7,7 @@ import { MarkdownGuideModal } from '../MarkdownGuideModal'
 import { MarketplaceModal } from '../MarketplaceModal'
 import { PricingModal } from '../PricingModal'
 import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
-import { type DocumentSnapshot } from '../../../../shared/types'
+import { type DocumentSnapshot, type ExportProgress } from '../../../shared/types'
 
 export interface ModalManagerProps {
   isDiffOpen: boolean
@@ -38,8 +38,8 @@ export interface ModalManagerProps {
   isProPlan: boolean
   showPricingModal: boolean
   setShowPricingModal: (show: boolean) => void
-  exportProgress: number
-  setExportProgress: (prog: number) => void
+  exportProgress: ExportProgress
+  setExportProgress: (prog: ExportProgress) => void
   exportMinimized: boolean
   setExportMinimized: (min: boolean) => void
   toggleExportMinimized: () => void

@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { BlockNoteView } from '@blocknote/mantine'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
-import { getDefaultReactSlashMenuItems, SuggestionMenuController } from '@blocknote/react'
+import { SuggestionMenuController } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import type { PeerState } from '../../shared/types'
 import { ImageLightbox } from './ImageLightbox'
-import { Terminal, Code2, Eye, Globe, X, Users, FileText, Sparkles, FileImage } from 'lucide-react'
+import { X, Users, FileText, Sparkles } from 'lucide-react'
+import mermaid from 'mermaid'
+import { useBacktickFence } from './useBacktickFence'
+import { useCollaborationHighlight } from './useCollaborationHighlight'
+import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
 // Mermaid 초기화
 try {
@@ -19,8 +23,6 @@ try {
 }
 
 // ─── 기능별 이원화 컴포넌트 및 커스텀 훅 임포트 ─────────────────────
-import { useBacktickFence } from './useBacktickFence'
-import { useCollaborationHighlight } from './useCollaborationHighlight'
 import { MarkdownPreview } from './MarkdownPreview'
 import { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
 import { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
@@ -404,7 +406,7 @@ export function MarkdownEditor({
                   subtext: '협업 참가자 멘션',
                   icon: <Users size={14} color={p.color || '#a855f7'} />,
                   onItemClick: () => {
-                    editor.insertInlineContent([{ type: 'text', text: `@${p.name} `, styles: { bold: true } }])
+                    editor.insertInlineContent([{ type: 'text', text: `@${p.name} `, styles: { bold: true } as any }])
                   }
                 }))
                 const docItems = tabs.map(t => {
@@ -418,7 +420,7 @@ export function MarkdownEditor({
                         { 
                           type: 'text', 
                           text: `[doc:${title}]`, 
-                          styles: { underline: true } 
+                          styles: { underline: true } as any 
                         }
                       ])
                     }
@@ -447,7 +449,7 @@ export function MarkdownEditor({
                         {
                           type: 'text',
                           text: `[${textContent}](#${b.id})`,
-                          styles: { italic: true }
+                          styles: { italic: true } as any
                         }
                       ])
                     }

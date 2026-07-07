@@ -110,7 +110,7 @@ export function AISettingsPanel({
                 <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 제공사</label>
                 <select
                   value={apiProvider}
-                  onChange={e => onUpdateSettings({ apiProvider: e.target.value })}
+                  onChange={e => onUpdateSettings({ apiProvider: e.target.value as 'gemini' | 'openai' | 'anthropic' | 'custom' })}
                   style={{
                     width: '100%',
                     background: 'var(--bg-glass)',

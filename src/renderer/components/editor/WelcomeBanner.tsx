@@ -1,7 +1,7 @@
-import React from 'react'
+
 import { Code2 } from 'lucide-react'
 import { MarkdownPreview } from '../MarkdownPreview'
-import { type AmevaEditor } from './amevaBlockSchema'
+import { type AmevaEditor } from '../../editor/amevaBlockSchema'
 
 export interface WelcomeBannerProps {
   onStartWelcomeEdit?: () => void

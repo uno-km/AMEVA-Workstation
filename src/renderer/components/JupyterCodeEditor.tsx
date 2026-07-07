@@ -1,4 +1,4 @@
-import { RunState } from './jupyter/RunState'
+import type { RunState } from './jupyter/RunState'
 import { JupyterCodeEditorHeader } from './jupyter/JupyterCodeEditorHeader'
 import { JupyterCodeEditorTerminal } from './jupyter/JupyterCodeEditorTerminal'
 

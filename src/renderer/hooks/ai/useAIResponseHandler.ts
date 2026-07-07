@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
-import { parseEditSuggestion, parseInsertSuggestions } from '../../../services/ai/aiStreamParser'
-import type { InsertSuggestion } from '../../../types/aiTypes'
+import { parseEditSuggestion, parseInsertSuggestions } from '../../services/ai/aiStreamParser'
+import type { InsertSuggestion } from '../../types/aiTypes'
 
 export function useAIResponseHandler(
   currentSessionIdRef: React.MutableRefObject<string | null>,

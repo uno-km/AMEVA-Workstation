@@ -145,6 +145,3 @@ export function cleanMarkdownCodeBlocks(markdown: string): string {
     return match
   })
 }
-
-// @ts-ignore
-console.debug(match);

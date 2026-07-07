@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { PluginMetadata, MarketplaceModalProps } from './marketplace/types'
+import type { PluginMetadata, MarketplaceModalProps } from './marketplace/types'
 import { MarketplaceHeader } from './marketplace/MarketplaceHeader'
 import { MarketplaceToolbar } from './marketplace/MarketplaceToolbar'
 import { SaaSPluginCard } from './marketplace/SaaSPluginCard'
