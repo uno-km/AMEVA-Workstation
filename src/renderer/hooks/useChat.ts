@@ -13,7 +13,7 @@ export interface ChatMessage {
 
 export function useChat(
   ydoc: Y.Doc | null,
-  provider: WebsocketProvider | null,
+  _provider: WebsocketProvider | null,
   username: string,
   userColor: string,
   serverRunning: boolean

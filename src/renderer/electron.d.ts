@@ -58,7 +58,7 @@ export interface IElectronAPI {
     apiModel?: string
     gpuOnly?: boolean
     history?: { role: string; content: string }[]
-  }) => Promise<{ success: boolean; error?: string }>
+  }) => Promise<{ success: boolean; error?: string; content?: string; response?: string }>
 
   llmAbort: (sessionId: string) => void
 
@@ -67,10 +67,11 @@ export interface IElectronAPI {
   onLLMLog: (callback: (data: { text: string }) => void) => () => void
   llmAddLog: (payload: { text: string; prefix?: string }) => void
   llmGetLogs: () => Promise<string>
-  llmCheckHealth: () => Promise<{ status: 'ok' | 'offline'; running: boolean; error?: string }>
+  llmCheckHealth: () => Promise<{ status: 'ok' | 'offline' | 'loading model'; running: boolean; error?: string }>
   llmRestart: () => Promise<{ success: boolean; error?: string }>
 
-  llmListModels: () => Promise<LLMModel[]>
+  llmListModels: (type?: 'llm' | 'code' | 'ollama') => Promise<LLMModel[]>
+  selectLocalFile: (filters: { name: string; extensions: string[] }[]) => Promise<string[] | null>
   llmGetGpuName: () => Promise<string>
 
   // 홍 Whisper STT
@@ -79,7 +80,7 @@ export interface IElectronAPI {
 
   llmDownloadModel: (payload: { url: string; filename: string }) => Promise<{ success: boolean; error?: string }>
   onLLMDownloadProgress: (callback: (data: { filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number }) => void) => () => void
-  llmImportModel: (sourcePath: string) => Promise<{ success: boolean; path?: string; error?: string }>
+  llmImportModel: (sourcePath: string, type?: 'llm' | 'code') => Promise<{ success: boolean; path?: string; error?: string }>
 
   // 분산 문서 변환 브리지
   exportConvert: (payload: { blocks: any[]; format: string; defaultName: string }) => Promise<{ success: boolean; savedPath?: string; error?: string }>

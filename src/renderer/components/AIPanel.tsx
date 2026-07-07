@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import {
-  Bot, Send, Square, Trash2, Sparkles, ChevronDown, ChevronUp, Brain,
-  Mic, MicOff, Settings2, Copy, Check, X, AlertCircle,
+  Bot, Send, Trash2, Sparkles, ChevronDown, ChevronUp, Brain,
+  Settings2, Copy, Check, X, AlertCircle,
   Wand2, Languages, FileText, Expand, Lightbulb, Lock, Terminal,
   Loader2, CheckCircle2, Circle, ArrowUp, ArrowDown, Plus
 } from 'lucide-react'
@@ -25,8 +25,8 @@ interface AIPanelProps {
   onClearSelectedText?: () => void
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string) => void
   onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void
-  onApplyInsertSuggestion?: (msgId: string, afterBlockId: string, blockType: string, content: string, level?: number) => void
-  onUpdateInsertSuggestionStatus?: (msgId: string, status: 'pending' | 'accepted' | 'rejected', newAfterBlockId?: string, newSiblingIndex?: number) => void
+  onApplyInsertSuggestion?: (msgId: string, afterBlockId: string, blockType: string, content: string, level?: number, suggestionIndex?: number) => void
+  onUpdateInsertSuggestionStatus?: (msgId: string, status: 'pending' | 'accepted' | 'rejected', newAfterBlockId?: string, newSiblingIndex?: number, suggestionIndex?: number) => void
   activeBlockId?: string
   editor?: any
   blocks?: any[]
@@ -269,7 +269,7 @@ function InsertPreviewCard({
 
   // 추론 경로 텍스트 (thinking trace + reasonText 합산)
   const thinkingText = (msg.reasoningTrace || [])
-    .filter(t => t.type === 'thinking' || t.type === 'step')
+    .filter(t => t.type === 'thinking')
     .map(t => t.text || '')
     .filter(Boolean)
     .join('\n\n')
@@ -676,8 +676,8 @@ function MessageBubble({
   onApplySuggestion?: (text: string, mode: 'replace' | 'insert', blockId?: string) => void
   hasSelection: boolean
   onUpdateDiffState?: (msgId: string, state: 'accepted' | 'rejected') => void
-  onApplyInsertSuggestion?: (msgId: string, afterBlockId: string, blockType: string, content: string, level?: number) => void
-  onUpdateInsertSuggestionStatus?: (msgId: string, status: 'pending' | 'accepted' | 'rejected', newAfterBlockId?: string, newSiblingIndex?: number) => void
+  onApplyInsertSuggestion?: (msgId: string, afterBlockId: string, blockType: string, content: string, level?: number, suggestionIndex?: number) => void
+  onUpdateInsertSuggestionStatus?: (msgId: string, status: 'pending' | 'accepted' | 'rejected', newAfterBlockId?: string, newSiblingIndex?: number, suggestionIndex?: number) => void
   blocks?: any[]
   onScrollToBlock?: (blockId: string) => void
   isWhiteTheme: boolean
@@ -692,17 +692,18 @@ function MessageBubble({
   }, [msg.isStreaming])
 
   // 실제 reasoning trace 사용 (삸니타이저가 content에서 내부 태그를 이미 제거함)
-  // msg.reasoningTrace를 우선 사용, 없으면 표시 안 함
+          // msg.reasoningTrace를 우선 사용, 없으면 표시 안 함
   const traceEvents = msg.reasoningTrace || []
   const hasRealTrace = traceEvents.length > 0
   // thinking 타입 trace 파스만 모아서 표시할 텍스트 생성
   const thinkingText = traceEvents
-    .filter(t => t.type === 'thinking' || t.type === 'step')
+    .filter(t => t.type === 'thinking')
     .map(t => t.text || '')
     .filter(Boolean)
     .join('\n\n---\n\n')
   const cleanContent = msg.content  // content는 삸니타이저를 통해 이미 정제된 최종 답변
 
+  const thoughtSummary = getThoughtSummary(thinkingText, !!msg.isStreaming)
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(cleanContent)
@@ -885,8 +886,8 @@ function MessageBubble({
                   />
                   <span>
                     {msg.isStreaming 
-                      ? (thinkingText ? `생각 과정 (추론 중...)` : `응답 대기 중...`)
-                      : `생각 과정 (추론 완료, ${traceEvents.filter(t => t.type === 'thinking' || t.type === 'step').length}단계)`
+                      ? (thinkingText ? `생각 과정 (추론 중, ${thoughtSummary.completedSteps}/${thoughtSummary.totalSteps}단계)` : `응답 대기 중...`)
+                      : `생각 과정 (추론 완료, ${thoughtSummary.totalSteps}단계)`
                     }
                   </span>
                 </div>
@@ -906,7 +907,9 @@ function MessageBubble({
                   display: 'flex',
                   alignItems: msg.isStreaming && !thinkingText ? 'center' : 'flex-start',
                 }}>
-                  {thinkingText || (msg.isStreaming
+                  {thinkingText ? (
+                    <ThoughtTreeView text={thinkingText} isStreaming={!!msg.isStreaming} />
+                  ) : (msg.isStreaming
                     ? <span style={{ color: isWhiteTheme ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.25)', fontStyle: 'italic', fontSize: '10px' }}>{"<think> 태그 대기 중..."}</span>
                     : null
                   )}
@@ -1389,7 +1392,7 @@ export function AIPanel({
   onApplyInsertSuggestion,
   onUpdateInsertSuggestionStatus,
   activeBlockId,
-  editor,
+  editor: _editor,
   blocks = [],
   activeTab = 'ai',
   installedPlugins = [],
@@ -1880,15 +1883,33 @@ export function AIPanel({
 
       {activeTab === 'ai' && (
         <>
-          {/* 설정 패널 */}
+          {/* 설정 패널 (모달 UI) */}
       {showSettings && (
         <div style={{
-          padding: '12px 16px',
-          borderBottom: '1px solid var(--border-muted)',
-          background: 'var(--bg-glass-active)',
-          display: 'flex', flexDirection: 'column', gap: '10px',
-          flexShrink: 0,
-        }}>
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          zIndex: 1000,
+          background: 'rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '16px'
+        }} onClick={() => setShowSettings(false)}>
+          <div style={{
+            width: '100%', maxWidth: '340px', maxHeight: '100%',
+            overflowY: 'auto',
+            background: 'var(--bg-glass-active)',
+            border: '1px solid var(--border-muted)',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
+            padding: '16px',
+            display: 'flex', flexDirection: 'column', gap: '12px'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>AI 설정</span>
+              <button onClick={() => setShowSettings(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                <X size={16} />
+              </button>
+            </div>
           {/* AI 실행 유형 선택 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI 실행 유형</label>
@@ -2216,6 +2237,7 @@ export function AIPanel({
             </div>
           )}
         </div>
+        </div>
       )}
 
       {/* 메시지 없을 때 환영 화면 */}
@@ -2348,14 +2370,18 @@ export function AIPanel({
               <>
                 {engineLogs.split('\n').map((line, idx) => {
                   if (idx > 0 && !line.trim()) return null
-                  let color = '#a7f3d0' // 기본 에메랄드
-                  if (line.includes('[mcp]')) {
+                  let color = '#a7f3d0' // 기본 에메랄드 (LMA)
+                  if (line.includes('[mcp]') || line.includes('[MCP]')) {
                     color = '#f97316' // 주황색
-                  } else if (line.includes('[ReAct]')) {
+                  } else if (line.includes('[ReAct]') || line.includes('[ACT]')) {
                     color = '#fbbf24' // 앰버
+                  } else if (line.includes('[WGU]') || line.includes('[GPU]')) {
+                    color = '#f472b6' // 핑크 (WebGPU)
+                  } else if (line.includes('[OLM]')) {
+                    color = '#818cf8' // 인디고 (Ollama)
                   } else if (line.includes('[langchain]')) {
                     color = '#c084fc' // 라벤더
-                  } else if (line.includes('[System]')) {
+                  } else if (line.includes('[System]') || line.includes('[SYS]')) {
                     color = '#38bdf8' // 하늘색
                   } else if (line.includes('[Warm-up]')) {
                     color = '#34d399' // 민트
@@ -2667,7 +2693,7 @@ export function AIPanel({
         )}
 
         {/* 컨텍스트 옵션 + 클리어 */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyCommand: 'space-between', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <label style={{
             display: 'flex', alignItems: 'center', gap: '5px',
             fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer',

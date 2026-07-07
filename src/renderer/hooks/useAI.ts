@@ -68,7 +68,7 @@ export interface AISettings {
   temperature: number
   maxTokens: number
   systemPrompt: string
-  apiType?: 'local' | 'api' | 'wasm'
+  apiType?: 'local' | 'api' | 'wasm' | 'ollama'
   apiKey?: string
   /** [FIX-W-003] 클라우드 API 엔드포인트 (OpenAI 호환 대체 다이나믹, Claude 등 지원) */
   apiEndpoint?: string
@@ -210,6 +210,36 @@ export function useAI() {
     taggedBlocks?: { id: string; text: string }[]
   }>>([])
 
+  // 모델 목록 갱신 함수 (수동 리스캔)
+  const refreshModels = useCallback(async () => {
+    if (!window.electronAPI) return
+    try {
+      const type = settings.apiType === 'ollama' ? 'ollama' : 'llm'
+      const list = await window.electronAPI.llmListModels(type)
+      setModels(list)
+      if (list.length > 0) {
+        setSettings(prev => {
+          const exists = list.some(m => m.path === prev.modelPath)
+          if (exists) return prev
+          const preferred = type === 'ollama' ? list[0] : (list.find(m => m.filename.includes('3b')) || list[list.length - 1])
+          return { ...prev, modelPath: preferred.path }
+        })
+      }
+      
+      const codeList = await window.electronAPI.llmListModels('code')
+      setCodeModels(codeList)
+      if (codeList.length > 0) {
+        setSettings(prev => {
+          const exists = codeList.some(m => m.path === prev.codeModelPath)
+          if (exists) return prev
+          return { ...prev, codeModelPath: codeList[0].path }
+        })
+      }
+    } catch (e) {
+      console.warn('모델 목록 갱신 실패:', e)
+    }
+  }, [settings.apiType, setSettings])
+
   // 모델 목록 로드
   useEffect(() => {
     if (!window.electronAPI) {
@@ -217,34 +247,8 @@ export function useAI() {
       setIsAvailable(true)
       return
     }
-
-    // 일반 모델 로드
-    window.electronAPI.llmListModels('llm').then(list => {
-      setModels(list)
-      if (list.length > 0) {
-        setSettings(prev => {
-          const exists = list.some(m => m.path === prev.modelPath)
-          if (exists) return prev
-          const preferred = list.find(m => m.filename.includes('3b')) || list[list.length - 1]
-          return { ...prev, modelPath: preferred.path }
-        })
-      }
-    }).catch(() => {
-      setIsAvailable(false)
-    })
-
-    // 코딩 모델 로드
-    window.electronAPI.llmListModels('code').then(list => {
-      setCodeModels(list)
-      if (list.length > 0) {
-        setSettings(prev => {
-          const exists = list.some(m => m.path === prev.codeModelPath)
-          if (exists) return prev
-          return { ...prev, codeModelPath: list[0].path }
-        })
-      }
-    }).catch(() => {})
-  }, [])
+    refreshModels()
+  }, [settings.apiType, refreshModels])
 
   // API 타입별 실시간 헬스 체크 폴링
   useEffect(() => {
@@ -289,19 +293,6 @@ export function useAI() {
     return () => clearInterval(timer)
   }, [settings.apiType])
 
-  // 모델 목록 갱신 함수 (수동 리스캔)
-  const refreshModels = useCallback(async () => {
-    if (!window.electronAPI) return
-    try {
-      const list = await window.electronAPI.llmListModels('llm')
-      setModels(list)
-      const codeList = await window.electronAPI.llmListModels('code')
-      setCodeModels(codeList)
-    } catch (e) {
-      console.warn('모델 목록 갱신 실패:', e)
-    }
-  }, [])
-
   // 외부 모델 수동 파일 선택하여 로컬에 추가
   const importModel = useCallback(async () => {
     if (!window.electronAPI) return
@@ -340,7 +331,7 @@ export function useAI() {
     if (!window.electronAPI) return
 
     // 스트리밍 토큰 수신
-    const unsubToken = window.electronAPI.onLLMToken((token) => {
+    const unsubToken = window.electronAPI.onLLMToken('', (token) => {
       // 에이전트 구동 중일 때는 전역 토큰 리스너의 간섭을 완전히 배제하고 즉시 무시
       if (isAgentRunningRef.current) return
 
@@ -381,7 +372,7 @@ export function useAI() {
     })
 
     // 완료 이벤트 수신
-    const unsubDone = window.electronAPI.onLLMDone((data) => {
+    const unsubDone = window.electronAPI.onLLMDone('', (data) => {
       setIsGenerating(false)
       setStreamingText('')
 
@@ -635,28 +626,61 @@ export function useAI() {
       rawAccumRef.current = ''
     })
 
-    // 🤖 실시간 원시 콘솔 로그 수신
-    const unsubLog = window.electronAPI.onLLMLog((data) => {
-      setEngineLogs(prev => prev + data.text)
-    })
-
-    // [Init] 메인 프로세스의 초기 로그 누락분 가져오기
-    if (window.electronAPI.llmGetLogs) {
-      window.electronAPI.llmGetLogs().then(logs => {
-        if (logs) {
-          setEngineLogs(prev => prev === '' ? logs : logs + prev)
-        }
-      }).catch(err => console.error('Failed to fetch initial LLM logs', err))
-    }
-
     unsubTokenRef.current = unsubToken
     unsubDoneRef.current = unsubDone
-    unsubLogRef.current = unsubLog
 
     return () => {
       unsubToken()
       unsubDone()
+    }
+  }, [])
+
+  // ─── [로그 중앙화] 실시간 콘솔 로그 수신 및 WebGPU 로그 가로채기 ───
+  useEffect(() => {
+    if (!window.electronAPI) return
+
+    // 1. 메인 프로세스 로그 수신
+    const unsubLog = window.electronAPI.onLLMLog((data) => {
+      setEngineLogs(prev => prev + data.text)
+    })
+
+    // 2. 누락된 초기 로그 가져오기
+    if (window.electronAPI.llmGetLogs) {
+      window.electronAPI.llmGetLogs().then(logs => {
+        if (logs) setEngineLogs(prev => prev === '' ? logs : logs + prev)
+      }).catch(err => console.error('Failed to fetch initial LLM logs', err))
+    }
+
+    // 3. 브라우저 콘솔 가로채기 (WGU 지원)
+    const origLog = console.log
+    const origWarn = console.warn
+    const origErr = console.error
+
+    const interceptAndSend = (_type: string, args: any[]) => {
+      const text = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ')
+      const lower = text.toLowerCase()
+      if (lower.includes('webgpu') || lower.includes('gpu') || lower.includes('webgl')) {
+        if (window.electronAPI?.llmAddLog) {
+          window.electronAPI.llmAddLog({ text, prefix: 'WGU' })
+        }
+      }
+    }
+
+    console.log = (...args) => { origLog(...args); interceptAndSend('log', args) }
+    console.warn = (...args) => { origWarn(...args); interceptAndSend('warn', args) }
+    console.error = (...args) => { origErr(...args); interceptAndSend('error', args) }
+
+    unsubLogRef.current = unsubLog
+
+    return () => {
       unsubLog()
+      console.log = origLog
+      console.warn = origWarn
+      console.error = origErr
+      if (unsubLogRef.current) {
+        unsubLogRef.current()
+        unsubLogRef.current = null
+      }
     }
   }, [])
 
@@ -686,6 +710,9 @@ export function useAI() {
         enabledPlugins = JSON.parse(storedPlugins)
       }
     } catch {}
+    
+    // 디버그: 현재 활성화된 플러그인 상태 (플랜 무관 상시 대기열 기능 적용 전)
+    console.debug('[Plugins] Current state:', enabledPlugins)
 
     // (일일 10회 제한 가드를 finalSettings 결합 시점인 하단으로 이동시킴)
 
@@ -1391,6 +1418,7 @@ export function useAI() {
         setEngineLogs(prev => prev + `\n[System] 에이전트 모드가 감지되었습니다. 도구 바인딩 및 ReAct 루프를 기동합니다...\n`)
       }
       
+      let agentHasPendingDecision = false
       try {
         const agent = new AgentEngine({
           providerType: finalSettings.apiType === 'ollama' ? 'ollama' : 'llama.cpp',
@@ -1519,7 +1547,7 @@ export function useAI() {
 사용자가 주가 정보나 시세를 물어보면, 절대 일반 검색을 돌리지 말고 반드시 'query_stock_info' 도구를 최우선 호출하여 실시간 수치를 획득하십시오.
 도구 호출이 완료되면 그 결과를 기반으로 최종 답변(Final Answer)을 한두 문장으로 솔직하게 정리하여 제공하십시오. HTML 카드 조립이나 [INSERT_SUGGESTION] 태그 기재 등은 절대 하지 마십시오.`
 
-        let agentHasPendingDecision = false
+        agentHasPendingDecision = false
         const agentResult = await agent.executeSession(agentQuery, (log) => {
           if (window.electronAPI?.llmAddLog) {
             window.electronAPI.llmAddLog({ text: log, prefix: 'ReAct' })
@@ -1563,6 +1591,7 @@ export function useAI() {
                     source: 'model',
                     type: 'thinking',
                     text: statusText,
+                    model: finalSettings.modelPath || 'unknown',
                     timestamp: new Date().toISOString()
                   }
                 ]
@@ -1649,7 +1678,7 @@ export function useAI() {
 
             insertSuggestions.push({
               afterBlockId: targetId,
-              blockType: 'jupyter',
+              blockType: 'paragraph',
               content: htmlCard,
               reasonText: cleanContent,
               status: 'pending',
@@ -1766,6 +1795,7 @@ export function useAI() {
                         source: 'model' as const,
                         type: 'thinking' as const,
                         text: `[사고 단계 ${sIdx + 1}] ${s.thought}`,
+                        model: finalSettings.modelPath || 'unknown',
                         timestamp: new Date().toISOString()
                       }
                     ]
@@ -1781,6 +1811,7 @@ export function useAI() {
                         source: 'model' as const,
                         type: 'thinking' as const,
                         text: actionText,
+                        model: finalSettings.modelPath || 'unknown',
                         timestamp: new Date().toISOString()
                       })
                     }
@@ -1863,6 +1894,8 @@ export function useAI() {
       let result = ''
       let settled = false
 
+      const sessId = `quick-${Date.now()}`
+
       const cleanup = (unsubToken: () => void, unsubDone: () => void) => {
         if (!settled) {
           settled = true
@@ -1891,6 +1924,7 @@ export function useAI() {
       }, 60_000)
 
       window.electronAPI!.llmGenerate({
+        sessionId: sessId,
         modelPath: settings.modelPath,
         prompt: prompts[action] || content,
         systemPrompt: 'You are a document editing assistant. Output only the requested content without any explanation or preamble.',

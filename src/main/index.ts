@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell, session, net, safeStorage }
 import { join, dirname, resolve as resolvePath, basename } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, writeFileSync, readFileSync } from 'fs'
-import * as exportersMain from './exportersMain'
+import * as exportersMain from './exportersMain.js'
 
 // 🤖 개발용 일렉트론 보안 경고 비활성화
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
@@ -10,12 +10,9 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
 // ESM/CJS 유니버설 __dirname 폴리필
 const localFilename = (typeof import.meta !== 'undefined' && import.meta.url) 
   ? fileURLToPath(import.meta.url) 
-  : (typeof __filename !== 'undefined' ? __filename : '')
-const localDirname = (typeof import.meta !== 'undefined' && import.meta.url) 
-  ? dirname(localFilename) 
-  : (typeof __dirname !== 'undefined' ? __dirname : '')
+  : ''
+const localDirname = localFilename ? dirname(localFilename) : ''
 
-const __filename = localFilename
 const __dirname = localDirname
 import { readFile, writeFile, unlink } from 'fs/promises'
 import { createRequire } from 'module'
@@ -40,7 +37,7 @@ const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.quit()
 } else {
-  app.on('second-instance', async (event, commandLine) => {
+  app.on('second-instance', async (_event, commandLine) => {
     const filePath = parseArgvForFile(commandLine)
     if (filePath && mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore()
@@ -528,8 +525,7 @@ function findWhisperCli(): string | null {
 
 // 🤖 [llama-server 백그라운드 상주 제어 전역 변수]
 let activeServerProcess: any = null
-let activeServerModelPath: string = ''
-let activeServerGpuOnly: boolean = true
+let activeServerModelPath: string | null = null
 const serverPort = 12345
 // 서버 기동 진행 중 플래그 (경쟁 조건 방지)
 let serverStartingPromise: Promise<boolean> | null = null
@@ -563,19 +559,66 @@ app.on('will-quit', () => {
 // ─── 렌더러 터미널 로그 브로드캐스트 헬퍼 ───
 let llamaLogBuffer = ''
 
-function logToRenderer(text: string) {
-  llamaLogBuffer += text
-  if (llamaLogBuffer.length > 200000) {
-    llamaLogBuffer = llamaLogBuffer.slice(-200000)
+class StreamLineFormatter {
+  private buffer = '';
+  private prefix: string;
+
+  constructor(prefix: string) {
+    this.prefix = prefix;
   }
-  const { webContents } = require('electron')
-  webContents.getAllWebContents().forEach((wc: any) => {
-    if (!wc.isDestroyed()) {
-      wc.send('llm:log', { text })
+
+  feed(chunk: string, onLine: (formattedLine: string) => void) {
+    this.buffer += chunk;
+    const lines = this.buffer.split('\n');
+    this.buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.trim()) continue; // 빈 줄 무시
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const ms = String(now.getMilliseconds()).padStart(3, '0');
+      const timestamp = `${hh}:${mm}:${ss}.${ms}`;
+      onLine(`[${this.prefix}][${timestamp}] ${line}\n`);
     }
-  })
-  process.stderr.write("[CAPTURED] " + text) // 개발 터미널에도 출력
+  }
 }
+
+const formatters: Record<string, StreamLineFormatter> = {};
+
+function broadcastLog(prefix: string, text: string) {
+  let formatter = formatters[prefix];
+  if (!formatter) {
+    formatter = new StreamLineFormatter(prefix);
+    formatters[prefix] = formatter;
+  }
+  formatter.feed(text, (formattedLine) => {
+    llamaLogBuffer += formattedLine;
+    if (llamaLogBuffer.length > 200000) {
+      llamaLogBuffer = llamaLogBuffer.slice(-200000);
+    }
+    const { webContents } = require('electron');
+    webContents.getAllWebContents().forEach((wc: any) => {
+      if (!wc.isDestroyed()) {
+        wc.send('llm:log', { text: formattedLine });
+      }
+    });
+    process.stderr.write(formattedLine);
+  });
+}
+
+function logToRenderer(text: string) {
+  // 기존 [System] 등이 이미 포함된 텍스트는 그대로 포맷팅 없이 넘길 수도 있지만, 
+  // 일관성을 위해 SYS 접두사를 붙여 래핑합니다.
+  let prefix = 'SYS';
+  if (text.includes('[Fatal Error]') || text.includes('[Error]')) prefix = 'SYS';
+  broadcastLog(prefix, text);
+}
+
+ipcMain.on('llm:add-log', (_event, payload: { text: string; prefix?: string }) => {
+  const prefix = payload.prefix || 'SYS';
+  broadcastLog(prefix, payload.text + (!payload.text.endsWith('\n') ? '\n' : ''));
+})
 
 ipcMain.handle('llm:get-logs', () => {
   return llamaLogBuffer
@@ -633,10 +676,9 @@ async function startLlamaServerWithFallback(
     const proc = spawn(llamaPath, sArgs, { cwd: dirname(llamaPath), windowsHide: true })
     activeServerProcess = proc
     activeServerModelPath = modelPath
-    activeServerGpuOnly = ngl > 0
 
-    proc.stdout?.on('data', (d: Buffer) => logToRenderer(d.toString()))
-    proc.stderr?.on('data', (d: Buffer) => logToRenderer(d.toString()))
+    proc.stdout?.on('data', (d: Buffer) => broadcastLog('LMA', d.toString()))
+    proc.stderr?.on('data', (d: Buffer) => broadcastLog('LMA', d.toString()))
     proc.on('close', (code) => {
       if (activeServerProcess === proc) {
         activeServerProcess = null
@@ -762,7 +804,7 @@ const isFreeModeRequested =
 let isProPlanMemory = !isFreeModeRequested
 
 // 🤖 [llm:check-health] 포트 12345 llama-server 상태 체크 핸들러
-ipcMain.handle('llm:check-health', async () => {
+ipcMain.handle('llm:check-health', async (_event) => {
   // 프로세스가 아예 없으면 즉시 offline
   if (!activeServerProcess) {
     return { status: 'offline', running: false }
@@ -791,7 +833,7 @@ ipcMain.handle('llm:check-health', async () => {
 })
 
 // 🤖 [llm:restart] 서버 강제 재기동 웜업 핸들러
-ipcMain.handle('llm:restart', async () => {
+ipcMain.handle('llm:restart', async (_event) => {
   try {
     const llamaPath = findLlamaCli()
     if (!llamaPath) return { success: false, error: 'llama.cpp 엔진 경로를 찾을 수 없습니다.' }
@@ -854,7 +896,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
   maxTokens?: number
   temperature?: number
   contextSize?: number
-  apiType?: 'local' | 'api'
+  apiType?: 'local' | 'api' | 'ollama' | 'wasm'
   apiKey?: string
   apiEndpoint?: string   // [FIX-W-003] 클라우드 API 엔드포인트 동적화
   apiModel?: string      // [FIX-W-003] 클라우드 API 모델명 동적화
@@ -918,7 +960,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           stream: true
         })
 
-        logToRenderer(`[System] Ollama API 연결 시도 중...\n서버 주소: http://127.0.0.1:11434/api/chat\n모델: ${targetModel}\n`)
+        broadcastLog('OLM', `[System] Ollama API 연결 시도 중...\n서버 주소: http://127.0.0.1:11434/api/chat\n모델: ${targetModel}\n`)
 
         const reqOptions = {
           hostname: '127.0.0.1',
@@ -934,7 +976,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         let resolved = false
         const req = http.request(reqOptions, (res: any) => {
           let buffer = ''
-          logToRenderer(`[System] Ollama 연결 성공! 응답 수신 대기 중 (Status: ${res.statusCode})\n`)
+          broadcastLog('OLM', `[System] Ollama 연결 성공! 응답 수신 대기 중 (Status: ${res.statusCode})\n`)
           
           res.on('data', (chunk: Buffer) => {
             const chunkText = chunk.toString()
@@ -959,11 +1001,11 @@ ipcMain.handle('llm:generate', async (event, payload: {
               resolved = true
               ipcMain.off(`llm:abort:${sessionId}`, abortListener)
               tokenSender.flush()
-              logToRenderer(`[System] Ollama 스트리밍 완료 (수신 글자수: ${buffer.length})\n`)
+              broadcastLog('OLM', `[System] Ollama 스트리밍 완료 (수신 글자수: ${buffer.length})\n`)
               if (!event.sender.isDestroyed()) {
                 event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
               }
-              resolve({ success: true, content: buffer, response: buffer })
+              resolve({ success: true, response: buffer } as any)
             }
           })
         })
@@ -973,7 +1015,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
             resolved = true
             ipcMain.off(`llm:abort:${sessionId}`, abortListener)
             const errorMsg = `Ollama 서버 연결에 실패했습니다. (http://127.0.0.1:11434)\nOllama가 켜져 있는지 확인해주세요. 에러: ${err.message}`
-            logToRenderer(`\n[Fatal Error] Ollama 연결 실패: ${err.message}\n`)
+            broadcastLog('OLM', `\n[Fatal Error] Ollama 연결 실패: ${err.message}\n`)
             if (!event.sender.isDestroyed()) {
               event.sender.send(`llm:done:${sessionId}`, { success: false, error: errorMsg })
             }
@@ -986,7 +1028,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           req.destroy()
           if (!resolved) {
             resolved = true
-            logToRenderer(`[System] Ollama 요청이 사용자에 의해 중단되었습니다.\n`)
+            broadcastLog('OLM', `[System] Ollama 요청이 사용자에 의해 중단되었습니다.\n`)
             if (!event.sender.isDestroyed()) {
               event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
             }
@@ -999,7 +1041,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         req.end()
 
       } catch (err: any) {
-        logToRenderer(`[Fatal Error] Ollama 처리 예외 발생: ${err.message}\n`)
+        broadcastLog('OLM', `[Fatal Error] Ollama 처리 예외 발생: ${err.message}\n`)
         resolve({ success: false, error: err.message })
       }
     })
@@ -1301,7 +1343,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
               if (!event.sender.isDestroyed()) {
                 event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
               }
-              resolve({ success: true, content: buffer, response: buffer })
+              resolve({ success: true, response: buffer } as any)
             }
           })
         })
@@ -1416,9 +1458,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         rawBuffer += text
 
         // [실시간 콘솔 로그 스트림] 렌더러로 원시 터미널 아웃풋 전송 (전체 다 보여줌)
-        if (!event.sender.isDestroyed()) {
-          event.sender.send('llm:log', { text })
-        }
+        broadcastLog('LMA', text)
 
         // 만약 이미 성능 지표가 감지되었다면 더 이상 채팅방 토큰을 보내지 않음
         if (rawBuffer.includes('[ Prompt:')) {
@@ -1455,9 +1495,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
       proc.stderr.on('data', (data: Buffer) => {
         const text = stderrDecoder.write(data)
         // [실시간 콘솔 로그 스트림] llama.cpp의 표준 에러 로그 전송
-        if (!event.sender.isDestroyed()) {
-          event.sender.send('llm:log', { text })
-        }
+        broadcastLog('LMA', text)
       })
 
       proc.on('close', (code) => {
@@ -1510,8 +1548,8 @@ ipcMain.on('llm:abort', () => {
 
 ipcMain.handle('llm:getGpuName', async () => {
   try {
-    const info = await app.getGPUInfo('basic')
-    const devices = info.gpuDevice || []
+    const info: any = await app.getGPUInfo('basic')
+    const devices = info?.gpuDevice || []
     const activeDevice = devices.find((d: any) => d.active) || devices[0]
     if (activeDevice && activeDevice.deviceString) {
       return activeDevice.deviceString
@@ -1534,7 +1572,40 @@ ipcMain.handle('llm:getGpuName', async () => {
 })
 
 // 사용 가능한 LLM 및 코딩 모델 목록 조회 (c:\ameva\models\llm 혹은 code 경로 탐색)
-ipcMain.handle('llm:listModels', async (event, type?: 'llm' | 'code') => {
+ipcMain.handle('llm:listModels', async (_event, type?: 'llm' | 'code' | 'ollama') => {
+  if (type === 'ollama') {
+    return new Promise((resolve) => {
+      const http = require('http')
+      const req = http.request({
+        hostname: '127.0.0.1',
+        port: 11434,
+        path: '/api/tags',
+        method: 'GET',
+        timeout: 2000
+      }, (res: any) => {
+        let rawData = ''
+        res.on('data', (chunk: any) => { rawData += chunk })
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(rawData)
+            const models = (parsed.models || []).map((m: any) => ({
+              name: m.name,
+              filename: m.model,
+              path: m.name, // Ollama는 모델 이름을 그대로 path로 씁니다.
+              size: m.size || 0
+            }))
+            resolve(models)
+          } catch (e) {
+            resolve([])
+          }
+        })
+      })
+      req.on('error', () => { resolve([]) })
+      req.on('timeout', () => { req.destroy(); resolve([]) })
+      req.end()
+    })
+  }
+
   const llmDir = type === 'code' ? 'C:\\ameva\\models\\code' : 'C:\\ameva\\models\\llm'
   try {
     const { readdir } = await import('fs/promises')
@@ -1560,7 +1631,7 @@ ipcMain.handle('llm:listModels', async (event, type?: 'llm' | 'code') => {
 })
 
 // 외부에서 다운로드한 모델 파일 복사 가져오기
-ipcMain.handle('llm:importModel', async (event, sourcePath: string, type?: 'llm' | 'code') => {
+ipcMain.handle('llm:importModel', async (_event, sourcePath: string, type?: 'llm' | 'code') => {
   const llmDir = type === 'code' ? 'C:\\ameva\\models\\code' : 'C:\\ameva\\models\\llm'
   try {
     const { copyFile, mkdir } = await import('fs/promises')
@@ -2191,6 +2262,7 @@ ipcMain.handle('action:fetchUrlMetadata', async (_event, targetUrl: string) => {
     const http = require('http')
     const https = require('https')
     const { URL } = require('url')
+    let isResolved = false
 
     const fetchHtml = (urlStr: string, redirectsRemaining = 5) => {
       if (redirectsRemaining < 0) {
