@@ -27,6 +27,76 @@ import type {
   ExportProgressEvent
 } from './ipcTypes'
 
+/** Electron 네이티브 다이얼로그 옵션 타입 */
+export interface MessageBoxOptions {
+  type?: 'none' | 'info' | 'error' | 'question' | 'warning'
+  buttons?: string[]
+  defaultId?: number
+  title?: string
+  message: string
+  detail?: string
+  checkboxLabel?: string
+  checkboxChecked?: boolean
+  [key: string]: unknown
+}
+
+/** MCP 도메인 결과 타입 */
+export interface MCPSpawnResult {
+  success: boolean
+  error?: string
+  pid?: number
+  [key: string]: unknown
+}
+
+export interface MCPCallResponse {
+  result?: {
+    tools?: Record<string, unknown>[]
+    content?: unknown[]
+    [key: string]: unknown
+  }
+  error?: {
+    code?: number
+    message?: string
+    [key: string]: unknown
+  }
+  [key: string]: unknown
+}
+
+export interface MCPKillResult {
+  success: boolean
+  error?: string
+  [key: string]: unknown
+}
+
+export interface WebSearchResult {
+  success?: boolean
+  result?: string
+  error?: string
+  [key: string]: unknown
+}
+
+export interface CollabServerStatus {
+  running: boolean
+  port?: number
+  ip?: string
+  token?: string
+  error?: string
+  [key: string]: unknown
+}
+
+export interface CollabServerStartResult {
+  running?: boolean
+  port?: number
+  error?: string
+  [key: string]: unknown
+}
+
+export interface CollabServerStopResult {
+  running?: boolean
+  error?: string
+  [key: string]: unknown
+}
+
 /** window.electronAPI 타입 선언 (기존 preload.ts 정의와 호환) */
 declare global {
   interface Window {
@@ -51,7 +121,7 @@ declare global {
       saveFile: (content: string, filePath?: string | null) => Promise<{ filePath?: string; success: boolean }>
       saveFileAs: (content: string, filePath?: string | null) => Promise<{ filePath?: string; success: boolean }>
       selectLocalFile: (filters?: Array<{ name: string; extensions: string[] }>) => Promise<{ filePath: string; base64: string } | null>
-      onFileOpenArgv: (callback: (event: any, file: FileOpenEventData) => void) => () => void
+      onFileOpenArgv: (callback: (event: unknown, file: FileOpenEventData) => void) => () => void
       fetchUrlMetadata: (url: string) => Promise<UrlMetadata>
       openExternalLink: (url: string) => void
       // 앱
@@ -62,7 +132,7 @@ declare global {
       setZoomLevel?: (level: number) => void
       getZoomLevel?: () => Promise<number>
       // 시스템 다이얼로그
-      showMessageBox?: (options: any) => Promise<{ response: number }>
+      showMessageBox?: (options: MessageBoxOptions) => Promise<{ response: number }>
       // OS 키체인 (API Key 암호화 저장)
       keychainGet?: (key: string) => Promise<string | null>
       keychainSet?: (key: string, value: string) => Promise<{ success: boolean; error?: string }>
@@ -72,28 +142,28 @@ declare global {
       llmRestart?: () => Promise<{ success: boolean; error?: string }>
       // 모델 다운로드 (허브 통합)
       llmDownloadModel?: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>
-      onLLMDownloadProgress?: (callback: (data: any) => void) => () => void
+      onLLMDownloadProgress?: (callback: (data: ModelDownloadProgressEvent) => void) => () => void
       // 플랜/구독
       planGetStatus?: () => Promise<boolean>
       planSetStatus?: (isPro: boolean) => Promise<{ success: boolean; isPro?: boolean; error?: string }>
       isFreeMode?: () => Promise<boolean>
       // MCP
-      mcpSpawn?: (serverId: string, command: string, args: string[]) => Promise<any>
-      mcpCall?: (serverId: string, request: any) => Promise<any>
-      mcpKill?: (serverId: string) => Promise<any>
+      mcpSpawn?: (serverId: string, command: string, args: string[]) => Promise<MCPSpawnResult | null>
+      mcpCall?: (serverId: string, request: Record<string, unknown>) => Promise<MCPCallResponse | null>
+      mcpKill?: (serverId: string) => Promise<MCPKillResult | null>
       mcpGetToken?: () => Promise<string | null>
       // 내보내기
       printToPDF?: (htmlContent: string) => Promise<string | null>
       newWindow?: () => void
       closeApp?: () => void
       saveExportedFile?: (data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>
-      exportConvert?: (payload: { blocks: any[]; format: string; defaultName: string }) => Promise<{ success: boolean; savedPath?: string; error?: string }>
+      exportConvert?: (payload: { blocks: Record<string, unknown>[]; format: string; defaultName: string }) => Promise<{ success: boolean; savedPath?: string; error?: string }>
       runPythonCode?: (code: string) => Promise<{ success: boolean; result?: string; error?: string }>
-      webSearch?: (query: string) => Promise<any>
+      webSearch?: (query: string) => Promise<WebSearchResult | null>
       // 협업 서버
-      onServerStatus?: (callback: (status: any) => void) => () => void
-      startCollaborationServer?: (port: number) => Promise<any>
-      stopCollaborationServer?: () => Promise<any>
+      onServerStatus?: (callback: (status: CollabServerStatus) => void) => () => void
+      startCollaborationServer?: (port: number) => Promise<CollabServerStartResult | null>
+      stopCollaborationServer?: () => Promise<CollabServerStopResult | null>
     }
   }
 }
@@ -317,7 +387,7 @@ export async function selectLocalFile(
  * OS 레벨 파일 열기 인자(argv) 이벤트를 구독한다.
  */
 export function onFileOpenArgv(
-  callback: (event: any, file: FileOpenEventData) => void
+  callback: (event: unknown, file: FileOpenEventData) => void
 ): () => void {
   if (!window.electronAPI) return () => {}
   return window.electronAPI.onFileOpenArgv(callback)
@@ -376,7 +446,7 @@ export async function llmDownloadModel(payload: { url: string; filename: string;
  * onLLMDownloadProgress
  * LLM 모델 다운로드 진행 상태 변경 이벤트를 구독한다.
  */
-export function onLLMDownloadProgress(callback: (data: any) => void): () => void {
+export function onLLMDownloadProgress(callback: (data: ModelDownloadProgressEvent) => void): () => void {
   if (!window.electronAPI?.onLLMDownloadProgress) return () => {}
   return window.electronAPI.onLLMDownloadProgress(callback)
 }
@@ -433,7 +503,7 @@ export function setZoomFactor(factor: number): void {
 }
 
 /** showMessageBox */
-export async function showMessageBox(options: any): Promise<{ response: number }> {
+export async function showMessageBox(options: MessageBoxOptions): Promise<{ response: number }> {
   if (!window.electronAPI?.showMessageBox) return { response: 0 }
   return window.electronAPI.showMessageBox(options)
 }
@@ -463,19 +533,19 @@ export async function isFreeMode(): Promise<boolean> {
 }
 
 /** mcpSpawn */
-export async function mcpSpawn(serverId: string, command: string, args: string[]): Promise<any> {
+export async function mcpSpawn(serverId: string, command: string, args: string[]): Promise<MCPSpawnResult | null> {
   if (!window.electronAPI?.mcpSpawn) return null
   return window.electronAPI.mcpSpawn(serverId, command, args)
 }
 
 /** mcpCall */
-export async function mcpCall(serverId: string, request: any): Promise<any> {
+export async function mcpCall(serverId: string, request: Record<string, unknown>): Promise<MCPCallResponse | null> {
   if (!window.electronAPI?.mcpCall) return null
   return window.electronAPI.mcpCall(serverId, request)
 }
 
 /** mcpKill */
-export async function mcpKill(serverId: string): Promise<any> {
+export async function mcpKill(serverId: string): Promise<MCPKillResult | null> {
   if (!window.electronAPI?.mcpKill) return null
   return window.electronAPI.mcpKill(serverId)
 }
@@ -511,7 +581,7 @@ export async function saveExportedFile(data: string, isBase64: boolean, defaultN
 }
 
 /** exportConvert */
-export async function exportConvert(payload: { blocks: any[]; format: string; defaultName: string }): Promise<{ success: boolean; savedPath?: string; error?: string }> {
+export async function exportConvert(payload: { blocks: Record<string, unknown>[]; format: string; defaultName: string }): Promise<{ success: boolean; savedPath?: string; error?: string }> {
   if (!window.electronAPI?.exportConvert) return { success: false, error: 'API not available' }
   return window.electronAPI.exportConvert(payload)
 }
@@ -523,25 +593,25 @@ export async function runPythonCode(code: string): Promise<{ success: boolean; r
 }
 
 /** webSearch */
-export async function webSearch(query: string): Promise<any> {
+export async function webSearch(query: string): Promise<WebSearchResult | null> {
   if (!window.electronAPI?.webSearch) return null
   return window.electronAPI.webSearch(query)
 }
 
 /** onServerStatus */
-export function onServerStatus(callback: (status: any) => void): () => void {
+export function onServerStatus(callback: (status: CollabServerStatus) => void): () => void {
   if (!window.electronAPI?.onServerStatus) return () => {}
   return window.electronAPI.onServerStatus(callback)
 }
 
 /** startCollaborationServer */
-export async function startCollaborationServer(port: number): Promise<any> {
+export async function startCollaborationServer(port: number): Promise<CollabServerStartResult | null> {
   if (!window.electronAPI?.startCollaborationServer) return null
   return window.electronAPI.startCollaborationServer(port)
 }
 
 /** stopCollaborationServer */
-export async function stopCollaborationServer(): Promise<any> {
+export async function stopCollaborationServer(): Promise<CollabServerStopResult | null> {
   if (!window.electronAPI?.stopCollaborationServer) return null
   return window.electronAPI.stopCollaborationServer()
 }

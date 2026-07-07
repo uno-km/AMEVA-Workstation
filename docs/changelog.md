@@ -1,5 +1,14 @@
 # AMEVA OS Changelog
 
+## 2026-07-07 (Phase 1-A: electronApiAdapter.ts Type Hardening)
+
+### 🚀 Major Architectural Changes
+- **electronApiAdapter.ts Type Hardening**: Complete elimination of all 24 `any` type escape hatches across both global `Window.electronAPI` interface declarations and exported function implementations. Introduced concrete interfaces (`MessageBoxOptions`, `MCPSpawnResult`, `MCPCallResponse`, `MCPKillResult`, `WebSearchResult`, `CollabServerStatus`, `CollabServerStartResult`, `CollabServerStopResult`) and enforced JSON-RPC 2.0 object typing (`Record<string, unknown>`). Achieved 100% strict type safety while preserving zero variable renames, zero function renames, zero signature breaks, and zero runtime behavior changes.
+
+### 📁 Files Modified / Added
+- `[MODIFY]` `src/renderer/services/ipc/electronApiAdapter.ts` - Removed all 24 occurrences of `any` across 3 structured batches.
+- `[NEW]` `docs/audit/type-migration-ledger.md` - Created exhaustive Type Migration Ledger tracking all 11 items and verifying zero regression via `npx tsc --noEmit`.
+
 ## 2026-07-07 (Phase 5: Exhaustive God File & CSS Architecture Decomposition)
 
 ### 🚀 Major Architectural Changes

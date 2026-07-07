@@ -1,12 +1,12 @@
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 const JSZip = require('jszip')
-import { escapeHtml, getPlainTextFromNormalized, inlineToText } from './exportersHelper.js'
+import { escapeHtml, getPlainTextFromNormalized, inlineToText, type ExporterBlock, type ExporterTableRow, type ExporterInlineContent } from './exportersHelper.js'
 
 // ══════════════════════════════════════════════════════════════
 // 5. HWPX 내보내기 (백엔드 분산 변환 노드 버전)
 // ══════════════════════════════════════════════════════════════
-export async function exportToHWPX(blocks: any[]): Promise<Buffer> {
+export async function exportToHWPX(blocks: ExporterBlock[]): Promise<Buffer> {
   const zip = new JSZip()
   zip.file('mimetype', 'application/hwp+zip', { compression: 'STORE' })
   zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -25,7 +25,7 @@ export async function exportToHWPX(blocks: any[]): Promise<Buffer> {
   let section0 = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <hs:sec xmlns:hs="http://schemas.hancom.co.kr/hwpml/2011/section" version="1.0">`
 
-  const toHWPML = (block: any): string => {
+  const toHWPML = (block: ExporterBlock): string => {
     const text = escapeHtml(getPlainTextFromNormalized(block))
     let charId = '0'
     if (block.type === 'heading') {
@@ -40,11 +40,11 @@ export async function exportToHWPX(blocks: any[]): Promise<Buffer> {
       if (rows.length === 0) return ''
       const colCnt = (rows[0]?.cells?.length) || 1
       let tbl = `<hp:tbl xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" borderType="1" colCnt="${colCnt}" rowCnt="${rows.length}">`
-      rows.forEach((row: any) => {
+      rows.forEach((row: ExporterTableRow) => {
         tbl += '<hp:tr>'
-        const cells = Array.isArray(row.cells) ? row.cells : []
-        cells.forEach((cell: any) => {
-          const ct = escapeHtml(Array.isArray(cell) ? inlineToText(cell) : '')
+        const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
+        cells.forEach((cell: ExporterInlineContent[] | unknown) => {
+          const ct = escapeHtml(Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : '')
           tbl += `<hp:tc><hp:p charPrRef="0"><hp:run><hp:t>${ct}</hp:t></hp:run></hp:p></hp:tc>`
         })
         tbl += '</hp:tr>'
@@ -58,7 +58,7 @@ export async function exportToHWPX(blocks: any[]): Promise<Buffer> {
       `<hp:p xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" charPrRef="${charId}"><hp:run><hp:t>${escapeHtml(line) || ' '}</hp:t></hp:run></hp:p>`
     ).join('')
 
-    if (Array.isArray(block.children)) block.children.forEach((c: unknown) => { result += toHWPML(c) })
+    if (Array.isArray(block.children)) block.children.forEach((c: ExporterBlock) => { result += toHWPML(c) })
     return result
   }
 

@@ -1,9 +1,9 @@
-import { escapeHtml, getPlainTextFromNormalized, inlineToText, inlineToHTML } from './exportersHelper.js'
+import { escapeHtml, getPlainTextFromNormalized, inlineToText, inlineToHTML, type ExporterBlock, type ExporterTableRow, type ExporterInlineContent } from './exportersHelper.js'
 
 // ══════════════════════════════════════════════════════════════
 // 1. HTML 내보내기 (백엔드 분산 변환 노드 버전)
 // ══════════════════════════════════════════════════════════════
-export function blocksToHTML(blocks: any[]): string {
+export function blocksToHTML(blocks: ExporterBlock[]): string {
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,7 +36,7 @@ export function blocksToHTML(blocks: any[]): string {
     if (listType) { body += `</${listType}>\n`; listType = null }
   }
 
-  const renderBlock = (block: any, depth = 0): string => {
+  const renderBlock = (block: ExporterBlock, depth = 0): string => {
     const indent = depth > 0 ? ` style="margin-left:${depth * 20}px"` : ''
     const contentHtml = inlineToHTML(block.content || [])
 
@@ -49,11 +49,11 @@ export function blocksToHTML(blocks: any[]): string {
         return `<p>${contentHtml || '&nbsp;'}</p>\n`
       case 'bulletListItem':
         return `<li${indent}>${contentHtml}${
-          block.children?.length ? `<ul>${block.children.map((c: any) => renderBlock(c, depth + 1)).join('')}</ul>` : ''
+          block.children?.length ? `<ul>${block.children.map((c: ExporterBlock) => renderBlock(c, depth + 1)).join('')}</ul>` : ''
         }</li>\n`
       case 'numberedListItem':
         return `<li${indent}>${contentHtml}${
-          block.children?.length ? `<ol>${block.children.map((c: any) => renderBlock(c, depth + 1)).join('')}</ol>` : ''
+          block.children?.length ? `<ol>${block.children.map((c: ExporterBlock) => renderBlock(c, depth + 1)).join('')}</ol>` : ''
         }</li>\n`
       case 'codeBlock': {
         const lang = block.props?.language || ''
@@ -73,11 +73,11 @@ export function blocksToHTML(blocks: any[]): string {
         const rows = block.tableRows ?? []
         if (rows.length === 0) return ''
         let html = '<table>\n<tbody>\n'
-        rows.forEach((row: any, ri: number) => {
+        rows.forEach((row: ExporterTableRow, ri: number) => {
           html += '<tr>\n'
-          const cells = Array.isArray(row.cells) ? row.cells : []
-          cells.forEach((cell: any) => {
-            const cellText = Array.isArray(cell) ? inlineToText(cell) : ''
+          const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
+          cells.forEach((cell: ExporterInlineContent[] | unknown) => {
+            const cellText = Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''
             const tag = ri === 0 ? 'th' : 'td'
             html += `<${tag}>${escapeHtml(cellText)}</${tag}>\n`
           })
@@ -128,8 +128,8 @@ ${body}
 // ══════════════════════════════════════════════════════════════
 // 6. XML 내보내기 (백엔드 분산 변환 노드 버전)
 // ══════════════════════════════════════════════════════════════
-export function exportToXML(blocks: any[]): string {
-  const renderXML = (block: any, indent = '  '): string => {
+export function exportToXML(blocks: ExporterBlock[]): string {
+  const renderXML = (block: ExporterBlock, indent = '  '): string => {
     let xml = `${indent}<block id="${block.id}" type="${block.type}">\n`
 
     if (Object.keys(block.props || {}).length > 0) {
@@ -143,11 +143,11 @@ export function exportToXML(blocks: any[]): string {
     if (block.type === 'table') {
       const rows = block.tableRows ?? []
       xml += `${indent}  <table>\n`
-      rows.forEach((row: any) => {
+      rows.forEach((row: ExporterTableRow) => {
         xml += `${indent}    <row>\n`
-        const cells = Array.isArray(row.cells) ? row.cells : []
-        cells.forEach((cell: any) => {
-          xml += `${indent}      <cell><![CDATA[${Array.isArray(cell) ? inlineToText(cell) : ''}]]></cell>\n`
+        const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
+        cells.forEach((cell: ExporterInlineContent[] | unknown) => {
+          xml += `${indent}      <cell><![CDATA[${Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''}]]></cell>\n`
         })
         xml += `${indent}    </row>\n`
       })
@@ -158,7 +158,7 @@ export function exportToXML(blocks: any[]): string {
 
     if (Array.isArray(block.children) && block.children.length > 0) {
       xml += `${indent}  <children>\n`
-      block.children.forEach((c: unknown) => { xml += renderXML(c, indent + '    ') })
+      block.children.forEach((c: ExporterBlock) => { xml += renderXML(c, indent + '    ') })
       xml += `${indent}  </children>\n`
     }
 

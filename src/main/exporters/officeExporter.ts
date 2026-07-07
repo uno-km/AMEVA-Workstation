@@ -4,7 +4,7 @@ const require = createRequire(import.meta.url)
 const docx = require('docx')
 const ExcelJS = require('exceljs')
 const pptxgen = require('pptxgenjs')
-import { getPlainTextFromNormalized, inlineToText } from './exportersHelper.js'
+import { getPlainTextFromNormalized, inlineToText, type ExporterBlock, type ExporterInlineContent, type ExporterTableRow } from './exportersHelper.js'
 
 const {
   Document, Packer, Paragraph, TextRun, Table: DocxTable, TableRow, TableCell,
@@ -15,12 +15,12 @@ const {
 // ══════════════════════════════════════════════════════════════
 // 2. Word (DOCX) 내보내기 (백엔드 분산 변환 노드 버전)
 // ══════════════════════════════════════════════════════════════
-export async function exportToWord(blocks: any[]): Promise<Buffer> {
-  const docChildren: any[] = []
+export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
+  const docChildren: unknown[] = []
   const headingSizes: Record<number, number> = { 1: 44, 2: 36, 3: 28 }
   const headingColors: Record<number, string> = { 1: '111827', 2: '1f2937', 3: '374151' }
 
-  const inlineToRuns = (inline: any[]): any[] =>
+  const inlineToRuns = (inline: ExporterInlineContent[]): unknown[] =>
     inline.map(c => new TextRun({
       text: c.text,
       bold: c.styles?.bold,
@@ -32,7 +32,7 @@ export async function exportToWord(blocks: any[]): Promise<Buffer> {
       color: c.styles?.textColor?.replace('#', '') || undefined,
     }))
 
-  const addBlock = (block: any, depth = 0) => {
+  const addBlock = (block: ExporterBlock, depth = 0) => {
     const runs = inlineToRuns(block.content || [])
     const plainText = getPlainTextFromNormalized(block)
 
@@ -41,7 +41,7 @@ export async function exportToWord(blocks: any[]): Promise<Buffer> {
         const level = Math.min(3, Math.max(1, Number(block.props?.level) || 1))
         const hLevel = level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3
         const hRuns = (block.content || []).length > 0
-          ? block.content.map((c: any) => new TextRun({ text: c.text, bold: true, font: 'Calibri', size: headingSizes[level] || 28, color: headingColors[level] || '374151' }))
+          ? block.content.map((c: ExporterInlineContent) => new TextRun({ text: c.text, bold: true, font: 'Calibri', size: headingSizes[level] || 28, color: headingColors[level] || '374151' }))
           : [new TextRun({ text: plainText, bold: true, font: 'Calibri', size: headingSizes[level] || 28 })]
         docChildren.push(new Paragraph({
           children: hRuns,
@@ -99,10 +99,10 @@ export async function exportToWord(blocks: any[]): Promise<Buffer> {
         const rows = block.tableRows ?? []
         if (rows.length > 0) {
           try {
-            const docxRows = rows.map((row: any, ri: number) => {
-              const cells = Array.isArray(row.cells) ? row.cells : []
-              const docxCells = cells.map((cell: any) => {
-                const cellText = Array.isArray(cell) ? inlineToText(cell) : ''
+            const docxRows = rows.map((row: ExporterTableRow, ri: number) => {
+              const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
+              const docxCells = cells.map((cell: ExporterInlineContent[] | unknown) => {
+                const cellText = Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''
                 return new TableCell({
                   children: [new Paragraph({
                     children: [new TextRun({ text: cellText, bold: ri === 0, font: 'Calibri', size: 22, color: ri === 0 ? '374151' : '4B5563' })],
@@ -147,7 +147,7 @@ export async function exportToWord(blocks: any[]): Promise<Buffer> {
     }
 
     if (Array.isArray(block.children)) {
-      block.children.forEach((child: any) => addBlock(child, depth + 1))
+      block.children.forEach((child: ExporterBlock) => addBlock(child, depth + 1))
     }
   }
 
@@ -176,7 +176,7 @@ export async function exportToWord(blocks: any[]): Promise<Buffer> {
 // ══════════════════════════════════════════════════════════════
 // 3. Excel (XLSX) 내보내기 — 구조화 멀티시트 버전
 // ══════════════════════════════════════════════════════════════
-export async function exportToExcel(blocks: any[], sourceFileName?: string): Promise<Buffer> {
+export async function exportToExcel(blocks: ExporterBlock[], sourceFileName?: string): Promise<Buffer> {
   const wb = new ExcelJS.Workbook()
   wb.creator = 'AMEVA Workstation'
   wb.created = new Date()
@@ -191,11 +191,11 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
   interface FlatBlock { id: string; type: string; level: number; text: string; depth: number }
   const flatBlocks: FlatBlock[] = []
 
-  function flattenForOutline(block: any, depth = 0): void {
+  function flattenForOutline(block: ExporterBlock, depth = 0): void {
     blockCount++
     const text = getPlainTextFromNormalized(block)
     const level = block.type === 'heading' ? (Number(block.props?.level) || 1) : 0
-    flatBlocks.push({ id: block.id || `b${blockCount}`, type: block.type, level, text, depth })
+    flatBlocks.push({ id: block.id || `b${blockCount}`, type: block.type || '', level, text, depth })
 
     if (block.type === 'image' && block.props?.url) {
       assetsList.push({ blockId: block.id || `b${blockCount}`, type: 'image', url: block.props.url, caption: block.props.caption })
@@ -209,7 +209,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
       headingPathFlat[l - 1] = text
       headingPathFlat = headingPathFlat.slice(0, l)
     }
-    if (Array.isArray(block.children)) block.children.forEach((c: any) => flattenForOutline(c, depth + 1))
+    if (Array.isArray(block.children)) block.children.forEach((c: ExporterBlock) => flattenForOutline(c, depth + 1))
   }
   blocks.forEach(b => flattenForOutline(b))
 
@@ -222,7 +222,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
   overviewSheet.mergeCells('A1:B1')
   overviewSheet.addRow([])
 
-  const overviewData: [string, any][] = [
+  const overviewData: [string, string | number][] = [
     ['\ud30c\uc77c\uba85', sourceFileName || '(\uc5c6\uc74c)'],
     ['\ubcc0\ud658 \uc2dc\uac01', exportedAt],
     ['\uc804\uccb4 \ube14\ub85d \uc218', blockCount],
@@ -283,7 +283,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
   let tableCountMain = 0
   let headingPathMain: string[] = []
 
-  const writeBlockToExcel = (block: any, depth = 0) => {
+  const writeBlockToExcel = (block: ExporterBlock, depth = 0) => {
     const text = getPlainTextFromNormalized(block)
     const indentCol = depth > 0 ? ' '.repeat(depth * 3) : ''
 
@@ -334,11 +334,11 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
           mainSheet.addRow(['', `[\ud45c ${tableCountMain}]`])
           mainSheet.getRow(excelRowIdx + 1).getCell(2).font = { name: '\ub9d1\uc740 \uace0\ub515', size: 9, italic: true, color: { argb: 'FF9CA3AF' } }
           excelRowIdx++
-          rows.forEach((tblRow: any, ri: number) => {
-            const cells = Array.isArray(tblRow.cells) ? tblRow.cells : []
-            const rowData = ['', ...cells.map((cell: any) => Array.isArray(cell) ? inlineToText(cell) : '')]
+          rows.forEach((tblRow: ExporterTableRow, ri: number) => {
+            const cells = (Array.isArray(tblRow.cells) ? tblRow.cells : []) as (ExporterInlineContent[] | unknown)[]
+            const rowData = ['', ...cells.map((cell: ExporterInlineContent[] | unknown) => Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : '')]
             const addedRow = mainSheet.addRow(rowData)
-            cells.forEach((_: any, ci: number) => {
+            cells.forEach((_: ExporterInlineContent[] | unknown, ci: number) => {
               const cell = addedRow.getCell(ci + 2)
               cell.font = { name: '\ub9d1\uc740 \uace0\ub515', size: 9.5, bold: ri === 0 }
               cell.alignment = { wrapText: true, vertical: 'middle', horizontal: 'center' }
@@ -354,19 +354,19 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
           const ws = wb.addWorksheet(sheetName)
           const path = headingPathMain.filter(Boolean)
           if (path.length > 0) { ws.addRow([`\uc704\uce58: ${path.join(' > ')}`]); ws.addRow([]) }
-          rows.forEach((tblRow: any, ri: number) => {
-            const cells = Array.isArray(tblRow.cells) ? tblRow.cells : []
-            const rowData = cells.map((cell: any) => Array.isArray(cell) ? inlineToText(cell) : '')
+          rows.forEach((tblRow: ExporterTableRow, ri: number) => {
+            const cells = (Array.isArray(tblRow.cells) ? tblRow.cells : []) as (ExporterInlineContent[] | unknown)[]
+            const rowData = cells.map((cell: ExporterInlineContent[] | unknown) => Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : '')
             const addedRow = ws.addRow(rowData)
-            addedRow.eachCell((cell: any) => {
+            addedRow.eachCell((cell: import('exceljs').Cell) => {
               cell.font = { name: '\ub9d1\uc740 \uace0\ub515', size: 10, bold: ri === 0 }
               cell.border = { top: { style: 'thin', color: { argb: 'FFE5E7EB' } }, left: { style: 'thin', color: { argb: 'FFE5E7EB' } }, bottom: { style: 'thin', color: { argb: 'FFE5E7EB' } }, right: { style: 'thin', color: { argb: 'FFE5E7EB' } } }
               if (ri === 0) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } }
             })
           })
-          ws.columns.forEach((col: any) => {
+          ws.columns.forEach((col: import('exceljs').Column) => {
             let maxLen = 10
-            col.eachCell({ includeEmpty: false }, (cell: any) => {
+            col.eachCell({ includeEmpty: false }, (cell: import('exceljs').Cell) => {
               const val = cell.value ? String(cell.value) : ''
               if (val.length > maxLen) maxLen = val.length
             })
@@ -393,7 +393,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
       }
       default: break
     }
-    if (Array.isArray(block.children)) block.children.forEach((c: any) => writeBlockToExcel(c, depth + 1))
+    if (Array.isArray(block.children)) block.children.forEach((c: ExporterBlock) => writeBlockToExcel(c, depth + 1))
   }
   blocks.forEach(b => writeBlockToExcel(b))
   if (excelRowIdx <= 3) mainSheet.addRow(['', '(\uc774 \ubb38\uc11c\uc5d0\ub294 \ubcf8\ubb38 \ud14d\uc2a4\ud2b8 \ub610\ub294 \ud45c \ub370\uc774\ud130\uac00 \uc5c6\uc2b5\ub2c8\ub2e4.)'])
@@ -405,7 +405,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
     assetsSheet.getColumn('C').width = 70
     assetsSheet.getColumn('D').width = 30
     const asHdr = assetsSheet.addRow(['#', 'Type', 'URL / Path', 'Caption'])
-    asHdr.eachCell((cell: any) => {
+    asHdr.eachCell((cell: import('exceljs').Cell) => {
       cell.font = { name: '\ub9d1\uc740 \uace0\ub515', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF374151' } }
     })
@@ -424,7 +424,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
     codeSheet.getColumn('C').width = 30
     codeSheet.getColumn('D').width = 80
     const codeHdr = codeSheet.addRow(['#', 'Language', 'Section', 'Content'])
-    codeHdr.eachCell((cell: any) => {
+    codeHdr.eachCell((cell: import('exceljs').Cell) => {
       cell.font = { name: '\ub9d1\uc740 \uace0\ub515', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0F172A' } }
     })
@@ -442,7 +442,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
   warnSheet.getColumn('A').width = 6
   warnSheet.getColumn('B').width = 80
   const warnHdr = warnSheet.addRow(['#', 'Warning Message'])
-  warnHdr.eachCell((cell: any) => {
+  warnHdr.eachCell((cell: import('exceljs').Cell) => {
     cell.font = { name: '\ub9d1\uc740 \uace0\ub515', size: 10, bold: true }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }
   })
@@ -462,7 +462,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
 // ══════════════════════════════════════════════════════════════
 // 4. PPTX 내보내기 (백엔드 분산 변환 노드 버전)
 // ══════════════════════════════════════════════════════════════
-export async function exportToPPTX(blocks: any[]): Promise<Buffer> {
+export async function exportToPPTX(blocks: ExporterBlock[]): Promise<Buffer> {
   const pptx = new pptxgen()
   pptx.layout = 'LAYOUT_16x9'
   pptx.author = 'AMEVA'
@@ -471,7 +471,7 @@ export async function exportToPPTX(blocks: any[]): Promise<Buffer> {
     type: 'bullet' | 'image' | 'table' | 'code'
     text?: string
     url?: string
-    tableRows?: any[]
+    tableRows?: ExporterTableRow[]
   }
 
   interface SlideData {
@@ -482,7 +482,7 @@ export async function exportToPPTX(blocks: any[]): Promise<Buffer> {
   const slides: SlideData[] = []
   let currentSlide: SlideData = { title: 'Presentation', contents: [] }
 
-  const processBlock = (block: any) => {
+  const processBlock = (block: ExporterBlock) => {
     const text = getPlainTextFromNormalized(block)
 
     if (block.type === 'heading') {
@@ -569,10 +569,10 @@ export async function exportToPPTX(blocks: any[]): Promise<Buffer> {
         }
 
         const rawRows = tableItem.tableRows || []
-        const formattedTableData = rawRows.map((rowObj: any, ri: number) => {
-          const cells = Array.isArray(rowObj.cells) ? rowObj.cells : []
-          return cells.map((cell: import("exceljs").Cell) => {
-            const txt = Array.isArray(cell) ? inlineToText(cell) : ''
+        const formattedTableData = rawRows.map((rowObj: ExporterTableRow, ri: number) => {
+          const cells = (Array.isArray(rowObj.cells) ? rowObj.cells : []) as (ExporterInlineContent[] | unknown)[]
+          return cells.map((cell: ExporterInlineContent[] | unknown) => {
+            const txt = Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''
             return {
               text: txt,
               options: {

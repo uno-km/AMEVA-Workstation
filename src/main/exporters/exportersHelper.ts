@@ -2,6 +2,43 @@
 // 내보내기 공통 헬퍼
 // ─────────────────────────────────────────────────────────────
 
+export interface ExporterInlineStyle {
+  bold?: boolean
+  italic?: boolean
+  underline?: boolean
+  strike?: boolean
+  textColor?: string
+  [key: string]: unknown
+}
+
+export interface ExporterInlineContent {
+  type?: string
+  text?: string
+  styles?: ExporterInlineStyle
+  [key: string]: unknown
+}
+
+export interface ExporterTableRow {
+  cells?: ExporterInlineContent[][] | unknown[]
+  [key: string]: unknown
+}
+
+export interface ExporterBlock {
+  id?: string
+  type?: string
+  content?: ExporterInlineContent[]
+  children?: ExporterBlock[]
+  props?: {
+    level?: number | string
+    language?: string
+    url?: string
+    caption?: string
+    [key: string]: unknown
+  }
+  tableRows?: ExporterTableRow[]
+  [key: string]: unknown
+}
+
 export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -10,16 +47,16 @@ export function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
 }
 
-export function getPlainTextFromNormalized(block: any): string {
+export function getPlainTextFromNormalized(block: ExporterBlock): string {
   if (!block.content) return ''
-  return block.content.map((c: any) => c.text || '').join('')
+  return block.content.map((c: ExporterInlineContent) => c.text || '').join('')
 }
 
-export function inlineToText(inline: any[]): string {
+export function inlineToText(inline: ExporterInlineContent[]): string {
   return inline.map(c => c.text || '').join('')
 }
 
-export function inlineToHTML(inline: any[]): string {
+export function inlineToHTML(inline: ExporterInlineContent[]): string {
   return inline.map(c => {
     if (!c || !c.text) return ''
     let txt = escapeHtml(c.text)
