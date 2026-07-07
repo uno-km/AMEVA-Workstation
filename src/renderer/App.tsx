@@ -8,9 +8,9 @@ import { useGlobalShortcuts } from './hooks/app/useGlobalShortcuts'
 import { useAppFileOperations } from './hooks/app/useAppFileOperations'
 import { useAppAISuggestions } from './hooks/app/useAppAISuggestions'
 import * as ipc from './services/ipc/electronApiAdapter'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 import { useYoutubePiP } from './hooks/app/useYoutubePiP'
-import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { MarkdownEditor } from './components/MarkdownEditor'
 import { DiffModal } from './components/DiffModal'
@@ -31,19 +31,16 @@ import { useHistory } from './hooks/useHistory'
 import { useAI } from './hooks/useAI'
 import { useChat } from './hooks/useChat'
 import { usePanelResize } from './hooks/usePanelResize'
-import type { EditorMode, ExportFormat, DocumentSnapshot } from '../shared/types'
+import type { EditorMode, DocumentSnapshot } from '../shared/types'
 import { PanelLeft, Sparkles } from 'lucide-react'
 import { useAppExport } from './hooks/app/useAppExport'
-import JSZip from 'jszip'
-import ExcelJS from 'exceljs'
 import { FloatingChat } from './components/FloatingChat'
-import { packMarkdownToADC, unpackADCToMarkdown } from './utils/adcPackager'
 import { FindReplaceBar } from './components/FindReplaceBar'
 import { convertJupyterToCodeBlocks, normalizeMarkdown, cleanCodeBlocks, ensureBlockIds, cleanMarkdownCodeBlocks } from './utils/markdownUtils'
-import { matchHotkey } from './utils/appUtils'
 
 
 
+import { BlockNoteEditor } from "@blocknote/core"
 import { amevaSchema as schema, type AmevaEditor as AppEditor, type AmevaPartialBlock as AppPartialBlock } from './editor/amevaBlockSchema'
 
 
@@ -64,6 +61,16 @@ export default function App() {
   const [documentId] = useState('default-doc')
   const [username, setUsername] = useState(randomUsername)
   const [userColor, setUserColor] = useState(randomColor)
+
+  const {
+    filePath, setFilePath, currentContent, setCurrentContent, appendContent,
+    originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
+    fileOpenMode, setFileOpenMode, tabs, setTabs,
+    activeTabId, setActiveTabId, appendedFiles, setAppendedFiles,
+    selectedText, setSelectedText, activeBlockId, setActiveBlockId,
+    taggedBlocks, setTaggedBlocks,
+    selectedSnapshot, setSelectedSnapshot
+  } = useWorkspaceStore()
 
 
   const {
@@ -125,29 +132,21 @@ export default function App() {
     showPricingModal, setShowPricingModal, showModelHub, setShowModelHub,
     showAIPanel, setShowAIPanel, toggleAIPanel, activeRightTab, setActiveRightTab,
     showSidebar, setShowSidebar, showStatusBar, setShowStatusBar,
-    toastMessage, setToastMessage, showFindReplace, setShowFindReplace, toggleFindReplace,
-    findReplaceMode, setFindReplaceMode, isChatFloating, setIsChatFloating,
+    toastMessage, showFindReplace, setShowFindReplace,
+    findReplaceMode, isChatFloating, setIsChatFloating,
     hasChatUnread, setHasChatUnread
   } = useUIStore()
 
   const {
     downloadStatus, setDownloadStatus,
-    exportProgress, setExportProgress, updateExportProgress,
+    exportProgress, setExportProgress,
     exportMinimized, setExportMinimized, toggleExportMinimized,
     isProPlan, setIsProPlan,
     mcpServersState, setMcpServersState,
-    editorZoom, setEditorZoom, adjustEditorZoom, browserZoom, setBrowserZoom, adjustBrowserZoom
+    editorZoom, setEditorZoom, adjustEditorZoom, browserZoom, setBrowserZoom
   } = useProcessStore()
 
-  const {
-    filePath, setFilePath, currentContent, setCurrentContent, appendContent,
-    originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
-    fileOpenMode, setFileOpenMode, tabs, setTabs, addTab, removeTab, updateActiveTab, updateTab,
-    activeTabId, setActiveTabId, appendedFiles, setAppendedFiles, addAppendedFile,
-    selectedText, setSelectedText, activeBlockId, setActiveBlockId,
-    taggedBlocks, setTaggedBlocks, addTaggedBlock, removeTaggedBlock,
-    selectedSnapshot, setSelectedSnapshot
-  } = useWorkspaceStore()
+
 
   const handleZoomIn = () => adjustEditorZoom(0.1)
   const handleZoomOut = () => adjustEditorZoom(-0.1)
