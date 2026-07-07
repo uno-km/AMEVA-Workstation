@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import { useProcessStore } from '../stores/useProcessStore';
 
 export interface PluginInterface {

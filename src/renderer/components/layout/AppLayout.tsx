@@ -3,18 +3,12 @@ import { PanelLeft, Sparkles } from 'lucide-react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 import { Sidebar } from '../Sidebar'
 import { MarkdownEditor } from '../MarkdownEditor'
-import { DiffModal } from '../DiffModal'
-import { SettingsModal, type AppSettings } from '../SettingsModal'
+import type { AppSettings } from '../SettingsModal'
 import { StatusBar } from '../StatusBar'
 import { MenuBar } from '../MenuBar'
-import { AboutModal } from '../AboutModal'
-import { MarkdownGuideModal } from '../MarkdownGuideModal'
 import { AIPanel } from '../AIPanel'
 import { Minimap } from '../Minimap'
 import { RightTabStrip } from '../RightTabStrip'
-import { MarketplaceModal } from '../MarketplaceModal'
-import { PricingModal } from '../PricingModal'
-import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
 import { ResizeHandle } from '../ResizeHandle'
 import { FloatingChat } from '../FloatingChat'
 import { FindReplaceBar } from '../FindReplaceBar'
@@ -56,7 +50,7 @@ export interface AppLayoutProps {
   currentContent: string
   setCurrentContent: (content: string) => void
   originalContent: string
-  lastSavedTime: number | null
+  lastSavedTime: any
   fileOpenMode: 'replace' | 'append' | 'tab'
   handleSwitchOpenMode: (mode: 'replace' | 'append' | 'tab') => void
   appendedFiles: any[]
@@ -83,8 +77,8 @@ export interface AppLayoutProps {
   editor: AppEditor | null
   peers: any[]
   handleMouseMove: (e: React.MouseEvent) => void
-  updateDragSelection: () => void
-  updateBlockHighlight: () => void
+  updateDragSelection: any
+  updateBlockHighlight: any
   editorContainerRef: React.RefObject<HTMLDivElement>
   handleStartWelcomeEdit: () => void
   handleStartNewDocument: () => void
@@ -108,7 +102,7 @@ export interface AppLayoutProps {
   updateAISettings: (settings: any) => void
   selectedText: string
   setSelectedText: (text: string) => void
-  handleApplySuggestion: (suggestion: string) => void
+  handleApplySuggestion: any
   updateMessageDiffState: any
   handleApplyInsertSuggestion: any
   updateInsertSuggestionStatus: any
@@ -116,7 +110,7 @@ export interface AppLayoutProps {
   activeRightTab: string
   setActiveRightTab: (tab: any) => void
   engineLogs: string[]
-  setEngineLogs: (logs: string[]) => void
+  setEngineLogs: any
   showModelHub: boolean
   setShowModelHub: (show: boolean) => void
   refreshModels: () => void
@@ -142,8 +136,8 @@ export interface AppLayoutProps {
   isGuideOpen: boolean
   showMarketplaceModal: boolean
   showPricingModal: boolean
-  exportProgress: number
-  setExportProgress: (prog: number) => void
+  exportProgress: any
+  setExportProgress: any
   exportMinimized: boolean
   setExportMinimized: (min: boolean) => void
   toggleExportMinimized: () => void
