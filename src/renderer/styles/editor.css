@@ -261,9 +261,9 @@
 .bn-block-outer {
   position: relative;
   border-radius: 6px;
-  /* 좌측 border indicator 공간 */
-  padding-left: 4px !important;
-  margin-left: -4px !important;
+  /* 좌측 메뉴(+ ::) 공간까지 완벽히 포함하도록 영역 대폭 확장 (마우스 호버 인식 및 테두리 포함 목적) */
+  padding-left: 42px !important;
+  margin-left: -42px !important;
   transition:
     background-color 0.18s ease,
     box-shadow 0.18s ease;
@@ -271,10 +271,15 @@
   border-left: 3px solid transparent;
 }
 
-/* ── Hover: 옅은 배경 + 인디케이터 색 예고 ── */
-.bn-editor[data-bn-editor-focused] .bn-block-outer:hover {
-  background-color: rgba(139, 92, 246, 0.04);
-  border-left-color: rgba(139, 92, 246, 0.25);
+/* ── Hover: 옅은 배경 + 인디케이터 색 예고 + 얇은 실선 테두리 ── */
+.bn-block-outer:hover,
+.bn-block-outer:focus-within,
+.bn-block-outer[data-bn-hover-sync="true"] {
+  background-color: var(--bg-glass-active);
+  border-left-color: var(--primary);
+  /* 훨씬 눈에 잘 띄게 보라색 계열의 투명한 테두리 및 은은한 빛 반사 추가 */
+  box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.5), 0 0 12px rgba(139, 92, 246, 0.2);
+  border-radius: 6px;
 }
 
 /* ── Active (JS로 data-bn-active 부여): 현재 커서 블록 ── */

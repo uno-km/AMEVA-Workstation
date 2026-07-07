@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { BlockNoteView } from '@blocknote/mantine'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
-import { SuggestionMenuController } from '@blocknote/react'
+import { SuggestionMenuController, SideMenuController, SideMenu, RemoveBlockItem, DragHandleMenu, BlockColorsItem } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import type { PeerState } from '../../shared/types'
 import { ImageLightbox } from './ImageLightbox'
@@ -162,6 +162,40 @@ export function MarkdownEditor({
 
     setHoverBlock(null)
   }, [editor, editorMode, onMouseMove, editorContainerRef, hoverBlock])
+
+  // 🖱️ 사이드 메뉴(+ ::) 포털 렌더링 시 CSS hover 우회 문제 해결 (JS 기반 호버 동기화)
+  useEffect(() => {
+    let lastHoveredBlock: Element | null = null
+
+    const handleSideMenuHover = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      // BlockNote 사이드 메뉴 클래스 혹은 버튼에 호버했는지 확인
+      const isSideMenu = target.closest('.bn-side-menu') || target.closest('button[data-test-id="side-menu-button"]') || target.closest('button[data-test-id="drag-handle"]')
+      
+      if (isSideMenu) {
+        // 아이콘 위치에서 우측으로 60px 이동한 지점의 요소를 찾아 블록을 매핑
+        const el = document.elementFromPoint(e.clientX + 60, e.clientY)
+        const blockOuter = el?.closest('.bn-block-outer')
+        
+        if (blockOuter && lastHoveredBlock !== blockOuter) {
+          if (lastHoveredBlock) lastHoveredBlock.removeAttribute('data-bn-hover-sync')
+          blockOuter.setAttribute('data-bn-hover-sync', 'true')
+          lastHoveredBlock = blockOuter
+        }
+      } else {
+        if (lastHoveredBlock) {
+          lastHoveredBlock.removeAttribute('data-bn-hover-sync')
+          lastHoveredBlock = null
+        }
+      }
+    }
+
+    window.addEventListener('mousemove', handleSideMenuHover)
+    return () => {
+      window.removeEventListener('mousemove', handleSideMenuHover)
+      if (lastHoveredBlock) lastHoveredBlock.removeAttribute('data-bn-hover-sync')
+    }
+  }, [])
 
   const hasRichStyling = installedPlugins.includes('rich-styling')
 
@@ -387,6 +421,19 @@ export function MarkdownEditor({
           />
         ) : editorMode === 'edit' ? (
           <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
+            <SideMenuController
+              sideMenu={(props) => (
+                <SideMenu
+                  {...props}
+                  dragHandleMenu={(props) => (
+                    <DragHandleMenu {...props}>
+                      <RemoveBlockItem {...props}>삭제 (Delete)</RemoveBlockItem>
+                      <BlockColorsItem {...props}>색상 (Colors)</BlockColorsItem>
+                    </DragHandleMenu>
+                  )}
+                />
+              )}
+            />
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
