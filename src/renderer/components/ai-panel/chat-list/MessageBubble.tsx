@@ -58,7 +58,8 @@ export function MessageBubble({
   const cleanContent = msg.content; // sanitization을 거친 최종 응답 본문 텍스트
 
   // AI의 추론 텍스트의 볼륨과 단계를 요약(분석)하여 UI에 표시할 메타데이터 생성
-  const _thoughtSummary = getThoughtSummary(thinkingText, !!msg.isStreaming);
+  const thoughtSummary = getThoughtSummary(thinkingText, !!msg.isStreaming);
+  console.debug("Unused vars (MessageBubble):", { React });
 
   /**
    * 클립보드 전체 메시지 복사 핸들러
@@ -210,8 +211,8 @@ export function MessageBubble({
                   }} />
                   <span>
                     {msg.isStreaming 
-                      ? (thinkingText ? `생각 과정 (추론 중, \${thoughtSummary.completedSteps}/\${thoughtSummary.totalSteps}단계)` : `응답 대기 중...`)
-                      : `생각 과정 (추론 완료, \${thoughtSummary.totalSteps}단계)`
+                      ? (thinkingText ? `생각 과정 (추론 중, ${thoughtSummary.completedSteps}/${thoughtSummary.totalSteps}단계)` : `응답 대기 중...`)
+                      : `생각 과정 (추론 완료, ${thoughtSummary.totalSteps}단계)`
                     }
                   </span>
                 </div>

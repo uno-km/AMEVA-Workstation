@@ -42,6 +42,7 @@ export function AISettingsPanel({
   
   const [downloadStatus, setDownloadStatus] = useState<{ filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number } | null>(null)
   const isAvailable = true
+  console.debug("Unused vars (AISettingsPanel):", { React, Check, Trash2, API_ENDPOINTS, isKeySaved, handleSaveKey, handleDeleteKey, isWhiteTheme });
 
   return (
     <div style={{

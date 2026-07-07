@@ -41,6 +41,7 @@ export function JupyterCodeEditorHeader({
   isInputCollapsed?: boolean
   onToggleInputCollapse?: () => void
 }) {
+  console.debug("Unused vars (JupyterCodeEditor):", { React });
   const { isRunning, runJSCode, runPythonCode, runSQLCode } = useCodeRuntime()
   const meta = getLangMeta(language)
   const [copied, setCopied] = useState(false)

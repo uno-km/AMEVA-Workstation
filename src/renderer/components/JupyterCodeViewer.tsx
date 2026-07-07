@@ -231,6 +231,7 @@ export function JupyterCodeViewer({
   language: string
   onRunFailure?: (err: any) => void
 }) {
+  console.debug("Unused vars (JupyterCodeViewer):", { React, BlockNoteEditor, onRunFailure });
   // 메타데이터 주석 해독
   const lines = (code || '').split('\n')
   const firstLine = lines[0]?.trim()

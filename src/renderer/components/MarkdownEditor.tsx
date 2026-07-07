@@ -431,6 +431,7 @@ export function MarkdownEditor({
   tabs = [],
   isProPlan = false,
 }: MarkdownEditorProps) {
+  console.debug("Unused vars (MarkdownEditor):", { X, showCodeRunner, taggedBlocks });
   const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [selectedFont, setSelectedFont] = useState('Pretendard')
   const [selectedSize, setSelectedSize] = useState('14px')

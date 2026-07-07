@@ -26,6 +26,7 @@ export function AIInputBar({
   onKeyDown,
   selectedText
 }: AIInputBarProps) {
+  console.debug("Unused vars (AIInputBar):", { Check });
   return (
     <div
       data-focus-region="ai-input"

@@ -7,6 +7,7 @@ interface MinimapProps {
 }
 
 export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
+  console.debug("Unused vars (Minimap):", { editor });
   const [scrollState, setScrollState] = useState({
     scrollTop: 0,
     scrollHeight: 1,

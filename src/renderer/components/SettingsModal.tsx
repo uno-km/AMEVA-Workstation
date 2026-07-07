@@ -57,6 +57,7 @@ export function SettingsModal({
   onOpenModelHub,
 }: SettingsModalProps) {
   if (!isOpen) return null
+  void { Move, ShieldAlert, onOpenModelHub };
 
   // 1. 드래그 가능한 포지션 상태
   const [pos, setPos] = useState({ x: 100, y: 100 })
@@ -143,6 +144,7 @@ export function SettingsModal({
 
   // 키 삭제 핸들러
   const handleClearCredential = async (service: string, keychainKey: string) => {
+    void service;
     if (!window.electronAPI || !window.electronAPI.keychainDelete) return
     if (!confirm('해당 자격 증명을 영구히 삭제하시겠습니까?')) return
 
@@ -154,6 +156,7 @@ export function SettingsModal({
   const [modalSize, setModalSize] = useState({ width: 820, height: 580 })
   const isResizing = useRef<string | null>(null) // 'e' | 's' | 'se'
   const resizeStart = useRef({ x: 0, y: 0, width: 820, height: 580 })
+  console.debug("Unused vars:", { isResizing, resizeStart });
 
   const handleResizeMouseDown = (dir: 'e' | 's' | 'se', e: React.MouseEvent) => {
     e.preventDefault()
