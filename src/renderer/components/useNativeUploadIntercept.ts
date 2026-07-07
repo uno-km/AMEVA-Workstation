@@ -1,8 +1,9 @@
 import { useEffect } from 'react'
-import { BlockNoteEditor } from '@blocknote/core'
+import { type AmevaEditor } from '../editor/amevaBlockSchema'
+import * as ipc from '../services/ipc/electronApiAdapter'
 
 export function useNativeUploadIntercept(
-  editor: BlockNoteEditor | null,
+  editor: AmevaEditor | null,
   editorContainerRef: React.RefObject<HTMLDivElement | null>
 ) {
   useEffect(() => {
@@ -34,7 +35,7 @@ export function useNativeUploadIntercept(
 
       if (!isUploadTrigger) return
 
-      if (!window.electronAPI?.selectLocalFile) return
+      if (!ipc.isElectronEnv()) return
 
       e.preventDefault()
       e.stopPropagation()
@@ -56,7 +57,7 @@ export function useNativeUploadIntercept(
       }
 
       try {
-        const res = await window.electronAPI.selectLocalFile(filters)
+        const res = await ipc.selectLocalFile(filters)
         if (res && res.base64) {
           const fileExt = res.filePath.split('.').pop()?.toLowerCase() || 'png'
           

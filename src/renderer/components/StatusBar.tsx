@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Settings, ZoomIn, Info, Check, WrapText, AlertTriangle } from 'lucide-react'
+import * as ipc from '../services/ipc/electronApiAdapter'
 import type { PeerState } from '../../shared/types'
 import { MCPClientManager } from '../utils/mcpClient' // [FIX-MCP-UI] MCP 도구 페치를 위함
 
@@ -204,26 +205,18 @@ export function StatusBar({
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      if (window.electronAPI?.llmRestart) {
-                        if (window.electronAPI?.llmAddLog) {
-                          window.electronAPI.llmAddLog({ text: '[System] 재구동 요청을 메인 프로세스로 전송합니다...', prefix: 'System' })
-                        }
-                        window.electronAPI.llmRestart().then(res => {
-                          if (window.electronAPI?.llmAddLog) {
-                            window.electronAPI.llmAddLog({ 
-                              text: res.success ? '[System] 수동 재구동(웜업) 완료.' : `[Error] 재구동 실패: ${res.error}`,
-                              prefix: 'System'
-                            })
-                          }
-                        }).catch(err => {
-                          if (window.electronAPI?.llmAddLog) {
-                            window.electronAPI.llmAddLog({ 
-                              text: `[Error] 재구동 프로세스 예외 발생: ${err.message || String(err)}`,
-                              prefix: 'System'
-                            })
-                          }
+                      ipc.llmAddLog({ text: '[System] 재구동 요청을 메인 프로세스로 전송합니다...', prefix: 'System' })
+                      ipc.llmRestart().then(res => {
+                        ipc.llmAddLog({ 
+                          text: res.success ? '[System] 수동 재구동(웜업) 완료.' : `[Error] 재구동 실패: ${res.error}`,
+                          prefix: 'System'
                         })
-                      }
+                      }).catch(err => {
+                        ipc.llmAddLog({ 
+                          text: `[Error] 재구동 프로세스 예외 발생: ${err.message || String(err)}`,
+                          prefix: 'System'
+                        })
+                      })
                     }}
                     style={{
                       background: 'rgba(239,68,68,0.2)',

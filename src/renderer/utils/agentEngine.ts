@@ -1,4 +1,6 @@
 
+import * as ipc from '../services/ipc/electronApiAdapter'
+
 export const AgentState = {
   Idle: "idle",
   Thinking: "thinking",
@@ -79,8 +81,8 @@ class LlamaCppAdapter implements ILLMAdapter {
 
   async generate(prompt: string, systemPrompt: string, temperature: number, sessionId?: string): Promise<string> {
     // 일렉트론 IPC 브릿지를 타서 llama-server로 요청 전송
-    if (window.electronAPI?.llmGenerate) {
-      const res = await window.electronAPI.llmGenerate({
+    if (ipc.isElectronEnv()) {
+      const res = await ipc.llmGenerate({
         sessionId: sessionId || 'default', // [FIX-IPC-001] 세션 격리 ID 전달
         modelPath: this.modelName,
         prompt: prompt,
@@ -200,10 +202,10 @@ export class AgentEngine {
       minModelParameterSize: 3,
       execute: async ({ code }) => {
         try {
-          if (!window.electronAPI?.runPythonCode) {
+          if (!ipc.isElectronEnv()) {
             return { success: false, result: '', error: 'Electron Python API가 노출되지 않았습니다.' }
           }
-          const res = await window.electronAPI.runPythonCode(code)
+          const res = await ipc.runPythonCode(code)
           if (res.success) {
             return { success: true, result: res.result || '성공 (반환값 없음)' }
           } else {
@@ -253,8 +255,8 @@ export class AgentEngine {
       minModelParameterSize: 3,
       execute: async ({ query }) => {
         try {
-          if (window.electronAPI?.webSearch) {
-            const res = await window.electronAPI.webSearch(query)
+          if (ipc.isElectronEnv()) {
+            const res = await ipc.webSearch(query)
             if (res.success) {
               return { success: true, result: res.result || '검색 결과 데이터 없음' }
             } else {

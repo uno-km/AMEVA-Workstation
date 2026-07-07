@@ -50,10 +50,6 @@ export interface GlobalShortcutsParams {
   onZoomOut: () => void
   /** 줌 리셋 핸들러 */
   onZoomReset: () => void
-  /** 에디터 CSS zoom 수준 (wheel용) */
-  editorZoom: number
-  /** 에디터 CSS zoom setter */
-  setEditorZoom: (val: number | ((prev: number) => number)) => void
 }
 
 /** matchHotkey 유틸: 키 이벤트와 단축키 문자열 비교 */
@@ -80,11 +76,10 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
   const {
     settings,
     onSave, onOpen, onNewTab, onToggleAI, onToggleMode,
-    onZoomIn, onZoomOut, onZoomReset,
-    setEditorZoom
+    onZoomIn, onZoomOut, onZoomReset
   } = params
 
-  const { setBrowserZoom } = useProcessStore()
+  const { adjustEditorZoom, setBrowserZoom } = useProcessStore()
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const hotkeys: HotkeyConfig = settings.hotkeys || {
@@ -101,47 +96,30 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
       return
     }
 
-    // Escape: 모달 닫기 (이벤트 버블링에 의해 모달 자체에서 처리되므로 여기서는 무시)
-
     if (matchHotkey(e, hotkeys.save || 'Control+s')) {
       e.preventDefault()
       onSave()
-      return
-    }
-    if (matchHotkey(e, hotkeys.open || 'Control+o')) {
+    } else if (matchHotkey(e, hotkeys.open || 'Control+o')) {
       e.preventDefault()
       onOpen()
-      return
-    }
-    if (matchHotkey(e, hotkeys.newFile || 'Control+n')) {
+    } else if (matchHotkey(e, hotkeys.newFile || 'Control+n')) {
       e.preventDefault()
       onNewTab()
-      return
-    }
-    if (matchHotkey(e, hotkeys.toggleAI || 'Control+\\')) {
+    } else if (matchHotkey(e, hotkeys.toggleAI || 'Control+\\')) {
       e.preventDefault()
       onToggleAI()
-      return
-    }
-    if (matchHotkey(e, hotkeys.toggleMode || 'Control+e')) {
+    } else if (matchHotkey(e, hotkeys.toggleMode || 'Control+e')) {
       e.preventDefault()
       onToggleMode()
-      return
-    }
-    if (matchHotkey(e, hotkeys.zoomIn || 'Control+=')) {
+    } else if (matchHotkey(e, hotkeys.zoomIn || 'Control+=')) {
       e.preventDefault()
       onZoomIn()
-      return
-    }
-    if (matchHotkey(e, hotkeys.zoomOut || 'Control+-')) {
+    } else if (matchHotkey(e, hotkeys.zoomOut || 'Control+-')) {
       e.preventDefault()
       onZoomOut()
-      return
-    }
-    if (matchHotkey(e, hotkeys.zoomReset || 'Control+0')) {
+    } else if (matchHotkey(e, hotkeys.zoomReset || 'Control+0')) {
       e.preventDefault()
       onZoomReset()
-      return
     }
   }, [settings.hotkeys, onSave, onOpen, onNewTab, onToggleAI, onToggleMode, onZoomIn, onZoomOut, onZoomReset])
 
@@ -155,21 +133,20 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
       // 에디터 내부: CSS zoom으로 처리
       e.preventDefault()
       const delta = e.deltaY < 0 ? 0.1 : -0.1
-      setEditorZoom((prev) => Math.min(2.5, Math.max(0.4, Math.round((prev + delta) * 10) / 10)))
+      adjustEditorZoom(delta)
     } else {
       // 에디터 외부: Electron webFrame zoom
       if ((window as any).electronAPI?.setZoomFactor) {
         e.preventDefault()
         const step = e.deltaY < 0 ? 0.1 : -0.1
-        setBrowserZoom((prev: number) => {
-          const next = Math.min(3.0, Math.max(0.3, Math.round((prev + step) * 10) / 10));
-          (window as any).electronAPI!.setZoomFactor!(next)
-          return next
-        })
+        const prev = useProcessStore.getState().browserZoom
+        const next = Math.min(3.0, Math.max(0.3, Math.round((prev + step) * 10) / 10))
+        setBrowserZoom(next)
+        ;(window as any).electronAPI.setZoomFactor(next)
       }
       // 일반 브라우저 환경: 브라우저 기본 줌 동작에 위임
     }
-  }, [setEditorZoom, setBrowserZoom])
+  }, [adjustEditorZoom, setBrowserZoom])
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown)

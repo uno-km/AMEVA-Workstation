@@ -83,6 +83,7 @@ declare global {
       mcpSpawn?: (serverId: string, command: string, args: string[]) => Promise<any>
       mcpCall?: (serverId: string, request: any) => Promise<any>
       mcpKill?: (serverId: string) => Promise<any>
+      mcpGetToken?: () => Promise<string | null>
       // 내보내기
       onExportProgress?: (callback: (data: ExportProgressEvent) => void) => () => void
       printToPDF?: (htmlContent: string) => Promise<string | null>
@@ -410,4 +411,188 @@ export async function llmRestart(): Promise<{ success: boolean; error?: string }
     return { success: false, error: 'API not available' }
   }
   return window.electronAPI.llmRestart()
+}
+
+
+/** llmStart */
+export async function llmStart(modelPath: string): Promise<{ success: boolean; error?: string }> {
+  if (!window.electronAPI?.llmStart) {
+    return { success: false, error: 'API not available' }
+  }
+  return window.electronAPI.llmStart(modelPath)
+}
+
+/** llmStop */
+export async function llmStop(): Promise<void> {
+  if (!window.electronAPI?.llmStop) return
+  return window.electronAPI.llmStop()
+}
+
+
+/** appMinimize */
+export function appMinimize(): void {
+  if (!window.electronAPI?.appMinimize) return
+  window.electronAPI.appMinimize()
+}
+
+/** appMaximize */
+export function appMaximize(): void {
+  if (!window.electronAPI?.appMaximize) return
+  window.electronAPI.appMaximize()
+}
+
+/** appClose */
+export function appClose(): void {
+  if (!window.electronAPI?.appClose) return
+  window.electronAPI.appClose()
+}
+
+/** getZoomFactor */
+export async function getZoomFactor(): Promise<number> {
+  if (!window.electronAPI?.getZoomFactor) return 1.0
+  return window.electronAPI.getZoomFactor()
+}
+
+/** setZoomFactor */
+export function setZoomFactor(factor: number): void {
+  if (!window.electronAPI?.setZoomFactor) return
+  window.electronAPI.setZoomFactor(factor)
+}
+
+/** showMessageBox */
+export async function showMessageBox(options: any): Promise<{ response: number }> {
+  if (!window.electronAPI?.showMessageBox) return { response: 0 }
+  return window.electronAPI.showMessageBox(options)
+}
+
+/** llmGetGpuName */
+export async function llmGetGpuName(): Promise<string> {
+  if (!window.electronAPI?.llmGetGpuName) return ''
+  return window.electronAPI.llmGetGpuName()
+}
+
+/** planGetStatus */
+export async function planGetStatus(): Promise<boolean> {
+  if (!window.electronAPI?.planGetStatus) return false
+  return window.electronAPI.planGetStatus()
+}
+
+/** planSetStatus */
+export async function planSetStatus(isPro: boolean): Promise<{ success: boolean; isPro?: boolean; error?: string }> {
+  if (!window.electronAPI?.planSetStatus) return { success: false, error: 'API not available' }
+  return window.electronAPI.planSetStatus(isPro)
+}
+
+/** isFreeMode */
+export async function isFreeMode(): Promise<boolean> {
+  if (!window.electronAPI?.isFreeMode) return true
+  return window.electronAPI.isFreeMode()
+}
+
+/** mcpSpawn */
+export async function mcpSpawn(serverId: string, command: string, args: string[]): Promise<any> {
+  if (!window.electronAPI?.mcpSpawn) return null
+  return window.electronAPI.mcpSpawn(serverId, command, args)
+}
+
+/** mcpCall */
+export async function mcpCall(serverId: string, request: any): Promise<any> {
+  if (!window.electronAPI?.mcpCall) return null
+  return window.electronAPI.mcpCall(serverId, request)
+}
+
+/** mcpKill */
+export async function mcpKill(serverId: string): Promise<any> {
+  if (!window.electronAPI?.mcpKill) return null
+  return window.electronAPI.mcpKill(serverId)
+}
+
+/** onExportProgress */
+export function onExportProgress(callback: (data: ExportProgressEvent) => void): () => void {
+  if (!window.electronAPI?.onExportProgress) return () => {}
+  return window.electronAPI.onExportProgress(callback)
+}
+
+/** printToPDF */
+export async function printToPDF(htmlContent: string): Promise<string | null> {
+  if (!window.electronAPI?.printToPDF) return null
+  return window.electronAPI.printToPDF(htmlContent)
+}
+
+/** newWindow */
+export function newWindow(): void {
+  if (!window.electronAPI?.newWindow) return
+  window.electronAPI.newWindow()
+}
+
+/** closeApp */
+export function closeApp(): void {
+  if (!window.electronAPI?.closeApp) return
+  window.electronAPI.closeApp()
+}
+
+/** saveExportedFile */
+export async function saveExportedFile(data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]): Promise<string | null> {
+  if (!window.electronAPI?.saveExportedFile) return null
+  return window.electronAPI.saveExportedFile(data, isBase64, defaultName, filters)
+}
+
+/** exportConvert */
+export async function exportConvert(payload: { blocks: any[]; format: string; defaultName: string }): Promise<{ success: boolean; savedPath?: string; error?: string }> {
+  if (!window.electronAPI?.exportConvert) return { success: false, error: 'API not available' }
+  return window.electronAPI.exportConvert(payload)
+}
+
+/** runPythonCode */
+export async function runPythonCode(code: string): Promise<{ success: boolean; result?: string; error?: string }> {
+  if (!window.electronAPI?.runPythonCode) return { success: false, error: 'API not available' }
+  return window.electronAPI.runPythonCode(code)
+}
+
+/** webSearch */
+export async function webSearch(query: string): Promise<any> {
+  if (!window.electronAPI?.webSearch) return null
+  return window.electronAPI.webSearch(query)
+}
+
+/** onServerStatus */
+export function onServerStatus(callback: (status: any) => void): () => void {
+  if (!window.electronAPI?.onServerStatus) return () => {}
+  return window.electronAPI.onServerStatus(callback)
+}
+
+/** startCollaborationServer */
+export async function startCollaborationServer(port: number): Promise<any> {
+  if (!window.electronAPI?.startCollaborationServer) return null
+  return window.electronAPI.startCollaborationServer(port)
+}
+
+/** stopCollaborationServer */
+export async function stopCollaborationServer(): Promise<any> {
+  if (!window.electronAPI?.stopCollaborationServer) return null
+  return window.electronAPI.stopCollaborationServer()
+}
+
+/** startModelDownload */
+export async function startModelDownload(params: any): Promise<any> {
+  if (!window.electronAPI?.startModelDownload) return null
+  return window.electronAPI.startModelDownload(params)
+}
+
+/** cancelModelDownload */
+export async function cancelModelDownload(modelId: string): Promise<any> {
+  if (!window.electronAPI?.cancelModelDownload) return null
+  return window.electronAPI.cancelModelDownload(modelId)
+}
+
+/** getDownloadStatus */
+export async function getDownloadStatus(modelId: string): Promise<any> {
+  if (!window.electronAPI?.getDownloadStatus) return null
+  return window.electronAPI.getDownloadStatus(modelId)
+}
+
+/** mcpGetToken */
+export async function mcpGetToken(): Promise<string | null> {
+  if (!window.electronAPI?.mcpGetToken) return null
+  return window.electronAPI.mcpGetToken()
 }

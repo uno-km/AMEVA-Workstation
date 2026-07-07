@@ -10,6 +10,7 @@
  */
 
 import { useCallback } from 'react'
+import * as ipc from '../services/ipc/electronApiAdapter'
 import type {
   ReasoningResult,
   ReasoningTraceEvent,
@@ -333,21 +334,21 @@ export function useReasoningProvider() {
       // ------------------------------------------------------------------
       // 2. Fallback: Stepwise Reasoning Pipeline
       // ------------------------------------------------------------------
-      if (enableFallbackPipeline && window.electronAPI) {
+      if (enableFallbackPipeline && ipc.isElectronEnv()) {
         const llmCall: LLMCallFn = async (prompt, systemPrompt, maxTok, temp) => {
           return new Promise<string>((resolve) => {
             let buffer = ''
 
-            const unsubToken = window.electronAPI!.onLLMToken("default", (token: string) => {
+            const unsubToken = ipc.onLLMToken("default", (token: string) => {
               buffer += token
             })
-            const unsubDone = window.electronAPI!.onLLMDone("default", (data: { success: boolean; error?: string }) => {
+            const unsubDone = ipc.onLLMDone("default", (data: { success: boolean; error?: string }) => {
               unsubToken()
               unsubDone()
               resolve(data.success ? buffer.trim() : '')
             })
 
-            window.electronAPI!.llmGenerate({
+            ipc.llmGenerate({
               sessionId: "default",
               modelPath: modelPath || '',
               prompt,
@@ -384,16 +385,16 @@ export function useReasoningProvider() {
 
       // 일반 단일 LLM 호출로 최종 답변만 반환
       let finalAnswer = ''
-      if (window.electronAPI) {
+      if (ipc.isElectronEnv()) {
         finalAnswer = await new Promise<string>((resolve) => {
           let buf = ''
-          const unsubToken = window.electronAPI!.onLLMToken("default", (t: string) => { buf += t })
-          const unsubDone = window.electronAPI!.onLLMDone("default", (d: { success: boolean; error?: string }) => {
+          const unsubToken = ipc.onLLMToken("default", (t: string) => { buf += t })
+          const unsubDone = ipc.onLLMDone("default", (d: { success: boolean; error?: string }) => {
             unsubToken()
             unsubDone()
             resolve(d.success ? buf.trim() : '')
           })
-          window.electronAPI!.llmGenerate({
+          ipc.llmGenerate({
             sessionId: "default",
             modelPath: modelPath || '',
             prompt: input,

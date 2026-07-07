@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useAIState } from '../stores/useAIState';
 import { useAILogStore } from '../stores/useAILogStore';
+import * as ipc from '../services/ipc/electronApiAdapter';
 
 /**
  * useLocalAIEngine
@@ -11,9 +12,9 @@ export function useLocalAIEngine() {
   const { addSensorLog } = useAILogStore();
 
   const loadModels = useCallback(async (type: 'chat' | 'code' = 'chat') => {
-    if (!window.electronAPI) return;
+    if (!ipc.isElectronEnv()) return;
     try {
-      const list = await window.electronAPI.llmListModels(type === 'chat' ? 'llm' : 'code');
+      const list = await ipc.llmListModels(type === 'chat' ? 'llm' : 'code');
       const mappedList = list.map(m => ({
         path: m.path,
         filename: m.filename,
@@ -33,19 +34,17 @@ export function useLocalAIEngine() {
   }, [setModels, setCodeModels]);
 
   const checkIsAvailable = useCallback(async () => {
-    if (!window.electronAPI) {
+    if (!ipc.isElectronEnv()) {
       setIsAvailable(false);
       return;
     }
     
     try {
-      if (window.electronAPI.llmCheckHealth) {
-        const res = await window.electronAPI.llmCheckHealth();
-        if (res && (res.status === 'ok' || (res.status as string) === 'ready')) {
-          setIsAvailable(true);
-        } else {
-          setIsAvailable(false);
-        }
+      const res = await ipc.llmCheckHealth();
+      if (res && (res.status === 'ok' || (res.status as string) === 'ready')) {
+        setIsAvailable(true);
+      } else {
+        setIsAvailable(false);
       }
     } catch (e: any) {
       console.error('가용성 체크 실패:', e);
@@ -54,15 +53,15 @@ export function useLocalAIEngine() {
   }, [setIsAvailable]);
 
   const importModel = useCallback(async () => {
-    if (!window.electronAPI) return;
+    if (!ipc.isElectronEnv()) return;
     try {
-      const resObj = await window.electronAPI.selectLocalFile([
+      const resObj = await ipc.selectLocalFile([
         { name: 'GGUF Models', extensions: ['gguf', 'bin'] },
         { name: 'All Files', extensions: ['*'] }
       ]);
       if (resObj && resObj.filePath) {
         const sourcePath = resObj.filePath;
-        const res = await window.electronAPI.llmImportModel(sourcePath);
+        const res = await ipc.llmImportModel(sourcePath);
         if (res.success) {
           await loadModels('chat');
           await loadModels('code');
@@ -80,7 +79,7 @@ export function useLocalAIEngine() {
   }, [loadModels]);
 
   const startEngine = useCallback(async () => {
-    if (!window.electronAPI) return;
+    if (!ipc.isElectronEnv()) return;
     if (!settings.modelPath) {
       addSensorLog('[Error] 모델 경로가 설정되지 않았습니다.');
       return;
@@ -88,7 +87,7 @@ export function useLocalAIEngine() {
 
     try {
       addSensorLog('[System] 로컬 AI 엔진(llama-cli)을 시작합니다...');
-      const res = await window.electronAPI.llmStart(settings.modelPath);
+      const res = await ipc.llmStart(settings.modelPath);
       if (res.success) {
         addSensorLog('[System] 엔진이 성공적으로 시작되었습니다.');
         setIsAvailable(true);
@@ -105,10 +104,10 @@ export function useLocalAIEngine() {
   }, [settings.modelPath, addSensorLog, setIsAvailable]);
 
   const stopEngine = useCallback(async () => {
-    if (!window.electronAPI) return;
+    if (!ipc.isElectronEnv()) return;
     try {
       addSensorLog('[System] 엔진 정지를 요청합니다...');
-      await window.electronAPI.llmStop();
+      await ipc.llmStop();
       setIsAvailable(false);
       addSensorLog('[System] 엔진이 정지되었습니다.');
     } catch (e: any) {

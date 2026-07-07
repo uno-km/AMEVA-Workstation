@@ -37,7 +37,7 @@ export function useAIPanelLogic(props: any) {
       handleSend()
     } else if (e.key === 'Backspace' && state.input === '' && props.taggedBlocks.length > 0) {
       e.preventDefault()
-      props.setTaggedBlocks((prev: any) => prev.slice(0, prev.length - 1))
+      props.setTaggedBlocks(props.taggedBlocks.slice(0, props.taggedBlocks.length - 1))
     }
   }
 

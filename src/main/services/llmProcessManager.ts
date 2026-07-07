@@ -1,0 +1,251 @@
+import { app } from 'electron'
+import { join, basename } from 'path'
+import { existsSync } from 'fs'
+import { spawn, execSync, type ChildProcess } from 'child_process'
+
+class StreamLineFormatter {
+  private buffer = '';
+  private prefix: string;
+
+  constructor(prefix: string) {
+    this.prefix = prefix;
+  }
+
+  feed(chunk: string, onLine: (formattedLine: string) => void) {
+    this.buffer += chunk;
+    const lines = this.buffer.split('\n');
+    this.buffer = lines.pop() || '';
+    for (const line of lines) {
+      if (!line.trim()) continue; // 빈 줄 무시
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      const ms = String(now.getMilliseconds()).padStart(3, '0');
+      const timestamp = `${hh}:${mm}:${ss}.${ms}`;
+      onLine(`[${this.prefix}][${timestamp}] ${line}\n`);
+    }
+  }
+}
+
+export class LLMProcessManager {
+  static activeLLMProcess: ChildProcess | null = null
+  static activeServerProcess: ChildProcess | null = null
+  static activeServerModelPath: string | null = null
+  static serverStartingPromise: Promise<boolean> | null = null
+  static llamaLogBuffer = ''
+  static formatters: Record<string, StreamLineFormatter> = {}
+  static serverPort = 12345
+
+  static findLlamaCli(): string | null {
+    const cliBinaryName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server'
+    const isPackaged = app.isPackaged
+    
+    // [SEC-W-015] 패키징 경로 및 절대 경로 후보 순회
+    const bundledPath = isPackaged
+      ? join(process.resourcesPath, 'resources', process.platform === 'win32' ? 'win32' : 'darwin', cliBinaryName)
+      : join(app.getAppPath(), 'resources', process.platform === 'win32' ? 'win32' : 'darwin', cliBinaryName)
+  
+    const candidates = [
+      bundledPath,
+      'C:\\ameva\\llama\\llama-cli.exe',
+      'C:\\ameva\\llama\\llama.exe',
+      'C:\\ameva\\llama\\main.exe',
+      join(app.getPath('userData'), 'llama', cliBinaryName),
+    ]
+    for (const c of candidates) {
+      if (existsSync(c)) return c
+    }
+    return null
+  }
+
+  static findWhisperCli(): string | null {
+    const candidates = [
+      'C:\\ameva\\whisper\\whisper-cli.exe',
+      'C:\\ameva\\whisper\\main.exe',
+      'C:\\ameva\\whisper\\whisper.exe',
+    ]
+    for (const c of candidates) {
+      if (existsSync(c)) return c
+    }
+    return 'whisper-cli'
+  }
+
+  static forceCleanupLocalLLMProcesses() {
+    try {
+      if (process.platform === 'win32') {
+        execSync('taskkill /f /im llama-server.exe', { stdio: 'ignore' })
+        execSync('taskkill /f /im llama-cli.exe', { stdio: 'ignore' })
+      } else {
+        execSync('killall -9 llama-server llama-cli', { stdio: 'ignore' })
+      }
+    } catch (e) {
+      // 프로세스 없을 시 예외 무시
+    }
+  }
+
+  static broadcastLog(prefix: string, text: string) {
+    let formatter = this.formatters[prefix];
+    if (!formatter) {
+      formatter = new StreamLineFormatter(prefix);
+      this.formatters[prefix] = formatter;
+    }
+    formatter.feed(text, (formattedLine) => {
+      this.llamaLogBuffer += formattedLine;
+      if (this.llamaLogBuffer.length > 200000) {
+        this.llamaLogBuffer = this.llamaLogBuffer.slice(-200000);
+      }
+      
+      const { webContents } = require('electron');
+      webContents.getAllWebContents().forEach((wc: any) => {
+        if (!wc.isDestroyed()) {
+          wc.send('llm:log', { text: formattedLine });
+        }
+      });
+      process.stderr.write(formattedLine);
+    });
+  }
+
+  static logToRenderer(text: string) {
+    let prefix = 'SYS';
+    if (text.includes('[Fatal Error]') || text.includes('[Error]')) prefix = 'SYS';
+    this.broadcastLog(prefix, text);
+  }
+
+  static async startLlamaServerWithFallback(
+    llamaPath: string,
+    modelPath: string,
+    contextSize: number,
+    gpuFirst: boolean
+  ): Promise<boolean> {
+    if (
+      this.activeServerProcess &&
+      this.activeServerModelPath === modelPath &&
+      !this.serverStartingPromise
+    ) {
+      this.logToRenderer(`[System] 기존 llama-server 인스턴스 재사용 (모델: ${basename(modelPath)})\n`)
+      return true
+    }
+
+    if (this.serverStartingPromise) {
+      this.logToRenderer('[System] 다른 요청이 서버 기동 중입니다. 대기...\n')
+      return this.serverStartingPromise
+    }
+
+    const doStart = async (ngl: number, threads: number): Promise<boolean> => {
+      if (this.activeServerProcess) {
+        try { this.activeServerProcess.kill('SIGKILL') } catch {}
+        this.activeServerProcess = null
+        this.activeServerModelPath = ''
+      }
+      this.forceCleanupLocalLLMProcesses()
+
+      const isPackaged = app.isPackaged
+      const llamaDir = isPackaged
+        ? join(process.resourcesPath, 'resources', process.platform === 'win32' ? 'win32' : 'darwin')
+        : join(app.getAppPath(), 'resources', process.platform === 'win32' ? 'win32' : 'darwin')
+
+      const cmdArgs = [
+        '-m', modelPath,
+        '-c', String(contextSize),
+        '--port', String(this.serverPort),
+        '-ngl', String(ngl),
+        '-t', String(threads),
+        '--embedding',
+        '-cb'
+      ]
+
+      this.logToRenderer(`[System] 로컬 AI 엔진 기동 중 (Port: ${this.serverPort}, GPU 가속 레이어 ngl: ${ngl}, 스레드: ${threads})...\n`)
+
+      return new Promise<boolean>((resolve) => {
+        let isResolved = false
+        const proc = spawn(llamaPath, cmdArgs, {
+          cwd: llamaDir,
+          env: {
+            ...process.env,
+            PATH: `${process.env.PATH};${llamaDir}`
+          }
+        })
+
+        proc.stdout.on('data', (data) => {
+          const text = data.toString()
+          this.broadcastLog('OUT', text)
+          if (text.includes('HTTP server listening') || text.includes('llama server listening')) {
+            if (!isResolved) {
+              isResolved = true
+              this.activeServerProcess = proc
+              this.activeServerModelPath = modelPath
+              resolve(true)
+            }
+          }
+        })
+
+        proc.stderr.on('data', (data) => {
+          const text = data.toString()
+          this.broadcastLog('ERR', text)
+          if (text.includes('HTTP server listening') || text.includes('llama server listening')) {
+            if (!isResolved) {
+              isResolved = true
+              this.activeServerProcess = proc
+              this.activeServerModelPath = modelPath
+              resolve(true)
+            }
+          }
+        })
+
+        proc.on('error', (err) => {
+          this.logToRenderer(`[System] 로컬 엔진 실행 실패: ${err.message}\n`)
+          if (!isResolved) {
+            isResolved = true
+            resolve(false)
+          }
+        })
+
+        proc.on('close', (code) => {
+          this.logToRenderer(`[System] 로컬 엔진 종료됨 (Exit Code: ${code})\n`)
+          if (this.activeServerProcess === proc) {
+            this.activeServerProcess = null
+            this.activeServerModelPath = ''
+          }
+          if (!isResolved) {
+            isResolved = true
+            resolve(false)
+          }
+        })
+
+        setTimeout(() => {
+          if (!isResolved) {
+            isResolved = true
+            this.activeServerProcess = proc
+            this.activeServerModelPath = modelPath
+            resolve(true)
+          }
+        }, 12000)
+      })
+    }
+
+    this.serverStartingPromise = (async () => {
+      let threads = 4
+      try {
+        const os = require('os')
+        const cpuCount = os.cpus().length
+        threads = Math.max(1, Math.min(8, Math.floor(cpuCount * 0.75)))
+      } catch {}
+
+      if (gpuFirst) {
+        const success = await doStart(99, threads)
+        if (success) {
+          this.serverStartingPromise = null
+          return true
+        }
+        this.logToRenderer('[System] GPU 가속 기동 실패. CPU 모드로 자동 폴백(Fallback) 기동합니다...\n')
+      }
+
+      const cpuSuccess = await doStart(0, threads)
+      this.serverStartingPromise = null
+      return cpuSuccess
+    })()
+
+    return this.serverStartingPromise
+  }
+}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { BlockNoteEditor } from '@blocknote/core'
+
 import { Play, Eye, Copy, ChevronDown, Terminal, Globe } from 'lucide-react'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
@@ -231,7 +231,7 @@ export function JupyterCodeViewer({
   language: string
   onRunFailure?: (err: any) => void
 }) {
-  console.debug("Unused vars (JupyterCodeViewer):", { React, BlockNoteEditor, onRunFailure });
+  console.debug("Unused vars (JupyterCodeViewer):", { React, onRunFailure });
   // 메타데이터 주석 해독
   const lines = (code || '').split('\n')
   const firstLine = lines[0]?.trim()

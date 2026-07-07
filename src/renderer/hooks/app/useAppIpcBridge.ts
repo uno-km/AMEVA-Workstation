@@ -15,6 +15,7 @@
 import { useEffect } from 'react'
 import { useProcessStore } from '../../stores/useProcessStore'
 import { useUIStore } from '../../stores/useUIStore'
+import * as ipc from '../../services/ipc/electronApiAdapter'
 
 /**
  * FileOpenArgvHandler
@@ -34,9 +35,9 @@ export function useAppIpcBridge(onFileOpen?: FileOpenArgvHandler) {
 
   // 1. 모델 다운로드 진행 이벤트 구독
   useEffect(() => {
-    if (!(window as any).electronAPI?.onLLMDownloadProgress) return
+    if (!ipc.isElectronEnv()) return
 
-    const unsub = (window as any).electronAPI.onLLMDownloadProgress((status: any) => {
+    const unsub = ipc.onLLMDownloadProgress((status: any) => {
       setDownloadStatus((prev: any) => {
         const filenameOnly = String(status.filename || '').split(/[/\\]/).pop() || status.filename
 
@@ -64,9 +65,9 @@ export function useAppIpcBridge(onFileOpen?: FileOpenArgvHandler) {
 
   // 2. OS argv 파일 열기 이벤트 구독
   useEffect(() => {
-    if (!(window as any).electronAPI?.onFileOpenArgv || !onFileOpen) return
+    if (!ipc.isElectronEnv() || !onFileOpen) return
 
-    const unsub = (window as any).electronAPI.onFileOpenArgv((_event: any, file: any) => {
+    const unsub = ipc.onFileOpenArgv((_event: any, file: any) => {
       if (file && file.filePath) {
         onFileOpen(file).catch((e: any) => {
           console.error('[useAppIpcBridge] OS argv 파일 열기 처리 실패:', e)
@@ -79,12 +80,10 @@ export function useAppIpcBridge(onFileOpen?: FileOpenArgvHandler) {
 
   // 3. 앱 준비 신호 전송 (Electron에게 렌더러 준비 완료를 알림)
   useEffect(() => {
-    if ((window as any).electronAPI?.appReady) {
-      try {
-        (window as any).electronAPI.appReady()
-      } catch (e) {
-        console.warn('[useAppIpcBridge] appReady 호출 실패:', e)
-      }
+    try {
+      ipc.appReady()
+    } catch (e) {
+      console.warn('[useAppIpcBridge] appReady 호출 실패:', e)
     }
   }, [])
 }

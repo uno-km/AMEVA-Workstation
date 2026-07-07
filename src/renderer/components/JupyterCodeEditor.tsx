@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Play, Copy, Terminal, Eye, EyeOff, ChevronDown } from 'lucide-react'
-import { BlockNoteEditor } from '@blocknote/core'
+import { type AmevaEditor } from '../editor/amevaBlockSchema'
 import { useCodeRuntime } from '../hooks/useCodeRuntime'
 import { getLangMeta } from './JupyterCodeViewer'
 import mermaid from 'mermaid'
@@ -34,7 +34,7 @@ export function JupyterCodeEditorHeader({
   code: string
   language: string
   blockId: string
-  editor: BlockNoteEditor
+  editor: AmevaEditor
   onRunStart: () => void
   onRunSuccess: (success: boolean, lines: string[], tableData?: any) => void
   onRunFailure: (errMessage: string) => void

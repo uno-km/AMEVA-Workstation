@@ -23,7 +23,9 @@ export interface AIState {
 
   // 4. 비동기 작업 큐 (AgentEngine 관련)
   pendingQueue: Array<any>;
-  setPendingQueue: (queue: Array<any> | ((prev: Array<any>) => Array<any>)) => void;
+  setPendingQueue: (queue: Array<any>) => void;
+  addPendingQueue: (item: any) => void;
+  clearPendingQueue: () => void;
   removeFromQueue: (id: string) => void;
 }
 
@@ -51,7 +53,6 @@ const DEFAULT_SETTINGS: AISettings = {
   apiType: 'local',
 };
 
-// 로컬 스토리지에서 초기 설정을 불러오는 유틸리티 함수
 const loadInitialSettings = (): AISettings => {
   try {
     const saved = localStorage.getItem('ameva_ai_settings');
@@ -71,7 +72,6 @@ export const useAIState = create<AIState>((set) => ({
   settings: loadInitialSettings(),
   updateSettings: (newSettings) => set((state) => {
     const updated = { ...state.settings, ...newSettings };
-    // 상태 변경 시 자동으로 로컬 스토리지에 동기화합니다.
     localStorage.setItem('ameva_ai_settings', JSON.stringify(updated));
     return { settings: updated };
   }),
@@ -86,9 +86,9 @@ export const useAIState = create<AIState>((set) => ({
   setCodeModels: (codeModels) => set({ codeModels }),
 
   pendingQueue: [],
-  setPendingQueue: (updater) => set((state) => ({
-    pendingQueue: typeof updater === 'function' ? updater(state.pendingQueue) : updater,
-  })),
+  setPendingQueue: (queue) => set({ pendingQueue: queue }),
+  addPendingQueue: (item) => set((state) => ({ pendingQueue: [...state.pendingQueue, item] })),
+  clearPendingQueue: () => set({ pendingQueue: [] }),
   removeFromQueue: (id) => set((state) => ({
     pendingQueue: state.pendingQueue.filter(item => item.id !== id),
   })),

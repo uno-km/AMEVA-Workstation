@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { X, Check, Award, ShieldAlert, Sparkles, Shield, Key, Network } from 'lucide-react'
+import * as ipc from '../services/ipc/electronApiAdapter'
 
 interface PricingModalProps {
   isOpen: boolean
@@ -14,11 +15,9 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     if (isOpen) {
       setIsPro(localStorage.getItem('is-pro-plan') === 'true')
       
-      if (window.electronAPI?.isFreeMode) {
-        window.electronAPI.isFreeMode().then((free: boolean) => {
-          setIsFreeLocked(free)
-        }).catch(() => {})
-      }
+      ipc.isFreeMode().then((free: boolean) => {
+        setIsFreeLocked(free)
+      }).catch(() => {})
     }
   }, [isOpen])
 
@@ -27,9 +26,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const handleFreeAction = async () => {
     if (isPro) {
       if (confirm('Downgrade to Free Plan? (This will reload the application)')) {
-        if (window.electronAPI?.planSetStatus) {
-          await window.electronAPI.planSetStatus(false)
-        }
+        await ipc.planSetStatus(false)
         localStorage.setItem('is-pro-plan', 'false')
         window.location.reload()
       }
@@ -45,12 +42,10 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
 
     if (confirm('Upgrade to Pro Plan? (This will reload the application)')) {
-      if (window.electronAPI?.planSetStatus) {
-        const result = await window.electronAPI.planSetStatus(true)
-        if (result && !result.success) {
-          alert(`업그레이드 실패: ${result.error}`)
-          return
-        }
+      const result = await ipc.planSetStatus(true)
+      if (result && !result.success) {
+        alert(`업그레이드 실패: ${result.error}`)
+        return
       }
       localStorage.setItem('is-pro-plan', 'true')
       window.location.reload()

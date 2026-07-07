@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import * as Y from 'yjs'
 import { WebsocketProvider } from 'y-websocket'
 import type { PeerState } from '../../shared/types'
+import * as ipc from '../services/ipc/electronApiAdapter'
 
 export function useCollaboration(
   documentId: string,
@@ -40,10 +41,9 @@ export function useCollaboration(
     }
   }, [documentId])
 
-  // 1. Electron IPC: 서버 상태 수신
   useEffect(() => {
-    if (window.electronAPI) {
-      const unsub = window.electronAPI?.onServerStatus?.((status: any) => {
+    if (ipc.isElectronEnv()) {
+      const unsub = ipc.onServerStatus((status: any) => {
         setServerRunning(status.running)
         setServerInfo({ port: status.port, error: status.error })
         if (status.ip) setServerIp(status.ip)
@@ -138,15 +138,15 @@ export function useCollaboration(
 
   // 3. 내장 협업 서버 구동/중지 및 전체 협업 토글
   const toggleLocalServer = useCallback(async (port: number) => {
-    if (useLocalServer && !window.electronAPI) {
+    if (useLocalServer && !ipc.isElectronEnv()) {
       alert("⚠️ 현재 일반 브라우저 환경입니다.\n\n로컬 PC 서버를 직접 구동하려면 일렉트론 데스크톱 앱을 사용해 주셔야 합니다.\n\n일반 브라우저에서는 '로컬 서버 사용' 체크박스를 끄시면 공용 협업 데모 서버(wss://demos.yjs.dev)를 통해 다른 사람과 실시간 협업을 바로 시작해 보실 수 있습니다!")
       return
     }
-    if (useLocalServer && window.electronAPI) {
+    if (useLocalServer && ipc.isElectronEnv()) {
       if (serverRunning) {
-        await window.electronAPI?.stopCollaborationServer?.()
+        await ipc.stopCollaborationServer()
       } else {
-        await window.electronAPI?.startCollaborationServer?.(port)
+        await ipc.startCollaborationServer(port)
       }
     }
     setCollabActive(prev => !prev)

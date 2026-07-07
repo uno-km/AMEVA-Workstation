@@ -3,6 +3,9 @@ import { join, dirname, resolve as resolvePath, basename } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync, writeFileSync, readFileSync } from 'fs'
 import * as exportersMain from './exportersMain.js'
+import { MCPProcessManager } from './services/mcpProcessManager.js'
+import { CollabServerManager } from './services/collabServer.js'
+import { LLMProcessManager } from './services/llmProcessManager.js'
 
 // 🤖 개발용 일렉트론 보안 경고 비활성화
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
@@ -20,16 +23,13 @@ const require = createRequire(import.meta.url)
 const pdfModule = require('pdf-parse')
 const pdf = typeof pdfModule === 'function' ? pdfModule : (pdfModule.default || pdfModule)
 import { spawn, ChildProcess } from 'child_process'
-import { WebSocketServer, WebSocket } from 'ws'
-import { networkInterfaces } from 'os'
+
 
 let mainWindow: BrowserWindow | null = null
-let collabilationServer: WebSocketServer | null = null
-let activeConnections: Set<WebSocket> = new Set()
+
 let fileToOpenOnStartup: string | null = null
 
-// LLM 프로세스 상태 관리
-let activeLLMProcess: ChildProcess | null = null
+// LLM 프로세스 상태 관리 (Moved to LLMProcessManager)
 
 // 1. 싱글 인스턴스 락 획득 (중복 창 열림 방지 및 파일 인수 위임)
 const gotTheLock = app.requestSingleInstanceLock()
@@ -117,7 +117,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   // [MEM-CLEANUP] 프로그램 기동 시점에 OS 상에 유령으로 남아있던 모든 llama 프로세스 일괄 정리
-  forceCleanupLocalLLMProcesses()
+  LLMProcessManager.forceCleanupLocalLLMProcesses()
 
   // [SEC-W-021] Content-Security-Policy 설정
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -153,7 +153,7 @@ app.whenReady().then(() => {
 
   // 🤖 [Background Warmup] 앱 기동 시 로컬 LLM 백그라운드 비동기 기동 (웜업)
   try {
-    const llamaPath = findLlamaCli()
+    const llamaPath = LLMProcessManager.findLlamaCli()
     let defaultModelPath = 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
     const fs = require('fs')
     if (!fs.existsSync(defaultModelPath)) {
@@ -167,7 +167,7 @@ app.whenReady().then(() => {
       }
     }
     if (llamaPath && fs.existsSync(defaultModelPath)) {
-      startLlamaServerWithFallback(llamaPath, defaultModelPath, 8192, true)
+      LLMProcessManager.startLlamaServerWithFallback(llamaPath, defaultModelPath, 8192, true)
         .then(ok => console.log('Background Warmup Status:', ok))
         .catch(err => console.error('Background Warmup Failed:', err))
     }
@@ -178,14 +178,14 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   // LLM 프로세스 정리
-  if (activeLLMProcess) {
-    activeLLMProcess.kill()
-    activeLLMProcess = null
+  if (LLMProcessManager.LLMProcessManager.activeLLMProcess) {
+    LLMProcessManager.LLMProcessManager.activeLLMProcess.kill()
+    LLMProcessManager.LLMProcessManager.activeLLMProcess = null
   }
   // [FIX-W-001] window-all-closed에서도 백그라운드 서버 프로세스(좀비 방지) 종료
-  if (activeServerProcess) {
-    try { activeServerProcess.kill('SIGKILL') } catch {}
-    activeServerProcess = null
+  if (LLMProcessManager.activeServerProcess) {
+    try { LLMProcessManager.activeServerProcess.kill('SIGKILL') } catch {}
+    LLMProcessManager.activeServerProcess = null
   }
   // MCP 자식 프로세스들 일괄 격리 종료
   try { MCPProcessManager.killAll() } catch {}
@@ -361,100 +361,16 @@ ipcMain.handle('action:webSearch', async (_event, query: string) => {
 })
 
 // 로컈 IP 주소 추출 헬퍼 함수
-function getLocalIPAddress() {
-  const nets = networkInterfaces()
-  for (const name of Object.keys(nets)) {
-    const interfaces = nets[name]
-    if (interfaces) {
-      for (const net of interfaces) {
-        if (net.family === 'IPv4' && !net.internal) {
-          return net.address
-        }
-      }
-    }
-  }
-  return 'localhost'
-}
-
-// IPC 핸들러 - 로컈 협업 웹소켓 서버 관리
-// [SEC-W-009] 세션 토큰 정성 실행 시마다 새 토큰 생성
-let collabSessionToken: string | null = null
-
 ipcMain.handle('server:start', async (event, port: number) => {
-  const localIp = getLocalIPAddress()
-  // 이미 실행 중이면 현재 상태를 다시 전송하여 UI 동기화
-  if (collabilationServer) {
-    event.sender.send('server:status', { running: true, port, ip: localIp, token: collabSessionToken })
-    return { running: true, port, ip: localIp, token: collabSessionToken }
-  }
-  try {
-    // [SEC-W-009] 매 서버 시작마다 새 랜덤 토큰 생성
-    const { randomUUID } = await import('crypto')
-    collabSessionToken = randomUUID()
-
-    collabilationServer = new WebSocketServer({
-      port,
-      perMessageDeflate: {
-        zlibDeflateOptions: { chunkSize: 1024, memLevel: 7, level: 4 },
-        zlibInflateOptions: { chunkSize: 10 * 1024 },
-        threshold: 1024,
-      },
-    })
-    activeConnections = new Set()
-    collabilationServer.on('connection', (ws, req) => {
-      // [SEC-W-009] 토큰 검증 — URL 쿼리 파라미터에서 토큰 확인
-      try {
-        const reqUrl = new URL(req.url || '/', `http://localhost`)
-        const clientToken = reqUrl.searchParams.get('token')
-        if (!clientToken || clientToken !== collabSessionToken) {
-          ws.close(1008, 'Unauthorized: invalid session token')
-          return
-        }
-      } catch {
-        ws.close(1008, 'Unauthorized: invalid request')
-        return
-      }
-
-      activeConnections.add(ws)
-      ws.on('message', (message, isBinary) => {
-        for (const client of activeConnections) {
-          // readyState 1은 WebSocket.OPEN을 의미함 (번들러 충돌 및 ESM/CJS 호환성 방지)
-          if (client !== ws && client.readyState === 1) {
-            client.send(message, { binary: isBinary })
-          }
-        }
-      })
-      ws.on('close', () => activeConnections.delete(ws))
-      ws.on('error', () => activeConnections.delete(ws))
-    })
-    // 서버 런타임 에러 핸들링
-    collabilationServer.on('error', (err: any) => {
-      console.error('[collabServer] 런타임 오류:', err)
-      event.sender.send('server:status', { running: false, error: err.message, ip: localIp })
-      collabilationServer = null
-      collabSessionToken = null
-    })
-    event.sender.send('server:status', { running: true, port, ip: localIp, token: collabSessionToken })
-    return { running: true, port, ip: localIp, token: collabSessionToken }
-  } catch (err: any) {
-    console.error('[collabServer] 서버 시작 실패:', err)
-    collabilationServer = null
-    collabSessionToken = null
-    event.sender.send('server:status', { running: false, error: err.message, ip: localIp })
-    return { running: false, error: err.message }
-  }
+  return await CollabServerManager.startServer(port, (status) => {
+    event.sender.send('server:status', status)
+  })
 })
 
 ipcMain.handle('server:stop', (event) => {
-  if (collabilationServer) {
-    for (const ws of activeConnections) ws.close()
-    activeConnections.clear()
-    collabilationServer.close()
-    collabilationServer = null
-    collabSessionToken = null
-  }
-  event.sender.send('server:status', { running: false })
-  return { running: false }
+  return CollabServerManager.stopServer((status) => {
+    event.sender.send('server:status', status)
+  })
 })
 
 
@@ -472,295 +388,33 @@ ipcMain.handle('runtime:runPython', async () => {
 // 🤖 로컬 LLM IPC 핸들러 (llama-cli / llama.cpp 래퍼)
 // ─────────────────────────────────────────────────────────────────
 
-// [AI 셋업] 번들링된 llama-cli/server 실행 파일 경로 탐색 헬퍼 (사용자 설치 불필요하게 번들 1순위 조회)
-function findLlamaCli(): string | null {
-  const isDev = !app.isPackaged
-  const basePath = isDev
-    ? join(app.getAppPath(), 'resources')
-    : join(process.resourcesPath, 'resources') // changed 'bin' to 'resources' to match package.json extraResources
 
-  const platform = process.platform // 'win32', 'darwin', 'linux'
-  
-  // 1순위: 로딩 딜레이가 없고 즉각 실행되는 llama-server 우선 탐색
-  const serverBinaryName = platform === 'win32' ? 'llama-server.exe' : 'llama-server'
-  const serverCandidates = [
-    join(basePath, platform, serverBinaryName),
-    'C:\\ameva\\llama\\llama-server.exe',
-    'C:\\ameva\\llama\\server.exe',
-    join(app.getPath('userData'), 'llama', serverBinaryName),
-  ]
-  for (const c of serverCandidates) {
-    if (existsSync(c)) return c
-  }
-
-  // 2순위: llama-cli 폴백 탐색
-  const cliBinaryName = platform === 'win32' ? 'llama-cli.exe' : 'llama-cli'
-  const bundledPath = join(basePath, platform, cliBinaryName)
-  const candidates = [
-    bundledPath, // 앱 패키지 내 내장 바이너리
-    'C:\\ameva\\llama\\llama-cli.exe',
-    'C:\\ameva\\llama\\llama.exe',
-    'C:\\ameva\\llama\\main.exe',
-    join(app.getPath('userData'), 'llama', cliBinaryName),
-  ]
-  for (const c of candidates) {
-    if (existsSync(c)) return c
-  }
-  // PATH에서 탐색
-  return null // 무조건 실재 경로 반환하도록 null 폴백
-}
-
-// whisper-cli 실행 파일 경로 탐색 헬퍼
-function findWhisperCli(): string | null {
-  const candidates = [
-    'C:\\ameva\\whisper\\whisper-cli.exe',
-    'C:\\ameva\\whisper\\main.exe',
-    'C:\\ameva\\whisper\\whisper.exe',
-  ]
-  for (const c of candidates) {
-    if (existsSync(c)) return c
-  }
-  return 'whisper-cli'
-}
-
-// 🤖 [llama-server 백그라운드 상주 제어 전역 변수]
-let activeServerProcess: any = null
-let activeServerModelPath: string | null = null
-const serverPort = 12345
-// 서버 기동 진행 중 플래그 (경쟁 조건 방지)
-let serverStartingPromise: Promise<boolean> | null = null
-
-function forceCleanupLocalLLMProcesses() {
-  try {
-    const { execSync } = require('child_process')
-    if (process.platform === 'win32') {
-      execSync('taskkill /f /im llama-server.exe', { stdio: 'ignore' })
-      execSync('taskkill /f /im llama-cli.exe', { stdio: 'ignore' })
-    } else {
-      execSync('killall -9 llama-server llama-cli', { stdio: 'ignore' })
-    }
-  } catch (e) {
-    // 프로세스 없을 시 예외 무시
-  }
-}
 
 app.on('will-quit', () => {
-  if (activeServerProcess) {
+  if (LLMProcessManager.activeServerProcess) {
     try {
-      activeServerProcess.kill('SIGKILL')
+      LLMProcessManager.activeServerProcess.kill('SIGKILL')
     } catch {}
   }
   // 유령 프로세스 확실히 정리
-  forceCleanupLocalLLMProcesses()
+  LLMProcessManager.forceCleanupLocalLLMProcesses()
   // 앱 완전히 꺼지기 직전 모든 MCP 서버 종료 보장
   try { MCPProcessManager.killAll() } catch {}
 })
 
 // ─── 렌더러 터미널 로그 브로드캐스트 헬퍼 ───
-let llamaLogBuffer = ''
 
-class StreamLineFormatter {
-  private buffer = '';
-  private prefix: string;
-
-  constructor(prefix: string) {
-    this.prefix = prefix;
-  }
-
-  feed(chunk: string, onLine: (formattedLine: string) => void) {
-    this.buffer += chunk;
-    const lines = this.buffer.split('\n');
-    this.buffer = lines.pop() || '';
-    for (const line of lines) {
-      if (!line.trim()) continue; // 빈 줄 무시
-      const now = new Date();
-      const hh = String(now.getHours()).padStart(2, '0');
-      const mm = String(now.getMinutes()).padStart(2, '0');
-      const ss = String(now.getSeconds()).padStart(2, '0');
-      const ms = String(now.getMilliseconds()).padStart(3, '0');
-      const timestamp = `${hh}:${mm}:${ss}.${ms}`;
-      onLine(`[${this.prefix}][${timestamp}] ${line}\n`);
-    }
-  }
-}
-
-const formatters: Record<string, StreamLineFormatter> = {};
-
-function broadcastLog(prefix: string, text: string) {
-  let formatter = formatters[prefix];
-  if (!formatter) {
-    formatter = new StreamLineFormatter(prefix);
-    formatters[prefix] = formatter;
-  }
-  formatter.feed(text, (formattedLine) => {
-    llamaLogBuffer += formattedLine;
-    if (llamaLogBuffer.length > 200000) {
-      llamaLogBuffer = llamaLogBuffer.slice(-200000);
-    }
-    const { webContents } = require('electron');
-    webContents.getAllWebContents().forEach((wc: any) => {
-      if (!wc.isDestroyed()) {
-        wc.send('llm:log', { text: formattedLine });
-      }
-    });
-    process.stderr.write(formattedLine);
-  });
-}
-
-function logToRenderer(text: string) {
-  // 기존 [System] 등이 이미 포함된 텍스트는 그대로 포맷팅 없이 넘길 수도 있지만, 
-  // 일관성을 위해 SYS 접두사를 붙여 래핑합니다.
-  let prefix = 'SYS';
-  if (text.includes('[Fatal Error]') || text.includes('[Error]')) prefix = 'SYS';
-  broadcastLog(prefix, text);
-}
 
 ipcMain.on('llm:add-log', (_event, payload: { text: string; prefix?: string }) => {
   const prefix = payload.prefix || 'SYS';
-  broadcastLog(prefix, payload.text + (!payload.text.endsWith('\n') ? '\n' : ''));
+  LLMProcessManager.broadcastLog(prefix, payload.text + (!payload.text.endsWith('\n') ? '\n' : ''));
 })
 
 ipcMain.handle('llm:get-logs', () => {
-  return llamaLogBuffer
+  return LLMProcessManager.llamaLogBuffer
 })
 
-// ─── [GPU→CPU 자동 폴백] llama-server 기동 헬퍼 ───
-// GPU 가속(-ngl 99) 기동 시 즉사(exit code !== null 즉시)하면 CPU 전용(-ngl 0)으로 재기동
-async function startLlamaServerWithFallback(
-  llamaPath: string,
-  modelPath: string,
-  contextSize: number,
-  gpuFirst: boolean
-): Promise<boolean> {
-  // 이미 기동 중인 동일 서버가 있으면 재사용
-  if (
-    activeServerProcess &&
-    activeServerModelPath === modelPath &&
-    !serverStartingPromise
-  ) {
-    logToRenderer(`[System] 기존 llama-server 인스턴스 재사용 (모델: ${basename(modelPath)})\n`)
-    return true
-  }
 
-  // 경쟁 조건: 이미 누군가 기동 중이면 그 완료를 기다림
-  if (serverStartingPromise) {
-    logToRenderer('[System] 다른 요청이 서버 기동 중입니다. 대기...\n')
-    return serverStartingPromise
-  }
-
-  const doStart = async (ngl: number, threads: number): Promise<boolean> => {
-    // 기존 서버 종료
-    if (activeServerProcess) {
-      try { activeServerProcess.kill('SIGKILL') } catch {}
-      activeServerProcess = null
-      activeServerModelPath = ''
-    }
-    forceCleanupLocalLLMProcesses()
-
-    const sArgs = [
-      '-m', modelPath,
-      '-c', String(contextSize),
-      '--port', String(serverPort),
-      '--host', '127.0.0.1',
-      '-ngl', String(ngl),
-    ]
-    if (ngl > 0) {
-      sArgs.push('-fa', 'on')
-      sArgs.push('-ctk', 'q8_0')
-      sArgs.push('-ctv', 'q8_0')
-    }
-    if (ngl === 0) sArgs.push('-t', String(threads))
-
-    logToRenderer(`[System] llama-server 기동 시도 (ngl=${ngl}, threads=${threads})\n모델: ${basename(modelPath)}\n경로: ${llamaPath}\n`)
-
-    const proc = spawn(llamaPath, sArgs, { cwd: dirname(llamaPath), windowsHide: true })
-    activeServerProcess = proc
-    activeServerModelPath = modelPath
-
-    proc.stdout?.on('data', (d: Buffer) => broadcastLog('LMA', d.toString()))
-    proc.stderr?.on('data', (d: Buffer) => broadcastLog('LMA', d.toString()))
-    proc.on('close', (code) => {
-      if (activeServerProcess === proc) {
-        activeServerProcess = null
-        activeServerModelPath = ''
-        logToRenderer(`[System] llama-server 종료됨 (exit code: ${code})\n`)
-      }
-    })
-
-    // /health 폴링 (1초 간격, 최대 35초)
-    return new Promise<boolean>((resolveReady) => {
-      const startAt = Date.now()
-      const maxWait = 35_000
-      let earlyExit = false
-
-      const onEarlyClose = (code: number | null) => {
-        if (code !== null && code !== 0) {
-          earlyExit = true
-          resolveReady(false)
-        }
-      }
-      proc.once('close', onEarlyClose)
-
-      const poll = () => {
-        if (earlyExit) return
-        if (Date.now() - startAt > maxWait) {
-          logToRenderer('[Error] llama-server 기동 타임아웃 (35초).\n')
-          resolveReady(false)
-          return
-        }
-        const httpM = require('http')
-        const hReq = httpM.request(
-          { hostname: '127.0.0.1', port: serverPort, path: '/health', method: 'GET', timeout: 1000 },
-          (hRes: any) => {
-            let body = ''
-            hRes.on('data', (d: Buffer) => { body += d.toString() })
-            hRes.on('end', () => {
-              try {
-                const j = JSON.parse(body)
-                if (j.status === 'ok') {
-                  logToRenderer(`[System] ✅ llama-server READY! (소요: ${((Date.now()-startAt)/1000).toFixed(1)}초)\n`)
-                  proc.removeListener('close', onEarlyClose)
-                  resolveReady(true)
-                } else if (j.status === 'loading model') {
-                  logToRenderer('[System] 모델 로딩 중...\n')
-                  setTimeout(poll, 1000)
-                } else {
-                  setTimeout(poll, 1000)
-                }
-              } catch {
-                setTimeout(poll, 1000)
-              }
-            })
-          }
-        )
-        hReq.on('error', () => setTimeout(poll, 1000))
-        hReq.on('timeout', () => { hReq.destroy(); setTimeout(poll, 1000) })
-        hReq.end()
-      }
-      setTimeout(poll, 1200)
-    })
-  }
-
-  serverStartingPromise = (async () => {
-    try {
-      if (gpuFirst) {
-        logToRenderer('[System] 1차 기동 시도: GPU 가속 모드 (ngl=99)\n')
-        const gpuOk = await doStart(99, 4)
-        if (gpuOk) return true
-        // GPU 실패 → CPU 폴백
-        logToRenderer('[Warning] ⚠️  GPU 가속 기동 실패! → CPU 전용 모드로 자동 폴백합니다.\n')
-        const cpuOk = await doStart(0, 4)
-        return cpuOk
-      } else {
-        return await doStart(0, 4)
-      }
-    } finally {
-      serverStartingPromise = null
-    }
-  })()
-
-  return serverStartingPromise
-}
 
 // 🤖 [FIX-IPC-003] 토큰 스트리밍 스로틀 전송 헬퍼
 function createTokenSender(event: any, sessionId: string) {
@@ -806,13 +460,13 @@ let isProPlanMemory = !isFreeModeRequested
 // 🤖 [llm:check-health] 포트 12345 llama-server 상태 체크 핸들러
 ipcMain.handle('llm:check-health', async (_event) => {
   // 프로세스가 아예 없으면 즉시 offline
-  if (!activeServerProcess) {
+  if (!LLMProcessManager.activeServerProcess) {
     return { status: 'offline', running: false }
   }
   return new Promise<{ status: string; running: boolean }>((resolve) => {
     const httpM = require('http')
     const hReq = httpM.request(
-      { hostname: '127.0.0.1', port: serverPort, path: '/health', method: 'GET', timeout: 1200 },
+      { hostname: '127.0.0.1', port: LLMProcessManager.serverPort, path: '/health', method: 'GET', timeout: 1200 },
       (hRes: any) => {
         let body = ''
         hRes.on('data', (d: Buffer) => { body += d.toString() })
@@ -835,7 +489,7 @@ ipcMain.handle('llm:check-health', async (_event) => {
 // 🤖 [llm:restart] 서버 강제 재기동 웜업 핸들러
 ipcMain.handle('llm:restart', async (_event) => {
   try {
-    const llamaPath = findLlamaCli()
+    const llamaPath = LLMProcessManager.findLlamaCli()
     if (!llamaPath) return { success: false, error: 'llama.cpp 엔진 경로를 찾을 수 없습니다.' }
     
     let modelPath = 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
@@ -853,15 +507,15 @@ ipcMain.handle('llm:restart', async (_event) => {
     
     if (!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf)을 찾을 수 없습니다.' }
     
-    if (activeServerProcess) {
-      try { activeServerProcess.kill('SIGKILL') } catch {}
-      activeServerProcess = null
+    if (LLMProcessManager.activeServerProcess) {
+      try { LLMProcessManager.activeServerProcess.kill('SIGKILL') } catch {}
+      LLMProcessManager.activeServerProcess = null
     }
-    serverStartingPromise = null // [FIX] 기존 기동 락 강제 초기화
-    forceCleanupLocalLLMProcesses()
+    LLMProcessManager.serverStartingPromise = null // [FIX] 기존 기동 락 강제 초기화
+    LLMProcessManager.forceCleanupLocalLLMProcesses()
     
-    logToRenderer('[System] 수동 재구동 요청 수신. llama-server 웜업 재기동...\n')
-    const ok = await startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
+    LLMProcessManager.logToRenderer('[System] 수동 재구동 요청 수신. llama-server 웜업 재기동...\n')
+    const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
     return { success: ok, error: ok ? undefined : '재기동 실패 (CPU 폴백 포함)' }
   } catch (err: any) {
     return { success: false, error: err.message }
@@ -907,12 +561,12 @@ ipcMain.handle('llm:generate', async (event, payload: {
   const tokenSender = createTokenSender(event, sessionId)
 
   // 기존 프로세스 kill
-  if (activeLLMProcess) {
-    activeLLMProcess.kill()
-    activeLLMProcess = null
+  if (LLMProcessManager.activeLLMProcess) {
+    LLMProcessManager.activeLLMProcess.kill()
+    LLMProcessManager.activeLLMProcess = null
   }
 
-  const llamaPath = findLlamaCli()
+  const llamaPath = LLMProcessManager.findLlamaCli()
   let modelPath = payload.modelPath || 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
 
   // 만약 기본 3B 모델 파일이 없는데, 해당 폴더 내 다른 .gguf 파일이 존재한다면 동적 감지하여 대체
@@ -960,7 +614,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           stream: true
         })
 
-        broadcastLog('OLM', `[System] Ollama API 연결 시도 중...\n서버 주소: http://127.0.0.1:11434/api/chat\n모델: ${targetModel}\n`)
+        LLMProcessManager.broadcastLog('OLM', `[System] Ollama API 연결 시도 중...\n서버 주소: http://127.0.0.1:11434/api/chat\n모델: ${targetModel}\n`)
 
         const reqOptions = {
           hostname: '127.0.0.1',
@@ -976,7 +630,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         let resolved = false
         const req = http.request(reqOptions, (res: any) => {
           let buffer = ''
-          broadcastLog('OLM', `[System] Ollama 연결 성공! 응답 수신 대기 중 (Status: ${res.statusCode})\n`)
+          LLMProcessManager.broadcastLog('OLM', `[System] Ollama 연결 성공! 응답 수신 대기 중 (Status: ${res.statusCode})\n`)
           
           res.on('data', (chunk: Buffer) => {
             const chunkText = chunk.toString()
@@ -1001,7 +655,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
               resolved = true
               ipcMain.off(`llm:abort:${sessionId}`, abortListener)
               tokenSender.flush()
-              broadcastLog('OLM', `[System] Ollama 스트리밍 완료 (수신 글자수: ${buffer.length})\n`)
+              LLMProcessManager.broadcastLog('OLM', `[System] Ollama 스트리밍 완료 (수신 글자수: ${buffer.length})\n`)
               if (!event.sender.isDestroyed()) {
                 event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
               }
@@ -1015,7 +669,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
             resolved = true
             ipcMain.off(`llm:abort:${sessionId}`, abortListener)
             const errorMsg = `Ollama 서버 연결에 실패했습니다. (http://127.0.0.1:11434)\nOllama가 켜져 있는지 확인해주세요. 에러: ${err.message}`
-            broadcastLog('OLM', `\n[Fatal Error] Ollama 연결 실패: ${err.message}\n`)
+            LLMProcessManager.broadcastLog('OLM', `\n[Fatal Error] Ollama 연결 실패: ${err.message}\n`)
             if (!event.sender.isDestroyed()) {
               event.sender.send(`llm:done:${sessionId}`, { success: false, error: errorMsg })
             }
@@ -1028,7 +682,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
           req.destroy()
           if (!resolved) {
             resolved = true
-            broadcastLog('OLM', `[System] Ollama 요청이 사용자에 의해 중단되었습니다.\n`)
+            LLMProcessManager.broadcastLog('OLM', `[System] Ollama 요청이 사용자에 의해 중단되었습니다.\n`)
             if (!event.sender.isDestroyed()) {
               event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
             }
@@ -1041,7 +695,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         req.end()
 
       } catch (err: any) {
-        broadcastLog('OLM', `[Fatal Error] Ollama 처리 예외 발생: ${err.message}\n`)
+        LLMProcessManager.broadcastLog('OLM', `[Fatal Error] Ollama 처리 예외 발생: ${err.message}\n`)
         resolve({ success: false, error: err.message })
       }
     })
@@ -1265,7 +919,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         const gpuOnlyFlag = payload.gpuOnly !== false
 
         // GPU→CPU 자동 폴백 기동 (경쟁 조건 방지 포함)
-        const serverReady = await startLlamaServerWithFallback(llamaPath!, modelPath, contextSize, gpuOnlyFlag)
+        const serverReady = await LLMProcessManager.startLlamaServerWithFallback(llamaPath!, modelPath, contextSize, gpuOnlyFlag)
 
         if (!serverReady) {
           const reason = '서버 기동 실패 (GPU/CPU 폴백 모두 실패). 모델 파일과 llama-server 경로를 확인하세요.'
@@ -1292,7 +946,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
 
         const reqOptions = {
           hostname: '127.0.0.1',
-          port: serverPort,
+          port: LLMProcessManager.serverPort,
           path: '/completion',
           method: 'POST',
           headers: {
@@ -1379,9 +1033,9 @@ ipcMain.handle('llm:generate', async (event, payload: {
         req.end()
 
       } catch (err: any) {
-        if (activeLLMProcess) {
-          activeLLMProcess.kill('SIGKILL')
-          activeLLMProcess = null
+        if (LLMProcessManager.activeLLMProcess) {
+          LLMProcessManager.activeLLMProcess.kill('SIGKILL')
+          LLMProcessManager.activeLLMProcess = null
         }
         resolve({ success: false, error: err.message })
       }
@@ -1427,7 +1081,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
 
       // 콘솔 출력을 얻기 위해 windowsHide 설정 후 스폰
       const proc = spawn(llamaPath, args, { windowsHide: true })
-      activeLLMProcess = proc
+      LLMProcessManager.activeLLMProcess = proc
 
       let buffer = ''
       let resolved = false
@@ -1435,7 +1089,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
       // [SEC-W-022] abort 리스너를 트래킹하여 에러 경로에서도 확실히 정리
       const abortListener = () => {
         proc.kill('SIGKILL')
-        activeLLMProcess = null
+        LLMProcessManager.activeLLMProcess = null
         if (!resolved) {
           resolved = true
           if (!event.sender.isDestroyed()) {
@@ -1458,7 +1112,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
         rawBuffer += text
 
         // [실시간 콘솔 로그 스트림] 렌더러로 원시 터미널 아웃풋 전송 (전체 다 보여줌)
-        broadcastLog('LMA', text)
+        LLMProcessManager.broadcastLog('LMA', text)
 
         // 만약 이미 성능 지표가 감지되었다면 더 이상 채팅방 토큰을 보내지 않음
         if (rawBuffer.includes('[ Prompt:')) {
@@ -1495,12 +1149,12 @@ ipcMain.handle('llm:generate', async (event, payload: {
       proc.stderr.on('data', (data: Buffer) => {
         const text = stderrDecoder.write(data)
         // [실시간 콘솔 로그 스트림] llama.cpp의 표준 에러 로그 전송
-        broadcastLog('LMA', text)
+        LLMProcessManager.broadcastLog('LMA', text)
       })
 
       proc.on('close', (code) => {
         ipcMain.off(`llm:abort:${sessionId}`, abortListener)
-        activeLLMProcess = null
+        LLMProcessManager.activeLLMProcess = null
         tokenSender.flush()
         if (!resolved) {
           resolved = true
@@ -1513,7 +1167,7 @@ ipcMain.handle('llm:generate', async (event, payload: {
 
       proc.on('error', (err) => {
         ipcMain.off(`llm:abort:${sessionId}`, abortListener)
-        activeLLMProcess = null
+        LLMProcessManager.activeLLMProcess = null
         tokenSender.flush()
         if (!resolved) {
           resolved = true
@@ -1526,8 +1180,8 @@ ipcMain.handle('llm:generate', async (event, payload: {
       })
 
     } catch (err: any) {
-      if (activeLLMProcess) {
-        activeLLMProcess = null
+      if (LLMProcessManager.activeLLMProcess) {
+        LLMProcessManager.activeLLMProcess = null
       }
       if (!event.sender.isDestroyed()) {
         event.sender.send('llm:log', { text: `\n[Fatal Error] spawn 동기 예외 발생: ${err.message}` })
@@ -1540,9 +1194,9 @@ ipcMain.handle('llm:generate', async (event, payload: {
 
 // LLM 생성 중단
 ipcMain.on('llm:abort', () => {
-  if (activeLLMProcess) {
-    activeLLMProcess.kill('SIGKILL')
-    activeLLMProcess = null
+  if (LLMProcessManager.activeLLMProcess) {
+    LLMProcessManager.activeLLMProcess.kill('SIGKILL')
+    LLMProcessManager.activeLLMProcess = null
   }
 })
 
@@ -1839,7 +1493,7 @@ ipcMain.handle('stt:transcribe', async (_event, payload: {
   audioPath: string
   language?: string
 }) => {
-  const whisperPath = findWhisperCli()
+  const whisperPath = LLMProcessManager.findWhisperCli()
   const modelPath = 'C:\\ameva\\models\\stt\\ggml-small.bin'
 
   if (!existsSync(modelPath)) {
@@ -2053,131 +1707,7 @@ ipcMain.on('window:close', (event) => {
 })
 
 // 🤖 동적 Stdio MCP 자식 프로세스 관리 시스템
-class MCPProcessManager {
-  private static processes: Map<string, {
-    process: ChildProcess;
-    stdoutBuffer: string;
-    pendingResolvers: Map<string, (response: any) => void>;
-  }> = new Map()
 
-  static spawnServer(serverId: string, command: string, args: string[]): Promise<{ success: boolean; error?: string }> {
-    return new Promise((resolve) => {
-      // 기존에 띄웠던 동일 서버가 있으면 킬
-      this.killServer(serverId)
-
-      console.log(`[MCP-Manager] Spawning MCP server "${serverId}" with command: ${command} ${args.join(' ')}`)
-
-      try {
-        const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] })
-        const state = {
-          process: proc,
-          stdoutBuffer: '',
-          pendingResolvers: new Map<string, (response: any) => void>()
-        }
-        this.processes.set(serverId, state)
-
-        proc.stdout.on('data', (chunk: Buffer) => {
-          state.stdoutBuffer += chunk.toString()
-          let newlineIndex: number
-          while ((newlineIndex = state.stdoutBuffer.indexOf('\n')) !== -1) {
-            const rawLine = state.stdoutBuffer.slice(0, newlineIndex).trim()
-            state.stdoutBuffer = state.stdoutBuffer.slice(newlineIndex + 1)
-            
-            if (!rawLine) continue
-            try {
-              const parsed = JSON.parse(rawLine)
-              if (parsed.id !== undefined) {
-                const resolver = state.pendingResolvers.get(String(parsed.id))
-                if (resolver) {
-                  resolver(parsed)
-                  state.pendingResolvers.delete(String(parsed.id))
-                }
-              }
-            } catch (err) {
-              console.warn(`[MCP-Manager][${serverId}] JSON 라인 파싱 실패:`, rawLine)
-            }
-          }
-        })
-
-        proc.on('error', (err) => {
-          console.error(`[MCP-Manager][${serverId}] 프로세스 실행 에러:`, err)
-          this.processes.delete(serverId)
-          resolve({ success: false, error: err.message })
-        })
-
-        proc.on('close', (code) => {
-          console.log(`[MCP-Manager][${serverId}] 프로세스 종료 코드: ${code}`)
-          this.processes.delete(serverId)
-        })
-
-        // Node ChildProcess가 생성되면 resolve
-        proc.on('spawn', () => {
-          resolve({ success: true })
-        })
-      } catch (err: any) {
-        resolve({ success: false, error: err.message })
-      }
-    })
-  }
-
-  static callServer(serverId: string, request: any): Promise<any> {
-    return new Promise((resolve) => {
-      const state = this.processes.get(serverId)
-      if (!state || !state.process.stdin || !state.process.stdin.writable) {
-        resolve({
-          jsonrpc: '2.0',
-          id: request.id,
-          error: { code: -32000, message: `MCP Server "${serverId}"가 정상 실행 중이 아니거나 쓰기가 차단되었습니다.` }
-        })
-        return
-      }
-
-      const reqId = String(request.id)
-      state.pendingResolvers.set(reqId, resolve)
-
-      // 15초 제한 시간
-      const timeout = setTimeout(() => {
-        if (state.pendingResolvers.has(reqId)) {
-          state.pendingResolvers.delete(reqId)
-          resolve({
-            jsonrpc: '2.0',
-            id: request.id,
-            error: { code: -32000, message: `MCP 요청 제한시간(15초) 초과` }
-          })
-        }
-      }, 15000)
-
-      try {
-        state.process.stdin.write(JSON.stringify(request) + '\n')
-      } catch (err: any) {
-        clearTimeout(timeout)
-        state.pendingResolvers.delete(reqId)
-        resolve({
-          jsonrpc: '2.0',
-          id: request.id,
-          error: { code: -32000, message: `stdin 쓰기 실패: ${err.message}` }
-        })
-      }
-    })
-  }
-
-  static killServer(serverId: string) {
-    const state = this.processes.get(serverId)
-    if (state) {
-      try {
-        state.process.kill()
-      } catch {}
-      this.processes.delete(serverId)
-    }
-  }
-
-  static killAll() {
-    console.log('[MCP-Manager] 모든 MCP 서버 프로세스 종료 중...')
-    for (const serverId of this.processes.keys()) {
-      this.killServer(serverId)
-    }
-  }
-}
 
 // 🤖 MCP IPC 핸들러 등록
 ipcMain.handle('mcp:spawn', async (_event, serverId: string, command: string, args: string[]) => {
@@ -2411,11 +1941,11 @@ ipcMain.handle('mcp:getToken', async () => {
 
 // 🦾 [CONSOLE EXIT-GUARD] 터미널에서 Ctrl+C (SIGINT) 또는 SIGTERM 시그널로 강제 종료 시, 백그라운드 자식 프로세스를 즉각 동기적으로 정리
 process.on('SIGINT', () => {
-  forceCleanupLocalLLMProcesses()
+  LLMProcessManager.forceCleanupLocalLLMProcesses()
   process.exit(0)
 })
 process.on('SIGTERM', () => {
-  forceCleanupLocalLLMProcesses()
+  LLMProcessManager.forceCleanupLocalLLMProcesses()
   process.exit(0)
 })
 

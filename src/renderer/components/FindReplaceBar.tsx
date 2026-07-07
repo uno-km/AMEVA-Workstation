@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { X, ChevronDown, ChevronUp, Replace, ReplaceAll, Search } from 'lucide-react'
 
+import { type AmevaEditor } from '../editor/amevaBlockSchema'
+
 interface FindReplaceBarProps {
   isOpen: boolean
   onClose: () => void
-  editor: any // BlockNoteEditor
+  editor: AmevaEditor | null
   onScrollToBlock: (blockId: string) => void
   initialMode?: 'find' | 'replace'
 }

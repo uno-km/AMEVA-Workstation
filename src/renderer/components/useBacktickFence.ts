@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BlockNoteEditor } from '@blocknote/core'
+import { type AmevaEditor } from '../editor/amevaBlockSchema'
 
 const FENCE_LANG_MAP: Record<string, string> = {
   js: 'javascript', javascript: 'javascript',
@@ -12,7 +12,7 @@ const FENCE_LANG_MAP: Record<string, string> = {
   text: 'plaintext', plaintext: 'plaintext', txt: 'plaintext',
 }
 
-export function useBacktickFence(editor: BlockNoteEditor | null) {
+export function useBacktickFence(editor: AmevaEditor | null) {
   useEffect(() => {
     if (!editor) return
 

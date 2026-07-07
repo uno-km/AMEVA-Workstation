@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { BlockNoteEditor } from '@blocknote/core'
+import { type AmevaEditor } from '../editor/amevaBlockSchema'
 
 export function useCollaborationHighlight(
-  editor: BlockNoteEditor | null,
+  editor: AmevaEditor | null,
   onBlockHighlight: ((blockId: string | null, isEditing: boolean) => void) | undefined,
   editorContainerRef: React.RefObject<HTMLDivElement | null>
 ) {

@@ -7,6 +7,8 @@
  * 동적으로 로드하여 통합 도구(Tool) 카탈로그를 관리하고 실행을 중계합니다.
  */
 
+import * as ipc from '../services/ipc/electronApiAdapter'
+
 export interface MCPServerConfig {
   id: string
   name: string
@@ -34,9 +36,9 @@ export class MCPClientManager {
 
   /** 백엔드 플랜 상태와 동기화 (우회 시도 방지 및 교차 검증) */
   static async syncPlanStatus(): Promise<boolean> {
-    if (window.electronAPI?.planGetStatus) {
+    if (ipc.isElectronEnv()) {
       try {
-        const backendPro = await window.electronAPI.planGetStatus()
+        const backendPro = await ipc.planGetStatus()
         localStorage.setItem('is-pro-plan', String(backendPro))
         return backendPro
       } catch (e) {
@@ -126,14 +128,14 @@ export class MCPClientManager {
           }
         } else if (server.type === 'stdio') {
           // Stdio 방식 (Electron 메인 프로세스 spawn 중계)
-          if (!window.electronAPI) continue
+          if (!ipc.isElectronEnv()) continue
           if (!server.command) continue
 
           // 1. 메인 프로세스에 해당 서버 기동(spawn)
-          const spawnResult = await window.electronAPI?.mcpSpawn?.(server.id, server.command, server.args || [])
+          const spawnResult = await ipc.mcpSpawn(server.id, server.command, server.args || [])
           if (spawnResult.success) {
             // 2. tools/list JSON-RPC 전송
-            const response = await window.electronAPI?.mcpCall?.(server.id, {
+            const response = await ipc.mcpCall(server.id, {
               jsonrpc: '2.0',
               method: 'tools/list',
               id: `list-${Date.now()}`
@@ -200,8 +202,8 @@ export class MCPClientManager {
         return { success: true, result: textContent }
 
       } else if (server.type === 'stdio') {
-        if (!window.electronAPI) throw new Error('Electron API 환경이 아닙니다.')
-        const data = await window.electronAPI?.mcpCall?.(server.id, callPayload)
+        if (!ipc.isElectronEnv()) throw new Error('Electron API 환경이 아닙니다.')
+        const data = await ipc.mcpCall(server.id, callPayload)
         if (data.error) {
           return { success: false, result: '', error: data.error.message }
         }
@@ -218,11 +220,11 @@ export class MCPClientManager {
 
   /** Stdio 서버 프로세스 자원 일괄 정리 */
   static async cleanupAll() {
-    if (!window.electronAPI) return
+    if (!ipc.isElectronEnv()) return
     this.loadConfigs()
     for (const server of this.servers) {
       if (server.type === 'stdio') {
-        await window.electronAPI?.mcpKill?.(server.id)
+        await ipc.mcpKill(server.id)
       }
     }
   }
@@ -231,9 +233,9 @@ export class MCPClientManager {
 
   private static async getOrFetchToken(): Promise<string | null> {
     if (this.mcpToken) return this.mcpToken
-    if ((window as any).electronAPI?.mcpGetToken) {
+    if (ipc.isElectronEnv()) {
       try {
-        this.mcpToken = await (window as any).electronAPI.mcpGetToken()
+        this.mcpToken = await ipc.mcpGetToken()
       } catch (err) {
         console.error('[MCPClientManager] mcpGetToken 실패:', err)
       }

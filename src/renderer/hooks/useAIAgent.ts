@@ -255,8 +255,8 @@ export function useAIAgent() {
     const limitResult = checkUsageLimit(isPro, finalSettings)
     if (limitResult.isLimitExceeded) {
       const limitMessageId = `msg_limit_${Date.now()}`
-      setMessages((prev) => [
-        ...prev,
+      setMessages([
+        ...useAILogStore.getState().messages,
         {
           id: limitMessageId,
           role: 'assistant' as const,
@@ -336,7 +336,7 @@ export function useAIAgent() {
     if (!result.success && result.error) {
       console.error('[useAI] LLM 구동 실패:', result.error)
       setIsGenerating(false)
-      setMessages((prev) => prev.map((m) =>
+      setMessages(useAILogStore.getState().messages.map((m) =>
         m.id === assistantId
           ? { ...m, content: `❌ ${result.error}`, isStreaming: false, error: true }
           : m
@@ -496,7 +496,7 @@ export function useAIAgent() {
   // ── abortGeneration ───────────────────────────────────────────────────────
   const abortGeneration = useCallback(() => {
     clearQueue()
-    setMessages((prev) => prev.filter((m) => !m.id.startsWith('msg_queue_')))
+    setMessages(useAILogStore.getState().messages.filter((m) => !m.id.startsWith('msg_queue_')))
     if (!ipc.isElectronEnv() || !isGenerating) return
     const currentSessionId = currentSessionIdRef.current || 'default'
     ipc.llmAbort(currentSessionId)
