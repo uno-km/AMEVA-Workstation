@@ -1,6 +1,6 @@
 import React from 'react'
 import { X, Check, Trash2, AlertCircle } from 'lucide-react'
-import { PROVIDER_MODELS, API_ENDPOINTS } from '../../shared/constants/aiSettings'
+import { PROVIDER_MODELS, API_ENDPOINTS } from "../../../shared/constants/aiSettings"
 
 export interface AISettingsPanelProps {
   settings: any

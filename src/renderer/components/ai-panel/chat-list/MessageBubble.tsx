@@ -210,8 +210,8 @@ export function MessageBubble({
                   }} />
                   <span>
                     {msg.isStreaming 
-                      ? (thinkingText ? \`생각 과정 (추론 중, \${thoughtSummary.completedSteps}/\${thoughtSummary.totalSteps}단계)\` : \`응답 대기 중...\`)
-                      : \`생각 과정 (추론 완료, \${thoughtSummary.totalSteps}단계)\`
+                      ? (thinkingText ? `생각 과정 (추론 중, \${thoughtSummary.completedSteps}/\${thoughtSummary.totalSteps}단계)` : `응답 대기 중...`)
+                      : `생각 과정 (추론 완료, \${thoughtSummary.totalSteps}단계)`
                     }
                   </span>
                 </div>
@@ -266,7 +266,7 @@ export function MessageBubble({
                       try {
                         const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
                         if (!resolvedId) return
-                        const el = document.querySelector(\`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]\`)
+                        const el = document.querySelector(`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]`)
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                           const outer = el.closest('.bn-block-outer') || el
@@ -320,7 +320,7 @@ export function MessageBubble({
                       try {
                         const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
                         if (!resolvedId) return
-                        const el = document.querySelector(\`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]\`)
+                        const el = document.querySelector(`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]`)
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                           const outer = el.closest('.bn-block-outer') || el
@@ -498,7 +498,7 @@ export function MessageBubble({
                     disabled={!hasSelection}
                     style={{
                       background: hasSelection ? 'rgba(6,182,212,0.12)' : 'rgba(255,255,255,0.03)',
-                      border: \`1px solid \${hasSelection ? 'rgba(6,182,212,0.3)' : 'var(--border-muted)'}\`,
+                      border: `1px solid \${hasSelection ? 'rgba(6,182,212,0.3)' : 'var(--border-muted)'}`,
                       cursor: hasSelection ? 'pointer' : 'not-allowed', color: hasSelection ? 'var(--secondary)' : 'var(--text-muted)',
                       display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', padding: '3px 7px',
                       borderRadius: '5px', transition: 'all 0.15s', opacity: hasSelection ? 1 : 0.45,

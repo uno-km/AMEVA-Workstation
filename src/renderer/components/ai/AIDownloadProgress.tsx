@@ -1,6 +1,5 @@
-
 import React from 'react'
-import { formatBytes } from '../../../utils/aiFormatters'
+import { formatBytes } from "../../utils/aiFormatters"
 
 export function AIDownloadProgress({ downloadStatus, onCancel, onShowDetails }: any) {
   if (!downloadStatus || !downloadStatus.status) return null

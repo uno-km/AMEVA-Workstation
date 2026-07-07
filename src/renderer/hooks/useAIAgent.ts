@@ -1,4 +1,4 @@
-﻿/**
+/**
  * useAIAgent.ts (Refactored Facade)
  *
  * AI 에이전트 훅 파사드 (Facade Pattern).
@@ -55,7 +55,7 @@ export function useAIAgent() {
   const { isAvailable, setIsAvailable, models, setModels, codeModels, setCodeModels } = useAIState()
 
   // AI 설정 (LocalStorage 초기화 포함)
-  const { runAgentMode, isAgentRunningRef } = useAIAgentMode()
+  const { runAgentMode, isAgentRunningRef: _isAgentRunningRef } = useAIAgentMode()
   const [settings, setSettings] = useState<AISettings>(() => {
     try {
       const stored = localStorage.getItem('ai-settings')
