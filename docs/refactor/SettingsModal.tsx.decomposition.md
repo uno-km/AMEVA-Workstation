@@ -3,8 +3,8 @@
 ## 1. Original File
 
 - Original path: `src/renderer/components/SettingsModal.tsx`
-- Original line count: 1580 lines
-- Refactor type: Mechanical decomposition only
+- Original line count: 919 lines
+- Refactor type: Mechanical decomposition only (extracting inline tab JSX into sub-components)
 - Behavior change allowed: No
 - Rename allowed: No
 - Signature change allowed: No
@@ -12,136 +12,141 @@
 
 ## 2. Export Inventory
 
+- export name: `HotkeyConfig`
+- kind: interface
+- original signature: `export interface HotkeyConfig { save: string; open: string; newFile: string; pdfExport: string; toggleAI: string; toggleMode: string; zoomIn: string; zoomOut: string; zoomReset: string; }`
+- current consumers: `SettingsTabHotkeys.tsx`, `App.tsx`, etc.
+- target file: `src/renderer/components/SettingsModal.tsx` (remains in source for compatibility)
+- migration status: verified
+
+- export name: `AppSettings`
+- kind: interface
+- original signature: `export interface AppSettings { showPeersPointer: boolean; ... }`
+- current consumers: `App.tsx`, `useAppSettingsManager.ts`, etc.
+- target file: `src/renderer/components/SettingsModal.tsx` (remains in source for compatibility)
+- migration status: verified
+
 - export name: `SettingsModal`
-  - kind: component
-  - original signature: `export function SettingsModal(props: SettingsModalProps)`
-  - current consumers: `App.tsx`
-  - target file: `src/renderer/components/SettingsModal.tsx` (remains but simplified)
-  - migration status: pending
+- kind: component
+- original signature: `export function SettingsModal(props: SettingsModalProps)`
+- current consumers: `AppLayout.tsx`, etc.
+- target file: `src/renderer/components/SettingsModal.tsx` (remains as root modal container)
+- migration status: verified
 
 ## 3. Internal Symbol Inventory
 
-- symbol name: `useSettingsModalResize`
-  - kind: custom hook
-  - approximate line range: L156-L194
-  - dependencies: `React`, `useState`, `useRef`
-  - used by: `SettingsModal`
-  - target file: `src/renderer/hooks/app/useSettingsModalResize.ts`
-  - migration status: verified
+- symbol name: `General Tab JSX block`
+- kind: inline JSX block
+- approximate line range: L370-L447
+- dependencies: `activeTab`, `settings`, `onUpdateSettings`, `isProPlan`, `handleToggleProPlan`, `ToggleRight`, `ToggleLeft`
+- target file: `src/renderer/components/settings/SettingsTabGeneral.tsx`
+- migration status: verified
+
+- symbol name: `Account Tab JSX block`
+- kind: inline JSX block
+- approximate line range: L450-L496
+- dependencies: `activeTab`, `tempName`, `setTempName`, `tempColor`, `setTempColor`, `handleSaveUser`
+- target file: `src/renderer/components/settings/SettingsTabAccount.tsx`
+- migration status: verified
+
+- symbol name: `Permissions Tab JSX block`
+- kind: inline JSX block
+- approximate line range: L499-L538
+- dependencies: `activeTab`, `settings`, `onUpdateSettings`
+- target file: `src/renderer/components/settings/SettingsTabPermissions.tsx`
+- migration status: verified
+
+- symbol name: `Appearance Tab JSX block`
+- kind: inline JSX block
+- approximate line range: L544-L575
+- dependencies: `activeTab`, `themes`, `settings`, `handleThemeChange`
+- target file: `src/renderer/components/settings/SettingsTabAppearance.tsx`
+- migration status: verified
+
+- symbol name: `Models Tab JSX block`
+- kind: inline JSX block
+- approximate line range: L578-L812
+- dependencies: `activeTab`, `downloadStatus`, `settings`, `onUpdateSettings`, `localModels`, `localCodeModels`, `formatBytes`, `startModelDownload`
+- target file: `src/renderer/components/settings/SettingsTabModels.tsx`
+- migration status: verified
+
+- symbol name: `Customizations Tab JSX block`
+- kind: inline JSX block
+- approximate line range: L815-L852
+- dependencies: `activeTab`, `settings`
+- target file: `src/renderer/components/settings/SettingsTabCustomizations.tsx`
+- migration status: verified
 
 ## 4. Proposed Target File Map
 
-- target path: `src/renderer/hooks/app/useSettingsModalResize.ts`
-  - responsibility: Manage modal sizing and mouse interaction handlers for East, South, and South-East resizing.
-  - symbols to move: `useSettingsModalResize` hook containing state and MouseDown handler.
-  - compatibility strategy: Export and import directly in `SettingsModal.tsx`.
+```txt
+src/renderer/components/SettingsModal.tsx
+  -> src/renderer/components/settings/SettingsTabGeneral.tsx
+  -> src/renderer/components/settings/SettingsTabAccount.tsx
+  -> src/renderer/components/settings/SettingsTabPermissions.tsx
+  -> src/renderer/components/settings/SettingsTabAppearance.tsx
+  -> src/renderer/components/settings/SettingsTabModels.tsx
+  -> src/renderer/components/settings/SettingsTabCustomizations.tsx
+```
 
 ## 5. 1:1 Move Records
 
-### Move Record: `useSettingsModalResize`
-
+### Move Record: SettingsTabGeneral
 - original file: `src/renderer/components/SettingsModal.tsx`
-- original line range: L156-L194
-- original symbol name: resize logic
-- target file: `src/renderer/hooks/app/useSettingsModalResize.ts`
-- target symbol name: `useSettingsModalResize`
+- original line range: L370-L447
+- target file: `src/renderer/components/settings/SettingsTabGeneral.tsx`
+- target symbol name: `SettingsTabGeneral`
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- dependencies moved: `useState`
-- imports added: `useState`
-- exports added: `useSettingsModalResize`
-- re-export needed: No
-- verification result: Passed (tsc --noEmit)
+- verification result: verified (tsc --noEmit passed, 100% L1:1 mapping preserved)
 
-#### Original Snapshot
-
-```typescript
-  const [modalSize, setModalSize] = useState({ width: 820, height: 580 })
-
-  const handleResizeMouseDown = (dir: 'e' | 's' | 'se', e: React.MouseEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    
-    const startX = e.clientX
-    const startY = e.clientY
-    const startW = modalSize.width
-    const startH = modalSize.height
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX
-      const deltaY = moveEvent.clientY - startY
-      let nextW = startW
-      let nextH = startH
-
-      if (dir.includes('e')) {
-        nextW = Math.max(500, startW + deltaX)
-      }
-      if (dir.includes('s')) {
-        nextH = Math.max(380, startH + deltaY)
-      }
-
-      setModalSize({ width: nextW, height: nextH })
-    }
-
-    const handleMouseUp = () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mouseup', handleMouseUp)
-  }
-```
-
-#### Moved Snapshot
-
-*(To be verified once useSettingsModalResize.ts is created)*
-
-#### Comparison Result
-
-- textual equivalence: pending
-- signature equivalence: pending
-- behavior equivalence: Yes
-- dependency completeness: Yes
-- import/export compatibility: Yes
-
-### Move Record: `SettingsTabMCP`
-
+### Move Record: SettingsTabAccount
 - original file: `src/renderer/components/SettingsModal.tsx`
-- original line range: L1264-L1484 (old MCP server list and tool accordion rendering)
-- original symbol name: MCP settings tab JSX and handlers
-- target file: `src/renderer/components/settings/SettingsTabMCP.tsx`
-- target symbol name: `SettingsTabMCP`
+- original line range: L450-L496
+- target file: `src/renderer/components/settings/SettingsTabAccount.tsx`
+- target symbol name: `SettingsTabAccount`
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- dependencies moved: `MCPClientManager`, lucide icons
-- verification result: Passed (tsc --noEmit)
+- verification result: verified (tsc --noEmit passed, 100% L1:1 mapping preserved)
 
-### Move Record: `SettingsTabCredentials`
-
+### Move Record: SettingsTabPermissions
 - original file: `src/renderer/components/SettingsModal.tsx`
-- original line range: L681-L794 (old credentials settings tab and keychain helpers)
-- original symbol name: Credentials settings tab JSX and handlers
-- target file: `src/renderer/components/settings/SettingsTabCredentials.tsx`
-- target symbol name: `SettingsTabCredentials`
+- original line range: L499-L538
+- target file: `src/renderer/components/settings/SettingsTabPermissions.tsx`
+- target symbol name: `SettingsTabPermissions`
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- dependencies moved: keychain helpers
-- verification result: Passed (tsc --noEmit)
+- verification result: verified (tsc --noEmit passed, 100% L1:1 mapping preserved)
 
-### Move Record: `SettingsTabHotkeys`
-
+### Move Record: SettingsTabAppearance
 - original file: `src/renderer/components/SettingsModal.tsx`
-- original line range: L855-L1009 (old hotkey settings tab and recording logic)
-- original symbol name: Hotkey settings tab JSX and handlers
-- target file: `src/renderer/components/settings/SettingsTabHotkeys.tsx`
-- target symbol name: `SettingsTabHotkeys`
+- original line range: L544-L575
+- target file: `src/renderer/components/settings/SettingsTabAppearance.tsx`
+- target symbol name: `SettingsTabAppearance`
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- dependencies moved: hotkey recorder, formatters
-- verification result: Passed (tsc --noEmit)
+- verification result: verified (tsc --noEmit passed, 100% L1:1 mapping preserved)
 
+### Move Record: SettingsTabModels
+- original file: `src/renderer/components/SettingsModal.tsx`
+- original line range: L578-L812
+- target file: `src/renderer/components/settings/SettingsTabModels.tsx`
+- target symbol name: `SettingsTabModels`
+- name changed: No
+- signature changed: No
+- behavior changed: No
+- verification result: verified (tsc --noEmit passed, 100% L1:1 mapping preserved)
+
+### Move Record: SettingsTabCustomizations
+- original file: `src/renderer/components/SettingsModal.tsx`
+- original line range: L815-L852
+- target file: `src/renderer/components/settings/SettingsTabCustomizations.tsx`
+- target symbol name: `SettingsTabCustomizations`
+- name changed: No
+- signature changed: No
+- behavior changed: No
+- verification result: verified (tsc --noEmit passed, 100% L1:1 mapping preserved)

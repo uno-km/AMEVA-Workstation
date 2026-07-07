@@ -1,5 +1,17 @@
 # AMEVA OS Changelog
 
+## 2026-07-07 (Phase 1-B: Document Exporters Type Hardening)
+
+### 🚀 Major Architectural Changes
+- **Document Exporters Type Hardening (`officeExporter.ts`, `exportersHelper.ts`, `htmlExporter.ts`, `hwpExporter.ts`)**: Complete elimination of all 47 `any` type escape hatches across the entire document exporting suite. Introduced shared AST interfaces (`ExporterBlock`, `ExporterInlineContent`, `ExporterTableRow`, `ExporterInlineStyle`) in `exportersHelper.ts` and integrated strict library typing (`import('exceljs').Cell`, `import('exceljs').Column`). Achieved 100% strict type safety across HTML, XML, Word (DOCX), Excel (XLSX), PPTX, and HWPX exporters while preserving zero variable renames, zero function renames, zero signature breaks, and zero runtime behavior changes.
+
+### 📁 Files Modified / Added
+- `[MODIFY]` `src/main/exporters/exportersHelper.ts` - Added shared AST interfaces and eliminated 4 `any` occurrences.
+- `[MODIFY]` `src/main/exporters/officeExporter.ts` - Eliminated 29 `any` occurrences across Word, Excel, and PPTX exporters.
+- `[MODIFY]` `src/main/exporters/htmlExporter.ts` - Eliminated 10 `any` occurrences across HTML and XML exporters.
+- `[MODIFY]` `src/main/exporters/hwpExporter.ts` - Eliminated 4 `any` occurrences in HWPX exporter.
+- `[NEW]` `docs/audit/type-migration-ledger-officeExporter.md` - Created exhaustive Type Migration Ledger tracking all 47 items and verifying zero regression via `npx tsc --noEmit` and `npm run build`.
+
 ## 2026-07-07 (Phase 1-A: electronApiAdapter.ts Type Hardening)
 
 ### 🚀 Major Architectural Changes

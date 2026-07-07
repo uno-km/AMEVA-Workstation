@@ -21,8 +21,10 @@ try {
 // ─── 기능별 이원화 컴포넌트 및 커스텀 훅 임포트 ─────────────────────
 import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
-import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 import { MarkdownPreview } from './MarkdownPreview'
+import { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
+import { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
+import { WelcomeBanner } from './editor/WelcomeBanner'
 
 import type { EditorMode } from '../../shared/types'
 
@@ -49,182 +51,6 @@ interface MarkdownEditorProps {
   tabs?: Array<{ id: string; filePath: string | null; content: string; blocks: any[] }>
   isProPlan?: boolean
 }
-
-// ─────────────────────────────────────────────────────────────
-// 타 사용자 블록 하이라이트 레이어 컴포넌트
-// peers 배열의 blockHighlight 를 읽어 해당 블록 DOM 위치에 overlay 렌더링
-// ─────────────────────────────────────────────────────────────
-interface PeerBlockHighlightLayerProps {
-  peers: PeerState[]
-  containerRef: React.RefObject<HTMLDivElement | null>
-}
-
-interface BlockOverlay {
-  peerId: string
-  peerName: string
-  peerColor: string
-  isEditing: boolean
-  top: number
-  left: number
-  width: number
-  height: number
-}
-
-function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighlightLayerProps) {
-  const [overlays, setOverlays] = useState<BlockOverlay[]>([])
-
-  useEffect(() => {
-    const activeList = peers.filter(p => p.blockHighlight?.blockId)
-    if (activeList.length === 0) {
-      setOverlays(prev => prev.length === 0 ? prev : [])
-      return
-    }
-
-    const computeOverlays = () => {
-      const container = containerRef.current
-      if (!container) return
-
-      const containerRect = container.getBoundingClientRect()
-      const scrollTop = container.scrollTop
-      const newOverlays: BlockOverlay[] = []
-
-      for (const peer of activeList) {
-        if (!peer.blockHighlight) continue
-        const { blockId, isEditing } = peer.blockHighlight
-
-        const blockDom = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
-        if (!blockDom) continue
-
-        const outerEl = blockDom.closest('.bn-block-outer') || blockDom
-        const rect = outerEl.getBoundingClientRect()
-
-        newOverlays.push({
-          peerId: peer.id,
-          peerName: peer.name,
-          peerColor: peer.color,
-          isEditing,
-          top: rect.top - containerRect.top + scrollTop,
-          left: rect.left - containerRect.left,
-          width: rect.width,
-          height: rect.height,
-        })
-      }
-      setOverlays(prev => {
-        const isDifferent = newOverlays.length !== prev.length ||
-          newOverlays.some((item, idx) => 
-            item.peerId !== prev[idx]?.peerId || 
-            item.isEditing !== prev[idx]?.isEditing ||
-            item.top !== prev[idx]?.top ||
-            item.height !== prev[idx]?.height ||
-            item.width !== prev[idx]?.width
-          )
-        return isDifferent ? newOverlays : prev
-      })
-    }
-
-    computeOverlays()
-    const timer = setInterval(computeOverlays, 300)
-
-    window.addEventListener('resize', computeOverlays)
-    const container = containerRef.current
-    if (container) container.addEventListener('scroll', computeOverlays)
-
-    return () => {
-      clearInterval(timer)
-      window.removeEventListener('resize', computeOverlays)
-      if (container) container.removeEventListener('scroll', computeOverlays)
-    }
-  }, [peers, containerRef])
-
-  if (overlays.length === 0) return null
-
-  // 같은 블록에 있는 피어들 라벨 세로 위치 조율용 Map
-  const blockLabelCounts = new Map<string, number>()
-
-  return (
-    <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 5 }}>
-      {overlays.map((ov) => {
-        const blockKey = `${ov.top}_${ov.left}`
-        const count = blockLabelCounts.get(blockKey) || 0
-        blockLabelCounts.set(blockKey, count + 1)
-        const labelTop = count * 22
-
-        return (
-          <React.Fragment key={ov.peerId}>
-            <div
-              style={{
-                position: 'absolute',
-                top: ov.top,
-                left: ov.left - 4,
-                width: ov.width + 8,
-                height: ov.height,
-                backgroundColor: ov.peerColor,
-                opacity: ov.isEditing ? 0.14 : 0.08,
-                pointerEvents: 'none',
-                zIndex: 5,
-                borderRadius: '4px',
-                borderLeft: `3px solid ${ov.peerColor}`,
-                transition: 'opacity 0.2s, top 0.12s, height 0.12s',
-              }}
-            />
-
-            <div
-              style={{
-                position: 'absolute',
-                top: ov.top - 20 + labelTop,
-                left: ov.left,
-                pointerEvents: 'none',
-                zIndex: 20,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                transition: 'top 0.12s',
-              }}
-            >
-              <div style={{
-                width: '14px', height: '14px', borderRadius: '50%',
-                backgroundColor: ov.peerColor,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '8px', fontWeight: 800, color: '#fff',
-                boxShadow: `0 0 6px ${ov.peerColor}80`,
-                flexShrink: 0,
-              }}>
-                {ov.peerName.charAt(0).toUpperCase()}
-              </div>
-
-              <div style={{
-                background: ov.peerColor,
-                color: '#fff',
-                fontSize: '9px',
-                fontWeight: 700,
-                padding: '2px 6px',
-                borderRadius: '3px',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                whiteSpace: 'nowrap',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '3px',
-                opacity: 0.95,
-              }}>
-                <span>{ov.peerName}</span>
-                {ov.isEditing && (
-                  <span style={{
-                    fontSize: '8px', opacity: 0.9,
-                    animation: 'collab-pulse 1.2s infinite alternate',
-                  }}>
-                    editing...
-                  </span>
-                )}
-              </div>
-            </div>
-          </React.Fragment>
-        )
-      })}
-    </div>
-  )
-}
-
-
 
 // ─────────────────────────────────────────────────────────────
 // 🏁 MarkdownEditor 메인 컴포넌트
@@ -384,127 +210,6 @@ export function MarkdownEditor({
       onSelectionChange(null)
     }
   }
-
-  // 3. 슬래시 메뉴 — 언어별 항목 추가
-  const getCustomSlashMenuItems = useCallback((editorInstance: AmevaEditor) => {
-    const defaultItems = getDefaultReactSlashMenuItems(editorInstance)
-
-    const filtered = defaultItems.filter(item =>
-      !item.title.toLowerCase().includes('code block') &&
-      !item.title.toLowerCase().includes('codeblock')
-    )
-
-    const insertCodeBlock = (lang: string) => () => {
-      try {
-        const pos = editorInstance.getTextCursorPosition()
-        if (!pos) return
-        editorInstance.updateBlock(pos.block.id, {
-          type: 'jupyter',
-          props: {
-            language: lang,
-            code: '',
-            runState: JSON.stringify({ hasRun: false, success: null, outputLines: [] })
-          },
-        } as any)
-        editorInstance.setTextCursorPosition(pos.block.id, 'start')
-        editorInstance.focus()
-      } catch {}
-    }
-
-    const insertDrawingBlock = () => {
-      try {
-        const pos = editorInstance.getTextCursorPosition()
-        if (!pos) return
-        editorInstance.updateBlock(pos.block.id, {
-          type: 'drawing',
-          props: { data: '[]' }
-        } as any)
-        editorInstance.setTextCursorPosition(pos.block.id, 'start')
-        editorInstance.focus()
-      } catch {}
-    }
-
-    const codeItems = [
-      {
-        title: 'JavaScript Code Block',
-        onItemClick: insertCodeBlock('javascript'),
-        aliases: ['js', 'javascript', 'node', 'code', 'snippet', 'cj', 'c'],
-        group: 'Code',
-        icon: <Code2 size={16} color="#f59e0b" />,
-        subtext: 'JavaScript 실행 가능 코드 블록 삽입 (/cj 또는 /c)',
-      },
-      {
-        title: 'Python Code Block',
-        onItemClick: insertCodeBlock('python'),
-        aliases: ['py', 'python', 'code', 'snippet', 'cp'],
-        group: 'Code',
-        icon: <Code2 size={16} color="#3b82f6" />,
-        subtext: 'Python 실행 가능 코드 블록 삽입 (/cp)',
-      },
-      {
-        title: 'SQL Code Block',
-        onItemClick: insertCodeBlock('sql'),
-        aliases: ['sql', 'sqlite', 'db', 'query', 'csql'],
-        group: 'Code',
-        icon: <Code2 size={16} color="#06b6d4" />,
-        subtext: '가상 SQLite DB 실행 가능 SQL 코드 블록 삽입 (/csql)',
-      },
-      {
-        title: 'HTML Sandbox Block',
-        onItemClick: insertCodeBlock('html'),
-        aliases: ['html', 'css', 'web', 'sandbox', 'ch'],
-        group: 'Code',
-        icon: <Globe size={16} color="#14b8a6" />,
-        subtext: '실시간 프리뷰 지원 HTML/JS 샌드박스 삽입 (/ch)',
-      },
-      {
-        title: 'Mermaid Diagram',
-        onItemClick: insertCodeBlock('mermaid'),
-        aliases: ['mermaid', 'diagram', 'flowchart', 'chart', 'cm'],
-        group: 'Code',
-        icon: <Eye size={16} color="#8b5cf6" />,
-        subtext: 'Mermaid 다이어그램 블록 삽입 (/cm)',
-      },
-      {
-        title: 'JSON Code Block',
-        onItemClick: insertCodeBlock('json'),
-        aliases: ['json', 'data', 'object'],
-        group: 'Code',
-        icon: <Code2 size={16} color="#10b981" />,
-        subtext: 'JSON 데이터 구조화 코드 블록 삽입',
-      },
-      {
-        title: 'Bash Code Block',
-        onItemClick: insertCodeBlock('bash'),
-        aliases: ['bash', 'sh', 'shell', 'terminal'],
-        group: 'Code',
-        icon: <Terminal size={16} color="#ec4899" />,
-        subtext: 'Bash 쉘 스크립트 코드 블록 삽입',
-      },
-      {
-        title: 'Plain Code Block',
-        onItemClick: insertCodeBlock('plaintext'),
-        aliases: ['code', 'codeblock', 'plain', 'text', 'ct'],
-        group: 'Code',
-        icon: <Code2 size={16} color="#6b7280" />,
-        subtext: '기본 텍스트 및 기타 언어용 코드 블록 삽입 (/ct)',
-      },
-    ]
-
-    const drawingSubscribed = installedPlugins.includes('drawing-board')
-    const drawingItems = drawingSubscribed ? [
-      {
-        title: 'Drawing Board',
-        onItemClick: insertDrawingBlock,
-        aliases: ['drawing', 'draw', 'sketch', 'paint', 'canvas'],
-        group: 'Media',
-        icon: <FileImage size={16} color="#a855f7" />,
-        subtext: 'Excalidraw 기반 화이트보드 드로잉 블록 삽입 (/draw)',
-      }
-    ] : []
-
-    return [...filtered, ...codeItems, ...drawingItems]
-  }, [installedPlugins])
 
   if (!editor) {
     return (
@@ -671,111 +376,19 @@ export function MarkdownEditor({
         })}
 
         {editorMode === 'welcome' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            {/* 눈부신 웰컴 오로라 그래디언트 배너 */}
-            <div style={{
-              background: 'linear-gradient(135deg, rgba(139,92,246,0.18) 0%, rgba(249,115,22,0.12) 100%)',
-              border: '1px solid rgba(139, 92, 246, 0.35)',
-              borderRadius: '16px',
-              padding: '24px 32px',
-              boxShadow: '0 8px 32px rgba(139, 92, 246, 0.08)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px',
-              position: 'relative',
-              overflow: 'hidden',
-            }}>
-              <div style={{ zIndex: 2 }}>
-                <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px 0', background: 'linear-gradient(90deg, #a78bfa, #fdba74)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  🚀 AMEVA Workstation Guide Book
-                </h1>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
-                  아메바 워크스테이션에 오신 것을 환영합니다! 아래는 손실 없이 완전히 렌더링된 공식 안내 백서입니다.<br />
-                  문서를 직접 작성하거나 웰컴 가이드를 편집하려면 아래 버튼 중 하나를 클릭해 편집을 바로 시작하십시오.
-                </p>
-              </div>
-
-              {/* 아름다운 액션 버튼 그룹 */}
-              <div style={{ display: 'flex', gap: '12px', zIndex: 2, flexWrap: 'wrap' }}>
-                <button
-                  className="btn btn-primary"
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onClick={onStartWelcomeEdit}
-                >
-                  <Code2 size={14} /> ✍ 가이드 문서 편집하기
-                </button>
-                
-                <button
-                  className="btn btn-glass"
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onClick={onStartNewDocument}
-                >
-                  ➕ 새 문서 작성하기
-                </button>
-
-                <button
-                  className="btn btn-glass"
-                  style={{
-                    padding: '8px 16px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    background: 'rgba(255, 255, 255, 0.06)',
-                    border: '1px solid rgba(255, 255, 255, 0.1)',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                  }}
-                  onClick={onOpenFile}
-                >
-                  📂 기존 파일 열기
-                </button>
-              </div>
-            </div>
-
-            {/* 마크다운 원본의 완전 무결 렌더링 뷰포트 */}
-            <div style={{
-              background: 'var(--bg-deep)',
-              border: '1px solid var(--border-muted)',
-              borderRadius: '16px',
-              padding: '24px 36px',
-            }}>
-              <MarkdownPreview markdown={currentContent} editor={editor} />
-            </div>
-          </div>
+          <WelcomeBanner
+            onStartWelcomeEdit={onStartWelcomeEdit}
+            onStartNewDocument={onStartNewDocument}
+            onOpenFile={onOpenFile}
+            currentContent={currentContent}
+            editor={editor}
+          />
         ) : editorMode === 'edit' ? (
           <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
-                const items = getCustomSlashMenuItems(editor)
+                const items = getCustomSlashMenuItems(editor, installedPlugins)
                 return items.filter(item =>
                   item.title.toLowerCase().includes(query.toLowerCase()) ||
                   (item.aliases?.some(a => a.toLowerCase().includes(query.toLowerCase())))
@@ -890,3 +503,7 @@ export function MarkdownEditor({
     </div>
   )
 }
+
+export { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
+export { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
+export { WelcomeBanner } from './editor/WelcomeBanner'

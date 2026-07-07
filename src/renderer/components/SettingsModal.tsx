@@ -8,6 +8,12 @@ import { useSettingsModalResize } from '../hooks/app/useSettingsModalResize'
 import { SettingsTabCredentials } from './settings/SettingsTabCredentials'
 import { SettingsTabMCP } from './settings/SettingsTabMCP'
 import { SettingsTabHotkeys } from './settings/SettingsTabHotkeys'
+import { SettingsTabGeneral } from './settings/SettingsTabGeneral'
+import { SettingsTabAccount } from './settings/SettingsTabAccount'
+import { SettingsTabPermissions } from './settings/SettingsTabPermissions'
+import { SettingsTabAppearance } from './settings/SettingsTabAppearance'
+import { SettingsTabModels } from './settings/SettingsTabModels'
+import { SettingsTabCustomizations } from './settings/SettingsTabCustomizations'
 
 export interface HotkeyConfig {
   save: string
@@ -348,481 +354,69 @@ export function SettingsModal({
                   cursor: 'pointer', textAlign: 'left',
                   transition: 'background 0.15s, color 0.15s',
                 }}
-              >
-                <Icon size={13} style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)' }} />
-                {t.label}
-              </button>
-            )
-          })}
-        </div>
-
-        {/* 우측 설정 뷰 영역 */}
-        <div style={{
-          flex: 1,
-          padding: '20px',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-        }}>
-          
-          {/* General Tab */}
-          {activeTab === 'General' && (
-            <>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>General Settings</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '11.5px', fontWeight: 700 }}>실시간 타인 포인터 표시</div>
-                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>동료의 실시간 마우스 움직임을 화면에 투사합니다.</div>
-                  </div>
-                  <button onClick={() => onUpdateSettings({ showPeersPointer: !settings.showPeersPointer })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-                    {settings.showPeersPointer ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '11.5px', fontWeight: 700 }}>타인 텍스트 드래그 동기화</div>
-                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>동료의 선택 영역 렉트 하이라이트를 실시간 표시합니다.</div>
-                  </div>
-                  <button onClick={() => onUpdateSettings({ showPeersDrag: !settings.showPeersDrag })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-                    {settings.showPeersDrag ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '11.5px', fontWeight: 700 }}>코드 샌드박스 콘솔 도크</div>
-                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>에디터 아래에 코드 퀵 런타임 위젯을 상시 노출합니다.</div>
-                  </div>
-                  <button onClick={() => onUpdateSettings({ showCodeConsole: !settings.showCodeConsole })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-                    {settings.showCodeConsole ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '11.5px', fontWeight: 700 }}>줄바꿈 비활성화 (가로 스크롤)</div>
-                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>텍스트 자동 줄바꿈을 풀고 가로 스크롤로 문장을 표출합니다.</div>
-                  </div>
-                  <button onClick={() => onUpdateSettings({ wordWrap: !settings.wordWrap })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-                    {!settings.wordWrap ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '11.5px', fontWeight: 700 }}>에디터 우측 미니맵 표시</div>
-                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>오른쪽에 전체 레이아웃 시각화 Minimap 바를 표시합니다.</div>
-                  </div>
-                  <button onClick={() => onUpdateSettings({ showMinimap: !settings.showMinimap })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-                    {settings.showMinimap ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
-                  </button>
-                </div>
-
-                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  background: 'rgba(168, 85, 247, 0.05)',
-                  border: '1px dashed rgba(168, 85, 247, 0.3)',
-                  borderRadius: '8px',
-                  padding: '10px 12px'
-                }}>
-                  <div>
-                    <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--primary)' }}>👑 AMEVA Pro 플랜 활성화</div>
-                    <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
-                      유료 기능을 활성화합니다. 마켓플레이스 접근 및 외부 MCP 서버(Stdio/HTTP) 매니저 탭이 개방됩니다.
-                    </div>
-                  </div>
-                  <button onClick={handleToggleProPlan} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-                    {isProPlan ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
+                  {/* General Tab */}
+          <SettingsTabGeneral
+            activeTab={activeTab}
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
+            isProPlan={isProPlan}
+            handleToggleProPlan={handleToggleProPlan}
+          />
 
           {/* Account Tab */}
-          {activeTab === 'Account' && (
-            <>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Account Settings</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>사용자 닉네임</label>
-                  <input
-                    type="text"
-                    value={tempName}
-                    onChange={e => setTempName(e.target.value)}
-                    style={{
-                      padding: '6px 10px', background: 'var(--bg-glass)',
-                      border: '1px solid var(--border-muted)', borderRadius: '6px',
-                      color: 'var(--text-main)', fontSize: '11px', outline: 'none',
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>나의 식별 배지 테마 컬러</label>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <input
-                      type="color"
-                      value={tempColor}
-                      onChange={e => setTempColor(e.target.value)}
-                      style={{
-                        width: '32px', height: '24px', border: 'none',
-                        background: 'transparent', cursor: 'pointer',
-                      }}
-                    />
-                    <span style={{ fontSize: '11px', fontFamily: 'monospace' }}>{tempColor}</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleSaveUser}
-                  style={{
-                    alignSelf: 'flex-start', padding: '6px 14px', borderRadius: '6px',
-                    background: 'var(--primary)', border: 'none', color: '#fff',
-                    fontSize: '11px', fontWeight: 700, cursor: 'pointer', marginTop: '8px',
-                  }}
-                >
-                  프로필 저장 적용
-                </button>
-              </div>
-            </>
-          )}
+          <SettingsTabAccount
+            activeTab={activeTab}
+            tempName={tempName}
+            setTempName={setTempName}
+            tempColor={tempColor}
+            setTempColor={setTempColor}
+            handleSaveUser={handleSaveUser}
+          />
 
           {/* Permissions Tab */}
-          {activeTab === 'Permissions' && (
-            <>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Security & Permissions</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>보안 설정 모드 (Security Preset)</label>
-                  <select
-                    value={settings.securityPreset || 'turbo'}
-                    onChange={e => onUpdateSettings({ securityPreset: e.target.value as any })}
-                    style={{
-                      width: '100%', background: 'var(--bg-glass)',
-                      border: '1px solid var(--border-muted)', borderRadius: '6px',
-                      padding: '5px 8px', color: 'var(--text-main)', fontSize: '11px',
-                    }}
-                  >
-                    <option value="paranoiac">Paranoid Maximum (가장 안전 / 자동실행 금지)</option>
-                    <option value="turbo">Turbo Mode (기본 성능 중심)</option>
-                    <option value="restricted">Restricted Sandbox (격리 샌드박스 강제)</option>
-                  </select>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>아티팩트 자동 실행 허용 여부</label>
-                  <select
-                    value={settings.artifactReviewPolicy || 'ask'}
-                    onChange={e => onUpdateSettings({ artifactReviewPolicy: e.target.value as any })}
-                    style={{
-                      width: '100%', background: 'var(--bg-glass)',
-                      border: '1px solid var(--border-muted)', borderRadius: '6px',
-                      padding: '5px 8px', color: 'var(--text-main)', fontSize: '11px',
-                    }}
-                  >
-                    <option value="always">항상 검토 없이 바로 실행 (Always Allow)</option>
-                    <option value="never">자동 실행 비활성화 (Always Block)</option>
-                    <option value="ask">실행 시 확인 창 띄우기 (Always Ask)</option>
-                  </select>
-                </div>
-              </div>
-            </>
-          )}
+          <SettingsTabPermissions
+            activeTab={activeTab}
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
+          />
 
           {/* Credentials Tab */}
           <SettingsTabCredentials isOpen={isOpen} activeTab={activeTab} />
 
           {/* Appearance Tab */}
-          {activeTab === 'Appearance' && (
-            <>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Appearance</h3>
-              <div>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-                  시스템 테마 스위처
-                </span>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  {themes.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleThemeChange(t.id)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '8px',
-                        padding: '10px 12px', borderRadius: '6px',
-                        border: settings.theme === t.id ? '1px solid var(--primary)' : '1px solid var(--border-muted)',
-                        background: settings.theme === t.id ? 'var(--bg-glass-active)' : 'rgba(255,255,255,0.01)',
-                        color: settings.theme === t.id ? 'var(--primary)' : 'var(--text-main)',
-                        fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', textAlign: 'left',
-                      }}
-                    >
-                      <div style={{
-                        width: '10px', height: '10px', borderRadius: '50%',
-                        backgroundColor: t.previewColor, border: '1px solid var(--text-dark)',
-                      }} />
-                      {t.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+          <SettingsTabAppearance
+            activeTab={activeTab}
+            settings={settings}
+            handleThemeChange={handleThemeChange}
+            themes={themes}
+          />
 
           {/* Models Tab */}
-          {activeTab === 'Models' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
-              
-              {/* 다운로드 진행률 Toast 바 (모달 내부 노출) */}
-              {downloadStatus && (
-                <div style={{
-                  padding: '10px 14px', borderRadius: '8px',
-                  background: 'rgba(139, 92, 246, 0.15)', border: '1px solid rgba(139, 92, 246, 0.3)',
-                  display: 'flex', flexDirection: 'column', gap: '6px',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold' }}>
-                    <span>📥 모델 다운로드 중: {downloadStatus.filename}</span>
-                    <span>{downloadStatus.progress}%</span>
-                  </div>
-                  <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-                    <div style={{
-                      width: `${downloadStatus.progress}%`, height: '100%',
-                      background: 'linear-gradient(90deg, var(--primary) 0%, #a78bfa 100%)',
-                      transition: 'width 0.2s ease-out'
-                    }} />
-                  </div>
-                  {downloadStatus.speed && (
-                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', textAlign: 'right' }}>속도: {downloadStatus.speed}</span>
-                  )}
-                </div>
-              )}
-
-              {/* 2열 레이아웃 */}
-              <div style={{ display: 'flex', gap: '16px' }}>
-                
-                {/* 1열: 일반 대화형 모델 (LLM) */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-                  <div style={{ borderBottom: '1px solid var(--border-muted)', paddingBottom: '6px' }}>
-                    <h4 style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: 'var(--primary)' }}>💬 일반 대화형 LLM 모델</h4>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>C:\ameva\models\llm</span>
-                  </div>
-
-                  {/* 활성 모델 선택기 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)' }}>기본 대화 모델 활성화</label>
-                    <select
-                      value={settings.modelPath || ''}
-                      onChange={(e) => onUpdateSettings({ modelPath: e.target.value })}
-                      style={{
-                        width: '100%', padding: '6px 10px', borderRadius: '6px',
-                        background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
-                        color: 'var(--text-main)', fontSize: '11.5px', outline: 'none'
-                      }}
-                    >
-                      <option value="">(활성 모델 없음)</option>
-                      {localModels.map(m => (
-                        <option key={m.path} value={m.path}>{m.name} ({formatBytes(m.size || 0)})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* 감지된 로컬 모델 목록 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)' }}>감지된 로컬 모델 파일</span>
-                    {localModels.length === 0 ? (
-                      <div style={{ padding: '12px', borderRadius: '6px', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-muted)', textAlign: 'center', fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                        다운로드된 일반 모델이 없습니다.
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '110px', overflowY: 'auto' }}>
-                        {localModels.map(m => (
-                          <div key={m.path} style={{ padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-glass)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }} title={m.filename}>{m.filename}</span>
-                            <span style={{ fontSize: '9.5px', color: 'var(--primary)', flexShrink: 0 }}>{formatBytes(m.size || 0)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 추천 및 다운로드 허브 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)' }}>추천 대화 모델 빠른 설치</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      {[
-                        {
-                          name: 'Gemma 2 2B (구글)',
-                          size: '1.6 GB',
-                          desc: '빠른 응답 속도와 우수한 한국어 능력',
-                          url: 'https://huggingface.co/lmstudio-community/gemma-2-2b-it-GGUF/resolve/main/gemma-2-2b-it-Q4_K_M.gguf',
-                          filename: 'gemma-2-2b-it-q4_k_m.gguf'
-                        },
-                        {
-                          name: 'EXAONE 3.0 2.4B (LG)',
-                          size: '1.7 GB',
-                          desc: 'LG AI 연구원의 고성능 국산 모델',
-                          url: 'https://huggingface.co/mradermacher/EXAONE-3.0-2.4B-Instruct-GGUF/resolve/main/EXAONE-3.0-2.4B-Instruct.Q4_K_M.gguf',
-                          filename: 'exaone-3.0-2.4b-instruct-q4_k_m.gguf'
-                        },
-                        {
-                          name: 'Qwen 2.5 3B (스탠다드)',
-                          size: '2.2 GB',
-                          desc: '논리력과 밸런스가 뛰어난 스탠다드 모델',
-                          url: 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf',
-                          filename: 'qwen2.5-3b-instruct-q4_k_m.gguf'
-                        }
-                      ].map(model => {
-                        const isInstalled = localModels.some(m => m.filename.toLowerCase() === model.filename.toLowerCase())
-                        return (
-                          <div key={model.filename} style={{ padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', overflow: 'hidden' }}>
-                              <span style={{ fontSize: '11px', fontWeight: 700 }}>{model.name} <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 500 }}>({model.size})</span></span>
-                              <span style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{model.desc}</span>
-                            </div>
-                            <button
-                              disabled={isInstalled || !!downloadStatus}
-                              onClick={() => startModelDownload(model.url, model.filename, 'llm')}
-                              style={{
-                                padding: '4px 8px', borderRadius: '4px',
-                                background: isInstalled ? 'rgba(52, 211, 153, 0.15)' : 'var(--primary)',
-                                color: isInstalled ? '#fff' : '#fff',
-                                border: 'none', fontSize: '9.5px', fontWeight: 'bold',
-                                cursor: isInstalled ? 'default' : 'pointer',
-                                flexShrink: 0
-                              }}
-                            >
-                              {isInstalled ? '설치됨' : '설치'}
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* 2열: 코딩 특화 모델 (Code) */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '12px', minWidth: 0 }}>
-                  <div style={{ borderBottom: '1px solid var(--border-muted)', paddingBottom: '6px' }}>
-                    <h4 style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: '#34d399' }}>💻 코딩 특화 Coder 모델</h4>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>C:\ameva\models\code</span>
-                  </div>
-
-                  {/* 활성 모델 선택기 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <label style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)' }}>코딩 특화 모델 활성화</label>
-                    <select
-                      value={settings.codeModelPath || ''}
-                      onChange={(e) => onUpdateSettings({ codeModelPath: e.target.value })}
-                      style={{
-                        width: '100%', padding: '6px 10px', borderRadius: '6px',
-                        background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
-                        color: 'var(--text-main)', fontSize: '11.5px', outline: 'none'
-                      }}
-                    >
-                      <option value="">(코딩 시 일반 모델로 폴백)</option>
-                      {localCodeModels.map(m => (
-                        <option key={m.path} value={m.path}>{m.name} ({formatBytes(m.size || 0)})</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* 감지된 로컬 코딩 모델 목록 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)' }}>감지된 로컬 코딩 모델 파일</span>
-                    {localCodeModels.length === 0 ? (
-                      <div style={{ padding: '12px', borderRadius: '6px', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-muted)', textAlign: 'center', fontSize: '10.5px', color: 'var(--text-muted)' }}>
-                        다운로드된 코딩 모델이 없습니다.
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '110px', overflowY: 'auto' }}>
-                        {localCodeModels.map(m => (
-                          <div key={m.path} style={{ padding: '6px 10px', borderRadius: '6px', background: 'var(--bg-glass)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '11px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: '8px' }} title={m.filename}>{m.filename}</span>
-                            <span style={{ fontSize: '9.5px', color: '#34d399', flexShrink: 0 }}>{formatBytes(m.size || 0)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* 추천 및 다운로드 허브 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-muted)' }}>추천 코딩 모델 빠른 설치</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                      {[
-                        {
-                          name: 'Qwen 2.5 Coder 1.5B (경량)',
-                          size: '1.1 GB',
-                          desc: '경량 코딩 최적화, 노트북에 적극 권장',
-                          url: 'https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf',
-                          filename: 'qwen2.5-coder-1.5b-instruct-q4_k_m.gguf'
-                        },
-                        {
-                          name: 'Qwen 2.5 Coder 3B (스탠다드)',
-                          size: '2.2 GB',
-                          desc: '속도와 코딩 코어 성능의 완벽한 밸런스',
-                          url: 'https://huggingface.co/Qwen/Qwen2.5-Coder-3B-Instruct-GGUF/resolve/main/qwen2.5-coder-3b-instruct-q4_k_m.gguf',
-                          filename: 'qwen2.5-coder-3b-instruct-q4_k_m.gguf'
-                        },
-                        {
-                          name: 'Qwen 2.5 Coder 7B (고성능)',
-                          size: '4.7 GB',
-                          desc: '복잡한 설계 및 알고리즘 구현 최적화 (Public)',
-                          url: 'https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf',
-                          filename: 'qwen2.5-coder-7b-instruct-q4_k_m.gguf'
-                        }
-                      ].map(model => {
-                        const isInstalled = localCodeModels.some(m => m.filename.toLowerCase() === model.filename.toLowerCase())
-                        return (
-                          <div key={model.filename} style={{ padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', overflow: 'hidden' }}>
-                              <span style={{ fontSize: '11px', fontWeight: 700 }}>{model.name} <span style={{ fontSize: '9px', color: 'var(--text-muted)', fontWeight: 500 }}>({model.size})</span></span>
-                              <span style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{model.desc}</span>
-                            </div>
-                            <button
-                              disabled={isInstalled || !!downloadStatus}
-                              onClick={() => startModelDownload(model.url, model.filename, 'code')}
-                              style={{
-                                padding: '4px 8px', borderRadius: '4px',
-                                background: isInstalled ? 'rgba(52, 211, 153, 0.15)' : '#34d399',
-                                color: isInstalled ? '#34d399' : '#000',
-                                border: 'none', fontSize: '9.5px', fontWeight: 'bold',
-                                cursor: isInstalled ? 'default' : 'pointer',
-                                flexShrink: 0
-                              }}
-                            >
-                              {isInstalled ? '설치됨' : '설치'}
-                            </button>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                </div>
-
-              </div>
-            </div>
-          )}
+          <SettingsTabModels
+            activeTab={activeTab}
+            settings={settings}
+            onUpdateSettings={onUpdateSettings}
+            downloadStatus={downloadStatus}
+            localModels={localModels}
+            localCodeModels={localCodeModels}
+            formatBytes={formatBytes}
+            startModelDownload={startModelDownload}
+          />
 
           {/* Customizations Tab */}
-          {activeTab === 'Customizations' && (
-            <>
-              <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Customizations & Extensions</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                  에디터의 런타임 기능 확장을 로드하거나 마켓플레이스에서 추가한 외부 플러그인을 온/오프 토글합니다.
-                </span>
-                
-                {[
-                  { id: 'outline', name: 'Outline Document Navigator', desc: 'H1~H3 문맥 개요 네비게이션 활성화' },
-                  { id: 'minimap', name: 'Minimap Visual Bar', desc: '에디터 우측 전체 문서 그래픽 미니맵 로딩' },
+          <SettingsTabCustomizations
+            activeTab={activeTab}
+            settings={settings}
+          />
+
+          {/* Hotkeys Tab */}
+          <SettingsTabHotkeys activeTab={activeTab} settings={settings} onUpdateSettings={onUpdateSettings} />
+
+          {/* MCP Manager Tab (Pro Plan Only) */}
+          {activeTab === 'MCP' && (
+            <SettingsTabMCP isProPlan={isProPlan} isOpen={isOpen} />
+          )}
+        </div>픽 미니맵 로딩' },
                   { id: 'canvas', name: 'Free Drawing Canvas', desc: '자유 드로잉 및 다이어그램 스케치 삽입 플러그인' }
                 ].map(p => {
                   const isInstalled = (settings.installedPlugins || []).includes(p.id)
@@ -916,3 +510,10 @@ export function SettingsModal({
     </div>
   )
 }
+
+export { SettingsTabGeneral } from './settings/SettingsTabGeneral'
+export { SettingsTabAccount } from './settings/SettingsTabAccount'
+export { SettingsTabPermissions } from './settings/SettingsTabPermissions'
+export { SettingsTabAppearance } from './settings/SettingsTabAppearance'
+export { SettingsTabModels } from './settings/SettingsTabModels'
+export { SettingsTabCustomizations } from './settings/SettingsTabCustomizations'

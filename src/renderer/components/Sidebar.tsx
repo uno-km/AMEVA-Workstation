@@ -1,14 +1,14 @@
 import React, { useState } from 'react'
 import {
-  FileText, Save, Download, History, Users, Share2,
-  Plus, Trash2, RefreshCw, Eye, Terminal,
-  MessageCircle, Sparkles, ChevronDown, ChevronRight,
-  Wifi, WifiOff, Server, X, PanelLeftClose,
+  FileText, History, Users, MessageCircle, PanelLeftClose,
 } from 'lucide-react'
 import type { EditorMode, ExportFormat, DocumentSnapshot, PeerState } from '../../shared/types'
 import type { ChatMessage } from '../hooks/useChat'
-import { ChatPanel } from './ChatPanel'
 import type { HotkeyConfig } from './SettingsModal'
+import { SidebarTabFiles } from './sidebar/SidebarTabFiles'
+import { SidebarTabHistory } from './sidebar/SidebarTabHistory'
+import { SidebarTabCollab } from './sidebar/SidebarTabCollab'
+import { SidebarTabChat } from './sidebar/SidebarTabChat'
 
 interface SidebarProps {
   filePath: string | null
@@ -70,17 +70,6 @@ const TABS: { id: TabId; icon: React.FC<any>; label: string }[] = [
   { id: 'chat',    icon: MessageCircle, label: '채팅' },
 ]
 
-const EXPORT_FORMATS: { format: ExportFormat; label: string; color?: string }[] = [
-  { format: 'md',   label: 'Markdown (.md)' },
-  { format: 'html', label: 'HTML' },
-  { format: 'pdf',  label: 'PDF' },
-  { format: 'docx', label: 'Word (DOCX)' },
-  { format: 'xlsx', label: 'Excel (XLSX)' },
-  { format: 'pptx', label: 'PPT (PPTX)' },
-  { format: 'hwpx', label: '한글 (HWPX)', color: 'rgba(167,139,250,0.5)' },
-  { format: 'xml',  label: 'XML' },
-]
-
 export function Sidebar({
   filePath, editorMode, setEditorMode, onOpenFile, onSaveFile, onExport,
   snapshots, onCreateSnapshot, onDeleteSnapshot, onSelectSnapshotForDiff,
@@ -119,13 +108,6 @@ export function Sidebar({
     zoomReset: 'Control+0'
   }
   const [activeTab, setActiveTab] = useState<TabId>('files')
-  const [snapTitle, setSnapTitle] = useState('')
-  const [exportOpen, setExportOpen] = useState(false)
-
-  const handleExportClick = (format: ExportFormat) => {
-    onExport(format)
-    // confetti는 App.tsx에서 실제 저장 성공 후에만 실행됨
-  }
 
   const sectionLabel = (text: string) => (
     <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
@@ -242,533 +224,75 @@ export function Sidebar({
 
         {/* ── 파일 탭 ── */}
         {activeTab === 'files' && (
-          <div
-            data-focus-region="sidebar-files"
-            style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '18px', flex: 1, position: 'relative' }}
-          >
-            {/* 편집/뷰어 모드 */}
-            <div>
-              {sectionLabel('에디터 모드')}
-              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                <button
-                  className={`btn btn-glass ${editorMode === 'edit' ? 'active' : ''}`}
-                  style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
-                  onClick={() => setEditorMode('edit')}
-                  title={`에디터 모드 전환 (${formatHotkey(hkeys.toggleMode)})`}
-                >
-                  <Terminal size={12} /> 편집
-                </button>
-                <button
-                  className={`btn btn-glass ${editorMode === 'preview' ? 'active' : ''}`}
-                  style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
-                  onClick={() => setEditorMode('preview')}
-                  title={`미리보기 모드 전환 (${formatHotkey(hkeys.toggleMode)})`}
-                >
-                  <Eye size={12} /> 미리보기
-                </button>
-                <button
-                  className={`btn btn-glass ${editorMode === 'raw' ? 'active' : ''}`}
-                  style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
-                  onClick={() => setEditorMode('raw')}
-                  title={`원문(Markdown) 보기`}
-                >
-                  <FileText size={12} /> 원문보기
-                </button>
-              </div>
-            </div>
-
-            {/* 파일 관리 */}
-            <div>
-              {sectionLabel('파일 관리')}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <button
-                  className="btn btn-glass"
-                  style={{ justifyContent: 'flex-start', fontSize: '13px' }}
-                  onClick={onOpenFile}
-                  title={`문서 파일 열기 (${formatHotkey(hkeys.open)})`}
-                >
-                  <FileText size={14} /> 파일 열기...
-                </button>
-                <button
-                  className="btn btn-primary"
-                  style={{ justifyContent: 'flex-start', fontSize: '13px' }}
-                  onClick={onSaveFile}
-                  title={`문서 파일 저장 (${formatHotkey(hkeys.save)})`}
-                >
-                  <Save size={14} /> 저장 ({formatHotkey(hkeys.save)})
-                </button>
-              </div>
-            </div>
-
-            {/* 파일 열기 모드 */}
-            <div>
-              {sectionLabel('파일 열기 모드')}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                  <input
-                    type="radio"
-                    name="fileOpenMode"
-                    checked={fileOpenMode === 'replace'}
-                    onChange={() => setFileOpenMode('replace')}
-                    style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                  <span style={{ color: fileOpenMode === 'replace' ? 'var(--text-main)' : 'var(--text-muted)' }}>덮어쓰기 (기본)</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                  <input
-                    type="radio"
-                    name="fileOpenMode"
-                    checked={fileOpenMode === 'append'}
-                    onChange={() => setFileOpenMode('append')}
-                    style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                  <span style={{ color: fileOpenMode === 'append' ? 'var(--text-main)' : 'var(--text-muted)' }}>이어서 열기 (본문 추가)</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                  <input
-                    type="radio"
-                    name="fileOpenMode"
-                    checked={fileOpenMode === 'tab'}
-                    onChange={() => setFileOpenMode('tab')}
-                    style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
-                  />
-                  <span style={{ color: fileOpenMode === 'tab' ? 'var(--text-main)' : 'var(--text-muted)' }}>탭별 열기 (다중 탭)</span>
-                </label>
-              </div>
-            </div>
-
-            {/* 열린 파일 목록 */}
-            <div>
-              {sectionLabel('열린 파일 목록')}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto', paddingRight: '4px' }}>
-                {fileOpenMode === 'replace' && (
-                  <div
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '6px',
-                      width: '100%', padding: '6px 8px', borderRadius: '6px',
-                      background: 'var(--bg-glass-active)', border: '1px solid var(--primary)',
-                      color: 'var(--text-main)', fontSize: '11px',
-                      textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden',
-                    }}
-                  >
-                    <FileText size={12} style={{ color: 'var(--primary)' }} />
-                    <span>{filePath ? filePath.split(/[\\/]/).pop() : '무제 문서.md'}</span>
-                  </div>
-                )}
-
-                {fileOpenMode === 'append' && (
-                  appendedFiles.length > 0 ? (
-                    appendedFiles.map((file, idx) => (
-                      <button
-                        key={file.id}
-                        onClick={() => onSelectAppendedFile(file.startBlockId)}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          width: '100%', padding: '6px 8px', borderRadius: '6px',
-                          background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
-                          color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer',
-                          textAlign: 'left', textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden',
-                          transition: 'all 0.15s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--primary)'
-                          e.currentTarget.style.backgroundColor = 'var(--bg-glass-active)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--border-muted)'
-                          e.currentTarget.style.backgroundColor = 'var(--bg-glass)'
-                        }}
-                      >
-                        <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>#{idx + 1}</span>
-                        <span>{file.filePath}</span>
-                      </button>
-                    ))
-                  ) : (
-                    <div
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '6px',
-                        width: '100%', padding: '6px 8px', borderRadius: '6px',
-                        background: 'var(--bg-glass-active)', border: '1px solid var(--primary)',
-                        color: 'var(--text-main)', fontSize: '11px',
-                        textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden',
-                      }}
-                    >
-                      <FileText size={12} style={{ color: 'var(--primary)' }} />
-                      <span>{filePath ? filePath.split(/[\\/]/).pop() : '무제 문서.md'}</span>
-                    </div>
-                  )
-                )}
-
-                {fileOpenMode === 'tab' && tabs.map((tab, idx) => {
-                  const isActive = activeTabId === tab.id
-                  return (
-                    <div
-                      key={tab.id}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px',
-                        width: '100%', padding: '5px 8px', borderRadius: '6px',
-                        background: isActive ? 'var(--bg-glass-active)' : 'var(--bg-glass)',
-                        border: `1px solid ${isActive ? 'var(--primary)' : 'var(--border-muted)'}`,
-                        transition: 'all 0.15s'
-                      }}
-                    >
-                      <button
-                        onClick={() => onSelectTab(tab.id)}
-                        style={{
-                          flex: 1, display: 'flex', alignItems: 'center', gap: '6px',
-                          background: 'transparent', border: 'none',
-                          color: isActive ? 'var(--primary)' : 'var(--text-main)',
-                          fontSize: '11px', cursor: 'pointer', textAlign: 'left',
-                          textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden', padding: 0
-                        }}
-                      >
-                        <span style={{ fontWeight: 'bold' }}>T{idx + 1}</span>
-                        <span>{tab.filePath ? tab.filePath.split(/[\\/]/).pop() : '무제 문서'}</span>
-                      </button>
-                      <button
-                        onClick={() => onCloseTab(tab.id)}
-                        style={{
-                          background: 'transparent', border: 'none',
-                          color: 'var(--text-muted)', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          padding: '2px', borderRadius: '4px', transition: 'all 0.15s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.color = 'var(--danger)'
-                          e.currentTarget.style.backgroundColor = 'rgba(239,68,68,0.1)'
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.color = 'var(--text-muted)'
-                          e.currentTarget.style.backgroundColor = 'transparent'
-                        }}
-                      >
-                        <X size={10} />
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* 내보내기 */}
-            <div>
-              {sectionLabel('내보내기')}
-              <button
-                onClick={() => setExportOpen(!exportOpen)}
-                style={{
-                  width: '100%', padding: '8px 12px', borderRadius: '8px',
-                  background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
-                  color: 'var(--text-main)', cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  fontSize: '12px', fontWeight: 500, fontFamily: 'var(--font-sans)',
-                  transition: 'all 0.15s',
-                  marginBottom: exportOpen ? '6px' : '0',
-                }}
-              >
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Download size={13} /> 포맷 변환...
-                </span>
-                {exportOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              </button>
-
-              {exportOpen && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  {EXPORT_FORMATS.map(({ format, label, color }) => (
-                    <button
-                      key={format}
-                      className="btn btn-glass"
-                      style={{
-                        justifyContent: 'flex-start', fontSize: '12px', padding: '7px 12px',
-                        borderColor: color || undefined,
-                      }}
-                      onClick={() => handleExportClick(format)}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <SidebarTabFiles
+            filePath={filePath}
+            editorMode={editorMode}
+            setEditorMode={setEditorMode}
+            onOpenFile={onOpenFile}
+            onSaveFile={onSaveFile}
+            onExport={onExport}
+            fileOpenMode={fileOpenMode}
+            setFileOpenMode={setFileOpenMode}
+            appendedFiles={appendedFiles}
+            onSelectAppendedFile={onSelectAppendedFile}
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onSelectTab={onSelectTab}
+            onCloseTab={onCloseTab}
+            formatHotkey={formatHotkey}
+            hkeys={hkeys}
+            sectionLabel={sectionLabel}
+          />
         )}
 
         {/* ── 히스토리 탭 ── */}
         {activeTab === 'history' && (
-          <div
-            data-focus-region="sidebar-history"
-            style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, position: 'relative' }}
-          >
-            {sectionLabel('스냅샷 저장')}
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="text"
-                placeholder="버전 제목 입력..."
-                value={snapTitle}
-                onChange={e => setSnapTitle(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && snapTitle.trim()) {
-                    onCreateSnapshot(snapTitle)
-                    setSnapTitle('')
-                  }
-                }}
-                style={{
-                  flex: 1, background: 'var(--bg-glass)',
-                  border: '1px solid var(--border-muted)', borderRadius: '6px',
-                  padding: '6px 10px', color: 'var(--text-main)', outline: 'none', fontSize: '12px',
-                }}
-              />
-              <button
-                className="btn btn-glass"
-                style={{ padding: '6px 10px', flexShrink: 0 }}
-                onClick={() => {
-                  if (snapTitle.trim()) {
-                    onCreateSnapshot(snapTitle)
-                    setSnapTitle('')
-                  }
-                }}
-              >
-                <Plus size={14} />
-              </button>
-            </div>
-
-            {sectionLabel(`타임라인 (${snapshots.length}개)`)}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {snapshots.length === 0 ? (
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0', opacity: 0.6 }}>
-                  저장된 스냅샷이 없습니다.<br />
-                  <span style={{ fontSize: '10px' }}>3분마다 자동 저장됩니다.</span>
-                </div>
-              ) : (
-                snapshots.map((snap) => (
-                  <div
-                    key={snap.id}
-                    className="glass-panel"
-                    style={{ padding: '10px 12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '5px' }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                      <span style={{
-                        fontWeight: 600, fontSize: '12px', color: 'var(--primary)',
-                        maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {snap.title}
-                      </span>
-                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                        <button
-                          onClick={() => onSelectSnapshotForDiff(snap)}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--secondary)', cursor: 'pointer', padding: '2px' }}
-                          title="비교 및 롤백"
-                        >
-                          <RefreshCw size={11} />
-                        </button>
-                        <button
-                          onClick={() => onDeleteSnapshot(snap.id)}
-                          style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '2px' }}
-                          title="삭제"
-                        >
-                          <Trash2 size={11} />
-                        </button>
-                      </div>
-                    </div>
-                    <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
-                      {new Date(snap.timestamp).toLocaleString('ko-KR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <SidebarTabHistory
+            snapshots={snapshots}
+            onCreateSnapshot={onCreateSnapshot}
+            onDeleteSnapshot={onDeleteSnapshot}
+            onSelectSnapshotForDiff={onSelectSnapshotForDiff}
+            sectionLabel={sectionLabel}
+          />
         )}
 
         {/* ── 협업 탭 ── */}
         {activeTab === 'collab' && (
-          <div
-            data-focus-region="sidebar-collab"
-            style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, position: 'relative' }}
-          >
-            {sectionLabel('로컬 협업 서버')}
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {/* 포트 설정 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Server size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', width: '38px' }}>포트</span>
-                <input
-                  type="number"
-                  value={serverPort}
-                  disabled={serverRunning}
-                  onChange={e => setServerPort(Number(e.target.value))}
-                  style={{
-                    width: '80px', background: 'var(--bg-glass)',
-                    border: '1px solid var(--border-muted)', borderRadius: '6px',
-                    padding: '4px 8px', color: 'var(--text-main)', fontSize: '12px',
-                  }}
-                />
-              </div>
-
-              {/* 호스트 설정 (접속 호스트 주소 입력 — 언제나 노출) */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Server size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)', width: '38px' }}>호스트</span>
-                <input
-                  type="text"
-                  value={serverHost}
-                  disabled={serverRunning}
-                  onChange={e => {
-                    // 한글 오타 및 불필요 문자 차단 (영문, 숫자, 마침표, 콜론, 슬래시 등만 허용)
-                    const cleaned = e.target.value.replace(/[^a-zA-Z0-9.:/_-]/g, '')
-                    setServerHost(cleaned)
-                  }}
-                  style={{
-                    width: '120px', background: 'var(--bg-glass)',
-                    border: '1px solid var(--border-muted)', borderRadius: '6px',
-                    padding: '4px 8px', color: 'var(--text-main)', fontSize: '12px',
-                  }}
-                />
-              </div>
-
-              {/* 로컬 서버 옵션 */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                <input
-                  type="checkbox"
-                  checked={useLocalServer}
-                  onChange={e => setUseLocalServer(e.target.checked)}
-                  style={{ cursor: 'pointer', accentColor: 'var(--primary)' }}
-                />
-                <span style={{ color: 'var(--text-main)' }}>내 PC를 서버로 만들기</span>
-              </label>
-
-              {/* 서버 제어 버튼 */}
-              <button
-                className={`btn ${serverRunning ? 'btn-secondary' : 'btn-primary'}`}
-                onClick={onToggleServer}
-                style={{ fontSize: '13px' }}
-              >
-                <Share2 size={14} /> {serverRunning ? '협업 서버 중지' : '협업 서버 시작'}
-              </button>
-
-              {/* 상태 표시 */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px' }}>
-                <div style={{
-                  width: '8px', height: '8px', borderRadius: '50%',
-                  backgroundColor: serverRunning ? 'var(--success)' : 'var(--danger)',
-                  boxShadow: serverRunning ? '0 0 8px rgba(16,185,129,0.6)' : 'none',
-                }} />
-                <span>
-                  서버: {serverRunning ? '실행 중' : '중지됨'}
-                  {serverRunning && isConnected && <span style={{ color: 'var(--success)', marginLeft: '4px' }}>· 연결됨</span>}
-                </span>
-              </div>
-
-              {serverRunning && collaborationLink && (
-                <div style={{
-                  padding: '8px 10px', borderRadius: '6px',
-                  background: 'var(--bg-card)', border: '1px solid var(--border-muted)',
-                }}>
-                  <div style={{ fontSize: '10px', color: 'var(--secondary)', fontWeight: 600, marginBottom: '4px' }}>연결 주소</div>
-                  <code style={{ fontSize: '11px', color: 'var(--text-main)', wordBreak: 'break-all' }}>{collaborationLink}</code>
-                </div>
-              )}
-            </div>
-
-            {/* 접속 중인 피어 목록 */}
-            {sectionLabel(`접속 중인 피어 (${peers.length}명)`)}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {peers.length === 0 ? (
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', padding: '10px 0', opacity: 0.6 }}>
-                  현재 연결된 피어가 없습니다.
-                </div>
-              ) : (
-                peers.map((peer) => (
-                  <div
-                    key={peer.id}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      padding: '8px 10px', borderRadius: '6px',
-                      background: 'var(--bg-glass)',
-                      borderLeft: `3px solid ${peer.color}`,
-                    }}
-                  >
-                    <div style={{
-                      width: '22px', height: '22px', borderRadius: '50%',
-                      backgroundColor: peer.color,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '10px', fontWeight: 800, color: '#fff', flexShrink: 0,
-                    }}>
-                      {peer.name.charAt(0)}
-                    </div>
-                    <span style={{ fontSize: '12px', fontWeight: 600 }}>{peer.name}</span>
-                    <div style={{
-                      marginLeft: 'auto', width: '6px', height: '6px', borderRadius: '50%',
-                      backgroundColor: 'var(--success)', boxShadow: '0 0 6px rgba(16,185,129,0.6)',
-                    }} />
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          <SidebarTabCollab
+            peers={peers}
+            serverRunning={serverRunning}
+            serverPort={serverPort}
+            setServerPort={setServerPort}
+            serverHost={serverHost}
+            setServerHost={setServerHost}
+            useLocalServer={useLocalServer}
+            setUseLocalServer={setUseLocalServer}
+            onToggleServer={onToggleServer}
+            collaborationLink={collaborationLink}
+            isConnected={isConnected}
+            sectionLabel={sectionLabel}
+          />
         )}
 
         {/* ── 채팅 탭 ── */}
         {activeTab === 'chat' && (
-          <div
-            data-focus-region="sidebar-chat"
-            style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', position: 'relative' }}
-          >
-            {isChatFloating ? (
-              <div style={{
-                flex: 1, display: 'flex', flexDirection: 'column',
-                alignItems: 'center', justifyContent: 'center',
-                padding: '24px', textAlign: 'center', gap: '12px',
-                color: 'var(--text-muted)'
-              }}>
-                <MessageCircle size={32} style={{ opacity: 0.3, color: 'var(--primary)' }} />
-                <div style={{ fontSize: '13px', fontWeight: 600 }}>채팅창이 분리되었습니다</div>
-                <div style={{ fontSize: '11px', opacity: 0.8 }}>바탕화면에 띄워진 플로팅 채팅창을 통해 메시지를 주고받을 수 있습니다.</div>
-                <button
-                  className="btn btn-glass"
-                  onClick={onToggleChatFloat}
-                  style={{ fontSize: '11px', marginTop: '10px' }}
-                >
-                  채팅창 가져오기 (고정)
-                </button>
-              </div>
-            ) : (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
-                <button
-                  onClick={onToggleChatFloat}
-                  title="플로팅 창으로 띄우기"
-                  style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '34px',
-                    zIndex: 10,
-                    background: 'transparent',
-                    border: 'none',
-                    color: 'var(--text-muted)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '4px',
-                    borderRadius: '4px',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.color = 'var(--primary)'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-                >
-                  <Share2 size={11} style={{ transform: 'rotate(180deg)' }} />
-                </button>
-                <ChatPanel
-                  messages={chatMessages}
-                  onSend={onChatSend}
-                  onClear={onChatClear}
-                  username={username}
-                  userColor={userColor}
-                  serverRunning={serverRunning}
-                />
-              </div>
-            )}
-          </div>
+          <SidebarTabChat
+            chatMessages={chatMessages}
+            onChatSend={onChatSend}
+            onChatClear={onChatClear}
+            username={username}
+            userColor={userColor}
+            isChatFloating={isChatFloating}
+            onToggleChatFloat={onToggleChatFloat}
+            serverRunning={serverRunning}
+          />
         )}
       </div>
     </aside>
   )
 }
+
+export { SidebarTabFiles } from './sidebar/SidebarTabFiles'
+export { SidebarTabHistory } from './sidebar/SidebarTabHistory'
+export { SidebarTabCollab } from './sidebar/SidebarTabCollab'
+export { SidebarTabChat } from './sidebar/SidebarTabChat'
