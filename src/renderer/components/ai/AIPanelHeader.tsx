@@ -1,0 +1,104 @@
+import React from 'react'
+import { Settings2, X, Sparkles } from 'lucide-react'
+
+export interface AIPanelHeaderProps {
+  title: string
+  providerLabel: string
+  modelLabel: string
+  isGenerating: boolean
+  showSettings: boolean
+  onOpenSettings: () => void
+  onClearMessages: () => void
+  onClose?: () => void
+}
+
+export function AIPanelHeader({
+  title,
+  providerLabel,
+  modelLabel,
+  isGenerating,
+  showSettings,
+  onOpenSettings,
+  onClearMessages,
+  onClose
+}: AIPanelHeaderProps) {
+  return (
+    <div style={{
+      padding: '14px 16px 10px',
+      borderBottom: '1px solid var(--border-muted)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      flexShrink: 0,
+      flexWrap: 'nowrap',
+      width: '100%',
+      boxSizing: 'border-box'
+    }}>
+      <div style={{
+        width: '28px', height: '28px', borderRadius: '8px',
+        background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        boxShadow: '0 0 12px var(--primary-glow)',
+        flexShrink: 0,
+      }}>
+        <Sparkles size={14} color="#fff" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.3px', flexShrink: 0 }}>
+            AMEVA <span style={{ color: 'var(--primary)' }}>AI</span>
+          </span>
+          <span style={{
+            fontSize: '9px',
+            padding: '2px 6px',
+            background: 'var(--bg-glass-active)',
+            borderRadius: '4px',
+            color: 'var(--primary)',
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+          }}>
+            {title}
+          </span>
+        </div>
+        <div style={{
+          fontSize: '10px',
+          color: 'var(--text-muted)',
+          marginTop: '2px',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
+        }}>
+          {providerLabel} {modelLabel ? `(${modelLabel})` : ''}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+        <button
+          onClick={onOpenSettings}
+          style={{
+            background: showSettings ? 'var(--bg-glass-active)' : 'transparent',
+            border: 'none', cursor: 'pointer',
+            color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
+            padding: '4px', borderRadius: '5px', transition: 'all 0.15s',
+            flexShrink: 0,
+          }}
+          title="AI 설정"
+        >
+          <Settings2 size={14} />
+        </button>
+        {onClose && (
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
+              padding: '4px', borderRadius: '5px',
+              flexShrink: 0,
+            }}
+          >
+            <X size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}

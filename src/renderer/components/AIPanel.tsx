@@ -1,4 +1,5 @@
-﻿import React, { useState, useRef, useEffect } from 'react'
+﻿import { ipc } from '../services/ipc/electronApiAdapter'
+import React, { useState, useRef, useEffect } from 'react'
 import {
   Bot, Send, Trash2, Sparkles,
   Settings2, Check, X, AlertCircle,
@@ -8,7 +9,9 @@ import type { AIMessage } from '../types/aiTypes'
 import { useAILogStore } from '../stores/useAILogStore'
 import { flattenBlocks, retrieveRelevantBlocks } from '../utils/ragUtils'
 import { formatBytes } from '../utils/aiFormatters'
-import { AIChatList } from './ai-panel/AIChatList'
+import { AIChatList }
+import { AIInputBar } from './ai/AIInputBar'
+import { AIPanelHeader } from './ai/AIPanelHeader' from './ai-panel/AIChatList'
 
 interface AIPanelProps {
   isOpen: boolean
@@ -233,7 +236,7 @@ export function AIPanel({
 
   // 앱 시작 시 및 apiProvider 변경 시 OS 키체인에서 암호화 저장된 API Key 복구
   useEffect(() => {
-    if (!window.electronAPI || apiType !== 'api') return
+    if (!ipc || apiType !== 'api') return
 
     // 해당 제공사의 키를 이미 로드했다면 중복 실행 완전히 차단
     if (isApiKeyLoadedRef.current[apiProvider]) return
@@ -250,7 +253,7 @@ export function AIPanel({
         return
       }
 
-      const savedKey = await window.electronAPI.keychainGet(keychainKey)
+      const savedKey = await ipc.keychainGet(keychainKey)
       if (savedKey) {
         isApiKeyLoadedRef.current[apiProvider] = true
         if (savedKey !== apiKey) {
@@ -301,11 +304,11 @@ export function AIPanel({
       onUpdateSettings({ apiKey: val })
     }
 
-    if (window.electronAPI) {
+    if (ipc) {
       if (trimmed === '') {
-        window.electronAPI.keychainDelete(keychainKey)
+        ipc.keychainDelete(keychainKey)
       } else {
-        window.electronAPI.keychainSet(keychainKey, val)
+        ipc.keychainSet(keychainKey, val)
       }
     }
   }
@@ -325,8 +328,8 @@ export function AIPanel({
   }, [showModelHub, refreshModels])
 
   useEffect(() => {
-    if (window.electronAPI?.llmGetGpuName) {
-      window.electronAPI.llmGetGpuName().then(setGpuName)
+    if (ipc.llmGetGpuName) {
+      ipc.llmGetGpuName().then(setGpuName)
     }
   }, [])
 
@@ -493,475 +496,29 @@ export function AIPanel({
         background: 'linear-gradient(90deg, var(--primary), var(--secondary), var(--accent))',
       }} />
 
-      {/* 헤더 */}
-      <div style={{
-        padding: '14px 16px 10px',
-        borderBottom: '1px solid var(--border-muted)',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '8px',
-        flexShrink: 0,
-        flexWrap: 'nowrap',
-        width: '100%',
-        boxSizing: 'border-box'
-      }}>
-        <div style={{
-          width: '28px', height: '28px', borderRadius: '8px',
-          background: 'linear-gradient(135deg, var(--primary), var(--secondary))',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 12px var(--primary-glow)',
-          flexShrink: 0,
-        }}>
-          <Sparkles size={14} color="#fff" />
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, letterSpacing: '0.3px', flexShrink: 0 }}>
-              AMEVA <span style={{ color: 'var(--primary)' }}>AI</span>
-            </span>
-            {/* AI 모드별 상태 배지 */}
-            <span style={{
-              fontSize: '8px', fontWeight: 800, padding: '1px 4px', borderRadius: '4px',
-              color: '#fff',
-              flexShrink: 0,
-              background: apiType === 'wasm'
-                ? 'linear-gradient(135deg, #0284c7, #0369a1)' // WASM 블루
-                : apiType === 'api'
-                ? 'linear-gradient(135deg, #7c3aed, #6d28d9)' // API 퍼플
-                : apiType === 'ollama'
-                ? 'linear-gradient(135deg, #f97316, #ea580c)' // Ollama 오렌지
-                : 'linear-gradient(135deg, #16a34a, #15803d)', // Local 그린
-            }}>
-              {apiType === 'wasm' ? 'WebGPU WASM' : apiType === 'api' ? 'Cloud API' : apiType === 'ollama' ? 'Ollama' : 'Native Core'}
-            </span>
-            {/* 로컬 구동 시 CPU/GPU 가속 상태 배지 */}
-            {(apiType === 'local' || apiType === 'ollama') && (
-              <span style={{
-                fontSize: '8px', fontWeight: 800, padding: '1px 4px', borderRadius: '4px',
-                color: '#fff',
-                flexShrink: 0,
-                background: gpuOnly
-                  ? 'linear-gradient(135deg, #a855f7, #7c3aed)' // GPU 가속 보라
-                  : 'linear-gradient(135deg, #4b5563, #374151)', // CPU 그레이
-              }}>
-                {gpuOnly ? 'GPU 가속' : 'CPU 연산'}
-              </span>
-            )}
-          </div>
-          <div style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
-            {apiType === 'api'
-              ? `${apiProvider === 'gemini' ? 'Google Gemini' : apiProvider === 'anthropic' ? 'Anthropic Claude' : apiProvider === 'openai' ? 'OpenAI GPT' : 'Custom Cloud API'} 연결됨`
-              : apiType === 'ollama'
-              ? 'Ollama 로컬 백그라운드 서비스'
-              : (isAvailable
-                  ? `${models.find(m => m.path === settings.modelPath)?.name || '모델을 선택하세요'}`
-                  : '로컬 모델 검색 필요'
-                )
-            }
-          </div>
-        </div>
-        {(apiType === 'local' || apiType === 'ollama') && (
-          <button
-            onClick={() => setShowLogs(!showLogs)}
-            style={{
-              background: showLogs ? 'var(--bg-glass-active)' : 'transparent',
-              border: 'none', cursor: 'pointer',
-              color: showLogs ? 'var(--primary)' : 'var(--text-muted)',
-              display: 'flex', alignItems: 'center',
-              padding: '4px', borderRadius: '5px', transition: 'all 0.15s',
-              marginRight: '2px',
-              flexShrink: 0,
-            }}
-            title="AI 엔진 터미널 로그 실시간 감시"
-          >
-            <Terminal size={14} />
-          </button>
-        )}
-        <button
-          onClick={() => setShowSettings(!showSettings)}
-          style={{
-            background: showSettings ? 'var(--bg-glass-active)' : 'transparent',
-            border: 'none', cursor: 'pointer',
-            color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
-            padding: '4px', borderRadius: '5px', transition: 'all 0.15s',
-            flexShrink: 0,
-          }}
-          title="AI 설정"
-        >
-          <Settings2 size={14} />
-        </button>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'transparent', border: 'none', cursor: 'pointer',
-            color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
-            padding: '4px', borderRadius: '5px',
-            flexShrink: 0,
-          }}
-        >
-          <X size={14} />
-        </button>
-      </div>
-
-      {activeTab === 'ai' && (
-        <>
-          {/* 설정 패널 (모달 UI) */}
+      <AIPanelHeader
+          title={apiType === 'wasm' ? 'Local Edge' : 'Cloud API'}
+          providerLabel={apiProvider === 'gemini' ? 'Google Gemini' : apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT'}
+          modelLabel={apiModel || 'auto'}
+          isGenerating={isGenerating}
+          showSettings={showSettings}
+          onOpenSettings={() => setShowSettings(!showSettings)}
+          onClearMessages={onClear}
+          onClose={onClose}
+        />
+        {/* 설정 패널 (모달 UI) */}
       {showSettings && (
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-          zIndex: 1000,
-          background: 'rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: '16px'
-        }} onClick={() => setShowSettings(false)}>
-          <div style={{
-            width: '100%', maxWidth: '340px', maxHeight: '100%',
-            overflowY: 'auto',
-            background: 'var(--bg-glass-active)',
-            border: '1px solid var(--border-muted)',
-            borderRadius: '12px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            padding: '16px',
-            display: 'flex', flexDirection: 'column', gap: '12px'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-main)' }}>AI 설정</span>
-              <button onClick={() => setShowSettings(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                <X size={16} />
-              </button>
-            </div>
-          {/* AI 실행 유형 선택 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI 실행 유형</label>
-            <select
-              value={apiType}
-              onChange={e => onUpdateSettings({ apiType: e.target.value as any })}
-              style={{
-                width: '100%',
-                background: 'var(--bg-glass)',
-                border: '1px solid var(--border-muted)',
-                borderRadius: '6px',
-                padding: '5px 8px',
-                color: 'var(--text-main)',
-                fontSize: '11px',
-              }}
-            >
-              <option value="wasm">로컬 WebGPU 가속 (무설치)</option>
-              <option value="local">로컬 고성능 엔진 (llama-cli)</option>
-              <option value="ollama">로컬 백그라운드 서비스 (Ollama)</option>
-              <option value="api">클라우드 외부 API (OpenAI 등)</option>
-            </select>
-          </div>
-
-          {/* API Key 입력란 */}
-          {apiType === 'api' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {/* API 제공사 선택 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 제공사</label>
-                <select
-                  value={apiProvider}
-                  onChange={e => handleProviderChange(e.target.value as any)}
-                  style={{
-                    width: '100%',
-                    background: 'var(--bg-glass)',
-                    border: '1px solid var(--border-muted)',
-                    borderRadius: '6px',
-                    padding: '5px 8px',
-                    color: 'var(--text-main)',
-                    fontSize: '11px',
-                  }}
-                >
-                  <option value="gemini">Google Gemini (AI Studio)</option>
-                  <option value="openai">OpenAI</option>
-                  <option value="anthropic">Anthropic (Claude)</option>
-                  <option value="custom">Custom (직접 입력)</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API Key</label>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={e => handleApiKeyChange(e.target.value)}
-                  placeholder="키를 입력하면 제공사가 자동 감지됩니다"
-                  style={{
-                    width: '100%',
-                    background: 'var(--bg-glass)',
-                    border: '1px solid var(--border-muted)',
-                    borderRadius: '6px',
-                    padding: '5px 8px',
-                    color: 'var(--text-main)',
-                    fontSize: '11px',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-              {/* [FIX-W-003] 엔드포인트 입력란 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 엔드포인트 (URL)</label>
-                <input
-                  type="text"
-                  value={apiEndpoint}
-                  onChange={e => onUpdateSettings({ apiEndpoint: e.target.value })}
-                  disabled={apiProvider !== 'custom'}
-                  placeholder="https://api.openai.com/v1/chat/completions"
-                  style={{
-                    width: '100%',
-                    background: apiProvider === 'custom' ? 'var(--bg-glass)' : 'rgba(255, 255, 255, 0.05)',
-                    border: '1px solid var(--border-muted)',
-                    borderRadius: '6px',
-                    padding: '5px 8px',
-                    color: apiProvider === 'custom' ? 'var(--text-main)' : 'var(--text-muted)',
-                    fontSize: '10px',
-                    outline: 'none',
-                    cursor: apiProvider === 'custom' ? 'text' : 'not-allowed',
-                  }}
-                />
-              </div>
-              {/* [FIX-W-003] 모델명 입력란 / 셀렉트박스 */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 모델명</label>
-                {apiProvider === 'custom' ? (
-                  <input
-                    type="text"
-                    value={apiModel}
-                    onChange={e => onUpdateSettings({ apiModel: e.target.value })}
-                    placeholder="gpt-4o-mini | claude-3-5-sonnet-20241022"
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-glass)',
-                      border: '1px solid var(--border-muted)',
-                      borderRadius: '6px',
-                      padding: '5px 8px',
-                      color: 'var(--text-main)',
-                      fontSize: '10px',
-                      outline: 'none',
-                    }}
-                  />
-                ) : (
-                  <select
-                    value={apiModel}
-                    onChange={e => onUpdateSettings({ apiModel: e.target.value })}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-glass)',
-                      border: '1px solid var(--border-muted)',
-                      borderRadius: '6px',
-                      padding: '5px 8px',
-                      color: 'var(--text-main)',
-                      fontSize: '11px',
-                    }}
-                  >
-                    {(PROVIDER_MODELS[apiProvider] || []).map((m: any) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                    ))}
-                  </select>
-                )}
-              </div>
-              {/* Anthropic 선택 시 경고/주의 안내문구 추가 */}
-              {apiProvider === 'anthropic' && (
-                <div style={{ fontSize: '9px', color: '#fbbf24', marginTop: '2px', lineHeight: '1.2' }}>
-                  ⚠️ Anthropic 공식 API는 헤더 규격이 달라 직접 연동 시 에러가 날 수 있습니다. OpenRouter나 OpenAI 호환 프록시를 사용할 때는 제공사를 Custom으로 지정하여 설정하세요.
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 모델 선택 */}
-          {apiType !== 'api' && (
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>모델 선택</label>
-                <button
-                  onClick={() => setShowModelHub(true)}
-                  style={{
-                    fontSize: '9px', color: 'var(--primary)', background: 'none', border: 'none',
-                    cursor: 'pointer', padding: 0, fontWeight: 700,
-                  }}
-                >
-                  모델 허브 개방 📥
-                </button>
-              </div>
-              {models.length === 0 ? (
-                <div style={{
-                  padding: '8px', borderRadius: '6px',
-                  background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                  fontSize: '11px', color: '#f87171',
-                  display: 'flex', flexDirection: 'column', gap: '6px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <AlertCircle size={12} />
-                    <span>C:\ameva\models\llm 에 모델 없음</span>
-                  </div>
-                  <button
-                    onClick={() => setShowModelHub(true)}
-                    style={{
-                      width: '100%', padding: '4px 8px', borderRadius: '4px',
-                      background: 'var(--primary)', color: '#fff', border: 'none',
-                      fontSize: '10px', fontWeight: 700, cursor: 'pointer',
-                      textAlign: 'center',
-                    }}
-                  >
-                    추천 AI 모델 다운로드 센터 열기
-                  </button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                  <select
-                    value={settings.modelPath}
-                    onChange={e => onUpdateSettings({ modelPath: e.target.value })}
-                    style={{
-                      width: '100%',
-                      background: 'var(--bg-glass)',
-                      border: '1px solid var(--border-muted)',
-                      borderRadius: '6px',
-                      padding: '5px 8px',
-                      color: 'var(--text-main)',
-                      fontSize: '11px',
-                    }}
-                  >
-                    {models.map(m => (
-                      <option key={m.path} value={m.path} style={{ background: 'var(--bg-main)', color: 'var(--text-main)' }}>
-                        {m.name} ({formatBytes(m.size)})
-                      </option>
-                    ))}
-                  </select>
-                  {importModel && (
-                    <button
-                      onClick={importModel}
-                      style={{
-                        alignSelf: 'flex-start',
-                        fontSize: '9.5px', color: 'rgba(167,139,250,0.85)', background: 'none', border: 'none',
-                        cursor: 'pointer', padding: '1px 0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'
-                      }}
-                    >
-                      + 외부 다운로드한 모델 파일(.gguf) 직접 가져오기
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* 하드웨어 가속 옵션 */}
-          {apiType !== 'api' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '2px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input
-                  type="checkbox"
-                  id="gpuOnly-checkbox"
-                  checked={gpuOnly}
-                  onChange={e => onUpdateSettings({ gpuOnly: e.target.checked })}
-                  style={{ accentColor: 'var(--primary)' }}
-                />
-                <label htmlFor="gpuOnly-checkbox" style={{ fontSize: '11px', color: 'var(--text-main)', cursor: 'pointer' }}>
-                  GPU 전용 가속 활성화 (해제 시 CPU 모드로 기동)
-                </label>
-              </div>
-              {gpuName && (
-                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginLeft: '22px' }}>
-                  감지된 그래픽 장치: <span style={{ color: 'var(--secondary)', fontWeight: 'bold' }}>{gpuName}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Temperature */}
-          <div>
-            <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <span>Temperature (창의성)</span>
-              <span style={{ color: 'var(--primary)' }}>{settings.temperature.toFixed(1)}</span>
-            </label>
-            <input
-              type="range" min="0" max="1" step="0.1"
-              value={settings.temperature}
-              onChange={e => onUpdateSettings({ temperature: parseFloat(e.target.value) })}
-              style={{ width: '100%', accentColor: 'var(--primary)' }}
-            />
-          </div>
-
-          {/* Max Tokens */}
-          <div>
-            <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-              <span>최대 토큰</span>
-              <span style={{ color: 'var(--primary)' }}>{settings.maxTokens}</span>
-            </label>
-            <input
-              type="range" min="128" max="2048" step="128"
-              value={settings.maxTokens}
-              onChange={e => onUpdateSettings({ maxTokens: parseInt(e.target.value) })}
-              style={{ width: '100%', accentColor: 'var(--primary)' }}
-            />
-          </div>
-
-          {/* Hugging Face 추천 모델 다운로드 마켓플레이스 */}
-          <div style={{ marginTop: '10px', borderTop: '1px solid var(--border-muted)', paddingTop: '10px' }}>
-            <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
-              Hugging Face 추천 모델 원클릭 다운로드
-            </label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {[
-                { name: 'Qwen 2.5 1.5B (GGUF)', file: 'qwen2.5-1.5b-instruct-q4_k_m.gguf', url: 'https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf' },
-                { name: 'Qwen 2.5 3B (GGUF)', file: 'qwen2.5-3b-instruct-q4_k_m.gguf', url: 'https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf' },
-                { name: 'Llama 3.1 8B (GGUF)', file: 'Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf', url: 'https://huggingface.co/QuantFactory/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf' }
-              ].map(m => {
-                const isDownloading = downloadStatus && downloadStatus.filename === m.file && downloadStatus.progress < 100
-                return (
-                  <div key={m.file} style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(255,255,255,0.02)', padding: '6px 8px', borderRadius: '6px',
-                    border: '1px solid var(--border-muted)'
-                  }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>{m.name}</span>
-                      <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>{m.file}</span>
-                    </div>
-                    <button
-                      disabled={!!isDownloading}
-                      onClick={async () => {
-                        if ((window as any).electron) {
-                          setDownloadStatus({ filename: m.file, progress: 0, speed: 0, downloadedBytes: 0, totalBytes: 0, timeRemaining: 0 })
-                          const res = await (window as any).electron.invoke('llm:downloadModel', { url: m.url, filename: m.file })
-                          if (res.success) {
-                            alert('다운로드 완료! AI 모델이 활성화되었습니다.')
-                          } else {
-                            alert(`다운로드 실패: ${res.error}`)
-                          }
-                        }
-                      }}
-                      style={{
-                        background: isDownloading ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                        border: 'none', color: '#fff', fontSize: '10px', padding: '4px 10px',
-                        borderRadius: '4px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 700
-                      }}
-                    >
-                      {isDownloading ? `${downloadStatus.progress}%` : '설치'}
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* llama.cpp 설치 안내 (로컬 고성능 엔진 모드일 때만 안내 노출) */}
-          {apiType === 'local' && !isAvailable && (
-            <div style={{
-              padding: '8px', borderRadius: '6px',
-              background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)',
-              fontSize: '10px', color: 'var(--text-muted)',
-            }}>
-              AI 사용을 위해 llama.cpp를 설치하세요:<br />
-              C:\ameva\llama\llama-cli.exe
-            </div>
-          )}
-        </div>
-        </div>
+        <AISettingsPanel
+          settings={settings}
+          onUpdateSettings={onUpdateSettings}
+          models={models}
+          isKeySaved={isKeySaved}
+          handleApiKeyChange={handleApiKeyChange}
+          handleSaveKey={handleSaveKey}
+          handleDeleteKey={handleDeleteKey}
+          onClose={() => setShowSettings(false)}
+        />
       )}
-
       {/* 메시지 없을 때 환영 화면 */}
       {messages.length === 0 && !showSettings && (
         <div style={{
@@ -1525,78 +1082,18 @@ export function AIPanel({
         )}
 
         {/* 텍스트 입력 + 버튼 */}
-        <div
-          data-focus-region="ai-input"
-          style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', position: 'relative', borderRadius: '10px' }}
-        >
-          <textarea
-            ref={textareaRef}
+        <AIInputBar
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder={isInputEnabled ? '메시지를 입력하세요... (Shift+Enter: 줄바꿈)' : 'llama.cpp 설치 필요'}
             disabled={!isInputEnabled}
-            rows={2}
-            style={{
-              flex: 1,
-              background: 'var(--bg-glass)',
-              border: selectedText ? '1px solid rgba(6,182,212,0.4)' : '1px solid var(--border-muted)',
-              borderRadius: '8px',
-              padding: '8px 10px',
-              color: 'var(--text-main)',
-              fontSize: '12px',
-              resize: 'none',
-              outline: 'none',
-              fontFamily: 'var(--font-sans)',
-              lineHeight: '1.5',
-              transition: 'border-color 0.15s',
-              maxHeight: '80px',
-              overflowY: 'auto',
-            }}
-            onFocus={e => (e.target.style.borderColor = selectedText ? 'var(--secondary)' : 'var(--primary)')}
-            onBlur={e => (e.target.style.borderColor = selectedText ? 'rgba(6,182,212,0.4)' : 'var(--border-muted)')}
+            isGenerating={isGenerating}
+            placeholder={isInputEnabled ? '메시지를 입력하세요... (Shift+Enter: 줄바꿈)' : 'llama.cpp 구동 대기중...'}
+            textareaRef={textareaRef}
+            onChange={setInput}
+            onSubmit={handleSend}
+            onAbort={onAbort}
+            onKeyDown={handleKeyDown}
+            selectedText={selectedText}
           />
-
-          {isGenerating ? (
-            <button
-              onClick={onAbort}
-              style={{
-                width: '36px', height: '36px', borderRadius: '8px',
-                background: 'rgba(239,68,68,0.2)',
-                border: '1px solid rgba(239,68,68,0.4)',
-                color: '#f87171', cursor: 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-              }}
-              title="중단"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2">
-                <rect x="4" y="4" width="16" height="16" rx="2" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || !isInputEnabled}
-              style={{
-                width: '36px', height: '36px', borderRadius: '8px',
-                background: input.trim() && isInputEnabled
-                  ? (selectedText ? 'linear-gradient(135deg, var(--secondary), #0891b2)' : 'linear-gradient(135deg, var(--primary), #7c3aed)')
-                  : 'rgba(255,255,255,0.05)',
-                border: '1px solid transparent',
-                color: '#fff', cursor: input.trim() && isInputEnabled ? 'pointer' : 'not-allowed',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: input.trim() && isInputEnabled ? (selectedText ? '0 2px 8px var(--secondary-glow)' : '0 2px 8px var(--primary-glow)') : 'none',
-                transition: 'all 0.15s',
-                opacity: input.trim() && isInputEnabled ? 1 : 0.4,
-              }}
-              title="전송 (Enter)"
-            >
-              <Send size={14} />
-            </button>
-          )}
-        </div>
       </div>
         </>
       )}
@@ -2012,13 +1509,13 @@ export function AIPanel({
                           <Check size={10} /> 사용 가능 ✓
                         </div>
                       ) : (
-                        window.electronAPI?.llmDownloadModel && (
+                        ipc.llmDownloadModel && (
                           <button
                             disabled={!!downloadStatus}
                             onClick={async () => {
-                              if (window.electronAPI?.llmDownloadModel && setDownloadStatus) {
+                              if (ipc.llmDownloadModel && setDownloadStatus) {
                                 setDownloadStatus({ filename: model.filename, progress: 0, speed: 0 })
-                                const res = await window.electronAPI.llmDownloadModel(model.filename, { url: model.url })
+                                const res = await ipc.llmDownloadModel({ url: model.url, filename: model.filename })
                                 if (res && res.success) {
                                   if (refreshModels) await refreshModels()
                                 } else if (res && !res.success) {
@@ -2060,8 +1557,8 @@ export function AIPanel({
             <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
               <button
                 onClick={() => {
-                  if (window.electronAPI?.openExternalLink) {
-                    window.electronAPI.openExternalLink('file:///C:/ameva/models/llm/')
+                  if (ipc.openExternalLink) {
+                    ipc.openExternalLink('file:///C:/ameva/models/llm/')
                   }
                 }}
                 style={{

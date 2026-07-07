@@ -1,3 +1,10 @@
+import { useUIStore } from './stores/useUIStore'
+import { useWorkspaceStore } from './stores/useWorkspaceStore'
+import { useProcessStore } from './stores/useProcessStore'
+import { useAppBootstrap } from './hooks/app/useAppBootstrap'
+import { useAppIpcBridge } from './hooks/app/useAppIpcBridge'
+import { useGlobalShortcuts } from './hooks/app/useGlobalShortcuts'
+import { useYoutubePiP } from './hooks/app/useYoutubePiP'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { MarkdownEditor } from './components/MarkdownEditor'
@@ -380,250 +387,46 @@ export default function App() {
   const [username] = useState(randomUsername)
   const [userColor] = useState(randomColor)
 
+  const {
+    filePath, setFilePath, currentContent, setCurrentContent,
+    originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
+    fileOpenMode, setFileOpenMode, tabs, setTabs,
+    activeTabId, setActiveTabId, appendedFiles, setAppendedFiles,
+    selectedText, setSelectedText, activeBlockId, setActiveBlockId,
+    taggedBlocks, setTaggedBlocks, selectedSnapshot, setSelectedSnapshot
+  } = useWorkspaceStore()
+
+  const {
+    isSettingsOpen, setIsSettingsOpen, isAboutOpen, setIsAboutOpen,
+    isGuideOpen, setIsGuideOpen, isDiffOpen, setIsDiffOpen,
+    showMarketplaceModal, setShowMarketplaceModal,
+    showPricingModal, setShowPricingModal, showModelHub, setShowModelHub,
+    showAIPanel, setShowAIPanel, activeRightTab, setActiveRightTab,
+    showSidebar, setShowSidebar, showStatusBar, setShowStatusBar,
+    toastMessage, setToastMessage, showFindReplace, setShowFindReplace,
+    findReplaceMode, setFindReplaceMode, isChatFloating, setIsChatFloating,
+    hasChatUnread, setHasChatUnread
+  } = useUIStore()
+
+  const {
+    downloadStatus, setDownloadStatus,
+    exportProgress, setExportProgress, resetExportProgress,
+    exportMinimized, setExportMinimized,
+    isProPlan, setIsProPlan, isFreeModeLocked, setIsFreeModeLocked,
+    mcpServersState, setMcpServersState,
+    activePlugins, setActivePlugins,
+    editorZoom, setEditorZoom, browserZoom, setBrowserZoom
+  } = useProcessStore()
+
   const [editorMode, setEditorMode] = useState<EditorMode>('welcome')
-  const [filePath, setFilePath] = useState<string | null>(null)
-  const [currentContent, setCurrentContent] = useState('')
-  const [isChatFloating, setIsChatFloating] = useState(false)
-  const [hasChatUnread, setHasChatUnread] = useState(false)
-
-  // ── 파일 오픈 모드 및 다중 파일 관리 상태 ──
-  const [fileOpenMode, setFileOpenMode] = useState<'replace' | 'append' | 'tab'>('replace')
-  const [appendedFiles, setAppendedFiles] = useState<{ id: string; filePath: string; startBlockId: string }[]>([])
-  const [tabs, setTabs] = useState<{ id: string; filePath: string | null; content: string; blocks: any[] }[]>([
-    { id: 'default', filePath: null, content: '', blocks: [] }
-  ])
-  const [activeTabId, setActiveTabId] = useState<string | null>('default')
-  const currentContentRef = useRef('')
-
-  useEffect(() => {
-    currentContentRef.current = currentContent
-  }, [currentContent])
-
-  // 탭별 작성 내용 실시간 동기화
-  useEffect(() => {
-    if (fileOpenMode === 'tab' && activeTabId) {
-      setTabs(prev => prev.map(t => {
-        if (t.id === activeTabId) {
-          return { ...t, content: currentContent }
-        }
-        return t
-      }))
-    }
-  }, [currentContent, activeTabId, fileOpenMode])
-
-
-
-  // 에디터 영역 CSS zoom (1.0 = 100%, Electron 네이티브 줄 미사용)
-  const [editorZoom, setEditorZoom] = useState(1.0)
-
-  // 브라우저 전체 zoom (webFrame.setZoomFactor) — 에디터 외 영역
-  const [browserZoom, setBrowserZoom] = useState(1.0)
-
-  useEffect(() => {
-    if (window.electronAPI?.getZoomFactor) {
-      window.electronAPI.getZoomFactor().then(val => {
-        if (typeof val === 'number') setBrowserZoom(val)
-      })
-    }
-  }, [])
-
-
-  const [showStatusBar, setShowStatusBar] = useState(true)
-  const [downloadStatus, setDownloadStatus] = useState<any>(null)
-  const [toastMessage, setToastMessage] = useState<string | null>(null)
-
-  // 🔍 찾기 및 바꾸기 (Find & Replace) 제어 상태
-  const [showFindReplace, setShowFindReplace] = useState(false)
-  const [findReplaceMode, setFindReplaceMode] = useState<'find' | 'replace'>('find')
-
-  // 실시간 모델 다운로드 상태 및 토스트 메세지 연동
-  useEffect(() => {
-    if (window.electronAPI?.onLLMDownloadProgress) {
-      const unsub = window.electronAPI.onLLMDownloadProgress((status: any) => {
-        setDownloadStatus(prev => {
-          const filenameOnly = status.filename.split(/[\\/]/).pop()
-          
-          // 다운로드 신규 추가 시
-          if (!prev && status) {
-            setToastMessage(`📥 [다운로드 시작] '${filenameOnly}' 다운로드 작업이 시작되었습니다.`)
-            setTimeout(() => setToastMessage(null), 3500)
-          }
-          
-          // 다운로드 완료 시 (progress 100)
-          if (status.progress === 100 && (!prev || prev.progress < 100)) {
-            setToastMessage(`🎉 [설치 완료] '${filenameOnly}' 모델 설치가 완료되었습니다!`)
-            setTimeout(() => {
-              setToastMessage(null)
-              setDownloadStatus(null)
-            }, 4000)
-          }
-          
-          return status
-        })
-      })
-      return () => unsub()
-    }
-  }, [])
-
-  const [showSidebar, setShowSidebar] = useState(true)
-  const [showAIPanel, setShowAIPanel] = useState(false)
-  const [activeRightTab, setActiveRightTab] = useState<string>('ai')
-  const [showMarketplaceModal, setShowMarketplaceModal] = useState(false)
-  const [showPricingModal, setShowPricingModal] = useState(false)
-
-  // 🦾 SaaS Pro Plan 상태 및 시작 인자 기전
-  const [isProPlan, setIsProPlan] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('is-pro-plan') === 'true'
-    } catch {
-      return false
-    }
-  })
-  const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
-  const [mcpServersState, setMcpServersState] = useState<any[]>([])
-
-  // 초기 시작 시 무료 기전 플래그 체크 및 MCP 리스트 로드
-  useEffect(() => {
-    const initFlagsAndMcp = async () => {
-      if (window.electronAPI?.planGetStatus) {
-        const backendPro = await window.electronAPI.planGetStatus()
-        console.log('[App] 메인 프로세스로부터 로드한 요금제 상태:', backendPro ? '👑 PRO' : 'FREE')
-        localStorage.setItem('is-pro-plan', String(backendPro))
-        setIsProPlan(backendPro)
-      }
-
-      if (window.electronAPI?.isFreeMode) {
-        const isFree = await window.electronAPI.isFreeMode()
-        if (isFree) {
-          console.log('[App] --free 시작 플래그 감지. 무료 모드로 강제 기동합니다.')
-          localStorage.setItem('is-pro-plan', 'false')
-          setIsProPlan(false)
-          setIsFreeModeLocked(true)
-        }
-      }
-      
-      // MCP 설정 불러오기
-      try {
-        const stored = localStorage.getItem('mcp-servers-config')
-        if (stored) {
-          setMcpServersState(JSON.parse(stored))
-        } else {
-          // 기본값 동기화
-          setMcpServersState([
-            {
-              id: 'mcp-wasm-gateway',
-              name: 'AMEVA OS WASM Gateway',
-              type: 'http',
-              url: 'http://127.0.0.1:11553/mcp',
-              enabled: true
-            }
-          ])
-        }
-      } catch (e) {
-        console.error('[App] MCP 로드 오류:', e)
-      }
-    }
-    
-    initFlagsAndMcp()
-  }, [])
-
-  // 환경설정 창 닫히거나 변경되었을 때 실시간 상태 갱신 리로드 헬퍼
-  const refreshMcpServers = () => {
-    try {
-      const stored = localStorage.getItem('mcp-servers-config')
-      if (stored) setMcpServersState(JSON.parse(stored))
-      
-      const proStored = localStorage.getItem('is-pro-plan') === 'true'
-      setIsProPlan(proStored)
-    } catch {}
-  }
-  const handleInstallPlugin = async (id: string, scriptUrl: string) => {
-    try {
-      const existingScript = document.getElementById(`script-plugin-${id}`)
-      if (!existingScript) {
-        const res = await fetch(scriptUrl)
-        if (!res.ok) throw new Error('스크립트 다운로드 실패')
-        const scriptText = await res.text()
-        
-        const script = document.createElement('script')
-        script.id = `script-plugin-${id}`
-        script.text = scriptText
-        document.body.appendChild(script)
-      }
-
-      return new Promise<void>((resolve, reject) => {
-        let checkCount = 0
-        const checkInterval = setInterval(() => {
-          checkCount++
-          if ((window as any).AMEVA_PLUGINS?.[id]) {
-            clearInterval(checkInterval)
-            
-            const current = settings.installedPlugins || []
-            if (!current.includes(id)) {
-              const next = [...current, id]
-              handleUpdateSettings({ installedPlugins: next })
-            }
-            resolve()
-          }
-          if (checkCount > 15) {
-            clearInterval(checkInterval)
-            reject(new Error('플러그인 로드 타임아웃'))
-          }
-        }, 100)
-      })
-    } catch (err) {
-      console.error('플러그인 로드 오류:', err)
-      throw err
-    }
-  }
-
-  const handleUninstallPlugin = (id: string) => {
-    const script = document.getElementById(`script-plugin-${id}`)
-    if (script) {
-      script.remove()
-    }
-    if ((window as any).AMEVA_PLUGINS?.[id]) {
-      delete (window as any).AMEVA_PLUGINS[id]
-    }
-    
-    const current = settings.installedPlugins || []
-    const next = current.filter((p) => p !== id)
-    handleUpdateSettings({ installedPlugins: next })
-
-    if ((id === 'outline' || id === 'calculator') && activeRightTab === id) {
-      setActiveRightTab('ai')
-    }
-  }
-
-  const handleToggleRightTab = (tab: string) => {
-    if (showAIPanel && activeRightTab === tab) {
-      setShowAIPanel(false)
-    } else {
-      setActiveRightTab(tab)
-      setShowAIPanel(true)
-    }
-  }
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const DEFAULT: AppSettings = {
-      showPeersPointer: true,
-      showPeersDrag: true,
-      showCodeConsole: true,
-      autoSnapshot: true,
-      theme: 'dark',
-      wordWrap: true,
-      showMinimap: true,
-      installedPlugins: [],
+      showPeersPointer: true, showPeersDrag: true, showCodeConsole: true, autoSnapshot: true,
+      theme: 'dark', wordWrap: true, showMinimap: true, installedPlugins: [],
       hotkeys: {
-        save: 'Control+s',
-        open: 'Control+o',
-        newFile: 'Control+n',
-        pdfExport: 'Control+p',
-        toggleAI: 'Control+\\',
-        toggleMode: 'Control+e',
-        zoomIn: 'Control+=',
-        zoomOut: 'Control+-',
-        zoomReset: 'Control+0'
+        save: 'Control+s', open: 'Control+o', newFile: 'Control+n', pdfExport: 'Control+p',
+        toggleAI: 'Control+\\', toggleMode: 'Control+e', zoomIn: 'Control+=', zoomOut: 'Control+-', zoomReset: 'Control+0'
       }
     }
     try {
@@ -640,114 +443,112 @@ export default function App() {
     return DEFAULT
   })
 
-  // [PERF] 앱 최초 마운트 시 settings.installedPlugins 에 남아있는 익스텐션 목록 복구 로드
-  // 메인 UI가 가볍고 부드럽게 먼저 로드될 수 있도록 1200ms 레이지 로딩(Lazy loading) 및 병렬 가동 처리
-  useEffect(() => {
-    if (settings.installedPlugins && settings.installedPlugins.length > 0) {
-      const timer = setTimeout(() => {
-        settings.installedPlugins.forEach(async (id) => {
-          const scriptUrl = `http://localhost:3010/plugins/${id}.js`
-          try {
-            await handleInstallPlugin(id, scriptUrl)
-          } catch (e) {
-            console.error(`부팅 시 플러그인 ${id} 자동 활성화 실패:`, e)
-          }
-        })
-      }, 1200)
-      return () => clearTimeout(timer)
-    }
-  }, [])
-
   useEffect(() => {
     document.body.setAttribute('data-theme', settings.theme)
   }, [settings.theme])
-
-  // ── YouTube PiP (Picture-in-Picture) 플로팅 상태 및 제어 ──
-  const [pipVideoId, setPipVideoId] = useState<string | null>(null)
-  const [pipPosition, setPipPosition] = useState({ x: window.innerWidth - 380, y: window.innerHeight - 260 })
-  const [isDraggingPip, setIsDraggingPip] = useState(false)
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
-
-  useEffect(() => {
-    (window as any).AMEVA_TRIGGER_YOUTUBE_PIP = (videoId: string) => {
-      setPipVideoId(videoId)
-    }
-  }, [])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDraggingPip) {
-        setPipPosition({
-          x: Math.max(10, Math.min(window.innerWidth - 360, e.clientX - dragOffset.x)),
-          y: Math.max(10, Math.min(window.innerHeight - 240, e.clientY - dragOffset.y))
-        })
-      }
-    }
-    const handleMouseUp = () => {
-      setIsDraggingPip(false)
-    }
-
-    if (isDraggingPip) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [isDraggingPip, dragOffset])
-
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
-  const [isAboutOpen, setIsAboutOpen] = useState(false)
-  const [isGuideOpen, setIsGuideOpen] = useState(false)
 
   const [serverPort, setServerPort] = useState(1234)
   const [serverHost, setServerHost] = useState('localhost')
   const [useLocalServer, setUseLocalServer] = useState(true)
 
-  // ── 패널 크기 조절 (usePanelResize) ──────────────────────
-  const {
-    width: sidebarWidth,
-    isDragging: isSidebarDragging,
-    handleMouseDown: handleSidebarResizeStart,
-  } = usePanelResize({
-    storageKey: 'sidebar',
-    defaultWidth: 280,
-    minWidth: 160,
-    maxWidth: 520,
-    direction: 'right',
-  })
-
-  const {
-    width: aiPanelWidth,
-    isDragging: isAIPanelDragging,
-    handleMouseDown: handleAIPanelResizeStart,
-  } = usePanelResize({
-    storageKey: 'ai-panel',
-    defaultWidth: 320,
-    minWidth: 220,
-    maxWidth: 600,
-    direction: 'left',
-  })
-
-  // ── Export 진행 상태 ────────────────────────────────────────
-  const IDLE_PROGRESS: ExportProgress = { phase: 'idle', format: '', percent: 0, message: '' }
-  const [exportProgress, setExportProgress] = useState<ExportProgress>(IDLE_PROGRESS)
-  const [exportMinimized, setExportMinimized] = useState(false)
-  const [showModelHub, setShowModelHub] = useState(false) // 🤖 AI 모델 셋업 허브 모달 전역화
-
-  // ── [PERF] 코어 퍼포먼스: 문서 최우선 로드 및 부속 패널 지연(Progressive Loading) 기법 ──
-  const [isSidebarReady, setIsSidebarReady] = useState(false)
-  const [isAIPanelReady, setIsAIPanelReady] = useState(false)
-
-  useEffect(() => {
-    const timerSidebar = setTimeout(() => setIsSidebarReady(true), 250) // 문서 로드 완료 직후 로딩
-    const timerAI = setTimeout(() => setIsAIPanelReady(true), 1500)      // AI 엔진 및 우측 패널 연동은 1.5초 뒤 늦게 가동
-    return () => {
-      clearTimeout(timerSidebar)
-      clearTimeout(timerAI)
+  // 1. App Bootstrap (ProPlan, FreeMode, MCP 로드, Plugin 로드, Browser Zoom 초기화)
+  const handleInstallPlugin = async (id: string, scriptUrl: string) => {
+    try {
+      const existingScript = document.getElementById(`script-plugin-${id}`)
+      if (!existingScript) {
+        const res = await fetch(scriptUrl)
+        if (!res.ok) throw new Error('플러그인 다운로드 실패')
+        const scriptText = await res.text()
+        const script = document.createElement('script')
+        script.id = `script-plugin-${id}`
+        script.text = scriptText
+        document.body.appendChild(script)
+      }
+      return new Promise<void>((resolve, reject) => {
+        let checkCount = 0
+        const checkInterval = setInterval(() => {
+          checkCount++
+          if ((window as any).AMEVA_PLUGINS?.[id]) {
+            clearInterval(checkInterval)
+            const current = settings.installedPlugins || []
+            if (!current.includes(id)) {
+              setSettings(prev => {
+                const next = { ...prev, installedPlugins: [...(prev.installedPlugins || []), id] }
+                localStorage.setItem('app-settings', JSON.stringify(next))
+                return next
+              })
+            }
+            resolve()
+          }
+          if (checkCount > 15) {
+            clearInterval(checkInterval)
+            reject(new Error('플러그인 로드 타임아웃'))
+          }
+        }, 100)
+      })
+    } catch (err) {
+      console.error('플러그인 로드 실패:', err)
+      throw err
     }
-  }, [])
+  }
+
+  const { isSidebarReady, isAIPanelReady } = useAppBootstrap(settings, handleInstallPlugin)
+
+  // 2. IPC Bridge (파일 오픈 이벤트, LLM 다운로드 진행 상황)
+  useAppIpcBridge()
+
+  // 3. YouTube PiP
+  const { pipVideoId, setPipVideoId, pipPosition, isDraggingPip, setIsDraggingPip } = useYoutubePiP()
+
+  const handleUninstallPlugin = (id: string) => {
+    const script = document.getElementById(`script-plugin-${id}`)
+    if (script) script.remove()
+    if ((window as any).AMEVA_PLUGINS?.[id]) delete (window as any).AMEVA_PLUGINS[id]
+    
+    setSettings(prev => {
+      const next = { ...prev, installedPlugins: (prev.installedPlugins || []).filter(p => p !== id) }
+      localStorage.setItem('app-settings', JSON.stringify(next))
+      return next
+    })
+
+    if ((id === 'outline' || id === 'calculator') && activeRightTab === id) {
+      setActiveRightTab('ai')
+    }
+  }
+  
+  const handleToggleRightTab = (tab: string) => {
+    if (showAIPanel && activeRightTab === tab) {
+      setShowAIPanel(false)
+    } else {
+      setActiveRightTab(tab)
+      setShowAIPanel(true)
+    }
+  }
+
+  // 패널 리사이징 상태
+  const { width: sidebarWidth, isDragging: isSidebarDragging, handleMouseDown: handleSidebarResizeStart } = usePanelResize({
+    storageKey: 'sidebar', defaultWidth: 280, minWidth: 160, maxWidth: 520, direction: 'right'
+  })
+  const { width: aiPanelWidth, isDragging: isAIPanelDragging, handleMouseDown: handleAIPanelResizeStart } = usePanelResize({
+    storageKey: 'ai-panel', defaultWidth: 320, minWidth: 220, maxWidth: 600, direction: 'left'
+  })
+
+  // 에디터 탭 동기화 (스토어로 교체됨)
+  useEffect(() => {
+    if (fileOpenMode === 'tab' && activeTabId) {
+      setTabs(prev => prev.map(t => t.id === activeTabId ? { ...t, content: currentContent } : t))
+    }
+  }, [currentContent, activeTabId, fileOpenMode, setTabs])
+  
+  // 새로고침 함수
+  const refreshMcpServers = () => {
+    try {
+      const stored = localStorage.getItem('mcp-servers-config')
+      if (stored) setMcpServersState(JSON.parse(stored))
+      const proStored = localStorage.getItem('is-pro-plan') === 'true'
+      setIsProPlan(proStored)
+    } catch {}
+  }
 
   // ── 훅 초기화 ──────────────────────────────────────────────
   const {
@@ -1393,7 +1194,7 @@ graph TD
 
         try {
           const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
-          if (markdown.trim() !== currentContentRef.current.trim()) setCurrentContent(markdown)
+          if (markdown.trim() !== useWorkspaceStore.getState().currentContent.trim()) setCurrentContent(markdown)
         } catch (err) {
           console.error('Markdown sync failed:', err)
         } finally {
@@ -2349,7 +2150,7 @@ graph TD
     // 2. 'edit' 모드로 돌아올 때: raw 마크다운(currentContentRef)을 파싱하여 에디터 블록으로 로드
     if (mode === 'edit' && editor) {
       try {
-        const normalized = normalizeMarkdown(currentContentRef.current)
+        const normalized = normalizeMarkdown(useWorkspaceStore.getState().currentContent)
         const blocks = await editor.tryParseMarkdownToBlocks(normalized)
         cleanCodeBlocks(blocks)
         ensureBlockIds(blocks)
