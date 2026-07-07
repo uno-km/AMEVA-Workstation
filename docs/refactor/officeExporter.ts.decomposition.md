@@ -57,7 +57,7 @@ src/main/exporters/officeExporter.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: Yes (Typecheck passed)
 
 ### Move Record: exportToExcel
 - original file: `src/main/exporters/officeExporter.ts`
@@ -67,7 +67,7 @@ src/main/exporters/officeExporter.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: Yes (Typecheck passed)
 
 ### Move Record: exportToPPTX
 - original file: `src/main/exporters/officeExporter.ts`
@@ -77,4 +77,4 @@ src/main/exporters/officeExporter.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: Yes (Typecheck passed)
