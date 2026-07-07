@@ -65,7 +65,7 @@ export default function App() {
   const {
     filePath, setFilePath, currentContent, setCurrentContent, appendContent,
     originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
-    fileOpenMode, setFileOpenMode, tabs, setTabs,
+    fileOpenMode, setFileOpenMode, tabs, setTabs, updateActiveTab,
     activeTabId, setActiveTabId, appendedFiles, setAppendedFiles,
     selectedText, setSelectedText, activeBlockId, setActiveBlockId,
     taggedBlocks, setTaggedBlocks,
