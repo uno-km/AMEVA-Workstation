@@ -84,11 +84,12 @@ export function registerFileIpc(
     return { filePath, base64 }
   })
 
-  ipcMain.handle('dialog:saveFile', async (event, content: string, filePath?: string) => {
+  ipcMain.handle('dialog:saveFile', async (event, content: string, filePath?: string, isSaveAs?: boolean) => {
     let targetPath = filePath
-    if (!targetPath) {
+    if (!targetPath || isSaveAs) {
       const result = await dialog.showSaveDialog(getActiveWindow(event, getMainWindow)!, {
         title: 'Save Document',
+        defaultPath: filePath,
         filters: [
           { name: 'All Supported Documents', extensions: ['md', 'markdown', 'txt', 'docx', 'pdf', 'hwpx', 'xlsx', 'ipynb', 'adc'] },
           { name: 'Markdown Document', extensions: ['md'] },
@@ -100,7 +101,7 @@ export function registerFileIpc(
           { name: 'Jupyter Notebook', extensions: ['ipynb'] },
         ],
       })
-      if (result.canceled || !result.filePath) return null
+      if (result.canceled || !result.filePath) return { success: false }
       targetPath = result.filePath
     }
     
@@ -113,7 +114,7 @@ export function registerFileIpc(
       await writeFile(targetPath, content, 'utf-8')
     }
     
-    return targetPath
+    return { success: true, filePath: targetPath }
   })
 
   ipcMain.handle('dialog:saveExportedFile', async (event, data: string, isBase64: boolean, defaultName: string, filters: any[]) => {

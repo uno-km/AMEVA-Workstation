@@ -89,6 +89,9 @@ declare global {
       onServerStatus?: (callback: (status: CollabServerStatus) => void) => () => void
       startCollaborationServer?: (port: number) => Promise<CollabServerStartResult | null>
       stopCollaborationServer?: () => Promise<CollabServerStopResult | null>
+      // STT
+      sttTranscribe?: (payload: { audioPath: string; language?: string }) => Promise<{ success: boolean; text?: string; error?: string }>
+      sttGetTempPath?: () => Promise<string | null>
     }
   }
 }
@@ -101,3 +104,4 @@ export * from './adapters/mcpAdapter'
 export * from './adapters/exportAdapter'
 export * from './adapters/sandboxAdapter'
 export * from './adapters/collabAdapter'
+export * from './adapters/sttAdapter'

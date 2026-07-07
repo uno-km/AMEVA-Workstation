@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── 파일 시스템 연동 ──
   openFile: () => ipcRenderer.invoke('dialog:openFile'),
   saveFile: (content: string, filePath?: string) => ipcRenderer.invoke('dialog:saveFile', content, filePath),
+  saveFileAs: (content: string, filePath?: string) => ipcRenderer.invoke('dialog:saveFile', content, filePath, true),
   saveExportedFile: (data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]) =>
     ipcRenderer.invoke('dialog:saveExportedFile', data, isBase64, defaultName, filters),
   selectLocalFile: (filters?: { name: string; extensions: string[] }[]) =>

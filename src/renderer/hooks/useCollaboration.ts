@@ -4,6 +4,8 @@ import { WebsocketProvider } from 'y-websocket'
 import type { PeerState } from '../../shared/types'
 import * as ipc from '../services/ipc/electronApiAdapter'
 
+import { useAICollabStore } from '../stores/useAICollabStore'
+
 export function useCollaboration(
   documentId: string,
   username: string,
@@ -14,7 +16,10 @@ export function useCollaboration(
 ) {
   const [provider, setProvider] = useState<WebsocketProvider | null>(null)
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null)
-  const [peers, setPeers] = useState<PeerState[]>([])
+  
+  // 글로벌 스토어를 통해 peers 상태 연동 (타 컴포넌트 접근용)
+  const peers = useAICollabStore((state) => state.peers)
+  const setPeers = useAICollabStore((state) => state.setPeers)
   const [serverRunning, setServerRunning] = useState(false)
   const [collabActive, setCollabActive] = useState(false)
   const [serverInfo, setServerInfo] = useState<{ port?: number; error?: string }>({})

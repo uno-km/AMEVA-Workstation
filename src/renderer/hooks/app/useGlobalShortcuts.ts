@@ -19,6 +19,7 @@
 
 import { useEffect, useCallback } from 'react'
 import { useProcessStore } from '../../stores/useProcessStore'
+import { useUIStore } from '../../stores/useUIStore'
 import type { AppSettings, HotkeyConfig } from '../../components/SettingsModal'
 import type { EditorMode } from '../../../shared/types'
 
@@ -120,6 +121,15 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
     } else if (matchHotkey(e, hotkeys.zoomReset || 'Control+0')) {
       e.preventDefault()
       onZoomReset()
+    } else if (e.ctrlKey && e.key === ',') {
+      e.preventDefault()
+      useUIStore.getState().toggleSettings()
+    } else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
+      e.preventDefault()
+      useUIStore.getState().toggleSidebar()
+    } else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'a') {
+      e.preventDefault()
+      useUIStore.getState().toggleAbout()
     }
   }, [settings.hotkeys, onSave, onOpen, onNewTab, onToggleAI, onToggleMode, onZoomIn, onZoomOut, onZoomReset])
 
