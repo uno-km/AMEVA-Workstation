@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AISettings } from '../hooks/useAI'; // (추후 타입 정의 파일로 이동 예정)
+import type { AISettings } from '../types/aiTypes';
 import { AI_TERMINAL_CONSTANTS } from '../features/ai-terminal/constants';
 
 export interface AIState {

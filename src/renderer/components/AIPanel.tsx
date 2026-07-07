@@ -1,11 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react'
 import {
-  Bot, Send, Trash2, Sparkles, ChevronDown, ChevronUp, Brain,
+  Bot, Send, Trash2, Sparkles,
   Settings2, Copy, Check, X, AlertCircle,
-  Wand2, Languages, FileText, Expand, Lightbulb, Lock, Terminal,
-  Loader2, CheckCircle2, Circle, ArrowUp, ArrowDown, Plus
+  Wand2, Languages, FileText, Expand, Lightbulb, Lock, Terminal
 } from 'lucide-react'
-import type { AIMessage, InsertSuggestion } from '../hooks/useAI'
+import type { AIMessage } from '../types/aiTypes'
+import { useAILogStore } from '../stores/useAILogStore'
+import { flattenBlocks, retrieveRelevantBlocks } from '../utils/ragUtils'
+import { formatBytes } from '../utils/aiFormatters'
+import { AIChatList } from './ai-panel/AIChatList'
 
 interface AIPanelProps {
   isOpen: boolean
@@ -89,6 +92,8 @@ export function AIPanel({
   removeFromQueue,
 }: AIPanelProps) {
   const [input, setInput] = useState('')
+  // clearSensorLogs: 엔진 로그 초기화 함수 — Zustand 스토어에서 직접 구독
+  const { clearSensorLogs } = useAILogStore()
   const isWhiteTheme = settings.theme === 'white'
   const [manualMode, setManualMode] = useState<'auto' | 'edit' | 'summary' | 'chat'>('auto')
   const [showSettings, setShowSettings] = useState(false)

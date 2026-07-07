@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { AI_TERMINAL_CONSTANTS } from '../features/ai-terminal/constants';
-import type { AIMessage } from '../hooks/useAI'; // (추후 타입 정의 파일로 이동 예정)
+import type { AIMessage } from '../types/aiTypes';
 
 export interface AILogState {
   // 1. 순수 센서 및 시스템 로그를 보관하는 링 버퍼
