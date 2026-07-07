@@ -86,6 +86,7 @@ export function AIPanel(props: any) {
           handleSaveKey={handleSaveKey}
           handleDeleteKey={handleDeleteKey}
           onClose={() => setShowSettings(false)}
+          setShowModelHub={setShowModelHub}
         />
       )}
 
@@ -111,12 +112,7 @@ export function AIPanel(props: any) {
             </div>
           )}
 
-          <AILogDrawer 
-            isExpanded={isLogsExpanded} 
-            onToggle={() => setIsLogsExpanded(!isLogsExpanded)} 
-            logContainerRef={logContainerRef}
-            logEndRef={logEndRef} 
-          />
+
           
           <AIDownloadProgress 
             downloadStatus={downloadStatus} 

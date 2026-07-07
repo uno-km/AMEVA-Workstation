@@ -11,6 +11,7 @@ import { Minimap } from '../Minimap'
 import { RightTabStrip } from '../RightTabStrip'
 import { ResizeHandle } from '../ResizeHandle'
 import { FloatingChat } from '../FloatingChat'
+import { AILogDrawer } from '../ai/AILogDrawer'
 import { FindReplaceBar } from '../FindReplaceBar'
 import { FloatingPiPVideo } from './FloatingPiPVideo'
 import { ModalManager } from './ModalManager'
@@ -164,6 +165,8 @@ export interface AppLayoutProps {
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = (props) => {
+  const [isLogsExpanded, setIsLogsExpanded] = React.useState(false)
+
   const {
     settings, handleUpdateSettings, handleInstallPlugin, handleUninstallPlugin,
     handleOpenGithub, handleCloseApp, handleToggleFullscreen, handleZoomIn, handleZoomOut, handleZoomReset,
@@ -360,6 +363,10 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
               blocks={editor.document}
             />
           )}
+          <AILogDrawer 
+            isExpanded={isLogsExpanded} 
+            onToggle={() => setIsLogsExpanded(!isLogsExpanded)} 
+          />
         </div>
 
         <div

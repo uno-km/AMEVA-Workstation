@@ -1,10 +1,12 @@
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Terminal } from 'lucide-react'
 import { useAILogStore } from '../../stores/useAILogStore'
 
-export function AILogDrawer({ isExpanded, onToggle, logContainerRef, logEndRef }: any) {
-  
+export function AILogDrawer({ isExpanded, onToggle }: any) {
+  const logContainerRef = useRef<HTMLDivElement>(null)
+  const logEndRef = useRef<HTMLDivElement>(null)
+  const [isHovered, setIsHovered] = React.useState(false)
 
   useEffect(() => {
     const unsubscribe = useAILogStore.subscribe((state, prevState) => {
@@ -28,6 +30,13 @@ export function AILogDrawer({ isExpanded, onToggle, logContainerRef, logEndRef }
     return () => unsubscribe();
   }, []);
 
+  const translateY = isExpanded
+    ? (isHovered ? '-54px' : '-42px')
+    : (isHovered ? '-54px' : '-14px');
+    
+  const scale = isHovered ? '1.1' : '1';
+  const opacity = isHovered || isExpanded ? 1 : 0.4;
+
   return (
     <div style={{
       position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -35,42 +44,41 @@ export function AILogDrawer({ isExpanded, onToggle, logContainerRef, logEndRef }
       borderTop: '1px solid rgba(6, 182, 212, 0.3)',
       boxShadow: '0 -4px 20px rgba(0,0,0,0.4)',
       transform: isExpanded ? 'translateY(0)' : 'translateY(100%)',
-      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+      transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
       zIndex: 100,
       display: 'flex', flexDirection: 'column',
       height: '35vh'
     }}>
       <div 
         onClick={onToggle}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         title={isExpanded ? '터미널 닫기' : '터미널 열기'}
         style={{
           position: 'absolute', 
-          top: '-50px', 
-          left: '16px',
-          width: '38px',
-          height: '38px',
+          top: '0px', 
+          left: '50%',
+          transform: `translate(-50%, ${translateY}) scale(${scale})`,
+          width: '42px',
+          height: '42px',
           borderRadius: '50%',
-          background: 'rgba(15, 23, 42, 0.95)', 
-          border: '1px solid rgba(6, 182, 212, 0.5)',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
+          background: isHovered ? '#111827' : '#0a0a0f', 
+          border: '1.5px solid rgba(6, 182, 212, 0.8)',
+          boxShadow: isHovered 
+            ? '0 6px 20px rgba(6, 182, 212, 0.4)' 
+            : '0 4px 16px rgba(0,0,0,0.7)',
           cursor: 'pointer', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
           color: 'var(--primary)', 
-          transition: 'all 0.2s ease',
-          zIndex: 101
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(30, 41, 59, 0.95)'
-          e.currentTarget.style.transform = 'scale(1.05)'
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'rgba(15, 23, 42, 0.95)'
-          e.currentTarget.style.transform = 'scale(1)'
+          opacity: opacity,
+          transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+          zIndex: 101,
+          backdropFilter: 'blur(8px)'
         }}
       >
-        <Terminal size={18} />
+        <Terminal size={20} strokeWidth={2.5} />
       </div>
       <div style={{
         padding: '8px 12px', background: 'rgba(0,0,0,0.3)',
