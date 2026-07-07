@@ -1,5 +1,30 @@
 # AMEVA OS Changelog
 
+## 2026-07-07 (Phase 5: Exhaustive God File & CSS Architecture Decomposition)
+
+### 🚀 Major Architectural Changes
+- **CSS Architecture Modularization**: Decomposed monolithic `index.css` (over 1000 lines) into a cohesive modular CSS architecture under `src/renderer/styles/`. Separated global tokens and resets into `variables.css`, `base.css`, `layout.css`, and `editor.css`, and isolated component-specific styling into `components/` (`Sidebar.css`, `AIPanel.css`, `StatusBar.css`, `MenuBar.css`, `Modals.css`). Unified all imports through `main.css`.
+- **Main Process Entrypoint Decoupling (`index.ts`)**: Decoupled 1990 lines of monolithic IPC handler registrations and background process management from `src/main/index.ts` into modular domain handlers under `src/main/ipc/` (`fileIpc.ts`, `mcpIpc.ts`, `pythonIpc.ts`, `llmIpc.ts`). Reduced `index.ts` to ~220 lines of clean bootstrap logic.
+- **LLM IPC Facade Decomposition (`llmIpc.ts`)**: Atomized the expanded LLM and STT IPC layer into functional sub-modules under `src/main/ipc/llm/` (`llmLifecycleIpc.ts`, `llmGenerateIpc.ts`, `llmModelIpc.ts`, `sttIpc.ts`). Maintained `llmIpc.ts` as a strict Facade to preserve 100% backwards compatibility for existing consumer imports.
+- **Exporters Main Service Decomposition (`exportersMain.ts`)**: Decomposed 959 lines of document export logic (HTML, Word, Excel, PPTX, HWPX) from `src/main/services/exportersMain.ts` into domain-specific exporters under `src/main/exporters/` (`htmlExporter.ts`, `officeExporter.ts`, `hwpExporter.ts`, `exportersHelper.ts`).
+- **App Coordinator Atomization (`App.tsx`)**: Decomposed the 1386-line `App.tsx` root component by extracting 5 specialized domain hooks into `src/renderer/hooks/app/` (`useAppSettingsManager.ts`, `useAppEditorInit.ts`, `useAppGlobalApi.ts`, `useAppEditorSync.ts`, `useAppModeSwitch.ts`) and isolating all visual rendering and modals into a presentation container (`src/renderer/components/layout/AppLayout.tsx`). Reduced `App.tsx` to 284 lines.
+
+### 📁 Files Modified / Added
+- `[NEW]` `src/renderer/styles/` - Complete modular CSS directory (`main.css`, `variables.css`, `base.css`, `layout.css`, `editor.css`, `components/*.css`).
+- `[NEW]` `src/main/ipc/fileIpc.ts`, `mcpIpc.ts`, `pythonIpc.ts` - Extracted main process IPC handlers.
+- `[NEW]` `src/main/ipc/llm/llmLifecycleIpc.ts`, `llmGenerateIpc.ts`, `llmModelIpc.ts`, `sttIpc.ts` - Extracted LLM/STT IPC sub-handlers.
+- `[NEW]` `src/main/exporters/htmlExporter.ts`, `officeExporter.ts`, `hwpExporter.ts`, `exportersHelper.ts` - Extracted document exporter engines.
+- `[NEW]` `src/renderer/hooks/app/useAppSettingsManager.ts`, `useAppEditorInit.ts`, `useAppGlobalApi.ts`, `useAppEditorSync.ts`, `useAppModeSwitch.ts` - Extracted root application controller hooks.
+- `[NEW]` `src/renderer/components/layout/AppLayout.tsx` - Extracted root UI presentation container.
+- `[NEW]` `docs/refactor/index.ts.decomposition.md`, `llmIpc.ts.decomposition.md`, `exportersMain.ts.decomposition.md`, `App.tsx.decomposition.md` - Mandatory SI decomposition ledgers.
+- `[MODIFY]` `src/renderer/main.tsx` - Updated style import to `src/renderer/styles/main.css`.
+- `[MODIFY]` `src/main/index.ts`, `src/main/ipc/llmIpc.ts`, `src/main/services/exportersMain.ts`, `src/renderer/App.tsx` - Replaced monolithic implementations with Facades and hook coordinators.
+
+### 🧠 Reasoning & Impact
+- **Problem**: Severe God Files (`index.ts` ~1990 lines, `App.tsx` 1386 lines, `exportersMain.ts` 959 lines, `index.css` ~1000 lines) violated clean code separation, slowed down IDE language servers, and made future AI maintenance prone to context loss and unintended side effects.
+- **Solution**: Followed the 1:1 symbol mapping and mechanical decomposition protocol without altering behavior, function names, or import paths. Used Facade patterns and React custom hooks to decouple container logic from presentational rendering.
+- **Impact**: Reduced root coordinator file sizes by 75-88%, eliminated style scope pollution, passed strict TypeScript type checking (`npx tsc --noEmit`) with zero errors, and preserved 100% build compatibility.
+
 ## 2026-07-07 (Forensic Audit & System Call Mapping Closure)
 
 ### 🚀 Major Architectural Changes

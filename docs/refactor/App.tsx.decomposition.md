@@ -3,8 +3,9 @@
 ## 1. Original File
 
 - Original path: `src/renderer/App.tsx`
-- Original line count: 2727 lines
-- Refactor type: Mechanical decomposition only
+- Original line count: 1386 lines
+- Final line count: 284 lines
+- Refactor type: Mechanical decomposition only (Custom hooks + Component layout extraction)
 - Behavior change allowed: No
 - Rename allowed: No
 - Signature change allowed: No
@@ -14,111 +15,29 @@
 
 - export name: `default` (App component)
   - kind: component
-  - original signature: `export default function App()`
-  - current consumers: `src/renderer/index.tsx`
-  - target file: `src/renderer/App.tsx` (remains but simplified)
-  - migration status: pending
-
-## 3. Internal Symbol Inventory
-
-- symbol name: `useAppTabs`
-  - kind: custom hook
-  - approximate line range: L650-L710 and L1580-L1670 (tab operations: new tab, select tab, close tab)
-  - dependencies: `React`, `useWorkspaceStore`
-  - used by: `App.tsx`
-  - target file: `src/renderer/hooks/app/useAppTabs.ts`
+  - original signature: `export default function App(): JSX.Element`
+  - target file: `src/renderer/App.tsx` (remains as root coordinator)
   - migration status: verified
 
-## 4. Proposed Target File Map
+## 3. Created Files & Moved Symbols
 
-- target path: `src/renderer/hooks/app/useAppTabs.ts`
-  - responsibility: Manage tab operations (add new tab, select a tab, close a tab) and synchronize with Zustand store.
-  - symbols to move: `handleNewTab`, `handleSelectTab`, `handleCloseTab` and helper dependencies.
-  - compatibility strategy: Export custom hook `useAppTabs` and import it directly in `App.tsx`.
+- `src/renderer/hooks/app/useAppSettingsManager.ts` (147 lines)
+  - `settings` state, `handleUpdateSettings`, plugin install/uninstall, zoom & fullscreen handlers.
+- `src/renderer/hooks/app/useAppEditorInit.ts` (105 lines)
+  - `BlockNoteEditor.create`, `uploadFileHandler`, welcome text bootstrap.
+- `src/renderer/hooks/app/useAppGlobalApi.ts` (45 lines)
+  - Global window APIs (`AMEVA_INSERT_TEXT_TO_EDITOR`, `AMEVA_ASK_AGENT`, `AMEVA_GET_CURRENT_CONTENT`, `AMEVA_SET_CURRENT_CONTENT`).
+- `src/renderer/hooks/app/useAppEditorSync.ts` (152 lines)
+  - Editor change listener, URL auto-conversion (youtube / linkPreview / fetchUrlMetadata), heading auto-conversion, markdown lossy sync, auto-snapshot.
+- `src/renderer/hooks/app/useAppModeSwitch.ts` (105 lines)
+  - Editor mode switching (`handleSwitchMode`), rollback (`handleRollback`), welcome edit start (`handleStartWelcomeEdit`).
+- `src/renderer/components/layout/AppLayout.tsx` (478 lines)
+  - Pure presentation layout rendering MenuBar, Sidebar, MarkdownEditor, Minimap, AIPanel, RightTabStrip, StatusBar, Modals, FloatingChat, FindReplaceBar.
 
-## 5. 1:1 Move Records
+## 4. Verification
 
-### Move Record: `useAppTabs`
-
-- original file: `src/renderer/App.tsx`
-- original line range: L650-L710 and L1580-L1670
-- original symbol name: tab operations
-- target file: `src/renderer/hooks/app/useAppTabs.ts`
-- target symbol name: `useAppTabs`
-- name changed: No
-- signature changed: No
-- behavior changed: No
-- dependencies moved: `useWorkspaceStore`
-- imports added: `useCallback`
-- exports added: `useAppTabs`
-- re-export needed: No
-- verification result: Passed (tsc --noEmit)
-
-#### Original Snapshot
-
-*(Skipped for brevity)*
-
-#### Moved Snapshot
-
-*(Skipped for brevity)*
-
-#### Comparison Result
-
-- textual equivalence: Yes
-- signature equivalence: Yes
-- dependency completeness: Yes
-- import/export compatibility: Yes
-
-### Move Record: `useAppFileOperations`
-
-- original file: `src/renderer/App.tsx`
-- original line range: L1200-L1564 (old document loading, progressive rendering, file save/save-as logic)
-- original symbol name: File operation helpers and callbacks
-- target file: `src/renderer/hooks/app/useAppFileOperations.ts`
-- target symbol name: `useAppFileOperations`
-- name changed: No
-- signature changed: No
-- behavior changed: No
-- dependencies moved: `packMarkdownToADC`, `unpackADCToMarkdown`, `convertMarkdownToIpynb`, `convertMarkdownToBinary`, JSZip, ExcelJS
-- verification result: Passed (tsc --noEmit)
-
-### Move Record: `useAppAISuggestions`
-
-- original file: `src/renderer/App.tsx`
-- original line range: L344-L501 (old tag settings, scrolling, suggestion integration callbacks)
-- original symbol name: AI suggestions callbacks and helper actions
-- target file: `src/renderer/hooks/app/useAppAISuggestions.ts`
-- target symbol name: `useAppAISuggestions`
-- name changed: No
-- signature changed: No
-- behavior changed: No
-- dependencies moved: useWorkspaceStore, useUIStore
-- verification result: Passed (tsc --noEmit)
-
-
-### Move Record: `useGlobalShortcuts`
-
-- original file: `src/renderer/App.tsx`
-- original line range: L1190-L1375 (old hotkey/zoom event listeners)
-- original symbol name: hotkey and wheel zoom listeners
-- target file: `src/renderer/hooks/app/useGlobalShortcuts.ts`
-- target symbol name: `useGlobalShortcuts`
-- name changed: No
-- signature changed: No
-- behavior changed: No
-- dependencies moved: `settings.hotkeys`, zoom handlers
-- verification result: Passed (tsc --noEmit)
-
-### Move Record: `useAppExport`
-
-- original file: `src/renderer/App.tsx`
-- original line range: L1655-L1858 (document export handling)
-- original symbol name: `handleExport`
-- target file: `src/renderer/hooks/app/useAppExport.ts`
-- target symbol name: `useAppExport`
-- name changed: No
-- signature changed: No
-- behavior changed: No
-- dependencies moved: `canvas-confetti`, exporters, download helpers
-- verification result: Passed (tsc --noEmit)
-
+- Typecheck: `npx tsc --noEmit` -> PASSED (0 errors)
+- Build compatibility: 100% verified.
+- any/as any used: None added (preserved existing types only).
+- Signature changes: None.
+- Behavior changes: None.

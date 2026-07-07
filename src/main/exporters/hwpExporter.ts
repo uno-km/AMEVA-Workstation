@@ -1,0 +1,96 @@
+import { createRequire } from 'module'
+const require = createRequire(import.meta.url)
+const JSZip = require('jszip')
+import { escapeHtml, getPlainTextFromNormalized, inlineToText } from './exportersHelper.js'
+
+// ══════════════════════════════════════════════════════════════
+// 5. HWPX 내보내기 (백엔드 분산 변환 노드 버전)
+// ══════════════════════════════════════════════════════════════
+export async function exportToHWPX(blocks: any[]): Promise<Buffer> {
+  const zip = new JSZip()
+  zip.file('mimetype', 'application/hwp+zip', { compression: 'STORE' })
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.hancom.co.kr/hwpml/2011/relation/document" Target="Contents/content.hwpml"/>
+</Relationships>`)
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="hwpml" ContentType="application/vnd.hancom.hwpml+xml"/>
+  <Override PartName="/Contents/content.hwpml" ContentType="application/vnd.hancom.hwpml+xml"/>
+  <Override PartName="/Contents/section0.xml" ContentType="application/vnd.hancom.hwpml+xml"/>
+</Types>`)
+
+  let section0 = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<hs:sec xmlns:hs="http://schemas.hancom.co.kr/hwpml/2011/section" version="1.0">`
+
+  const toHWPML = (block: any): string => {
+    const text = escapeHtml(getPlainTextFromNormalized(block))
+    let charId = '0'
+    if (block.type === 'heading') {
+      const lvl = Number(block.props?.level) || 1
+      charId = lvl === 1 ? '1' : lvl === 2 ? '2' : '3'
+    } else if (block.type === 'codeBlock') {
+      charId = '4'
+    }
+
+    if (block.type === 'table') {
+      const rows = block.tableRows ?? []
+      if (rows.length === 0) return ''
+      const colCnt = (rows[0]?.cells?.length) || 1
+      let tbl = `<hp:tbl xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" borderType="1" colCnt="${colCnt}" rowCnt="${rows.length}">`
+      rows.forEach((row: any) => {
+        tbl += '<hp:tr>'
+        const cells = Array.isArray(row.cells) ? row.cells : []
+        cells.forEach((cell: any) => {
+          const ct = escapeHtml(Array.isArray(cell) ? inlineToText(cell) : '')
+          tbl += `<hp:tc><hp:p charPrRef="0"><hp:run><hp:t>${ct}</hp:t></hp:run></hp:p></hp:tc>`
+        })
+        tbl += '</hp:tr>'
+      })
+      tbl += '</hp:tbl>'
+      return tbl
+    }
+
+    const lines = (block.type === 'codeBlock' ? getPlainTextFromNormalized(block) : text).split('\n')
+    let result = lines.map(line =>
+      `<hp:p xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" charPrRef="${charId}"><hp:run><hp:t>${escapeHtml(line) || ' '}</hp:t></hp:run></hp:p>`
+    ).join('')
+
+    if (Array.isArray(block.children)) block.children.forEach((c: unknown) => { result += toHWPML(c) })
+    return result
+  }
+
+  blocks.forEach(b => { section0 += toHWPML(b) })
+  section0 += '</hs:sec>'
+
+  zip.file('Contents/section0.xml', section0)
+  zip.file('Contents/header.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<hh:idmap xmlns:hh="http://schemas.hancom.co.kr/hwpml/2011/header" version="1.0">
+  <hh:fontFaces>
+    <hh:fontFace id="0" lang="hangul" face="맑은 고딕"/>
+    <hh:fontFace id="1" lang="hangul" face="나눔고딕 ExtraBold"/>
+    <hh:fontFace id="2" lang="latin" face="Consolas"/>
+  </hh:fontFaces>
+  <hh:charProperties>
+    <hh:charPr id="0" height="1000" fontRef="0"/>
+    <hh:charPr id="1" height="1800" bold="true" fontRef="1"/>
+    <hh:charPr id="2" height="1400" bold="true" fontRef="1"/>
+    <hh:charPr id="3" height="1100" bold="true" fontRef="1"/>
+    <hh:charPr id="4" height="900" fontRef="2"/>
+  </hh:charProperties>
+  <hh:tabProperties><hh:tabPr id="0"/></hh:tabProperties>
+  <hh:numberings/>
+</hh:idmap>`)
+  zip.file('Contents/content.hwpml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<hc:hwpml xmlns:hc="http://schemas.hancom.co.kr/hwpml/2011/core" version="1.0">
+  <hc:head target="Contents/header.xml"/>
+  <hc:body>
+    <hc:sec target="Contents/section0.xml"/>
+  </hc:body>
+</hc:hwpml>`)
+
+  const blob = await zip.generateAsync({ type: 'nodebuffer' })
+  return Buffer.from(blob)
+}
