@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { memo, useState } from 'react'
 import { Play, Copy, ChevronDown } from 'lucide-react'
 import { type AmevaEditor } from '../../editor/amevaBlockSchema'
 import { useCodeRuntime } from '../../hooks/useCodeRuntime'
@@ -33,7 +33,7 @@ export function JupyterCodeEditorHeader({
     onRunStart()
     try {
       if (language === 'html') {
-        onRunSuccess(true, ['?�더�??�료'])
+        onRunSuccess(true, ['렌더링 완료'])
         return
       }
       const result = (language === 'python' || language === 'py')
@@ -43,7 +43,7 @@ export function JupyterCodeEditorHeader({
         : await runJSCode(code)
       onRunSuccess(result.success, (result.output || '').split('\n'), result.tableData)
     } catch (err: any) {
-      onRunFailure(err.message || '?????�는 ?�러')
+      onRunFailure(err.message || '알 수 없는 에러')
     }
   }
 
@@ -75,11 +75,11 @@ export function JupyterCodeEditorHeader({
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       }}
     >
-      {/* 븡어빵�? ?�기/?�기 (Chevron ?��?) */}
+      {/* 븡어빵틀 접기/펴기 (Chevron 토글) */}
       {onToggleInputCollapse && (
         <button
           onClick={onToggleInputCollapse}
-          title={isInputCollapsed ? '코드 ?�역 ?�치�? : '코드 ?�역 ?�기'}
+          title={isInputCollapsed ? '코드 영역 펼치기' : '코드 영역 접기'}
           style={{
             background: 'transparent',
             border: 'none',

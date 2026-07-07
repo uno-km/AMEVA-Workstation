@@ -1,4 +1,3 @@
-
 import type { AppSettings } from '../SettingsModal'
 
 export interface SettingsTabAppearanceProps {
@@ -21,7 +20,8 @@ export function SettingsTabAppearance({
       <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Appearance</h3>
       <div>
         <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '8px' }}>
-          ?�스???�마 ?�위�?        </span>
+          시스템 테마 스위처
+        </span>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
           {themes.map((t) => (
             <button

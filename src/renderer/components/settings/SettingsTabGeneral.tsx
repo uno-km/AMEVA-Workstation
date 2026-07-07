@@ -1,4 +1,3 @@
-
 import { ToggleLeft, ToggleRight } from 'lucide-react'
 import type { AppSettings } from '../SettingsModal'
 
@@ -25,8 +24,8 @@ export function SettingsTabGeneral({
       <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>?�시�??�???�인???�시</div>
-            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>?�료???�시�?마우???�직임???�면???�사?�니??</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>실시간 타인 포인터 표시</div>
+            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>동료의 실시간 마우스 움직임을 화면에 투사합니다.</div>
           </div>
           <button onClick={() => onUpdateSettings({ showPeersPointer: !settings.showPeersPointer })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
             {settings.showPeersPointer ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
@@ -35,8 +34,8 @@ export function SettingsTabGeneral({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>?�???�스???�래�??�기??/div>
-            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>?�료???�택 ?�역 ?�트 ?�이?�이?��? ?�시�??�시?�니??</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>타인 텍스트 드래그 동기화</div>
+            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>동료의 선택 영역 렉트 하이라이트를 실시간 표시합니다.</div>
           </div>
           <button onClick={() => onUpdateSettings({ showPeersDrag: !settings.showPeersDrag })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
             {settings.showPeersDrag ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
@@ -45,8 +44,8 @@ export function SettingsTabGeneral({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>코드 ?�드박스 콘솔 ?�크</div>
-            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>?�디???�래??코드 ???��????�젯???�시 ?�출?�니??</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>코드 샌드박스 콘솔 도크</div>
+            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>에디터 아래에 코드 퀵 런타임 위젯을 상시 노출합니다.</div>
           </div>
           <button onClick={() => onUpdateSettings({ showCodeConsole: !settings.showCodeConsole })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
             {settings.showCodeConsole ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
@@ -55,8 +54,8 @@ export function SettingsTabGeneral({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>줄바�?비활?�화 (가�??�크�?</div>
-            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>?�스???�동 줄바꿈을 ?��?가�??�크롤로 문장???�출?�니??</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>줄바꿈 비활성화 (가로 스크롤)</div>
+            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>텍스트 자동 줄바꿈을 풀고 가로 스크롤로 문장을 표출합니다.</div>
           </div>
           <button onClick={() => onUpdateSettings({ wordWrap: !settings.wordWrap })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
             {!settings.wordWrap ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
@@ -65,8 +64,8 @@ export function SettingsTabGeneral({
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>?�디???�측 미니�??�시</div>
-            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>?�른쪽에 ?�체 ?�이?�웃 ?�각??Minimap 바�? ?�시?�니??</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700 }}>에디터 우측 미니맵 표시</div>
+            <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>오른쪽에 전체 레이아웃 시각화 Minimap 바를 표시합니다.</div>
           </div>
           <button onClick={() => onUpdateSettings({ showMinimap: !settings.showMinimap })} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
             {settings.showMinimap ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
@@ -85,9 +84,9 @@ export function SettingsTabGeneral({
           padding: '10px 12px'
         }}>
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--primary)' }}>?�� AMEVA Pro ?�랜 ?�성??/div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--primary)' }}>👑 AMEVA Pro 플랜 활성화</div>
             <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              ?�료 기능???�성?�합?�다. 마켓?�레?�스 ?�근 �??��? MCP ?�버(Stdio/HTTP) 매니?� ??�� 개방?�니??
+              유료 기능을 활성화합니다. 마켓플레이스 접근 및 외부 MCP 서버(Stdio/HTTP) 매니저 탭이 개방됩니다.
             </div>
           </div>
           <button onClick={handleToggleProPlan} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
