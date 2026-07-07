@@ -5,7 +5,8 @@ import type { ReasoningTraceEvent } from '../../shared/reasoningTypes'
 import { StreamingSanitizer } from '../utils/responseSanitizer'
 import { AgentEngine } from '../utils/agentEngine'
 import { MCPClientManager } from '../utils/mcpClient'
-import { InsertSuggestion, AIMessage, AISettings, DEFAULT_SETTINGS } from "../types/aiTypes";
+import type { InsertSuggestion, AIMessage, AISettings } from "../types/aiTypes";
+import { DEFAULT_SETTINGS } from "../types/aiTypes";
 
 export function useAIAgent() {
   const { messages, setMessages } = useAILogStore()

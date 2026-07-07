@@ -1,0 +1,188 @@
+{
+  "src\\renderer\\App.tsx": {
+    "functions": [
+      {
+        "name": "parseFileToMarkdown",
+        "loc": 149,
+        "topCalls": [
+          "mdLines.push (x12)",
+          "mdLines.join (x2)",
+          "JSZip.loadAsync (x2)",
+          "zip.file (x2)",
+          "pXml.match (x2)",
+          "tXml.replace (x2)",
+          "lines.push (x2)",
+          "lines.join (x2)",
+          "filePath.split('.').pop()?.toLowerCase (x1)",
+          "filePath.split('.').pop (x1)"
+        ]
+      },
+      {
+        "name": "App",
+        "loc": 2547,
+        "topCalls": [
+          "useState (x51)",
+          "setTimeout (x22)",
+          "useEffect (x19)",
+          "e.preventDefault (x18)",
+          "setCurrentContent (x17)",
+          "console.error (x14)",
+          "editor.updateBlock (x14)",
+          "setP (x14)",
+          "setFilePath (x13)",
+          "setOriginalContent (x13)"
+        ]
+      },
+      {
+        "name": "handleEditorChange",
+        "loc": 182,
+        "topCalls": [
+          "editor.updateBlock (x9)",
+          "text.match (x3)",
+          "editor.getBlock (x3)",
+          "console.error (x3)",
+          "textVal.includes (x2)",
+          "textVal.split (x2)",
+          "(activeBlock.content as any).map((c: any) => c.text).join (x1)",
+          "(activeBlock.content as any).map (x1)",
+          "setActiveBlockId (x1)",
+          "(prevBlock.content as any).map((c: any) => c.text).join (x1)"
+        ]
+      },
+      {
+        "name": "handleKeyDown",
+        "loc": 142,
+        "topCalls": [
+          "e.preventDefault (x16)",
+          "matchHotkey (x9)",
+          "editor.getTextCursorPosition (x5)",
+          "editor.updateBlock (x3)",
+          "handleSaveFile (x2)",
+          "window.electronAPI.newWindow (x2)",
+          "handleStartNewDocument (x2)",
+          "setFindReplaceMode (x2)",
+          "setShowFindReplace (x2)",
+          "handleZoomIn (x1)"
+        ]
+      }
+    ],
+    "callGraph": {
+      "parseFileToMarkdown": [
+        "mdLines.push (x12)",
+        "mdLines.join (x2)",
+        "JSZip.loadAsync (x2)",
+        "zip.file (x2)",
+        "pXml.match (x2)",
+        "tXml.replace (x2)",
+        "lines.push (x2)",
+        "lines.join (x2)",
+        "filePath.split('.').pop()?.toLowerCase (x1)",
+        "filePath.split('.').pop (x1)"
+      ],
+      "App": [
+        "useState (x51)",
+        "setTimeout (x22)",
+        "useEffect (x19)",
+        "e.preventDefault (x18)",
+        "setCurrentContent (x17)",
+        "console.error (x14)",
+        "editor.updateBlock (x14)",
+        "setP (x14)",
+        "setFilePath (x13)",
+        "setOriginalContent (x13)"
+      ],
+      "handleEditorChange": [
+        "editor.updateBlock (x9)",
+        "text.match (x3)",
+        "editor.getBlock (x3)",
+        "console.error (x3)",
+        "textVal.includes (x2)",
+        "textVal.split (x2)",
+        "(activeBlock.content as any).map((c: any) => c.text).join (x1)",
+        "(activeBlock.content as any).map (x1)",
+        "setActiveBlockId (x1)",
+        "(prevBlock.content as any).map((c: any) => c.text).join (x1)"
+      ],
+      "handleKeyDown": [
+        "e.preventDefault (x16)",
+        "matchHotkey (x9)",
+        "editor.getTextCursorPosition (x5)",
+        "editor.updateBlock (x3)",
+        "handleSaveFile (x2)",
+        "window.electronAPI.newWindow (x2)",
+        "handleStartNewDocument (x2)",
+        "setFindReplaceMode (x2)",
+        "setShowFindReplace (x2)",
+        "handleZoomIn (x1)"
+      ]
+    }
+  },
+  "src\\renderer\\hooks\\useAIAgent.ts": {
+    "functions": [
+      {
+        "name": "useAIAgent",
+        "loc": 1923,
+        "topCalls": [
+          "setMessages (x16)",
+          "cleanPrompt.includes (x13)",
+          "setEngineLogs (x12)",
+          "useRef (x11)",
+          "prev.map (x11)",
+          "useCallback (x10)",
+          "new Date().toISOString (x10)",
+          "window.electronAPI.llmAddLog (x10)",
+          "Date.now (x10)",
+          "parsed.systemPrompt.includes (x8)"
+        ]
+      }
+    ],
+    "callGraph": {
+      "useAIAgent": [
+        "setMessages (x16)",
+        "cleanPrompt.includes (x13)",
+        "setEngineLogs (x12)",
+        "useRef (x11)",
+        "prev.map (x11)",
+        "useCallback (x10)",
+        "new Date().toISOString (x10)",
+        "window.electronAPI.llmAddLog (x10)",
+        "Date.now (x10)",
+        "parsed.systemPrompt.includes (x8)"
+      ]
+    }
+  },
+  "src\\renderer\\components\\AIPanel.tsx": {
+    "functions": [
+      {
+        "name": "AIPanel",
+        "loc": 2057,
+        "topCalls": [
+          "onUpdateSettings (x16)",
+          "useState (x8)",
+          "useEffect (x8)",
+          "input.trim (x8)",
+          "useRef (x7)",
+          "console.error (x7)",
+          "line.includes (x4)",
+          "trimmed.startsWith (x4)",
+          "buildBlockIndex (x4)",
+          "setShowModelHub (x4)"
+        ]
+      }
+    ],
+    "callGraph": {
+      "AIPanel": [
+        "onUpdateSettings (x16)",
+        "useState (x8)",
+        "useEffect (x8)",
+        "input.trim (x8)",
+        "useRef (x7)",
+        "console.error (x7)",
+        "line.includes (x4)",
+        "trimmed.startsWith (x4)",
+        "buildBlockIndex (x4)",
+        "setShowModelHub (x4)"
+      ]
+    }
+  }
+}

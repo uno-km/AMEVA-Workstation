@@ -1,6 +1,7 @@
 import { useAIState } from '../stores/useAIState';
 import { useAILogStore } from '../stores/useAILogStore';
 import { useLocalAIEngine } from './useLocalAIEngine';
+import { useRemoteAIEngine } from './useRemoteAIEngine';
 import { useAIAgent } from './useAIAgent';
 import type { AISettings } from '../types/aiTypes';
 
@@ -27,6 +28,7 @@ export function useAI() {
 
   // 2. 도메인별 분리된 훅 호출
   const localEngine = useLocalAIEngine();
+  const remoteEngine = useRemoteAIEngine();
   const agent = useAIAgent();
 
   // 3. 환경 설정 업데이트 헬퍼
