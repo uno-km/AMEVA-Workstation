@@ -1,15 +1,23 @@
 import { useCallback } from 'react'
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
 import { useUIStore } from '../../stores/useUIStore'
-import { type AmevaEditor } from '../../editor/amevaBlockSchema'
+import { type AmevaEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
 
-export function useAppAISuggestions(editor: AmevaEditor | null) {
-  const { taggedBlocks, setTaggedBlocks } = useWorkspaceStore()
+export function useAppAISuggestions(
+  editor: AmevaEditor | null,
+  updateInsertSuggestionStatus?: (
+    msgId: string,
+    status: 'pending' | 'accepted' | 'rejected',
+    newAfterBlockId?: string,
+    newSiblingIndex?: number,
+    suggestionIndex?: number
+  ) => void
+) {
+  const { taggedBlocks, setTaggedBlocks, setSelectedText } = useWorkspaceStore()
   const {
     setShowAIPanel,
     setActiveRightTab,
-    setToastMessage,
-    setSelectedText
+    setToastMessage
   } = useUIStore()
 
   const customSetTaggedBlocks = useCallback((
@@ -86,11 +94,11 @@ export function useAppAISuggestions(editor: AmevaEditor | null) {
               editor.updateBlock(blockId, {
                 type: 'jupyter',
                 props: { ...targetBlock.props, code: text }
-              })
+              } as AmevaPartialBlock)
             } else {
               editor.updateBlock(blockId, {
                 content: text
-              })
+              } as AmevaPartialBlock)
             }
             return
           }
@@ -148,37 +156,30 @@ export function useAppAISuggestions(editor: AmevaEditor | null) {
 
       const doc = editor.document
       if (!doc || doc.length === 0) {
-        editor.replaceBlocks(doc, [blockPayload])
+        editor.replaceBlocks(doc, [blockPayload as AmevaPartialBlock])
       } else if (afterBlockId === 'START') {
-        editor.insertBlocks([blockPayload], doc[0], 'before')
+        editor.insertBlocks([blockPayload as AmevaPartialBlock], doc[0], 'before')
       } else if (afterBlockId === 'END') {
-        editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
+        editor.insertBlocks([blockPayload as AmevaPartialBlock], doc[doc.length - 1], 'after')
       } else {
         const flatBlocks = (function flatten(blocks: any[]): any[] {
           return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
         })(doc)
         const targetBlock = flatBlocks.find(b => b.id === afterBlockId)
         if (targetBlock) {
-          editor.insertBlocks([blockPayload], targetBlock, 'after')
+          editor.insertBlocks([blockPayload as AmevaPartialBlock], targetBlock, 'after')
         } else {
-          editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
+          editor.insertBlocks([blockPayload as AmevaPartialBlock], doc[doc.length - 1], 'after')
         }
       }
 
-      const suggestionsStatus = useWorkspaceStore.getState().insertSuggestionsStatus || {}
-      const msgSuggestions = suggestionsStatus[msgId] || []
-      const updatedSuggestions = [...msgSuggestions]
-      if (suggestionIndex !== undefined) {
-        updatedSuggestions[suggestionIndex] = 'applied'
+      if (updateInsertSuggestionStatus) {
+        updateInsertSuggestionStatus(msgId, 'accepted', afterBlockId, undefined, suggestionIndex)
       }
-      useWorkspaceStore.getState().setInsertSuggestionsStatus({
-        ...suggestionsStatus,
-        [msgId]: updatedSuggestions
-      })
     } catch (err) {
       console.error('Failed to apply insert suggestion:', err)
     }
-  }, [editor])
+  }, [editor, updateInsertSuggestionStatus])
 
   return {
     customSetTaggedBlocks,

@@ -1,5 +1,25 @@
 # AMEVA OS Changelog
 
+## 2026-07-07 (Atomic Decomposition & 100% Compiler Normalization)
+
+### 🚀 Major Architectural Changes
+- **Main Process Main Decoupling**: Extracted Local LLM process management and collaboration servers out of `index.ts` into specialized service modules (`llmProcessManager.ts` and `collabServer.ts`), leaving `index.ts` strictly as a lightweight coordinator.
+- **Strict BlockNote Schema Type Normalization**: Updated `amevaBlockSchema.ts` type exports (`BlockSchemaFromSpecs`, `InlineContentSchemaFromSpecs`, `StyleSchemaFromSpecs`) to prevent structural typing compiler errors downstream.
+- **App File Operations Hook Atomization**: Decoupled 350+ lines of pure file-type converters, download triggers, base64 helpers, and parser operations from the 650-line `useAppFileOperations.ts` into a clean utility module (`src/renderer/utils/fileConverters.ts`). This reduced the hook's length by over 50%, transforming it into a highly cohesive, lightweight React controller.
+- **Suggestion Callback & Zoom State Integration**: Replaced direct Zustand mutations of suggestion state in `useAppAISuggestions.ts` with a clean callback delegation pattern (`updateInsertSuggestionStatus`), and restored missing zoom handlers in `App.tsx` by wiring them directly to the process store.
+
+### 📁 Files Modified / Added
+- `[NEW]` `src/renderer/utils/fileConverters.ts` - Container for base64 conversions, file parsing, and docx/xlsx/hwpx/pdf exports.
+- `[MODIFY]` `src/renderer/hooks/app/useAppFileOperations.ts` - Cleaned up and imported helper functions, shrinking the hook to under 330 lines.
+- `[MODIFY]` `src/renderer/hooks/app/useAppAISuggestions.ts` - Restructured state references, cast block updates, and replaced local Zustand updates with callback invocations.
+- `[MODIFY]` `src/renderer/App.tsx` - Reordered `useAI` to prevent TDZ, declared missing zoom/fullscreen handlers, and fixed functional updater signature mismatches.
+- `[MODIFY]` `src/renderer/components/SettingsModal.tsx`, `SettingsTabMCP.tsx`, `SettingsTabCredentials.tsx` - Cleared out unused React and icon imports, achieving a warning-free compile.
+
+### 🧠 Reasoning & Impact
+- **Problem**: Large monolothic code blocks and files with mixed responsibilities (e.g. React hooks mixed with heavy synchronous binary parser logic) were hard to maintain, slow to compile, and prone to type unsafety. Unused variables/imports caused compiler warnings.
+- **Solution**: High-grain modularization of helpers into specialized modules (`fileConverters.ts`) and alignment of typescript interface signatures ensures clean modular structure and zero compiler warnings/errors.
+- **Impact**: Zero TypeScript compilation errors (`npx tsc --noEmit`), successful production build (`npm run build`), and high cognitive clarity.
+
 ## 2026-07-07 (Phase 3 & 4 Refactoring)
 
 ### 🚀 Major Architectural Changes

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ToggleLeft, ToggleRight, Plus, Trash2 } from 'lucide-react'
 import { MCPClientManager } from '../../utils/mcpClient'
 import * as ipc from '../../services/ipc/electronApiAdapter'

@@ -23,6 +23,9 @@ AMEVA OS is a serverless local AI & WASM hybrid operating system that executes c
 - **`MessageBubble.tsx`**: (Presentational) Renders individual chat messages and parses markdown.
 - **`InsertPreviewCard.tsx`**: (Presentational) Renders the inline UI for AI text insertion/modification suggestions.
 
+### 2.4 Utility Layer
+- **`fileConverters.ts`**: Standalone utility module encapsulating base64 conversions, file parsing, and docx/xlsx/hwpx/pdf exporters to keep React hooks lightweight and focused.
+
 ## 3. Mermaid Architecture Diagram
 
 ```mermaid

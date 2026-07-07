@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import {
   X, Settings, Sliders, ToggleLeft, ToggleRight, Monitor, Move,
-  Bot, ToyBrick, User, Shield, Keyboard, Plus, Trash2, ShieldAlert, Key
+  Bot, ToyBrick, User, Shield, Keyboard, ShieldAlert, Key
 } from 'lucide-react'
-import { MCPClientManager } from '../utils/mcpClient' // [FIX-MCP-UI] MCP 설정 연동
 import * as ipc from '../services/ipc/electronApiAdapter'
 import { useSettingsModalResize } from '../hooks/app/useSettingsModalResize'
 import { SettingsTabCredentials } from './settings/SettingsTabCredentials'

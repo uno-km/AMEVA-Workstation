@@ -44,8 +44,7 @@ import { matchHotkey } from './utils/appUtils'
 
 
 
-import { BlockNoteEditor } from "@blocknote/core"
-import { amevaSchema as schema, type AmevaEditor as AppEditor } from './editor/amevaBlockSchema'
+import { amevaSchema as schema, type AmevaEditor as AppEditor, type AmevaPartialBlock as AppPartialBlock } from './editor/amevaBlockSchema'
 
 
 
@@ -66,15 +65,14 @@ export default function App() {
   const [username, setUsername] = useState(randomUsername)
   const [userColor, setUserColor] = useState(randomColor)
 
+
   const {
-    filePath, setFilePath, currentContent, setCurrentContent, appendContent,
-    originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
-    fileOpenMode, setFileOpenMode, tabs, setTabs, addTab, removeTab, updateActiveTab, updateTab,
-    activeTabId, setActiveTabId, appendedFiles, setAppendedFiles, addAppendedFile,
-    selectedText, setSelectedText, activeBlockId, setActiveBlockId,
-    taggedBlocks, setTaggedBlocks, addTaggedBlock, removeTaggedBlock,
-    selectedSnapshot, setSelectedSnapshot
-  } = useWorkspaceStore()
+    messages: aiMessages, isGenerating, isAvailable, models,
+    settings: aiSettings, generateResponse, abortGeneration,
+    clearHistory: clearAIHistory, updateSettings: updateAISettings,
+    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs, setEngineLogs,
+    refreshModels, importModel, pendingQueue, removeFromQueue,
+  } = useAI()
 
   const {
     ydoc, provider, peers, serverRunning,
@@ -86,6 +84,8 @@ export default function App() {
   const { snapshots, createSnapshot, deleteSnapshot, getLineDiff } = useHistory(documentId)
 
   const [editor, setEditor] = useState<AppEditor | null>(null)
+
+  const [editorMode, setEditorMode] = useState<EditorMode>('welcome')
 
   const {
     loadMarkdownIntoEditor,
@@ -102,7 +102,7 @@ export default function App() {
     handleScrollToBlock,
     handleApplySuggestion,
     handleApplyInsertSuggestion
-  } = useAppAISuggestions(editor)
+  } = useAppAISuggestions(editor, updateInsertSuggestionStatus)
 
   const { handleNewTab, handleSelectTab, handleCloseTab } = useAppTabs(
     editor,
@@ -139,7 +139,32 @@ export default function App() {
     editorZoom, setEditorZoom, adjustEditorZoom, browserZoom, setBrowserZoom, adjustBrowserZoom
   } = useProcessStore()
 
-  const [editorMode, setEditorMode] = useState<EditorMode>('welcome')
+  const {
+    filePath, setFilePath, currentContent, setCurrentContent, appendContent,
+    originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
+    fileOpenMode, setFileOpenMode, tabs, setTabs, addTab, removeTab, updateActiveTab, updateTab,
+    activeTabId, setActiveTabId, appendedFiles, setAppendedFiles, addAppendedFile,
+    selectedText, setSelectedText, activeBlockId, setActiveBlockId,
+    taggedBlocks, setTaggedBlocks, addTaggedBlock, removeTaggedBlock,
+    selectedSnapshot, setSelectedSnapshot
+  } = useWorkspaceStore()
+
+  const handleZoomIn = () => adjustEditorZoom(0.1)
+  const handleZoomOut = () => adjustEditorZoom(-0.1)
+  const handleZoomReset = () => {
+    setEditorZoom(1.0)
+    if (window.electronAPI?.setZoomFactor) {
+      window.electronAPI.setZoomFactor(1.0)
+      setBrowserZoom(1.0)
+    }
+  }
+  const handleToggleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }
 
   const [settings, setSettings] = useState<AppSettings>(() => {
     const DEFAULT: AppSettings = {
@@ -275,13 +300,7 @@ export default function App() {
     } catch {}
   }
 
-  const {
-    messages: aiMessages, isGenerating, isAvailable, models,
-    settings: aiSettings, generateResponse, abortGeneration,
-    clearHistory: clearAIHistory, updateSettings: updateAISettings,
-    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs, setEngineLogs,
-    refreshModels, importModel, pendingQueue, removeFromQueue,
-  } = useAI()
+
 
   const { messages: chatMessages, sendMessage: sendChatMessage, clearMessages: clearChatMessages } = useChat(
     ydoc, provider, username, userColor, serverRunning
@@ -303,9 +322,9 @@ export default function App() {
       if (editor) {
         try {
           const doc = editor.document
-          const blockPayload = {
-            type: 'paragraph' as const,
-            content: [{ type: 'text' as const, text: text, styles: {} }]
+          const blockPayload: AppPartialBlock = {
+            type: 'paragraph',
+            content: [{ type: 'text', text: text, styles: {} }]
           }
           if (doc.length > 0) {
             editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
@@ -515,7 +534,7 @@ graph TD
                 type: 'heading',
                 props: { level: level as any },
                 content: [{ type: 'text', text: match[2], styles: {} }]
-              })
+              } as AppPartialBlock)
             } catch {}
             isUpdating = false
           }
@@ -535,7 +554,7 @@ graph TD
               const match = text.match(/^(#{1,3}\s)(.*)$/)
               if (match) {
                 isUpdating = true
-                editor.updateBlock(prevId, { content: [{ type: 'text', text: match[2], styles: {} }] })
+                editor.updateBlock(prevId, { content: [{ type: 'text', text: match[2], styles: {} }] } as AppPartialBlock)
                 isUpdating = false
               }
             }
@@ -551,7 +570,7 @@ graph TD
               const prefix = level === 1 ? '# ' : level === 2 ? '## ' : '### '
               if (!text.startsWith(prefix)) {
                 isUpdating = true
-                editor.updateBlock(currentId, { content: [{ type: 'text', text: prefix + text, styles: {} }] })
+                 editor.updateBlock(currentId, { content: [{ type: 'text', text: prefix + text, styles: {} }] } as AppPartialBlock)
                 isUpdating = false
               }
             }
@@ -651,7 +670,7 @@ graph TD
               const match = text.match(/^(#{1,3}\s)(.*)$/)
               if (match) {
                 activeHeadingText = text
-                editor.updateBlock(activeId, { content: [{ type: 'text', text: match[2], styles: {} }] })
+                 editor.updateBlock(activeId, { content: [{ type: 'text', text: match[2], styles: {} }] } as AppPartialBlock)
                 activeHeadingCleared = true
               }
             }
@@ -665,7 +684,7 @@ graph TD
           console.error('Markdown sync failed:', err)
         } finally {
           if (activeHeadingCleared && activeId) {
-            try { editor.updateBlock(activeId, { content: [{ type: 'text', text: activeHeadingText, styles: {} }] }) } catch {}
+            try { editor.updateBlock(activeId, { content: [{ type: 'text', text: activeHeadingText, styles: {} }] } as AppPartialBlock) } catch {}
           }
           isUpdating = false
         }
@@ -870,7 +889,7 @@ graph TD
     onNewTab: handleNewTab,
     onToggleAI: toggleAIPanel,
     onToggleMode: () => {
-      setEditorMode(editorMode === 'edit' ? 'preview' : editorMode === 'preview' ? 'write' : 'edit')
+      setEditorMode(editorMode === 'edit' ? 'preview' : 'edit')
     },
     onZoomIn: handleZoomIn,
     onZoomOut: handleZoomOut,
@@ -985,7 +1004,7 @@ graph TD
                 activeTabId={activeTabId}
                 onSelectTab={handleSelectTab}
                 onCloseTab={handleCloseTab}
-                onToggleSidebar={() => setShowSidebar(p => !p)}
+                 onToggleSidebar={() => setShowSidebar(!showSidebar)}
                 chatMessages={chatMessages}
                 onChatSend={sendChatMessage}
                 onChatClear={clearChatMessages}
@@ -1278,7 +1297,7 @@ graph TD
       <ExportModal
         progress={exportProgress}
         minimized={exportMinimized}
-        onMinimize={() => setExportMinimized(prev => !prev)}
+         onMinimize={toggleExportMinimized}
         onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
         onOpenFile={(path) => {
           const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`

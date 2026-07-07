@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
-import { type AmevaEditor } from '../../editor/amevaBlockSchema'
+import { type AmevaEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
 import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds } from '../../utils/markdownUtils'
 
 export function useAppTabs(
@@ -18,6 +18,7 @@ export function useAppTabs(
     tabs,
     setTabs,
     addTab,
+    removeTab,
     activeTabId,
     setActiveTabId,
     updateActiveTab,
@@ -31,17 +32,18 @@ export function useAppTabs(
     const currentBlocks = [...editor.document]
     
     const newTabId = Math.random().toString(36).substring(2, 10)
+    const newTabBlocks: AmevaPartialBlock[] = [
+      {
+        id: Math.random().toString(36).substring(2, 10),
+        type: 'paragraph',
+        content: []
+      }
+    ]
     const newTab = {
       id: newTabId,
       filePath: null,
       content: '',
-      blocks: [
-        {
-          id: Math.random().toString(36).substring(2, 10),
-          type: 'paragraph' as const,
-          content: []
-        }
-      ],
+      blocks: newTabBlocks,
       originalContent: '',
       lastSavedTime: null
     }

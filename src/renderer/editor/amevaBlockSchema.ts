@@ -1,4 +1,13 @@
-import { BlockNoteSchema, defaultBlockSpecs, BlockNoteEditor, type Block, type PartialBlock } from '@blocknote/core'
+import {
+  BlockNoteSchema,
+  defaultBlockSpecs,
+  BlockNoteEditor,
+  type Block,
+  type PartialBlock,
+  type BlockSchemaFromSpecs,
+  type InlineContentSchemaFromSpecs,
+  type StyleSchemaFromSpecs
+} from '@blocknote/core'
 import { JupyterBlock } from '../components/JupyterBlock'
 import { DrawingBlock } from '../components/DrawingBlock'
 import { LinkPreviewBlock } from '../components/LinkPreviewBlock'
@@ -16,17 +25,17 @@ export const amevaSchema = BlockNoteSchema.create({
 
 export type AmevaSchemaType = typeof amevaSchema
 export type AmevaEditor = BlockNoteEditor<
-  typeof amevaSchema.blockSpecs,
-  typeof amevaSchema.inlineContentSpecs,
-  typeof amevaSchema.styleSpecs
+  BlockSchemaFromSpecs<typeof amevaSchema.blockSpecs>,
+  InlineContentSchemaFromSpecs<typeof amevaSchema.inlineContentSpecs>,
+  StyleSchemaFromSpecs<typeof amevaSchema.styleSpecs>
 >
 export type AmevaBlock = Block<
-  typeof amevaSchema.blockSpecs,
-  typeof amevaSchema.inlineContentSpecs,
-  typeof amevaSchema.styleSpecs
+  BlockSchemaFromSpecs<typeof amevaSchema.blockSpecs>,
+  InlineContentSchemaFromSpecs<typeof amevaSchema.inlineContentSpecs>,
+  StyleSchemaFromSpecs<typeof amevaSchema.styleSpecs>
 >
 export type AmevaPartialBlock = PartialBlock<
-  typeof amevaSchema.blockSpecs,
-  typeof amevaSchema.inlineContentSpecs,
-  typeof amevaSchema.styleSpecs
+  BlockSchemaFromSpecs<typeof amevaSchema.blockSpecs>,
+  InlineContentSchemaFromSpecs<typeof amevaSchema.inlineContentSpecs>,
+  StyleSchemaFromSpecs<typeof amevaSchema.styleSpecs>
 >
