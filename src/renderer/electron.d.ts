@@ -13,7 +13,6 @@ export interface IElectronAPI {
   saveExportedFile: (data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>
   printToPDF: (htmlContent: string) => Promise<string | null>
   fetchUrlMetadata?: (url: string) => Promise<any>
-  getMcpServers?: () => Promise<any[]>
   runPythonCode?: (code: string) => Promise<{ success: boolean; result?: string; error?: string }>
   // [HIGH-001] showMessageBox Electron 네이티브 다이얼로그
   showMessageBox: (options: {
@@ -86,7 +85,6 @@ export interface IElectronAPI {
 
   llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>
   onLLMDownloadProgress: (callback: (data: { filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number }) => void) => () => void
-  onModelDownloadProgress?: (callback: (data: any) => void) => () => void
   llmImportModel: (sourcePath: string, type?: 'llm' | 'code') => Promise<{ success: boolean; path?: string; error?: string }>
 
   // 분산 문서 변환 브리지

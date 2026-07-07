@@ -56,12 +56,11 @@ declare global {
       openExternalLink: (url: string) => void
       // 앱
       appReady: () => void
-      appMinimize?: () => void
-      appMaximize?: () => void
-      appClose?: () => void
       // 창 줌
       getZoomFactor?: () => Promise<number>
       setZoomFactor?: (factor: number) => void
+      setZoomLevel?: (level: number) => void
+      getZoomLevel?: () => Promise<number>
       // 시스템 다이얼로그
       showMessageBox?: (options: any) => Promise<{ response: number }>
       // OS 키체인 (API Key 암호화 저장)
@@ -79,13 +78,11 @@ declare global {
       planSetStatus?: (isPro: boolean) => Promise<{ success: boolean; isPro?: boolean; error?: string }>
       isFreeMode?: () => Promise<boolean>
       // MCP
-      getMcpServers?: () => Promise<any[]>
       mcpSpawn?: (serverId: string, command: string, args: string[]) => Promise<any>
       mcpCall?: (serverId: string, request: any) => Promise<any>
       mcpKill?: (serverId: string) => Promise<any>
       mcpGetToken?: () => Promise<string | null>
       // 내보내기
-      onExportProgress?: (callback: (data: ExportProgressEvent) => void) => () => void
       printToPDF?: (htmlContent: string) => Promise<string | null>
       newWindow?: () => void
       closeApp?: () => void
@@ -97,10 +94,6 @@ declare global {
       onServerStatus?: (callback: (status: any) => void) => () => void
       startCollaborationServer?: (port: number) => Promise<any>
       stopCollaborationServer?: () => Promise<any>
-      // 다운로드 (구형 API 호환)
-      startModelDownload?: (params: any) => Promise<any>
-      cancelModelDownload?: (modelId: string) => Promise<any>
-      getDownloadStatus?: (modelId: string) => Promise<any>
     }
   }
 }
@@ -369,20 +362,6 @@ export function appReady(): void {
 }
 
 /**
- * getMcpServers
- * 등록된 MCP 서버 목록을 조회한다.
- */
-export async function getMcpServers(): Promise<any[]> {
-  if (!window.electronAPI?.getMcpServers) return []
-  try {
-    return await window.electronAPI.getMcpServers()
-  } catch (e) {
-    console.error('[getMcpServers] MCP 서버 목록 조회 실패:', e)
-    return []
-  }
-}
-
-/**
  * llmDownloadModel
  * LLM 모델을 허브로부터 다운로드한다.
  */
@@ -429,22 +408,16 @@ export async function llmStop(): Promise<void> {
 }
 
 
-/** appMinimize */
-export function appMinimize(): void {
-  if (!window.electronAPI?.appMinimize) return
-  window.electronAPI.appMinimize()
+/** setZoomLevel */
+export function setZoomLevel(level: number): void {
+  if (!window.electronAPI?.setZoomLevel) return
+  window.electronAPI.setZoomLevel(level)
 }
 
-/** appMaximize */
-export function appMaximize(): void {
-  if (!window.electronAPI?.appMaximize) return
-  window.electronAPI.appMaximize()
-}
-
-/** appClose */
-export function appClose(): void {
-  if (!window.electronAPI?.appClose) return
-  window.electronAPI.appClose()
+/** getZoomLevel */
+export async function getZoomLevel(): Promise<number> {
+  if (!window.electronAPI?.getZoomLevel) return 0
+  return window.electronAPI.getZoomLevel()
 }
 
 /** getZoomFactor */
@@ -572,25 +545,6 @@ export async function stopCollaborationServer(): Promise<any> {
   if (!window.electronAPI?.stopCollaborationServer) return null
   return window.electronAPI.stopCollaborationServer()
 }
-
-/** startModelDownload */
-export async function startModelDownload(params: any): Promise<any> {
-  if (!window.electronAPI?.startModelDownload) return null
-  return window.electronAPI.startModelDownload(params)
-}
-
-/** cancelModelDownload */
-export async function cancelModelDownload(modelId: string): Promise<any> {
-  if (!window.electronAPI?.cancelModelDownload) return null
-  return window.electronAPI.cancelModelDownload(modelId)
-}
-
-/** getDownloadStatus */
-export async function getDownloadStatus(modelId: string): Promise<any> {
-  if (!window.electronAPI?.getDownloadStatus) return null
-  return window.electronAPI.getDownloadStatus(modelId)
-}
-
 /** mcpGetToken */
 export async function mcpGetToken(): Promise<string | null> {
   if (!window.electronAPI?.mcpGetToken) return null

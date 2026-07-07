@@ -1,6 +1,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
+import { analyzeApiKey } from '../../services/ai/analyzeApiKey'
 
 export function useAIKeychain(apiType: string, apiProvider: string, apiKey: string, onUpdateSettings: (s: any) => void) {
   const isApiKeyLoadedRef = useRef<Record<string, boolean>>({})
@@ -54,27 +55,13 @@ export function useAIKeychain(apiType: string, apiProvider: string, apiKey: stri
 
   // 4. 입력 시 프로바이더 자동 변경 로직 (휴리스틱)
   const handleApiKeyChange = (val: string) => {
-    const trimmed = val.trim()
-    let detectedProvider: 'gemini' | 'openai' | 'anthropic' | 'custom' | null = null
-    let targetEndpoint = ''
-    let targetModel = ''
-
-    if (trimmed.startsWith('AIzaSy') || trimmed.startsWith('AQ.')) {
-      detectedProvider = 'gemini'
-      targetEndpoint = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions'
-      targetModel = 'gemini-2.5-flash'
-    } else if (trimmed.startsWith('sk-ant')) {
-      detectedProvider = 'anthropic'
-      targetEndpoint = 'https://api.anthropic.com/v1/messages'
-      targetModel = 'claude-3-5-sonnet-latest'
-    } else if (trimmed.startsWith('sk-')) {
-      detectedProvider = 'openai'
-      targetEndpoint = 'https://api.openai.com/v1/chat/completions'
-      targetModel = 'gpt-4o-mini'
-    }
-
-    if (detectedProvider) {
-      onUpdateSettings({ apiKey: val, apiEndpoint: targetEndpoint, apiModel: targetModel })
+    const analysis = analyzeApiKey(val)
+    if (analysis.provider !== 'unknown') {
+      onUpdateSettings({
+        apiKey: val,
+        apiEndpoint: analysis.endpoint,
+        apiModel: analysis.defaultModel
+      })
     } else {
       onUpdateSettings({ apiKey: val })
     }

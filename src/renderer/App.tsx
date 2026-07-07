@@ -152,8 +152,8 @@ export default function App() {
   const handleZoomOut = () => adjustEditorZoom(-0.1)
   const handleZoomReset = () => {
     setEditorZoom(1.0)
-    if (window.electronAPI?.setZoomFactor) {
-      window.electronAPI.setZoomFactor(1.0)
+    if (ipc.isElectronEnv()) {
+      ipc.setZoomFactor(1.0)
       setBrowserZoom(1.0)
     }
   }
@@ -491,12 +491,12 @@ graph TD
 \`\`\`
 `
       setCurrentContent(welcomeMD)
-      if (window.electronAPI?.appReady) {
-        window.electronAPI.appReady()
+      if (ipc.isElectronEnv()) {
+        ipc.appReady()
       }
     } else {
-      if (window.electronAPI?.appReady) {
-        window.electronAPI.appReady()
+      if (ipc.isElectronEnv()) {
+        ipc.appReady()
       }
     }
   }, [ydoc, provider, isActive, username, userColor, setCurrentContent])
@@ -915,7 +915,7 @@ graph TD
         onSaveAs={handleSaveAsFile}
         onPrint={() => handleExport('pdf')}
         onCloseApp={handleCloseApp}
-        onNewWindow={() => window.electronAPI?.newWindow?.()}
+        onNewWindow={ipc.newWindow}
         editorMode={editorMode}
         setEditorMode={handleSwitchMode}
         showStatusBar={showStatusBar}
@@ -1300,13 +1300,7 @@ graph TD
         onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
         onOpenFile={(path) => {
           const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
-          if (window.electronAPI?.openExternalLink) {
-            window.electronAPI.openExternalLink(fileUrl)
-          } else if (path.startsWith('http')) {
-            // [MEDIUM-006] 브라우저 fallback: http URL만 다른 탭으로
-            window.open(path, '_blank', 'noopener,noreferrer')
-          }
-          // 로컈 file:// 경로는 브라우저에서 접근 불가
+          ipc.openExternalLink(fileUrl)
         }}
       />
 

@@ -522,6 +522,43 @@ ipcMain.handle('llm:restart', async (_event) => {
   }
 })
 
+ipcMain.handle('llm:start', async (_event, modelPath: string) => {
+  try {
+    const llamaPath = LLMProcessManager.findLlamaCli()
+    if (!llamaPath) return { success: false, error: 'llama.cpp 엔진 경로를 찾을 수 없습니다.' }
+    
+    const fs = require('fs')
+    if (!fs.existsSync(modelPath)) {
+      return { success: false, error: `모델 파일을 찾을 수 없습니다: ${modelPath}` }
+    }
+
+    if (LLMProcessManager.activeServerProcess) {
+      return { success: true }
+    }
+
+    LLMProcessManager.logToRenderer(`[System] 로컬 AI 엔진 수동 기동 요청 수신 (모델: ${modelPath})\n`)
+    const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
+    return { success: ok, error: ok ? undefined : '엔진 기동 실패' }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('llm:stop', async () => {
+  try {
+    LLMProcessManager.logToRenderer('[System] 로컬 AI 엔진 수동 정지 요청 수신\n')
+    if (LLMProcessManager.activeServerProcess) {
+      try { LLMProcessManager.activeServerProcess.kill('SIGKILL') } catch {}
+      LLMProcessManager.activeServerProcess = null
+    }
+    LLMProcessManager.serverStartingPromise = null
+    LLMProcessManager.forceCleanupLocalLLMProcesses()
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
+
 ipcMain.handle('llm:is-free-mode', () => {
   return isFreeModeRequested
 })

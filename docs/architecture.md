@@ -25,6 +25,11 @@ AMEVA OS is a serverless local AI & WASM hybrid operating system that executes c
 
 ### 2.4 Utility Layer
 - **`fileConverters.ts`**: Standalone utility module encapsulating base64 conversions, file parsing, and docx/xlsx/hwpx/pdf exporters to keep React hooks lightweight and focused.
+- **`analyzeApiKey.ts`**: Centralized API key parser evaluating provided credentials against strict patterns to automatically extract provider endpoints and default models.
+
+### 2.5 IPC Bridge Layer
+- **`electronApiAdapter.ts`**: Unifies and wraps all IPC invocations to safe Electron contexts. Restricts renderer code from bypassing this layer to directly access the global window API.
+- **`preload.ts` & `index.ts`**: Serves as the security and message mapping boundary between the Electron renderer and native main process.
 
 ## 3. Mermaid Architecture Diagram
 

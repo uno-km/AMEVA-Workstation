@@ -66,6 +66,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   }) => ipcRenderer.invoke('llm:generate', payload),
 
   llmAbort: (sessionId: string) => ipcRenderer.send(`llm:abort:${sessionId}`),
+  llmStart: (modelPath: string) => ipcRenderer.invoke('llm:start', modelPath),
+  llmStop: () => ipcRenderer.invoke('llm:stop'),
 
   onLLMToken: (sessionId: string, callback: (token: string) => void) => {
     const subscription = (_event: any, data: { token: string }) => callback(data.token)

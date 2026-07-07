@@ -1,5 +1,32 @@
 # AMEVA OS Changelog
 
+## 2026-07-07 (Forensic Audit & System Call Mapping Closure)
+
+### 🚀 Major Architectural Changes
+- **Local AI Engine Lifecycle Restoration (llmStart / llmStop)**: Re-implemented and restored the missing IPC handlers `llm:start` and `llm:stop` in the Main process and exposed them properly via Preload, enabling explicit, on-demand local llama-server lifecycle management from the renderer.
+- **Unified API Key Extraction Architecture**: Replaced the duplicated heuristic key-matching prefix checks in `useAIKeychain.ts` with a single centralized utility function `analyzeApiKey(apiKey)`, which resolves against the unified `API_KEY_PATTERNS` constant.
+- **Adapter Interface Optimization & Zoom API Alignment**: Added `setZoomLevel` and `getZoomLevel` to `electronApiAdapter.ts`, fully bridging them with Preload. Pruned all unused legacy, unmapped, and pseudo-APIs (`startModelDownload`, `cancelModelDownload`, `getDownloadStatus`, `getMcpServers`, `appClose`) from the active adapter.
+- **App.tsx Direct API Call Decoupling**: Replaced all direct `window.electronAPI.xxx` calls in `App.tsx` (such as `appReady`, `newWindow`, `openExternalLink`, and `setZoomFactor`) with standard 어댑터 `ipc` calls, unifying the renderer's integration boundary.
+- **Strict Typing for AI Settings Panel**: Replaced `any` settings and models array types in `AISettingsPanel.tsx` with explicit TypeScript interface definitions (`AISettings`, `LocalModelInfo`, and `Partial<AISettings>`).
+- **Complete Debris Isolation (Archive System)**: Moved all 24 unused utility scripts (`.cjs`) and the obsolete `useAI.backup.ts` file to `scripts/archive/` and excluded this folder from `tsconfig.json` to ensure zero compilation interference.
+
+### 📁 Files Modified / Added
+- `[MODIFY]` [preload.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/main/preload.ts) - Expose `llmStart` and `llmStop` IPC wrappers.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/main/index.ts) - Implement `llm:start` and `llm:stop` handlers utilizing `LLMProcessManager`.
+- `[MODIFY]` [electronApiAdapter.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/services/ipc/electronApiAdapter.ts) - Implement `setZoomLevel`/`getZoomLevel`, remove dead IPC declarations.
+- `[MODIFY]` [electron.d.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/electron.d.ts) - Synchronize IElectronAPI signatures with exposed Preload API.
+- `[MODIFY]` [useAIKeychain.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/ai/useAIKeychain.ts) - Decouple heuristic matching and delegate to `analyzeApiKey`.
+- `[MODIFY]` [AISettingsPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/ai/AISettingsPanel.tsx) - Apply concrete typing to Props (`settings`, `models`).
+- `[MODIFY]` [App.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/App.tsx) - Route direct calls through 어댑터 `ipc`.
+- `[MODIFY]` [tsconfig.app.json](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/tsconfig.app.json), [tsconfig.node.json](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/tsconfig.node.json) - Exclude `scripts/**/*`.
+- `[NEW]` [reservedIpcApis.md](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/docs/refactor-audit/reservedIpcApis.md) - Document deferred/reserved APIs.
+- `[NEW]` [archive-notes.md](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/docs/refactor-audit/archive-notes.md) - Record list of archived scripts and files.
+
+### 🧠 Reasoning & Impact
+- **Problem**: Incomplete IPC layers caused dead-ends when starting/stopping the local engine, while direct `window.electronAPI` references broke the 어댑터 facade pattern. Hardcoded prefix checks in multiple files reduced code maintainability.
+- **Solution**: Centralized all Electron IPC references through the 어댑터 wrapper, unified key heuristics using a single constant, and restored missing engine start/stop system boundaries.
+- **Impact**: Zero TypeScript compilation errors, complete build packaging validation, and clean, modular component communication.
+
 ## 2026-07-07 (Atomic Decomposition & 100% Compiler Normalization)
 
 ### 🚀 Major Architectural Changes

@@ -45,6 +45,7 @@ export interface AISettings {
   apiKey?: string
   apiEndpoint?: string
   apiModel?: string
+  apiProvider?: 'gemini' | 'openai' | 'anthropic' | 'custom'
   gpuOnly?: boolean
 }
 

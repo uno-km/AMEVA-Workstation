@@ -1,11 +1,19 @@
 import React, { useState } from 'react'
 import { X, Check, Trash2, AlertCircle } from 'lucide-react'
 import { PROVIDER_MODELS, API_ENDPOINTS } from "../../../shared/constants/aiSettings"
+import type { AISettings } from '../../types/aiTypes'
+
+export interface LocalModelInfo {
+  name: string
+  filename: string
+  path: string
+  size: number
+}
 
 export interface AISettingsPanelProps {
-  settings: any
-  onUpdateSettings: (s: any) => void
-  models: any[]
+  settings: AISettings & { theme?: string }
+  onUpdateSettings: (s: Partial<AISettings>) => void
+  models: LocalModelInfo[]
   isKeySaved: Record<string, boolean>
   handleApiKeyChange: (val: string) => void
   handleSaveKey: () => void
