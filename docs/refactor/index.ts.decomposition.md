@@ -101,7 +101,7 @@ src/main/index.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: Yes (Typecheck passed)
 
 ### Move Record: registerMcpIpc
 - original file: `src/main/index.ts`
@@ -110,7 +110,7 @@ src/main/index.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: Yes (Typecheck passed)
 
 ### Move Record: registerPythonIpc
 - original file: `src/main/index.ts`
@@ -119,7 +119,7 @@ src/main/index.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: Yes (Typecheck passed)
 
 ### Move Record: registerLlmIpc
 - original file: `src/main/index.ts`
@@ -128,4 +128,4 @@ src/main/index.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: Yes (Typecheck passed)

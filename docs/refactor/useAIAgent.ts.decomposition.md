@@ -26,42 +26,42 @@
 - approximate line range: L57-L81, L512-L524
 - dependencies: `useState`, `useCallback`, `AISettings`, `DEFAULT_SETTINGS`
 - target file: `src/renderer/hooks/ai/useAISettings.ts`
-- migration status: pending
+- migration status: verified
 
 - symbol name: `useAIModels` (extracted from inline L117-L170)
 - kind: hook
 - approximate line range: L117-L170
 - dependencies: `useCallback`, `useEffect`, `ipc`, `useAIState`
 - target file: `src/renderer/hooks/ai/useAIModels.ts`
-- migration status: pending
+- migration status: verified
 
 - symbol name: `useAIHealthCheck` (extracted from inline L173-L205)
 - kind: hook
 - approximate line range: L173-L205
 - dependencies: `useEffect`, `ipc`, `useAIState`
 - target file: `src/renderer/hooks/ai/useAIHealthCheck.ts`
-- migration status: pending
+- migration status: verified
 
 - symbol name: `useAIBlockProcessor` (extracted from inline L527-L591)
 - kind: hook
 - approximate line range: L527-L591
 - dependencies: `useCallback`, `ipc`, `AISettings`
 - target file: `src/renderer/hooks/ai/useAIBlockProcessor.ts`
-- migration status: pending
+- migration status: verified
 
 - symbol name: `useAIResponseHandler` (extracted from inline L363-L489)
 - kind: hook
 - approximate line range: L363-L489
 - dependencies: `useCallback`, `parseEditSuggestion`, `parseInsertSuggestions`, `useAIMessageState`
 - target file: `src/renderer/hooks/ai/useAIResponseHandler.ts`
-- migration status: pending
+- migration status: verified
 
 - symbol name: `useAIGenerator` (extracted from inline L211-L356)
 - kind: hook
 - approximate line range: L211-L356
 - dependencies: `useCallback`, `determineIntent`, `detectCodingRequest`, `checkUsageLimit`, `buildSystemPrompt`, `ipc`, `useAIQueue`, `useAIIpc`, `useAIStreamProcessor`
 - target file: `src/renderer/hooks/ai/useAIGenerator.ts`
-- migration status: pending
+- migration status: verified
 
 ## 4. Proposed Target File Map
 
@@ -85,7 +85,7 @@ src/renderer/hooks/useAIAgent.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: verified (npx tsc --noEmit passed, 0 errors)
 
 ### Move Record: useAIModels
 - original file: `src/renderer/hooks/useAIAgent.ts`
@@ -95,7 +95,7 @@ src/renderer/hooks/useAIAgent.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: verified (npx tsc --noEmit passed, 0 errors)
 
 ### Move Record: useAIHealthCheck
 - original file: `src/renderer/hooks/useAIAgent.ts`
@@ -105,7 +105,7 @@ src/renderer/hooks/useAIAgent.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: verified (npx tsc --noEmit passed, 0 errors)
 
 ### Move Record: useAIBlockProcessor
 - original file: `src/renderer/hooks/useAIAgent.ts`
@@ -115,7 +115,7 @@ src/renderer/hooks/useAIAgent.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: verified (npx tsc --noEmit passed, 0 errors)
 
 ### Move Record: useAIResponseHandler
 - original file: `src/renderer/hooks/useAIAgent.ts`
@@ -125,7 +125,7 @@ src/renderer/hooks/useAIAgent.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: verified (npx tsc --noEmit passed, 0 errors)
 
 ### Move Record: useAIGenerator
 - original file: `src/renderer/hooks/useAIAgent.ts`
@@ -135,4 +135,4 @@ src/renderer/hooks/useAIAgent.ts
 - name changed: No
 - signature changed: No
 - behavior changed: No
-- verification result: pending
+- verification result: verified (npx tsc --noEmit passed, 0 errors)

@@ -18,6 +18,8 @@ import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
 import { ResizeHandle } from '../ResizeHandle'
 import { FloatingChat } from '../FloatingChat'
 import { FindReplaceBar } from '../FindReplaceBar'
+import { FloatingPiPVideo } from './FloatingPiPVideo'
+import { ModalManager } from './ModalManager'
 import { type EditorMode, type DocumentSnapshot } from '../../../shared/types'
 import { type AmevaEditor as AppEditor } from '../../editor/amevaBlockSchema'
 
@@ -465,125 +467,47 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
         />
       )}
 
-      {pipVideoId && (
-        <div
-          style={{
-            position: 'fixed',
-            left: pipPosition.x,
-            top: pipPosition.y,
-            width: '340px',
-            height: '220px',
-            background: '#18181c',
-            border: '1.5px solid var(--primary)',
-            borderRadius: '10px',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.6)',
-            display: 'flex',
-            flexDirection: 'column',
-            zIndex: 9999,
-            overflow: 'hidden',
-            userSelect: 'none',
-          }}
-        >
-          <div
-            style={{
-              height: '28px',
-              background: '#0f0f11',
-              borderBottom: '1px solid #2e2e38',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '0 10px',
-              cursor: 'move',
-            }}
-            onMouseDown={handlePiPMouseDown}
-          >
-            <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)' }}>📺 Floating YouTube PiP Player</span>
-            <button
-              onClick={() => setPipVideoId(null)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: '#f87171',
-                fontSize: '11px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div style={{ flex: 1, background: '#000' }}>
-            <iframe
-              src={`https://www.youtube.com/embed/${pipVideoId}?autoplay=1`}
-              style={{ width: '100%', height: '100%', border: 'none' }}
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-            ></iframe>
-          </div>
-        </div>
-      )}
+      <FloatingPiPVideo
+        pipVideoId={pipVideoId}
+        pipPosition={pipPosition}
+        handlePiPMouseDown={handlePiPMouseDown}
+        setPipVideoId={setPipVideoId}
+      />
 
-      <DiffModal
-        isOpen={isDiffOpen}
-        onClose={() => setIsDiffOpen(false)}
-        snapshot={selectedSnapshot}
+      <ModalManager
+        isDiffOpen={isDiffOpen}
+        setIsDiffOpen={setIsDiffOpen}
+        selectedSnapshot={selectedSnapshot}
         currentContent={currentContent}
         getLineDiff={getLineDiff}
-        onRollback={handleRollback}
-      />
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => {
-          setIsSettingsOpen(false)
-          refreshMcpServers()
-        }}
+        handleRollback={handleRollback}
+        isSettingsOpen={isSettingsOpen}
+        setIsSettingsOpen={setIsSettingsOpen}
+        refreshMcpServers={refreshMcpServers}
         settings={settings}
-        onUpdateSettings={handleUpdateSettings}
+        handleUpdateSettings={handleUpdateSettings}
         username={username}
         userColor={userColor}
-        onUpdateUser={(name, color) => {
-          setUsername(name)
-          setUserColor(color)
-        }}
-        onOpenModelHub={() => {
-          setIsSettingsOpen(false)
-          setShowModelHub(true)
-        }}
-      />
-      <AboutModal
-        isOpen={isAboutOpen}
-        onClose={() => setIsAboutOpen(false)}
-        onOpenGithub={handleOpenGithub}
-      />
-      <MarkdownGuideModal
-        isOpen={isGuideOpen}
-        onClose={() => setIsGuideOpen(false)}
-      />
-
-      <MarketplaceModal
-        isOpen={showMarketplaceModal}
-        onClose={() => setShowMarketplaceModal(false)}
-        installedPlugins={settings.installedPlugins || []}
-        onInstallPlugin={handleInstallPlugin}
-        onUninstallPlugin={handleUninstallPlugin}
+        setUsername={setUsername}
+        setUserColor={setUserColor}
+        setShowModelHub={setShowModelHub}
+        isAboutOpen={isAboutOpen}
+        setIsAboutOpen={setIsAboutOpen}
+        handleOpenGithub={handleOpenGithub}
+        isGuideOpen={isGuideOpen}
+        setIsGuideOpen={setIsGuideOpen}
+        showMarketplaceModal={showMarketplaceModal}
+        setShowMarketplaceModal={setShowMarketplaceModal}
+        handleInstallPlugin={handleInstallPlugin}
+        handleUninstallPlugin={handleUninstallPlugin}
         isProPlan={isProPlan}
-      />
-
-      <PricingModal
-        isOpen={showPricingModal}
-        onClose={() => setShowPricingModal(false)}
-      />
-
-      <ExportModal
-        progress={exportProgress}
-        minimized={exportMinimized}
-        onMinimize={toggleExportMinimized}
-        onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
-        onOpenFile={(path) => {
-          const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
-          ipc.openExternalLink(fileUrl)
-        }}
+        showPricingModal={showPricingModal}
+        setShowPricingModal={setShowPricingModal}
+        exportProgress={exportProgress}
+        setExportProgress={setExportProgress}
+        exportMinimized={exportMinimized}
+        setExportMinimized={setExportMinimized}
+        toggleExportMinimized={toggleExportMinimized}
       />
 
       {isChatFloating && (

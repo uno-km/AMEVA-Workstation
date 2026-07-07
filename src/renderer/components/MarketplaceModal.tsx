@@ -1,23 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { X, RefreshCw, Layers, Check, Search, Filter } from 'lucide-react'
+import { PluginMetadata, MarketplaceModalProps } from './marketplace/types'
+import { MarketplaceHeader } from './marketplace/MarketplaceHeader'
+import { MarketplaceToolbar } from './marketplace/MarketplaceToolbar'
+import { SaaSPluginCard } from './marketplace/SaaSPluginCard'
+import { PluginCard } from './marketplace/PluginCard'
 
-interface PluginMetadata {
-  id: string
-  name: string
-  description: string
-  scriptUrl: string
-  version: string
-  type: 'tool' | 'feature' | 'collab'
-}
-
-interface MarketplaceModalProps {
-  isOpen: boolean
-  onClose: () => void
-  installedPlugins: string[]
-  onInstallPlugin: (id: string, scriptUrl: string) => Promise<void>
-  onUninstallPlugin: (id: string) => void
-  isProPlan?: boolean
-}
+export type { PluginMetadata, MarketplaceModalProps }
 
 export function MarketplaceModal({
   isOpen,
@@ -165,109 +153,15 @@ export function MarketplaceModal({
           overflow: 'hidden',
         }}
       >
-        {/* 헤더 */}
-        <div
-          style={{
-            padding: '16px 20px',
-            borderBottom: '1px solid #2e2e38',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Layers size={18} style={{ color: 'var(--primary)' }} />
-            <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', letterSpacing: '0.5px' }}>
-              Marketplace
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <button
-              onClick={fetchPlugins}
-              disabled={loading}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-              title="새로고침"
-            >
-              <RefreshCw size={14} />
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                padding: '4px',
-              }}
-            >
-              <X size={16} />
-            </button>
-          </div>
-        </div>
+        <MarketplaceHeader onRefresh={fetchPlugins} loading={loading} onClose={onClose} />
 
-        {/* 🔍 검색창 및 탭 헤더 세션 */}
-        <div style={{ padding: '16px 20px 8px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* 검색 바 */}
-          <div style={{ position: 'relative', width: '100%' }}>
-            <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
-            <input
-              type="text"
-              placeholder="Search extensions by keyword or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                background: '#0c0c0e',
-                border: '1px solid #2e2e38',
-                borderRadius: '6px',
-                padding: '8px 12px 8px 32px',
-                color: '#fff',
-                fontSize: '11.5px',
-                outline: 'none',
-                boxSizing: 'border-box',
-                transition: 'border-color 0.15s',
-              }}
-              onFocus={(e) => e.currentTarget.style.borderColor = 'var(--primary)'}
-              onBlur={(e) => e.currentTarget.style.borderColor = '#2e2e38'}
-            />
-          </div>
-
-          {/* 카테고리 탭 리스트 */}
-          <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid #2e2e38', paddingBottom: '8px' }}>
-            {categories.map((cat) => {
-              const isActive = selectedCategory === cat.id
-              return (
-                <button
-                  key={cat.id}
-                  onClick={() => setSelectedCategory(cat.id)}
-                  style={{
-                    background: isActive ? 'rgba(139,92,246,0.1)' : 'transparent',
-                    border: isActive ? '1px solid rgba(139,92,246,0.3)' : '1px solid transparent',
-                    color: isActive ? 'var(--primary)' : 'var(--text-muted)',
-                    padding: '4px 12px',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                    outline: 'none',
-                  }}
-                >
-                  {cat.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <MarketplaceToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          selectedCategory={selectedCategory}
+          onCategoryChange={setSelectedCategory}
+          categories={categories}
+        />
 
         {/* 본문 영역 (스크롤바 완비) */}
         <div
@@ -342,170 +236,29 @@ export function MarketplaceModal({
               return matchesCategory && matchesSearch
             })
 
-            return filteredSaas.map(p => {
-              const isEnabled = enabledPlugins[p.id] ?? false
-              return (
-                <div
-                  key={p.id}
-                  style={{
-                    padding: '14px 16px',
-                    background: 'linear-gradient(135deg, #130f1e 0%, #0f0f11 100%)',
-                    border: '1px dashed rgba(139, 92, 246, 0.25)',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '16px',
-                    transition: 'border-color 0.15s, box-shadow 0.15s',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--primary)'
-                    e.currentTarget.style.boxShadow = '0 0 8px rgba(139,92,246,0.2)'
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.25)'
-                    e.currentTarget.style.boxShadow = 'none'
-                  }}
-                >
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#f8fafc' }}>
-                        👑 {p.name}
-                      </span>
-                      <span style={{ fontSize: '9px', color: 'var(--primary)', background: 'rgba(139,92,246,0.1)', padding: '1px 5px', borderRadius: '4px' }}>
-                        v{p.version}
-                      </span>
-                      <span style={{
-                        fontSize: '9px',
-                        color: '#a855f7',
-                        background: 'rgba(168,85,247,0.15)',
-                        border: '1px solid rgba(168,85,247,0.2)',
-                        padding: '1px 5px',
-                        borderRadius: '4px',
-                        textTransform: 'uppercase',
-                        fontWeight: 700,
-                        letterSpacing: '0.3px'
-                      }}>
-                        {p.type}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                      {p.description}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleToggleSaaSPlugin(p.id)}
-                    style={{
-                      padding: '5px 12px',
-                      borderRadius: '6px',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      background: isEnabled ? 'rgba(168,85,247,0.2)' : '#1c1c24',
-                      border: isEnabled ? '1px solid rgba(168,85,247,0.4)' : '1px solid #2e2e38',
-                      color: isEnabled ? 'var(--primary)' : 'var(--text-muted)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      transition: 'all 0.15s',
-                      outline: 'none',
-                      flexShrink: 0
-                    }}
-                  >
-                    {isEnabled ? 'ENABLED' : 'DISABLED'}
-                  </button>
-                </div>
-              )
-            })
+            return filteredSaas.map(p => (
+              <SaaSPluginCard
+                key={p.id}
+                id={p.id}
+                name={p.name}
+                version={p.version}
+                type={p.type}
+                description={p.description}
+                isEnabled={enabledPlugins[p.id] ?? false}
+                onToggle={handleToggleSaaSPlugin}
+              />
+            ))
           })()}
 
-          {!loading && !error && filteredPlugins.map((p) => {
-            const isInstalled = installedPlugins.includes(p.id)
-            const isActionLoading = actionLoading[p.id]
-
-            return (
-              <div
-                key={p.id}
-                style={{
-                  padding: '14px 16px',
-                  background: '#0f0f11',
-                  border: '1px solid #2e2e38',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '16px',
-                  transition: 'border-color 0.15s, box-shadow 0.15s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--primary)'
-                  e.currentTarget.style.boxShadow = '0 0 8px rgba(139,92,246,0.1)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#2e2e38'
-                  e.currentTarget.style.boxShadow = 'none'
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#f8fafc' }}>
-                      {p.name}
-                    </span>
-                    <span style={{ fontSize: '9px', color: 'var(--text-muted)', background: '#1c1c24', padding: '1px 5px', borderRadius: '4px' }}>
-                      v{p.version}
-                    </span>
-                    <span style={{
-                      fontSize: '9px',
-                      color: p.type === 'tool' ? '#f59e0b' : p.type === 'feature' ? '#06b6d4' : '#ec4899',
-                      background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.05)',
-                      padding: '1px 5px',
-                      borderRadius: '4px',
-                      textTransform: 'uppercase',
-                      fontWeight: 700,
-                      letterSpacing: '0.3px'
-                    }}>
-                      {p.type}
-                    </span>
-                  </div>
-                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                    {p.description}
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleToggleInstall(p)}
-                  disabled={isActionLoading}
-                  style={{
-                    padding: '5px 12px',
-                    borderRadius: '6px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    cursor: isActionLoading ? 'not-allowed' : 'pointer',
-                    background: isInstalled ? 'rgba(16,185,129,0.12)' : 'var(--primary)',
-                    border: isInstalled ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent',
-                    color: isInstalled ? '#34d399' : '#000',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    transition: 'all 0.15s',
-                    outline: 'none',
-                    flexShrink: 0
-                  }}
-                >
-                  {isInstalled ? (
-                    <>
-                      <Check size={11} />
-                      Installed
-                    </>
-                  ) : (
-                    'Subscribe'
-                  )}
-                </button>
-              </div>
-            )
-          })}
+          {!loading && !error && filteredPlugins.map((p) => (
+            <PluginCard
+              key={p.id}
+              plugin={p}
+              isInstalled={installedPlugins.includes(p.id)}
+              isActionLoading={!!actionLoading[p.id]}
+              onToggleInstall={handleToggleInstall}
+            />
+          ))}
         </div>
       </div>
       

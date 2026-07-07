@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Bot, Brain, ChevronUp, ChevronDown, Check, X, Copy } from 'lucide-react';
+import { Bot } from 'lucide-react';
 import type { AIMessage } from '../../../types/aiTypes';
 import { getThoughtSummary } from '../../../utils/aiFormatters';
-import { ThoughtTreeView } from './ThoughtProcess';
 import { renderMessageContent } from './MessageContent';
 import { InsertPreviewCard } from '../InsertPreviewCard';
+import { ReasoningTraceViewer } from './ReasoningTraceViewer';
+import { MessageActionBar } from './MessageActionBar';
 
 /**
  * MessageBubble 컴포넌트 Props 스키마
@@ -190,54 +191,16 @@ export function MessageBubble({
           )}
 
           {/* 🧠 AI 추론 로그(Reasoning Trace) 폴딩 아코디언 */}
-          {!isUser && (hasRealTrace || msg.isStreaming) && (
-            <div style={{
-              marginBottom: '8px', borderRadius: '6px', overflow: 'hidden',
-              background: isWhiteTheme ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
-              border: isWhiteTheme ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.06)',
-            }}>
-              <div
-                onClick={() => setThoughtExpanded(prev => !prev)}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '6px 10px', cursor: 'pointer', fontSize: '11px', color: 'var(--text-muted)',
-                  fontWeight: 600, userSelect: 'none', background: isWhiteTheme ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.01)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Brain size={12} style={{ 
-                      color: msg.isStreaming ? 'var(--secondary)' : '#10b981',
-                      animation: msg.isStreaming ? 'pulseGlow 1.5s infinite ease-in-out' : 'none'
-                  }} />
-                  <span>
-                    {msg.isStreaming 
-                      ? (thinkingText ? `생각 과정 (추론 중, ${thoughtSummary.completedSteps}/${thoughtSummary.totalSteps}단계)` : `응답 대기 중...`)
-                      : `생각 과정 (추론 완료, ${thoughtSummary.totalSteps}단계)`
-                    }
-                  </span>
-                </div>
-                {thoughtExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-              </div>
-              
-              {/* 확장 시 ThoughtTreeView로 파싱된 트리 렌더링 */}
-              {thoughtExpanded && (
-                <div style={{
-                  padding: '8px 10px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.5',
-                  borderTop: isWhiteTheme ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.04)',
-                  background: isWhiteTheme ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.12)',
-                  whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                  minHeight: msg.isStreaming && !thinkingText ? '28px' : undefined,
-                  display: 'flex', alignItems: msg.isStreaming && !thinkingText ? 'center' : 'flex-start',
-                }}>
-                  {thinkingText ? (
-                    <ThoughtTreeView text={thinkingText} isStreaming={!!msg.isStreaming} />
-                  ) : (msg.isStreaming
-                    ? <span style={{ color: isWhiteTheme ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.25)', fontStyle: 'italic', fontSize: '10px' }}>{"<think> 태그 대기 중..."}</span>
-                    : null
-                  )}
-                </div>
-              )}
-            </div>
+          {!isUser && (
+            <ReasoningTraceViewer
+              isStreaming={!!msg.isStreaming}
+              hasRealTrace={hasRealTrace}
+              thinkingText={thinkingText}
+              thoughtSummary={thoughtSummary}
+              thoughtExpanded={thoughtExpanded}
+              setThoughtExpanded={setThoughtExpanded}
+              isWhiteTheme={isWhiteTheme}
+            />
           )}
 
           {/* 🧩 AI 자동 코드/블록 삽입 제안 카드 (Insert Suggestions) */}
@@ -412,107 +375,18 @@ export function MessageBubble({
         </div>
 
         {/* ── 액션 버튼 그룹 바 (수락/거절, 복사 등) ── */}
-        {!isUser && !msg.isStreaming && cleanContent && cleanContent !== '사용자가 답변을 중단했습니다' && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '6px', marginTop: '8px', padding: '0 2px', flexWrap: 'wrap',
-          }}>
-            {!isUser && msg.originalText && msg.proposedText ? (
-              <>
-                {msg.diffState === 'pending' && (
-                  <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
-                    <button
-                      onClick={() => {
-                        if (onApplySuggestion && msg.proposedText) onApplySuggestion(msg.proposedText, 'replace', msg.blockId);
-                        if (onUpdateDiffState) onUpdateDiffState(msg.id, 'accepted');
-                      }}
-                      style={{
-                        flex: 1, background: 'rgba(16,185,129,0.18)', border: '1px solid rgba(16,185,129,0.4)',
-                        cursor: 'pointer', color: '#34d399', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        gap: '4px', fontSize: '11px', fontWeight: 'bold', padding: '5px 10px', borderRadius: '5px', transition: 'all 0.15s',
-                      }}
-                    >
-                      <Check size={12} /> 수락 (Accept)
-                    </button>
-                    <button
-                      onClick={() => { if (onUpdateDiffState) onUpdateDiffState(msg.id, 'rejected'); }}
-                      style={{
-                        background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)',
-                        cursor: 'pointer', color: '#f87171', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        gap: '4px', fontSize: '11px', padding: '5px 10px', borderRadius: '5px', transition: 'all 0.15s',
-                      }}
-                    >
-                      <X size={12} /> 거절
-                    </button>
-                  </div>
-                )}
-                {msg.diffState === 'accepted' && (
-                  <div
-                    onClick={() => { if (msg.blockId && onScrollToBlock) onScrollToBlock(msg.blockId); }}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: '#34d399',
-                      background: 'rgba(16,185,129,0.06)', padding: '4px 8px', borderRadius: '4px',
-                      border: '1px solid rgba(16,185,129,0.15)', fontWeight: 'bold', cursor: onScrollToBlock ? 'pointer' : 'default',
-                    }}
-                  >
-                    <Check size={12} /> 수정안이 본문에 적용되었습니다
-                  </div>
-                )}
-                {msg.diffState === 'rejected' && (
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', color: 'var(--text-muted)',
-                    background: 'rgba(255,255,255,0.02)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border-muted)',
-                  }}>
-                    <X size={12} /> 제안 거절됨
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={handleCopy}
-                  style={{
-                    background: 'var(--bg-glass)', border: '1px solid var(--border-muted)', cursor: 'pointer',
-                    color: copied ? '#10b981' : 'var(--text-muted)', display: 'flex', alignItems: 'center',
-                    gap: '3px', fontSize: '10px', padding: '3px 7px', borderRadius: '5px', transition: 'all 0.15s',
-                  }}
-                >
-                  {copied ? <Check size={10} /> : <Copy size={10} />}
-                  {copied ? '복사됨' : '복사'}
-                </button>
-
-                {onApplySuggestion && (
-                  <button
-                    onClick={() => onApplySuggestion(textToApply, 'insert')}
-                    style={{
-                      background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.25)', cursor: 'pointer',
-                      color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '3px',
-                      fontSize: '10px', padding: '3px 7px', borderRadius: '5px', transition: 'all 0.15s',
-                    }}
-                  >
-                    커서에 삽입
-                  </button>
-                )}
-
-                {onApplySuggestion && (
-                  <button
-                    onClick={() => onApplySuggestion(textToApply, 'replace', msg.blockId)}
-                    disabled={!hasSelection}
-                    style={{
-                      background: hasSelection ? 'rgba(6,182,212,0.12)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid \${hasSelection ? 'rgba(6,182,212,0.3)' : 'var(--border-muted)'}`,
-                      cursor: hasSelection ? 'pointer' : 'not-allowed', color: hasSelection ? 'var(--secondary)' : 'var(--text-muted)',
-                      display: 'flex', alignItems: 'center', gap: '3px', fontSize: '10px', padding: '3px 7px',
-                      borderRadius: '5px', transition: 'all 0.15s', opacity: hasSelection ? 1 : 0.45,
-                    }}
-                    title={hasSelection ? '에디터 선택 영역과 교체합니다' : '에디터에서 영역을 드래그하면 교체할 수 있습니다'}
-                  >
-                    선택교체
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-        )}
+        <MessageActionBar
+          isUser={isUser}
+          msg={msg}
+          cleanContent={cleanContent}
+          copied={copied}
+          handleCopy={handleCopy}
+          onApplySuggestion={onApplySuggestion}
+          onUpdateDiffState={onUpdateDiffState}
+          onScrollToBlock={onScrollToBlock}
+          textToApply={textToApply}
+          hasSelection={hasSelection}
+        />
 
         {/* 발생 시간 타임스탬프 */}
         <div style={{
