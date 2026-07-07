@@ -48,6 +48,7 @@ export interface LLMLogEventData {
 export interface ModelInfo {
   path: string
   filename: string
+  name?: string
   size?: number
 }
 
@@ -62,11 +63,12 @@ export interface UrlMetadata {
 export interface FileOpenEventData {
   filePath: string
   content: string
+  isBinary?: boolean
 }
 
 /** 헬스 체크 응답 */
 export interface HealthCheckResult {
-  status: 'ok' | 'loading model' | 'ready' | 'error'
+  status: 'ok' | 'loading model' | 'ready' | 'error' | 'offline'
   message?: string
 }
 

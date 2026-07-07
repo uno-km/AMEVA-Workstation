@@ -2,13 +2,13 @@
 import { useState, useEffect } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 
-export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement>) {
+export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement | null>) {
   const [input, setInput] = useState('')
   const [manualMode, setManualMode] = useState<'auto' | 'edit' | 'summary' | 'chat'>('auto')
   const [useContext, setUseContext] = useState(true)
   const [isLogsExpanded, setIsLogsExpanded] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [gpuName, setGpuName] = useState('')
+  const [gpuName] = useState('')
 
   // 커스텀 이벤트 (우클릭 등)로 텍스트 주입
   useEffect(() => {
@@ -30,7 +30,7 @@ export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement
   // GPU 정보 스캔
   useEffect(() => {
     if (ipc.isElectronEnv()) {
-      ipc.llmCheckHealth().then(res => {
+      ipc.llmCheckHealth().then(() => {
         // Fallback for GPU info if needed, or if an endpoint exists.
         // We will just leave it empty if there's no direct GPU getter.
       })

@@ -407,7 +407,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
   outlineSheet.getColumn('E').width = 10
 
   const outHdr = outlineSheet.addRow(['#', 'Level', 'Type', 'Text', 'Depth'])
-  outHdr.eachCell(cell => {
+  outHdr.eachCell((cell: import("exceljs").Cell) => {
     cell.font = { name: '\ub9d1\uc740 \uace0\ub515', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F2937' } }
     cell.alignment = { vertical: 'middle', horizontal: 'center' }
@@ -426,7 +426,7 @@ export async function exportToExcel(blocks: any[], sourceFileName?: string): Pro
     row.getCell(4).font = { name: '\ub9d1\uc740 \uace0\ub515', size: 9, bold: fb.type === 'heading' }
     if (fb.type === 'heading') {
       const colors: Record<number, string> = { 1: 'FFF5F3FF', 2: 'FFEEF2FF', 3: 'FFF8F9FF' }
-      row.eachCell(cell => {
+      row.eachCell((cell: import("exceljs").Cell) => {
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors[fb.level] || 'FFFFFFFF' } }
       })
     }
@@ -738,7 +738,7 @@ export async function exportToPPTX(blocks: any[]): Promise<Buffer> {
         const rawRows = tableItem.tableRows || []
         const formattedTableData = rawRows.map((rowObj: any, ri: number) => {
           const cells = Array.isArray(rowObj.cells) ? rowObj.cells : []
-          return cells.map(cell => {
+          return cells.map((cell: import("exceljs").Cell) => {
             const txt = Array.isArray(cell) ? inlineToText(cell) : ''
             return {
               text: txt,
@@ -871,7 +871,7 @@ export async function exportToHWPX(blocks: any[]): Promise<Buffer> {
       `<hp:p xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" charPrRef="${charId}"><hp:run><hp:t>${escapeHtml(line) || ' '}</hp:t></hp:run></hp:p>`
     ).join('')
 
-    if (Array.isArray(block.children)) block.children.forEach(c => { result += toHWPML(c) })
+    if (Array.isArray(block.children)) block.children.forEach((c: unknown) => { result += toHWPML(c) })
     return result
   }
 
@@ -941,7 +941,7 @@ export function exportToXML(blocks: any[]): string {
 
     if (Array.isArray(block.children) && block.children.length > 0) {
       xml += `${indent}  <children>\n`
-      block.children.forEach(c => { xml += renderXML(c, indent + '    ') })
+      block.children.forEach((c: unknown) => { xml += renderXML(c, indent + '    ') })
       xml += `${indent}  </children>\n`
     }
 

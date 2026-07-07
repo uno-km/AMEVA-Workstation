@@ -31,34 +31,34 @@ export interface ProcessState {
 
   // ── 내보내기 진행 상태 ─────────────────────────────────────────────────────
   exportProgress: ExportProgress
-  setExportProgress: (progress: ExportProgress) => void
+  setExportProgress: (progress: ExportProgress | ((prev: ExportProgress) => ExportProgress)) => void
   resetExportProgress: () => void
 
   exportMinimized: boolean
-  setExportMinimized: (val: boolean) => void
+  setExportMinimized: (val: boolean | ((prev: boolean) => boolean)) => void
 
   // ── 요금제/플랜 상태 ──────────────────────────────────────────────────────
   isProPlan: boolean
-  setIsProPlan: (val: boolean) => void
+  setIsProPlan: (val: boolean | ((prev: boolean) => boolean)) => void
 
   isFreeModeLocked: boolean
-  setIsFreeModeLocked: (val: boolean) => void
+  setIsFreeModeLocked: (val: boolean | ((prev: boolean) => boolean)) => void
 
   // ── MCP 서버 목록 ─────────────────────────────────────────────────────────
   mcpServersState: any[]
-  setMcpServersState: (servers: any[]) => void
+  setMcpServersState: (servers: any[] | ((prev: any[]) => any[])) => void
 
   // ── 플러그인 ──────────────────────────────────────────────────────────────
   /** 설치된 플러그인 ID 목록 (앱 설정과 별도 관리) */
   activePlugins: string[]
-  setActivePlugins: (plugins: string[]) => void
+  setActivePlugins: (plugins: string[] | ((prev: string[]) => string[])) => void
 
   // ── Zoom 상태 ─────────────────────────────────────────────────────────────
   editorZoom: number
-  setEditorZoom: (val: number) => void
+  setEditorZoom: (val: number | ((prev: number) => number)) => void
 
   browserZoom: number
-  setBrowserZoom: (val: number) => void
+  setBrowserZoom: (val: number | ((prev: number) => number)) => void
 }
 
 /** 요금제 초기값: LocalStorage에서 복원 */
@@ -79,27 +79,51 @@ export const useProcessStore = create<ProcessState>((set) => ({
     })),
 
   exportProgress: IDLE_EXPORT_PROGRESS,
-  setExportProgress: (progress) => set({ exportProgress: progress }),
+  setExportProgress: (updater) =>
+    set((state) => ({
+      exportProgress: typeof updater === 'function' ? updater(state.exportProgress) : updater
+    })),
   resetExportProgress: () => set({ exportProgress: IDLE_EXPORT_PROGRESS }),
 
   exportMinimized: false,
-  setExportMinimized: (val) => set({ exportMinimized: val }),
+  setExportMinimized: (val) =>
+    set((state) => ({
+      exportMinimized: typeof val === 'function' ? val(state.exportMinimized) : val
+    })),
 
   isProPlan: loadIsProPlan(),
-  setIsProPlan: (val) => set({ isProPlan: val }),
+  setIsProPlan: (val) =>
+    set((state) => ({
+      isProPlan: typeof val === 'function' ? val(state.isProPlan) : val
+    })),
 
   isFreeModeLocked: false,
-  setIsFreeModeLocked: (val) => set({ isFreeModeLocked: val }),
+  setIsFreeModeLocked: (val) =>
+    set((state) => ({
+      isFreeModeLocked: typeof val === 'function' ? val(state.isFreeModeLocked) : val
+    })),
 
   mcpServersState: [],
-  setMcpServersState: (servers) => set({ mcpServersState: servers }),
+  setMcpServersState: (updater) =>
+    set((state) => ({
+      mcpServersState: typeof updater === 'function' ? updater(state.mcpServersState) : updater
+    })),
 
   activePlugins: [],
-  setActivePlugins: (plugins) => set({ activePlugins: plugins }),
+  setActivePlugins: (updater) =>
+    set((state) => ({
+      activePlugins: typeof updater === 'function' ? updater(state.activePlugins) : updater
+    })),
 
   editorZoom: 1.0,
-  setEditorZoom: (val) => set({ editorZoom: val }),
+  setEditorZoom: (val) =>
+    set((state) => ({
+      editorZoom: typeof val === 'function' ? val(state.editorZoom) : val
+    })),
 
   browserZoom: 1.0,
-  setBrowserZoom: (val) => set({ browserZoom: val })
+  setBrowserZoom: (val) =>
+    set((state) => ({
+      browserZoom: typeof val === 'function' ? val(state.browserZoom) : val
+    }))
 }))

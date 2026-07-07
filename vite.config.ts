@@ -25,7 +25,7 @@ export default defineConfig({
           },
           resolve: {
             // __dirname 폴리필을 빌드에 포함
-            browserField: false,
+            /* browserField: false */
           },
         },
       },

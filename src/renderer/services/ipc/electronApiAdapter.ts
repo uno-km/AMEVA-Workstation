@@ -70,16 +70,31 @@ declare global {
       keychainDelete?: (key: string) => Promise<void>
       // GPU
       llmGetGpuName?: () => Promise<string>
+      llmRestart?: () => Promise<{ success: boolean; error?: string }>
       // 모델 다운로드 (허브 통합)
-      llmDownloadModel?: (modelId: string, options?: any) => Promise<{ success: boolean; error?: string }>
+      llmDownloadModel?: (payload: { url: string; filename: string }) => Promise<{ success: boolean; error?: string }>
       onLLMDownloadProgress?: (callback: (data: any) => void) => () => void
       // 플랜/구독
       planGetStatus?: () => Promise<boolean>
       isFreeMode?: () => Promise<boolean>
       // MCP
       getMcpServers?: () => Promise<any[]>
+      mcpSpawn?: (serverId: string, command: string, args: string[]) => Promise<any>
+      mcpCall?: (serverId: string, request: any) => Promise<any>
+      mcpKill?: (serverId: string) => Promise<any>
       // 내보내기
       onExportProgress?: (callback: (data: ExportProgressEvent) => void) => () => void
+      printToPDF?: (htmlContent: string) => Promise<string | null>
+      newWindow?: () => void
+      closeApp?: () => void
+      saveExportedFile?: (data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>
+      exportConvert?: (payload: { blocks: any[]; format: string; defaultName: string }) => Promise<{ success: boolean; savedPath?: string; error?: string }>
+      runPythonCode?: (code: string) => Promise<{ success: boolean; result?: string; error?: string }>
+      webSearch?: (query: string) => Promise<any>
+      // 협업 서버
+      onServerStatus?: (callback: (status: any) => void) => () => void
+      startCollaborationServer?: (port: number) => Promise<any>
+      stopCollaborationServer?: () => Promise<any>
       // 다운로드 (구형 API 호환)
       startModelDownload?: (params: any) => Promise<any>
       cancelModelDownload?: (modelId: string) => Promise<any>
@@ -362,4 +377,35 @@ export async function getMcpServers(): Promise<any[]> {
     console.error('[getMcpServers] MCP 서버 목록 조회 실패:', e)
     return []
   }
+}
+
+/**
+ * llmDownloadModel
+ * LLM 모델을 허브로부터 다운로드한다.
+ */
+export async function llmDownloadModel(payload: { url: string; filename: string }): Promise<{ success: boolean; error?: string }> {
+  if (!window.electronAPI?.llmDownloadModel) {
+    return { success: false, error: 'API not available' }
+  }
+  return window.electronAPI.llmDownloadModel(payload)
+}
+
+/**
+ * onLLMDownloadProgress
+ * LLM 모델 다운로드 진행 상태 변경 이벤트를 구독한다.
+ */
+export function onLLMDownloadProgress(callback: (data: any) => void): () => void {
+  if (!window.electronAPI?.onLLMDownloadProgress) return () => {}
+  return window.electronAPI.onLLMDownloadProgress(callback)
+}
+
+/**
+ * llmRestart
+ * LLM 엔진을 재시작한다.
+ */
+export async function llmRestart(): Promise<{ success: boolean; error?: string }> {
+  if (!window.electronAPI?.llmRestart) {
+    return { success: false, error: 'API not available' }
+  }
+  return window.electronAPI.llmRestart()
 }

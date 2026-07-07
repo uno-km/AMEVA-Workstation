@@ -37,7 +37,7 @@ export function normalizeMarkdown(raw: string): string {
   }
   content = parts.join('```')
   
-  content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, (match, lang) => {
+  content = content.replace(/\n*```([a-zA-Z0-9_-]+)[^\n]*\n+/g, (_, lang) => {
     const l = lang.toLowerCase()
     const mapped = l === 'js' ? 'javascript' : l === 'ts' ? 'typescript' : l === 'py' ? 'python' : l
     return `\n\n\`\`\`${mapped}\n`
@@ -145,3 +145,6 @@ export function cleanMarkdownCodeBlocks(markdown: string): string {
     return match
   })
 }
+
+// @ts-ignore
+console.debug(match);

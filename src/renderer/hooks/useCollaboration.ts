@@ -43,7 +43,7 @@ export function useCollaboration(
   // 1. Electron IPC: 서버 상태 수신
   useEffect(() => {
     if (window.electronAPI) {
-      const unsub = window.electronAPI.onServerStatus((status: any) => {
+      const unsub = window.electronAPI?.onServerStatus?.((status: any) => {
         setServerRunning(status.running)
         setServerInfo({ port: status.port, error: status.error })
         if (status.ip) setServerIp(status.ip)
@@ -52,7 +52,9 @@ export function useCollaboration(
         if (!status.running) setSessionToken(null)
         if (useLocalServer && !status.running) setCollabActive(false)
       })
-      return () => unsub()
+      return () => {
+        if (unsub) unsub()
+      }
     }
   }, [useLocalServer])
 
@@ -142,9 +144,9 @@ export function useCollaboration(
     }
     if (useLocalServer && window.electronAPI) {
       if (serverRunning) {
-        await window.electronAPI.stopCollaborationServer()
+        await window.electronAPI?.stopCollaborationServer?.()
       } else {
-        await window.electronAPI.startCollaborationServer(port)
+        await window.electronAPI?.startCollaborationServer?.(port)
       }
     }
     setCollabActive(prev => !prev)

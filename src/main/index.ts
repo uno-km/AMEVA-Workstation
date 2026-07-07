@@ -1562,7 +1562,7 @@ ipcMain.handle('llm:getGpuName', async () => {
     try {
       const { execSync } = require('child_process')
       const out = execSync('wmic path win32_VideoController get name', { encoding: 'utf8' })
-      const lines = out.split(/\r?\n/).map(l => l.trim()).filter(l => l && l !== 'Name')
+      const lines = out.split(/\r?\n/).map((l: string) => l.trim()).filter((l: string) => l && l !== "Name")
       if (lines.length > 0) {
         return lines.join(', ')
       }

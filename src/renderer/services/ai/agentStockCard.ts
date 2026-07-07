@@ -1,5 +1,5 @@
 import type { InsertSuggestion } from '../../types/aiTypes'
-import { parseEditSuggestion, parseInsertSuggestions } from '../../utils/ragUtils'
+import { parseEditSuggestion, parseInsertSuggestions } from "../../utils/ragUtils"
 
 export interface AgentStockCardResult {
   cleanContent: string

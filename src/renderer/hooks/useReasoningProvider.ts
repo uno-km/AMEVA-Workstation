@@ -338,16 +338,17 @@ export function useReasoningProvider() {
           return new Promise<string>((resolve) => {
             let buffer = ''
 
-            const unsubToken = window.electronAPI!.onLLMToken((token: string) => {
+            const unsubToken = window.electronAPI!.onLLMToken("default", (token: string) => {
               buffer += token
             })
-            const unsubDone = window.electronAPI!.onLLMDone((data: { success: boolean; error?: string }) => {
+            const unsubDone = window.electronAPI!.onLLMDone("default", (data: { success: boolean; error?: string }) => {
               unsubToken()
               unsubDone()
               resolve(data.success ? buffer.trim() : '')
             })
 
             window.electronAPI!.llmGenerate({
+              sessionId: "default",
               modelPath: modelPath || '',
               prompt,
               systemPrompt,
@@ -386,13 +387,14 @@ export function useReasoningProvider() {
       if (window.electronAPI) {
         finalAnswer = await new Promise<string>((resolve) => {
           let buf = ''
-          const unsubToken = window.electronAPI!.onLLMToken((t: string) => { buf += t })
-          const unsubDone = window.electronAPI!.onLLMDone((d: { success: boolean; error?: string }) => {
+          const unsubToken = window.electronAPI!.onLLMToken("default", (t: string) => { buf += t })
+          const unsubDone = window.electronAPI!.onLLMDone("default", (d: { success: boolean; error?: string }) => {
             unsubToken()
             unsubDone()
             resolve(d.success ? buf.trim() : '')
           })
           window.electronAPI!.llmGenerate({
+            sessionId: "default",
             modelPath: modelPath || '',
             prompt: input,
             maxTokens: maxTokens ?? 512,

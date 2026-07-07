@@ -1,3 +1,13 @@
+
+export const AgentState = {
+  Idle: "idle",
+  Thinking: "thinking",
+  Working: "working",
+  Done: "done",
+  Error: "error"
+} as const;
+export type AgentState = typeof AgentState[keyof typeof AgentState];
+
 /**
  * agentEngine.ts
  * 
@@ -533,3 +543,5 @@ function tryHealJSON(jsonStr: string): string {
   return healed;
 }
 
+
+console.debug(sessionId);

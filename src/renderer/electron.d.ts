@@ -8,9 +8,13 @@ export interface LLMModel {
 export interface IElectronAPI {
   // 파일 시스템
   openFile: () => Promise<{ content: string; filePath: string } | null>
-  saveFile: (content: string, filePath?: string) => Promise<string | null>
+  saveFile: (content: string, filePath?: string) => Promise<{ filePath?: string; success: boolean } | null>
+  saveFileAs?: (content: string, filePath?: string) => Promise<{ filePath?: string; success: boolean } | null>
   saveExportedFile: (data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>
   printToPDF: (htmlContent: string) => Promise<string | null>
+  fetchUrlMetadata?: (url: string) => Promise<any>
+  getMcpServers?: () => Promise<any[]>
+  runPythonCode?: (code: string) => Promise<{ success: boolean; result?: string; error?: string }>
   // [HIGH-001] showMessageBox Electron 네이티브 다이얼로그
   showMessageBox: (options: {
     type?: 'none' | 'info' | 'error' | 'question' | 'warning'
@@ -60,6 +64,8 @@ export interface IElectronAPI {
     history?: { role: string; content: string }[]
   }) => Promise<{ success: boolean; error?: string; content?: string; response?: string }>
 
+  llmStart: (modelPath: string) => Promise<{ success: boolean; error?: string }>
+  llmStop: () => Promise<void>
   llmAbort: (sessionId: string) => void
 
   onLLMToken: (sessionId: string, callback: (token: string) => void) => () => void
@@ -80,6 +86,7 @@ export interface IElectronAPI {
 
   llmDownloadModel: (payload: { url: string; filename: string }) => Promise<{ success: boolean; error?: string }>
   onLLMDownloadProgress: (callback: (data: { filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number }) => void) => () => void
+  onModelDownloadProgress?: (callback: (data: any) => void) => () => void
   llmImportModel: (sourcePath: string, type?: 'llm' | 'code') => Promise<{ success: boolean; path?: string; error?: string }>
 
   // 분산 문서 변환 브리지

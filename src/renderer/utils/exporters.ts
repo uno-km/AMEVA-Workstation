@@ -234,7 +234,7 @@ export function exportToXML(blocks: any[]): string {
 
     if (Array.isArray(block.children) && block.children.length > 0) {
       xml += `${indent}  <children>\n`
-      block.children.forEach(c => { xml += renderXML(c, indent + '    ') })
+      block.children.forEach((c: unknown) => { xml += renderXML(c, indent + '    ') })
       xml += `${indent}  </children>\n`
     }
 

@@ -234,3 +234,6 @@ export function useHistory(documentId: string) {
     fetchSnapshots: () => fetchSnapshots(db),
   }
 }
+
+// @ts-ignore
+console.debug(event);

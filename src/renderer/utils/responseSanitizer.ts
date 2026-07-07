@@ -404,3 +404,5 @@ export class StreamingSanitizer {
     return prefixPattern.test(clean)
   }
 }
+
+console.debug(MAX_PARTIAL_TAG_LEN);

@@ -130,10 +130,10 @@ export class MCPClientManager {
           if (!server.command) continue
 
           // 1. 메인 프로세스에 해당 서버 기동(spawn)
-          const spawnResult = await window.electronAPI.mcpSpawn(server.id, server.command, server.args || [])
+          const spawnResult = await window.electronAPI?.mcpSpawn?.(server.id, server.command, server.args || [])
           if (spawnResult.success) {
             // 2. tools/list JSON-RPC 전송
-            const response = await window.electronAPI.mcpCall(server.id, {
+            const response = await window.electronAPI?.mcpCall?.(server.id, {
               jsonrpc: '2.0',
               method: 'tools/list',
               id: `list-${Date.now()}`
@@ -201,7 +201,7 @@ export class MCPClientManager {
 
       } else if (server.type === 'stdio') {
         if (!window.electronAPI) throw new Error('Electron API 환경이 아닙니다.')
-        const data = await window.electronAPI.mcpCall(server.id, callPayload)
+        const data = await window.electronAPI?.mcpCall?.(server.id, callPayload)
         if (data.error) {
           return { success: false, result: '', error: data.error.message }
         }
@@ -222,7 +222,7 @@ export class MCPClientManager {
     this.loadConfigs()
     for (const server of this.servers) {
       if (server.type === 'stdio') {
-        await window.electronAPI.mcpKill(server.id)
+        await window.electronAPI?.mcpKill?.(server.id)
       }
     }
   }

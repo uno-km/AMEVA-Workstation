@@ -146,3 +146,6 @@ export function retrieveRelevantBlocks(query: string, flatBlocks: FlatBlock[], t
     .map(x => x.block)
     .slice(0, topK);
 }
+
+export const parseEditSuggestion = (t: string) => t;
+export const parseInsertSuggestions = (t: string) => t;

@@ -12,7 +12,7 @@ export function useAIRAG(
   modelPath: string,
   onSend: (msg: string, context?: string, selected?: string, blockId?: string, settings?: any) => void
 ) {
-  const getContextWithRAG = (query: string, useFullFallback = false) => {
+  const getContextWithRAG = (_query: string, useFullFallback = false) => {
     const buildBlockIndex = () => {
       if (!blocks || blocks.length === 0) return ''
       const flatAll: any[] = (function flatten(bks: any[]): any[] {

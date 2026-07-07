@@ -3,7 +3,7 @@
  *
  * 워크스페이스(문서 편집) 관련 상태 전용 Zustand 스토어.
  * 파일 경로, 현재 문서 내용, 탭, 에디터 상태, 태그된 블록 등을 관리한다.
- * App.tsx의 문서 관련 useState들을 이 스토어로 이전한다.
+ * 모든 상태 변경 세터들은 React의 useState처럼 함수형 업데이트(prev => next)를 지원하도록 확장되었다.
  */
 
 import { create } from 'zustand'
@@ -27,16 +27,16 @@ export interface TaggedBlock {
 export interface WorkspaceState {
   // ── 파일 상태 ──────────────────────────────────────────────────────────────
   filePath: string | null
-  setFilePath: (path: string | null) => void
+  setFilePath: (path: string | null | ((prev: string | null) => string | null)) => void
 
   currentContent: string
-  setCurrentContent: (content: string) => void
+  setCurrentContent: (content: string | ((prev: string) => string)) => void
 
   originalContent: string
-  setOriginalContent: (content: string) => void
+  setOriginalContent: (content: string | ((prev: string) => string)) => void
 
   lastSavedTime: Date | null
-  setLastSavedTime: (time: Date | null) => void
+  setLastSavedTime: (time: Date | null | ((prev: Date | null) => Date | null)) => void
 
   // ── 다중 탭 상태 ───────────────────────────────────────────────────────────
   fileOpenMode: 'replace' | 'append' | 'tab'
@@ -53,31 +53,43 @@ export interface WorkspaceState {
 
   // ── 에디터 선택 상태 ────────────────────────────────────────────────────────
   selectedText: string
-  setSelectedText: (text: string) => void
+  setSelectedText: (text: string | ((prev: string) => string)) => void
 
   activeBlockId: string | null
-  setActiveBlockId: (id: string | null) => void
+  setActiveBlockId: (id: string | null | ((prev: string | null) => string | null)) => void
 
   taggedBlocks: TaggedBlock[]
   setTaggedBlocks: (blocks: TaggedBlock[] | ((prev: TaggedBlock[]) => TaggedBlock[])) => void
 
   // ── 스냅샷 ────────────────────────────────────────────────────────────────
   selectedSnapshot: any
-  setSelectedSnapshot: (snapshot: any) => void
+  setSelectedSnapshot: (snapshot: any | ((prev: any) => any)) => void
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   filePath: null,
-  setFilePath: (path) => set({ filePath: path }),
+  setFilePath: (path) =>
+    set((state) => ({
+      filePath: typeof path === 'function' ? path(state.filePath) : path
+    })),
 
   currentContent: '',
-  setCurrentContent: (content) => set({ currentContent: content }),
+  setCurrentContent: (content) =>
+    set((state) => ({
+      currentContent: typeof content === 'function' ? content(state.currentContent) : content
+    })),
 
   originalContent: '',
-  setOriginalContent: (content) => set({ originalContent: content }),
+  setOriginalContent: (content) =>
+    set((state) => ({
+      originalContent: typeof content === 'function' ? content(state.originalContent) : content
+    })),
 
   lastSavedTime: null,
-  setLastSavedTime: (time) => set({ lastSavedTime: time }),
+  setLastSavedTime: (time) =>
+    set((state) => ({
+      lastSavedTime: typeof time === 'function' ? time(state.lastSavedTime) : time
+    })),
 
   fileOpenMode: 'replace',
   setFileOpenMode: (mode) => set({ fileOpenMode: mode }),
@@ -98,10 +110,16 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     })),
 
   selectedText: '',
-  setSelectedText: (text) => set({ selectedText: text }),
+  setSelectedText: (text) =>
+    set((state) => ({
+      selectedText: typeof text === 'function' ? text(state.selectedText) : text
+    })),
 
   activeBlockId: null,
-  setActiveBlockId: (id) => set({ activeBlockId: id }),
+  setActiveBlockId: (id) =>
+    set((state) => ({
+      activeBlockId: typeof id === 'function' ? id(state.activeBlockId) : id
+    })),
 
   taggedBlocks: [],
   setTaggedBlocks: (updater) =>
@@ -110,5 +128,8 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
     })),
 
   selectedSnapshot: null,
-  setSelectedSnapshot: (snapshot) => set({ selectedSnapshot: snapshot })
+  setSelectedSnapshot: (snapshot) =>
+    set((state) => ({
+      selectedSnapshot: typeof snapshot === 'function' ? snapshot(state.selectedSnapshot) : snapshot
+    }))
 }))

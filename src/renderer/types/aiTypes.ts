@@ -5,6 +5,7 @@ export interface InsertSuggestion {
   blockType: 'heading' | 'paragraph' | 'bulletListItem' | 'numberedListItem' | 'table'
   level?: 1 | 2 | 3
   content: string
+  finalAnswer?: string
   reasonText?: string
   status: 'pending' | 'accepted' | 'rejected'
   siblingBlockIds?: string[]
@@ -27,6 +28,9 @@ export interface AIMessage {
   insertSuggestion?: InsertSuggestion
   insertSuggestions?: InsertSuggestion[]
   reasoningTraces?: ReasoningTraceEvent[]
+  reasoningTrace?: ReasoningTraceEvent[]
+  reasoningStatus?: 'ok' | 'loading' | 'error' | 'offline' | 'unavailable'
+  finalAnswer?: string
   isReasoningCollapsed?: boolean
   isThinking?: boolean
 }

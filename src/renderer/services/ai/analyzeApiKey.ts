@@ -1,4 +1,4 @@
-import { API_KEY_PATTERNS } from '../../shared/constants/aiSettings'
+import { API_KEY_PATTERNS } from "../../shared/constants/aiSettings"
 
 export type ApiKeyProvider = typeof API_KEY_PATTERNS[number]['provider']
 

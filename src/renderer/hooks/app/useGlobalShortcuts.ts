@@ -78,7 +78,7 @@ function matchHotkey(e: KeyboardEvent, hotkey: string): boolean {
  */
 export function useGlobalShortcuts(params: GlobalShortcutsParams) {
   const {
-    settings, editor, editorMode,
+    settings,
     onSave, onOpen, onNewTab, onToggleAI, onToggleMode,
     onZoomIn, onZoomOut, onZoomReset,
     setEditorZoom

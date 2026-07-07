@@ -29,13 +29,12 @@ import { useAIMessageState } from './ai/useAIMessageState'
 import { useAIQueue } from './ai/useAIQueue'
 import { useAIEngineLogs } from './ai/useAIEngineLogs'
 import { determineIntent } from '../services/ai/determineIntent'
-import { detectCodingRequest, detectAgentRequest } from '../services/ai/detectCodingRequest'
+import { detectCodingRequest } from '../services/ai/detectCodingRequest'
 import { checkUsageLimit, incrementUsageCount } from '../services/ai/checkUsageLimit'
 import { buildSystemPrompt } from '../services/ai/buildSystemPrompt'
 import { parseEditSuggestion, parseInsertSuggestions } from '../services/ai/aiStreamParser'
 import * as ipc from '../services/ipc/electronApiAdapter'
-import { AgentEngine } from '../utils/agentEngine'
-import { MCPClientManager } from '../utils/mcpClient'
+
 import type { AIMessage, AISettings, InsertSuggestion } from '../types/aiTypes'
 import { DEFAULT_SETTINGS } from '../types/aiTypes'
 
@@ -55,7 +54,6 @@ export function useAIAgent() {
   const { isAvailable, setIsAvailable, models, setModels, codeModels, setCodeModels } = useAIState()
 
   // AI 설정 (LocalStorage 초기화 포함)
-  const { runAgentMode, isAgentRunningRef: _isAgentRunningRef } = useAIAgentMode()
   const [settings, setSettings] = useState<AISettings>(() => {
     try {
       const stored = localStorage.getItem('ai-settings')
@@ -86,11 +84,9 @@ export function useAIAgent() {
   const { engineLogs, setEngineLogs } = useAIEngineLogs()
   const { subscribeSession, unsubscribeSession } = useAIIpc()
   const {
-    sanitizerRef,
     rawAccumRef,
     currentAssistantIdRef,
     currentSessionIdRef,
-    isAgentRunningRef,
     resetSession,
     processToken,
     finalize
@@ -106,7 +102,6 @@ export function useAIAgent() {
 
   const {
     pendingQueue,
-    pendingQueueRef,
     removeFromQueue,
     enqueue,
     checkAndProcessNextQueue,
@@ -124,27 +119,39 @@ export function useAIAgent() {
     try {
       const type = settings.apiType === 'ollama' ? 'ollama' : 'llm'
       const list = await ipc.llmListModels(type)
-      setModels(list)
+      const mappedList = list.map(m => ({
+        path: m.path,
+        filename: m.filename,
+        name: m.name || m.filename,
+        size: m.size || 0
+      }))
+      setModels(mappedList)
 
-      if (list.length > 0) {
+      if (mappedList.length > 0) {
         setSettings((prev) => {
-          const exists = list.some((m) => m.path === prev.modelPath)
+          const exists = mappedList.some((m) => m.path === prev.modelPath)
           if (exists) return prev
           const preferred =
             type === 'ollama'
-              ? list[0]
-              : list.find((m) => m.filename.includes('3b')) || list[list.length - 1]
+              ? mappedList[0]
+              : mappedList.find((m) => m.filename.includes('3b')) || mappedList[mappedList.length - 1]
           return { ...prev, modelPath: preferred.path }
         })
       }
 
       const codeList = await ipc.llmListModels('code')
-      setCodeModels(codeList)
-      if (codeList.length > 0) {
+      const mappedCodeList = codeList.map(m => ({
+        path: m.path,
+        filename: m.filename,
+        name: m.name || m.filename,
+        size: m.size || 0
+      }))
+      setCodeModels(mappedCodeList)
+      if (mappedCodeList.length > 0) {
         setSettings((prev) => {
-          const exists = codeList.some((m) => m.path === prev.codeModelPath)
+          const exists = mappedCodeList.some((m) => m.path === prev.codeModelPath)
           if (exists) return prev
-          return { ...prev, codeModelPath: codeList[0].path }
+          return { ...prev, codeModelPath: mappedCodeList[0].path }
         })
       }
     } catch (e) {
@@ -218,11 +225,8 @@ export function useAIAgent() {
 
     // 플러그인/플랜 상태 파싱
     let isPro = false
-    let enabledPlugins: Record<string, boolean> = { webSearch: true, pythonConsole: true }
     try {
       isPro = localStorage.getItem('is-pro-plan') === 'true'
-      const storedPlugins = localStorage.getItem('enabled-plugins')
-      if (storedPlugins) enabledPlugins = JSON.parse(storedPlugins)
     } catch (e) {
       console.error('[useAIAgent] 플러그인 상태 로드 실패:', e)
     }
@@ -289,18 +293,6 @@ export function useAIAgent() {
     setIsGenerating(true)
     setStreamingText('')
 
-    // 에이전트 모드 감지
-    const needsAgent = detectAgentRequest(userMessage)
-
-    if (needsAgent) {
-      // 에이전트 실행 경로
-      await runAgentMode({
-        assistantId, sessId, finalSettings, userMessage, context,
-        taggedBlocks, intent, enabledPlugins, isPro
-      })
-      return
-    }
-
     // 시스템 프롬프트 조립
     const dynamicSystemPrompt = buildSystemPrompt({
       baseSystemPrompt: finalSettings.systemPrompt,
@@ -312,8 +304,8 @@ export function useAIAgent() {
 
     // 최근 대화 히스토리 페이로드 생성
     const historyPayload = messages.slice(-10).map((m) => ({
-      role: m.role === 'user' ? 'user' : 'assistant' as const,
-      content: m.finalAnswer ?? m.content
+      role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: (m as any).finalAnswer ?? m.content
     }))
 
     // IPC 구독 등록
@@ -371,7 +363,7 @@ export function useAIAgent() {
   const handleDone = useCallback((
     data: { success: boolean; error?: string },
     sessId: string,
-    assistantId: string,
+    _assistantId: string,
     taggedBlocks?: { id: string; text: string }[],
     intent?: string
   ) => {

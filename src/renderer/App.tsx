@@ -3,13 +3,13 @@ import { useWorkspaceStore } from './stores/useWorkspaceStore'
 import { useProcessStore } from './stores/useProcessStore'
 import { useAppBootstrap } from './hooks/app/useAppBootstrap'
 import { useAppIpcBridge } from './hooks/app/useAppIpcBridge'
-import { useGlobalShortcuts } from './hooks/app/useGlobalShortcuts'
+
 import { useYoutubePiP } from './hooks/app/useYoutubePiP'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { MarkdownEditor } from './components/MarkdownEditor'
 import { DiffModal } from './components/DiffModal'
-import { SettingsModal, type AppSettings, type HotkeyConfig } from './components/SettingsModal'
+import { SettingsModal, type AppSettings } from './components/SettingsModal'
 import { StatusBar } from './components/StatusBar'
 import { MenuBar } from './components/MenuBar'
 import { AboutModal } from './components/AboutModal'
@@ -19,8 +19,7 @@ import { Minimap } from './components/Minimap'
 import { RightTabStrip } from './components/RightTabStrip'
 import { MarketplaceModal } from './components/MarketplaceModal'
 import { PricingModal } from './components/PricingModal'
-import { ExportModal } from './components/ExportModal'
-import type { ExportProgress } from './components/ExportModal'
+import { ExportModal, IDLE_PROGRESS } from './components/ExportModal'
 import { ResizeHandle } from './components/ResizeHandle'
 import { useCollaboration } from './hooks/useCollaboration'
 import { useHistory } from './hooks/useHistory'
@@ -30,7 +29,7 @@ import { usePanelResize } from './hooks/usePanelResize'
 import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core'
 import { JupyterBlock } from './components/JupyterBlock'
 import type { EditorMode, ExportFormat, DocumentSnapshot } from '../shared/types'
-import { PanelLeftClose, PanelLeft, Sparkles } from 'lucide-react'
+import { PanelLeft, Sparkles } from 'lucide-react'
 import confetti from 'canvas-confetti'
 import {
   blocksToHTML, exportToWord, exportToExcel,
@@ -46,19 +45,25 @@ import { FindReplaceBar } from './components/FindReplaceBar'
 import { LinkPreviewBlock } from './components/LinkPreviewBlock'
 import { YoutubeBlock } from './components/YoutubeBlock'
 import { convertJupyterToCodeBlocks, normalizeMarkdown, cleanCodeBlocks, ensureBlockIds, cleanMarkdownCodeBlocks } from './utils/markdownUtils'
-import { matchHotkey, blobToBase64 } from './utils/appUtils'
+import { matchHotkey } from './utils/appUtils'
 
 
 
 const schema = BlockNoteSchema.create({
   blockSpecs: {
     ...defaultBlockSpecs,
-    jupyter: JupyterBlock,
-    drawing: DrawingBlock,
-    linkPreview: LinkPreviewBlock,
-    youtube: YoutubeBlock
+    jupyter: JupyterBlock as any,
+    drawing: DrawingBlock as any,
+    linkPreview: LinkPreviewBlock as any,
+    youtube: YoutubeBlock as any
   }
 })
+
+type AppEditor = BlockNoteEditor<
+  any,
+  any,
+  any
+>
 
 
 
@@ -136,7 +141,7 @@ async function parseFileToMarkdown(content: string, filePath: string, isBinary: 
   if (ext === 'docx') {
     try {
       const mammoth = await import('mammoth')
-      const result = await mammoth.convertToMarkdown({ arrayBuffer })
+      const result = await (mammoth as any).convertToMarkdown({ arrayBuffer })
       return result.value
     } catch (err: any) {
       try {
@@ -297,7 +302,7 @@ function convertMarkdownToIpynb(markdown: string): string {
   return JSON.stringify(notebook, null, 2)
 }
 
-async function convertMarkdownToBinary(editorInstance: BlockNoteEditor, filePath: string): Promise<string> {
+async function convertMarkdownToBinary(editorInstance: any, filePath: string): Promise<string> {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   
   const copyBlocks = (blocks: any[]): any[] => {
@@ -320,18 +325,18 @@ async function convertMarkdownToBinary(editorInstance: BlockNoteEditor, filePath
   if (ext === 'docx') {
     const blob = await exportToWord(rawBlocks)
     const arrayBuffer = await blob.arrayBuffer()
-    return arrayBufferToBase64(arrayBuffer)
+    return arrayBufferToBase64(arrayBuffer as ArrayBuffer)
   }
   
   if (ext === 'xlsx') {
     const uint8 = await exportToExcel(rawBlocks)
-    return arrayBufferToBase64(uint8.buffer)
+    return arrayBufferToBase64(uint8.buffer as ArrayBuffer)
   }
   
   if (ext === 'hwpx') {
     const blob = await exportToHWPX(rawBlocks)
     const arrayBuffer = await blob.arrayBuffer()
-    return arrayBufferToBase64(arrayBuffer)
+    return arrayBufferToBase64(arrayBuffer as ArrayBuffer)
   }
   
   if (ext === 'pdf') {
@@ -368,7 +373,7 @@ async function convertMarkdownToBinary(editorInstance: BlockNoteEditor, filePath
         resolve()
       }
     })
-    return null
+    return ''
   }
   
   if (ext === 'adc') {
@@ -382,10 +387,16 @@ async function convertMarkdownToBinary(editorInstance: BlockNoteEditor, filePath
 }
 
 // ── 메인 앱 컴포넌트 ─────────────────────────────────────────
+const DEFAULT_WELCOME_TEXT = `# 🚀 AMEVA Workstation
+
+(AMEVA-OS WebAssembly Kernel & AI Hub)
+
+이곳에서 문서 작성, 코드 실행, 파일 시스템 탐색을 할 수 있습니다.`;
+
 export default function App() {
   const [documentId] = useState('default-doc')
-  const [username] = useState(randomUsername)
-  const [userColor] = useState(randomColor)
+  const [username, setUsername] = useState(randomUsername)
+  const [userColor, setUserColor] = useState(randomColor)
 
   const {
     filePath, setFilePath, currentContent, setCurrentContent,
@@ -410,11 +421,10 @@ export default function App() {
 
   const {
     downloadStatus, setDownloadStatus,
-    exportProgress, setExportProgress, resetExportProgress,
+    exportProgress, setExportProgress,
     exportMinimized, setExportMinimized,
-    isProPlan, setIsProPlan, isFreeModeLocked, setIsFreeModeLocked,
+    isProPlan, setIsProPlan,
     mcpServersState, setMcpServersState,
-    activePlugins, setActivePlugins,
     editorZoom, setEditorZoom, browserZoom, setBrowserZoom
   } = useProcessStore()
 
@@ -498,7 +508,7 @@ export default function App() {
   useAppIpcBridge()
 
   // 3. YouTube PiP
-  const { pipVideoId, setPipVideoId, pipPosition, isDraggingPip, setIsDraggingPip } = useYoutubePiP()
+  const { pipVideoId, setPipVideoId, pipPosition, handlePiPMouseDown } = useYoutubePiP()
 
   const handleUninstallPlugin = (id: string) => {
     const script = document.getElementById(`script-plugin-${id}`)
@@ -552,7 +562,7 @@ export default function App() {
 
   // ── 훅 초기화 ──────────────────────────────────────────────
   const {
-    ydoc, provider, peers, serverRunning, serverInfo, serverIp,
+    ydoc, provider, peers, serverRunning,
     isConnected, toggleLocalServer, handleMouseMove,
     updateDragSelection, updateBlockHighlight, editorContainerRef,
     isActive, collaborationLink,
@@ -582,7 +592,7 @@ export default function App() {
   }, [chatMessages, isChatFloating, activeTabId])
 
   // ── BlockNote 에디터 ────────────────────────────────────────
-  const [editor, setEditor] = useState<BlockNoteEditor | null>(null)
+  const [editor, setEditor] = useState<AppEditor | null>(null)
   const processedUrlsRef = useRef<Set<string>>(new Set())
   const isInitialLoad = useRef(true)
 
@@ -639,17 +649,6 @@ export default function App() {
   }, [editor, currentContent])
 
   // ── AI 에디터 텍스트 연동 및 적용 ─────────────────────────────
-  const [selectedText, setSelectedText] = useState('')
-  const [activeBlockId, setActiveBlockId] = useState<string | null>(null)
-
-  // 🤖 AI 컨텍스트 주입용 참조된 블록(라인) 상태 정의
-  const [taggedBlocks, setTaggedBlocks] = useState<{ id: string; text: string }[]>([])
-
-  // 🤖 원본 콘텐츠 보관 상태 (수정 여부(isDirty) 판별 전용)
-  const [originalContent, setOriginalContent] = useState<string>('')
-
-  // 🤖 최근 저장 완료 시각 보관 상태
-  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null)
 
   // 🤖 에디터에서 별표 버튼 클릭 시 에이전트 패널을 자동으로 기동해주기 위한 커스텀 설정 함수
   const customSetTaggedBlocks = useCallback((
@@ -745,7 +744,7 @@ export default function App() {
         try {
           const finalLang = lang === 'js' ? 'javascript' : lang === 'ts' ? 'typescript' : lang === 'py' ? 'python' : (lang || 'javascript')
           const blockPayload = {
-            type: 'jupyter',
+            type: 'jupyter' as const,
             props: {
               language: finalLang,
               code: text,
@@ -869,7 +868,7 @@ export default function App() {
   }, [editor, updateInsertSuggestionStatus])
 
   useEffect(() => {
-    let activeEditor: BlockNoteEditor
+    let activeEditor: AppEditor
     
     // 이전 에디터가 있다면 클린업 호출 필요 (BlockNote 인스턴스 파괴)
     if (editor) {
@@ -1027,11 +1026,11 @@ graph TD
       // 1. 블록 갱신 및 헤더 자동 변환 등 사용자 입력 돔과 커서 상태를 해치는 코드는 딜레이 없이 동기식 즉시 수행
       if (isUpdating) return
 
-      const cursor = editor.selection
+      const cursor = editor.getTextCursorPosition()
       let currentId: string | null = null
 
-      if (cursor?.anchorBlock) {
-        const activeBlock = cursor.anchorBlock
+      if (cursor?.block) {
+        const activeBlock = cursor.block
         currentId = activeBlock.id
 
         if (activeBlock.type === 'paragraph') {
@@ -1076,7 +1075,7 @@ graph TD
           try {
             const currentBlock = editor.getBlock(currentId)
             if (currentBlock?.type === 'heading') {
-              const level = currentBlock.props?.level || 1
+              const level = (currentBlock.props as any)?.level || 1
               const text = currentBlock.content ? (currentBlock.content as any).map((c: any) => c.text).join('') : ''
               const prefix = level === 1 ? '# ' : level === 2 ? '## ' : '### '
               if (!text.startsWith(prefix)) {
@@ -1455,7 +1454,7 @@ graph TD
   //  2. replaceBlocks 로 한 번에 교체 (removeBlocks 후 document[0]이 undefined가 되는 문제 회피)
   //  3. 삽입 완료 후 blocksToMarkdownLossy 로 역변환 → currentContent 설정
   //     (__LT_TEMP__ 등 임시 토큰이 preview에 노출되는 문제 차단)
-  const loadMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, isBinary = false, path = '') => {
+  const loadMarkdownIntoEditor = async (targetEditor: AppEditor, rawContent: string, isBinary = false, path = '') => {
     setEditorMode('edit')
     const markdown = await parseFileToMarkdown(rawContent, path || filePath || '', isBinary)
     const normalized = normalizeMarkdown(markdown)
@@ -1504,7 +1503,7 @@ graph TD
   }
 
   // 아래로 계속 이어서 열기 (Append Mode)
-  const appendMarkdownIntoEditor = async (targetEditor: BlockNoteEditor, rawContent: string, fileName: string, isBinary = false, path = '') => {
+  const appendMarkdownIntoEditor = async (targetEditor: AppEditor, rawContent: string, fileName: string, isBinary = false, path = '') => {
     const markdown = await parseFileToMarkdown(rawContent, path, isBinary)
     const normalized = normalizeMarkdown(markdown)
     const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
@@ -1561,7 +1560,7 @@ graph TD
   }
 
   // 탭으로 새로 열기 (Tab Mode)
-  const openFileInTab = async (targetEditor: BlockNoteEditor, fileContent: string, path: string, isBinary = false) => {
+  const openFileInTab = async (targetEditor: AppEditor, fileContent: string, path: string, isBinary = false) => {
     const currentBlocks = [...targetEditor.document]
     const currentActiveId = activeTabId
     
@@ -1793,8 +1792,9 @@ graph TD
         })
         
         if (boxRes.response === 0) {
-          const savedPath = await window.electronAPI.saveFile('', undefined)
-          if (savedPath) {
+          const saveResult = await window.electronAPI.saveFile('', undefined)
+          if (saveResult && saveResult.success && saveResult.filePath) {
+            const savedPath = saveResult.filePath
             const newExt = savedPath.split('.').pop()?.toLowerCase() || 'md'
             let contentToSave: string
             if (newExt === 'adc') {
@@ -1840,8 +1840,9 @@ graph TD
     }
     
     if (window.electronAPI) {
-      const savedPath = await window.electronAPI.saveFile(contentToSave, filePath || undefined)
-      if (savedPath) {
+      const saveResult = await window.electronAPI.saveFile(contentToSave, filePath || undefined)
+      if (saveResult && saveResult.success && saveResult.filePath) {
+        const savedPath = saveResult.filePath
         setFilePath(savedPath)
         setOriginalContent(markdown)
         setLastSavedTime(new Date())
@@ -1858,8 +1859,9 @@ graph TD
     const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
     
     if (window.electronAPI) {
-      const savedPath = await window.electronAPI.saveFile(markdown, undefined)
-      if (savedPath) {
+      const saveResult = await window.electronAPI.saveFile(markdown, undefined)
+      if (saveResult && saveResult.success && saveResult.filePath) {
+        const savedPath = saveResult.filePath
         const ext = savedPath.split('.').pop()?.toLowerCase() || 'md'
         const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
         let contentToSave: string
@@ -2022,8 +2024,8 @@ graph TD
             break
           }
           case 'docx': triggerBrowserDownload(await exportToWord(blocks), 'document.docx'); savedPath = 'document.docx'; break
-          case 'xlsx': triggerBrowserDownload(new Blob([(await exportToExcel(blocks)).buffer]), 'tables.xlsx'); savedPath = 'tables.xlsx'; break
-          case 'pptx': triggerBrowserDownload(new Blob([await exportToPPTX(blocks)]), 'presentation.pptx'); savedPath = 'presentation.pptx'; break
+          case 'xlsx': triggerBrowserDownload(new Blob([exportToExcel(blocks) as any]), 'tables.xlsx'); savedPath = 'tables.xlsx'; break
+          case 'pptx': triggerBrowserDownload(new Blob([(await exportToPPTX(blocks)) as any]), 'presentation.pptx'); savedPath = 'presentation.pptx'; break
           case 'hwpx': triggerBrowserDownload(await exportToHWPX(blocks), 'document.hwpx'); savedPath = 'document.hwpx'; break
           case 'xml': triggerBrowserDownload(exportToXML(blocks), 'document.xml'); savedPath = 'document.xml'; break
           default: throw new Error(`지원하지 않는 형식입니다: ${format}`)
@@ -2077,8 +2079,6 @@ graph TD
   }, [editor])
 
   // ── 스냅샷 diff ────────────────────────────────────────────
-  const [selectedSnapshot, setSelectedSnapshot] = useState<DocumentSnapshot | null>(null)
-  const [isDiffOpen, setIsDiffOpen] = useState(false)
 
   const handleSelectSnapshotForDiff = (snapshot: DocumentSnapshot) => {
     setSelectedSnapshot(snapshot)
@@ -2166,13 +2166,13 @@ graph TD
   const handleStartWelcomeEdit = async () => {
     if (!editor) return
     try {
-      const normalized = normalizeMarkdown(currentContent || welcomeMD)
+      const normalized = normalizeMarkdown(currentContent || DEFAULT_WELCOME_TEXT)
       const blocks = await editor.tryParseMarkdownToBlocks(normalized)
       cleanCodeBlocks(blocks)
       ensureBlockIds(blocks)
       editor.replaceBlocks(editor.document, blocks)
-      setCurrentContent(currentContent || welcomeMD)
-      setOriginalContent(currentContent || welcomeMD)
+      setCurrentContent(currentContent || DEFAULT_WELCOME_TEXT)
+      setOriginalContent(currentContent || DEFAULT_WELCOME_TEXT)
       setEditorMode('edit')
     } catch (err) {
       console.error('웰컴 편집 로드 실패:', err)
@@ -2186,7 +2186,7 @@ graph TD
         {
           id: Math.random().toString(36).substring(2, 10),
           type: 'paragraph',
-          content: []
+          content: [] as any
         }
       ])
     }
@@ -2537,13 +2537,7 @@ graph TD
               padding: '0 10px',
               cursor: 'move',
             }}
-            onMouseDown={(e) => {
-              setIsDraggingPip(true)
-              setDragOffset({
-                x: e.clientX - pipPosition.x,
-                y: e.clientY - pipPosition.y
-              })
-            }}
+            onMouseDown={handlePiPMouseDown}
           >
             <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)' }}>📺 Floating YouTube PiP Player</span>
             <button
@@ -2567,7 +2561,7 @@ graph TD
               src={`https://www.youtube.com/embed/${pipVideoId}?autoplay=1`}
               style={{ width: '100%', height: '100%', border: 'none' }}
               allow="autoplay; encrypted-media"
-              allowfullscreen
+              allowFullScreen
             ></iframe>
           </div>
         </div>
@@ -2628,10 +2622,10 @@ graph TD
 
       {/* 내보내기 진행 모달 */}
       <ExportModal
-        progress={exportProgress}
+        progress={exportProgress as any}
         minimized={exportMinimized}
         onMinimize={() => setExportMinimized(prev => !prev)}
-        onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
+        onClose={() => { setExportProgress(IDLE_PROGRESS as any); setExportMinimized(false) }}
         onOpenFile={(path) => {
           const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
           if (window.electronAPI?.openExternalLink) {

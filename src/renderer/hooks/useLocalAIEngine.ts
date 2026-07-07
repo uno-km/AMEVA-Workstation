@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import { useCallback } from 'react';
 import { useAIState } from '../stores/useAIState';
 import { useAILogStore } from '../stores/useAILogStore';
 
@@ -7,17 +7,24 @@ import { useAILogStore } from '../stores/useAILogStore';
  * 로컬 llama-cli / llama.cpp 프로세스의 기동, 중단, 상태 확인을 전담하는 훅입니다.
  */
 export function useLocalAIEngine() {
-  const { isAvailable, setIsAvailable, models, setModels, codeModels, setCodeModels, settings } = useAIState();
+  const { setIsAvailable, setModels, setCodeModels, settings } = useAIState();
   const { addSensorLog } = useAILogStore();
 
   const loadModels = useCallback(async (type: 'chat' | 'code' = 'chat') => {
     if (!window.electronAPI) return;
     try {
-      const list = await window.electronAPI.llmListModels(type);
+      const list = await window.electronAPI.llmListModels(type === 'chat' ? 'llm' : 'code');
+      const mappedList = list.map(m => ({
+        path: m.path,
+        filename: m.filename,
+        name: m.name || m.filename,
+        size: m.size || 0
+      }));
+
       if (type === 'chat') {
-        setModels(list);
+        setModels(mappedList);
       } else {
-        setCodeModels(list);
+        setCodeModels(mappedList);
       }
     } catch (e: any) {
       console.error('모델 목록 로드 실패:', e);
@@ -34,7 +41,7 @@ export function useLocalAIEngine() {
     try {
       if (window.electronAPI.llmCheckHealth) {
         const res = await window.electronAPI.llmCheckHealth();
-        if (res && res.status === 'ready') {
+        if (res && (res.status === 'ok' || (res.status as string) === 'ready')) {
           setIsAvailable(true);
         } else {
           setIsAvailable(false);

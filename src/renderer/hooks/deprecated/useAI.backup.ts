@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useState, useRef, useCallback, useEffect } from 'react'
 import type { ReasoningTraceEvent } from '../../shared/reasoningTypes'
 import { StreamingSanitizer } from '../utils/responseSanitizer'

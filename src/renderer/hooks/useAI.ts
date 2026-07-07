@@ -1,9 +1,9 @@
 import { useAIState } from '../stores/useAIState';
 import { useAILogStore } from '../stores/useAILogStore';
 import { useLocalAIEngine } from './useLocalAIEngine';
-import { useRemoteAIEngine } from './useRemoteAIEngine';
+
 import { useAIAgent } from './useAIAgent';
-import type { AISettings } from '../types/aiTypes';
+
 
 /**
  * useAI (Orchestrator Facade)
@@ -20,21 +20,14 @@ export function useAI() {
     models, 
     codeModels,
     settings, 
-    setSettings, 
-    engineStatus, 
-    setEngineStatus,
+    updateSettings, 
     removeFromQueue
   } = useAIState();
 
   // 2. 도메인별 분리된 훅 호출
   const localEngine = useLocalAIEngine();
-  const remoteEngine = useRemoteAIEngine();
-  const agent = useAIAgent();
 
-  // 3. 환경 설정 업데이트 헬퍼
-  const updateSettings = (newSettings: Partial<AISettings>) => {
-    setSettings((prev: AISettings) => ({ ...prev, ...newSettings }));
-  };
+  const agent = useAIAgent();
 
   // 4. UI를 위한 통합 객체 반환
   return {
@@ -46,8 +39,7 @@ export function useAI() {
     models,
     codeModels,
     settings,
-    engineStatus,
-    setEngineStatus,
+    updateSettings,
     streamingText: agent.streamingText,
     engineLogs: agent.engineLogs,
     pendingQueue: agent.pendingQueue,
@@ -74,6 +66,5 @@ export function useAI() {
     stopEngine: localEngine.stopEngine,
     
     // 유틸
-    updateSettings,
   };
 }

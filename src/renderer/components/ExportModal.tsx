@@ -7,7 +7,7 @@
  * - 성공/실패 상태 표시
  * ─────────────────────────────────────────────────────────────
  */
-import React, { useEffect, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { X, Minus, FileOutput, CheckCircle, XCircle, Loader } from 'lucide-react'
 
 export type ExportPhase = 'idle' | 'running' | 'success' | 'error'
@@ -19,6 +19,13 @@ export interface ExportProgress {
   message: string
   savedPath?: string
   error?: string
+}
+
+export const IDLE_PROGRESS: ExportProgress = {
+  phase: 'idle',
+  format: '',
+  percent: 0,
+  message: ''
 }
 
 interface ExportModalProps {

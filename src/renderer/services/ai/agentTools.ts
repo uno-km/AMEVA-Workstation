@@ -1,6 +1,6 @@
 import * as ipc from '../ipc/electronApiAdapter'
-import { MCPClientManager } from '../ipc/mcpClientManager'
-import { AgentEngine } from './agentEngine'
+import { MCPClientManager } from '../../utils/mcpClient'
+import { AgentEngine } from '../../utils/agentEngine'
 
 export async function registerAgentTools(agent: AgentEngine, enabledPlugins: Record<string, boolean>) {
   // 플러그인 비활성화 처리
@@ -23,7 +23,7 @@ export async function registerAgentTools(agent: AgentEngine, enabledPlugins: Rec
         properties: { stockCode: { type: 'string', description: '회사명 또는 종목코드' } },
         required: ['stockCode']
       },
-      execute: async (args) => {
+      execute: async (args: unknown) => {
         const res = await MCPClientManager.callTool('mcp-wasm-gateway', 'query_stock_info', args)
         return { success: res.success, result: res.result, error: res.error }
       }
@@ -40,7 +40,7 @@ export async function registerAgentTools(agent: AgentEngine, enabledPlugins: Rec
         name: tool.name,
         description: tool.description,
         parameters: tool.inputSchema as any,
-        execute: async (args) => {
+        execute: async (args: unknown) => {
           const res = await MCPClientManager.callTool(tool.serverId, tool.name, args)
           return { success: res.success, result: res.result, error: res.error }
         }
