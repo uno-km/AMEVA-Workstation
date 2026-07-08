@@ -5,6 +5,7 @@ import { existsSync } from 'fs'
 import { readFile } from 'fs/promises'
 import { MCPProcessManager } from './services/mcpProcessManager.js'
 import { LLMProcessManager } from './services/llmProcessManager.js'
+import { WindowDefenseManager } from './services/windowDefenseManager.js'
 
 import { registerFileIpc } from './ipc/fileIpc.js'
 import { registerMcpIpc } from './ipc/mcpIpc.js'
@@ -99,6 +100,9 @@ function createWindow() {
       height: 38,
     },
   })
+
+  // [SEC-W-022] 창 보호 및 단축키 방어 전담 모듈 적용
+  WindowDefenseManager.applyDefenses(mainWindow, () => isShuttingDown)
 
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
