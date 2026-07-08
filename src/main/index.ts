@@ -10,6 +10,7 @@ import { registerFileIpc } from './ipc/fileIpc.js'
 import { registerMcpIpc } from './ipc/mcpIpc.js'
 import { registerPythonIpc } from './ipc/pythonIpc.js'
 import { registerLlmIpc } from './ipc/llmIpc.js'
+import { registerTerminalIpc } from './ipc/terminalIpc.js'
 
 // 🤖 개발용 일렉트론 보안 경고 비활성화
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
@@ -113,6 +114,7 @@ registerFileIpc(() => mainWindow, createWindow)
 registerMcpIpc()
 registerPythonIpc()
 registerLlmIpc()
+registerTerminalIpc()
 
 app.whenReady().then(() => {
   // [MEM-CLEANUP] 프로그램 기동 시점에 OS 상에 유령으로 남아있던 모든 llama 프로세스 일괄 정리

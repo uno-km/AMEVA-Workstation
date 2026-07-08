@@ -2,11 +2,13 @@
 import type { AppSettings } from '../SettingsModal'
 import type { ModelInfo } from '../../services/ipc/ipcTypes'
 
+import { useProcessStore } from '../../stores/useProcessStore'
+import type { DownloadQueueItem } from '../../hooks/app/useDownloadManager'
+
 export interface SettingsTabModelsProps {
   activeTab: string
   settings: AppSettings
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
-  downloadStatus: { filename: string; progress: number; speed?: string } | null
   localModels: ModelInfo[]
   localCodeModels: ModelInfo[]
   formatBytes: (bytes: number) => string
@@ -17,40 +19,19 @@ export function SettingsTabModels({
   activeTab,
   settings,
   onUpdateSettings,
-  downloadStatus,
   localModels,
   localCodeModels,
   formatBytes,
   startModelDownload,
 }: SettingsTabModelsProps) {
+  const downloadQueue = useProcessStore(state => state.downloadQueue)
+
   if (activeTab !== 'Models') return null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
       
-      {/* 다운로드 진행률 Toast 바 (모달 내부 노출) */}
-      {downloadStatus && (
-        <div style={{
-          padding: '10px 14px', borderRadius: '8px',
-          background: 'rgba(139, 92, 246, 0.15)', border: '1px solid rgba(139, 92, 246, 0.3)',
-          display: 'flex', flexDirection: 'column', gap: '6px',
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold' }}>
-            <span>📥 모델 다운로드 중: {downloadStatus.filename}</span>
-            <span>{downloadStatus.progress}%</span>
-          </div>
-          <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', overflow: 'hidden' }}>
-            <div style={{
-              width: `${downloadStatus.progress}%`, height: '100%',
-              background: 'linear-gradient(90deg, var(--primary) 0%, #a78bfa 100%)',
-              transition: 'width 0.2s ease-out'
-            }} />
-          </div>
-          {downloadStatus.speed && (
-            <span style={{ fontSize: '9px', color: 'var(--text-muted)', textAlign: 'right' }}>속도: {downloadStatus.speed}</span>
-          )}
-        </div>
-      )}
+
 
       {/* 2열 레이아웃 */}
       <div style={{ display: 'flex', gap: '16px' }}>
@@ -128,6 +109,9 @@ export function SettingsTabModels({
                 }
               ].map(model => {
                 const isInstalled = localModels.some(m => m.filename.toLowerCase() === model.filename.toLowerCase())
+                const queuedItem = downloadQueue.find((q: DownloadQueueItem) => q.filename.toLowerCase() === model.filename.toLowerCase() && (q.status === 'pending' || q.status === 'downloading'))
+                const isDownloading = !!queuedItem
+
                 return (
                   <div key={model.filename} style={{ padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', overflow: 'hidden' }}>
@@ -135,18 +119,18 @@ export function SettingsTabModels({
                       <span style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{model.desc}</span>
                     </div>
                     <button
-                      disabled={isInstalled || !!downloadStatus}
+                      disabled={isInstalled || isDownloading}
                       onClick={() => void startModelDownload(model.url, model.filename, 'llm')}
                       style={{
                         padding: '4px 8px', borderRadius: '4px',
-                        background: isInstalled ? 'rgba(52, 211, 153, 0.15)' : 'var(--primary)',
+                        background: isInstalled ? 'rgba(52, 211, 153, 0.15)' : isDownloading ? 'rgba(139, 92, 246, 0.3)' : 'var(--primary)',
                         color: isInstalled ? '#fff' : '#fff',
                         border: 'none', fontSize: '9.5px', fontWeight: 'bold',
-                        cursor: isInstalled ? 'default' : 'pointer',
+                        cursor: isInstalled || isDownloading ? 'default' : 'pointer',
                         flexShrink: 0
                       }}
                     >
-                      {isInstalled ? '설치됨' : '설치'}
+                      {isInstalled ? '설치됨' : isDownloading ? '진행 중' : '설치'}
                     </button>
                   </div>
                 )
@@ -229,6 +213,9 @@ export function SettingsTabModels({
                 }
               ].map(model => {
                 const isInstalled = localCodeModels.some(m => m.filename.toLowerCase() === model.filename.toLowerCase())
+                const queuedItem = downloadQueue.find((q: DownloadQueueItem) => q.filename.toLowerCase() === model.filename.toLowerCase() && (q.status === 'pending' || q.status === 'downloading'))
+                const isDownloading = !!queuedItem
+
                 return (
                   <div key={model.filename} style={{ padding: '6px 10px', borderRadius: '6px', background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', overflow: 'hidden' }}>
@@ -236,18 +223,18 @@ export function SettingsTabModels({
                       <span style={{ fontSize: '9px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{model.desc}</span>
                     </div>
                     <button
-                      disabled={isInstalled || !!downloadStatus}
+                      disabled={isInstalled || isDownloading}
                       onClick={() => void startModelDownload(model.url, model.filename, 'code')}
                       style={{
                         padding: '4px 8px', borderRadius: '4px',
-                        background: isInstalled ? 'rgba(52, 211, 153, 0.15)' : '#34d399',
-                        color: isInstalled ? '#34d399' : '#000',
+                        background: isInstalled ? 'rgba(52, 211, 153, 0.15)' : isDownloading ? 'rgba(139, 92, 246, 0.3)' : '#34d399',
+                        color: isInstalled ? '#34d399' : isDownloading ? '#fff' : '#000',
                         border: 'none', fontSize: '9.5px', fontWeight: 'bold',
-                        cursor: isInstalled ? 'default' : 'pointer',
+                        cursor: isInstalled || isDownloading ? 'default' : 'pointer',
                         flexShrink: 0
                       }}
                     >
-                      {isInstalled ? '설치됨' : '설치'}
+                      {isInstalled ? '설치됨' : isDownloading ? '진행 중' : '설치'}
                     </button>
                   </div>
                 )

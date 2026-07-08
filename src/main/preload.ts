@@ -129,4 +129,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   keychainDelete: (key: string) => ipcRenderer.invoke('keychain:delete', key),
   fetchUrlMetadata: (url: string) => ipcRenderer.invoke('action:fetchUrlMetadata', url),
   mcpGetToken: () => ipcRenderer.invoke('mcp:getToken'),
+  
+  // ── 로컬 터미널 / 콘솔 커맨드 ──
+  executeTerminal: (cmd: string, cwd?: string) => ipcRenderer.invoke('terminal:execute', cmd, cwd),
 })

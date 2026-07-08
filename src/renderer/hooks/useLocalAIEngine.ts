@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useAIState } from '../stores/useAIState';
 import { useAILogStore } from '../stores/useAILogStore';
 import * as ipc from '../services/ipc/electronApiAdapter';
@@ -116,6 +116,22 @@ export function useLocalAIEngine() {
       throw e; // 정지 실패도 프로세스 좀비화를 막기 위해 에러 전파
     }
   }, [addSensorLog, setIsAvailable]);
+
+  // 주기적으로 헬스체크를 수행하여 UI 상태(빨간불/녹색불)를 자동 갱신합니다.
+  useEffect(() => {
+    if (settings.apiType !== 'local' && settings.apiType !== 'ollama') {
+      return;
+    }
+    
+    // 초기 1회 즉시 실행
+    checkIsAvailable();
+    
+    const interval = setInterval(() => {
+      checkIsAvailable();
+    }, 3000); // 3초마다 갱신
+    
+    return () => clearInterval(interval);
+  }, [settings.apiType, checkIsAvailable]);
 
   return {
     loadModels,

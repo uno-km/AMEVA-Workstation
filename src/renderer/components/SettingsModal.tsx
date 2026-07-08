@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import {
   X, Settings, Sliders, Monitor, Move,
-  Bot, ToyBrick, User, Shield, Keyboard, ShieldAlert, Key
+  Bot, ToyBrick, User, Shield, Keyboard, ShieldAlert, Key, Cpu
 } from 'lucide-react'
 import * as ipc from '../services/ipc/electronApiAdapter'
 import { useSettingsModalResize } from '../hooks/app/useSettingsModalResize'
@@ -14,8 +14,10 @@ import { SettingsTabPermissions } from './settings/SettingsTabPermissions'
 import { SettingsTabAppearance } from './settings/SettingsTabAppearance'
 import { SettingsTabModels } from './settings/SettingsTabModels'
 import { SettingsTabCustomizations } from './settings/SettingsTabCustomizations'
+import { SettingsTabAIEngine } from './settings/SettingsTabAIEngine'
 import { useSettingsDraft } from '../hooks/app/useSettingsDraft'
 import { SettingsTransitionOverlay } from './overlay/SettingsTransitionOverlay'
+import type { AISettings } from '../types/aiTypes'
 
 export interface HotkeyConfig {
   save: string
@@ -50,19 +52,25 @@ interface SettingsModalProps {
   onClose: () => void
   settings: AppSettings
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
+  aiSettings: AISettings
+  onUpdateAISettings: (newSettings: Partial<AISettings>) => void
+  initialTab?: TabType
   username?: string
   userColor?: string
   onUpdateUser?: (name: string, color: string) => void
   onOpenModelHub?: () => void
 }
 
-type TabType = 'General' | 'Account' | 'Permissions' | 'Appearance' | 'Models' | 'Customizations' | 'Hotkeys' | 'MCP' | 'Credentials'
+type TabType = 'General' | 'AIEngine' | 'Account' | 'Permissions' | 'Appearance' | 'Models' | 'Customizations' | 'Hotkeys' | 'MCP' | 'Credentials'
 
 export function SettingsModal({
   isOpen,
   onClose,
   settings,
   onUpdateSettings,
+  aiSettings,
+  onUpdateAISettings,
+  initialTab,
   username = 'User',
   userColor = '#a855f7',
   onUpdateUser,
@@ -72,7 +80,9 @@ export function SettingsModal({
   void { Move, ShieldAlert, onOpenModelHub };
 
   // 0. 설정 Draft 및 전환 상태
-  const { draftSettings, updateDraft, resetDraft, isDirty } = useSettingsDraft(settings, isOpen)
+  const { draftSettings, updateDraft, resetDraft, isDirty: isAppDirty } = useSettingsDraft(settings, isOpen)
+  const [draftAISettings, setDraftAISettings] = useState<AISettings>(aiSettings)
+  const [isAIDirty, setIsAIDirty] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
 
   // 1. 드래그 가능한 포지션 상태
@@ -80,17 +90,42 @@ export function SettingsModal({
   const [isDragging, setIsDragging] = useState(false)
   const dragStart = useRef({ x: 0, y: 0 })
 
-  // 2. 활성 탭 상태 (기본 General)
-  const [activeTab, setActiveTab] = useState<TabType>('General')
+  // 2. 활성 탭 상태 (기본 General 또는 initialTab)
+  const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'General')
+
+  useEffect(() => {
+    if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab)
+      } else {
+        // If it was closed and opened again without initialTab, maybe keep the last active tab or reset to General.
+        // We'll just set it to initialTab if provided.
+      }
+    }
+  }, [isOpen, initialTab])
 
   // 3. 사용자 정보 폼 로컬 상태
   const [tempName, setTempName] = useState(username)
   const [tempColor, setTempColor] = useState(userColor)
 
+  useEffect(() => {
+    if (isOpen) {
+      setDraftAISettings(aiSettings)
+      setIsAIDirty(false)
+      setTempName(username)
+      setTempColor(userColor)
+    }
+  }, [isOpen, aiSettings, username, userColor])
+
+  const updateDraftAI = (updates: Partial<AISettings>) => {
+    setDraftAISettings(prev => ({ ...prev, ...updates }))
+    setIsAIDirty(true)
+  }
+
   // 4. 모델 탭 스캔 상태
   const [localModels, setLocalModels] = useState<import('../services/ipc/ipcTypes').ModelInfo[]>([])
   const [localCodeModels, setLocalCodeModels] = useState<import('../services/ipc/ipcTypes').ModelInfo[]>([])
-  const [downloadStatus, setDownloadStatus] = useState<{ filename: string; progress: number; speed?: string } | null>(null)
+  const [gpuName, setGpuName] = useState<string | undefined>(undefined)
 
   // 🦾 Pro Plan 상태 (마켓플레이스 및 MCP 노출을 제어)
   const [isProPlan, setIsProPlan] = useState<boolean>(() => {
@@ -104,14 +139,19 @@ export function SettingsModal({
 
   const { modalSize, handleResizeMouseDown } = useSettingsModalResize()
 
+  const isUserDirty = tempName !== username || tempColor !== userColor
+  const isAnyDirty = isAppDirty || isAIDirty || isUserDirty
+
   const handleSaveAndApply = () => {
-    if (!isDirty) {
+    if (!isAnyDirty) {
       onClose()
       return
     }
     setIsApplying(true)
     setTimeout(() => {
-      onUpdateSettings(draftSettings)
+      if (isAppDirty) onUpdateSettings(draftSettings)
+      if (isAIDirty) onUpdateAISettings(draftAISettings)
+      if (isUserDirty && onUpdateUser) onUpdateUser(tempName, tempColor)
       setIsApplying(false)
       onClose()
     }, 1800)
@@ -119,6 +159,10 @@ export function SettingsModal({
 
   const handleCancel = () => {
     resetDraft()
+    setDraftAISettings(aiSettings)
+    setIsAIDirty(false)
+    setTempName(username)
+    setTempColor(userColor)
     onClose()
   }
 
@@ -171,58 +215,31 @@ export function SettingsModal({
         setLocalModels(llmList)
         setLocalCodeModels(codeList)
       })
-    }
-  }, [isOpen])
 
-  useEffect(() => {
-    if (isOpen && ipc.isElectronEnv()) {
-      let lastUpdateTime = 0
-      const THROTTLE_MS = 100 // 100ms 간격으로 업데이트 쓰로틀링 적용
-
-      const unsub = ipc.onLLMDownloadProgress((status: any) => {
-        const now = Date.now()
-        if (status.progress === 100 || now - lastUpdateTime >= THROTTLE_MS) {
-          lastUpdateTime = now
-          setDownloadStatus(status)
-        }
-      })
-      return () => {
-        if (unsub) unsub()
-      }
+      ipc.llmGetGpuName?.().then(name => {
+        if (name) setGpuName(name)
+      }).catch(() => {})
     }
   }, [isOpen])
 
   const startModelDownload = async (url: string, filename: string, type: 'llm' | 'code') => {
     if (!ipc.isElectronEnv()) return
-    if (downloadStatus) {
-      alert('이미 다운로드가 진행 중입니다.')
+    const store = (await import('../stores/useProcessStore')).useProcessStore.getState()
+    const existing = store.downloadQueue.find((q: any) => q.filename === filename && (q.status === 'pending' || q.status === 'downloading'))
+    
+    if (existing) {
+      // 이미 큐에 있음
       return
     }
-    try {
-      setDownloadStatus({ filename, progress: 0 })
-      const res = await ipc.llmDownloadModel({ url, filename, type })
-      if (res.success) {
-        alert(`${filename} 다운로드가 완료되었습니다!`)
-        const list = await ipc.llmListModels('llm')
-        setLocalModels(list)
-        const codeList = await ipc.llmListModels('code')
-        setLocalCodeModels(codeList)
-      } else {
-        if (res.error && res.error.includes('401')) {
-          alert(`[다운로드 실패 401] Hugging Face 토큰 인증이 필요하거나 모델 라이선스(Gated) 동의가 필요합니다.\n\n해당 모델의 홈페이지에서 라이선스에 동의하시거나 토큰을 발급받아 환경 변수(HUGGINGFACE_API_KEY)에 설정해주세요.`);
-        } else {
-          alert(`다운로드 실패: ${res.error}`);
-        }
-      }
-    } catch (err: any) {
-      if (err.message && err.message.includes('401')) {
-        alert(`[다운로드 오류 401] 모델 접근 권한이 없습니다. Hugging Face 토큰이 필요합니다.`);
-      } else {
-        alert(`다운로드 중 오류가 발생했습니다: ${err.message}`);
-      }
-    } finally {
-      setDownloadStatus(null)
-    }
+
+    store.addDownloadToQueue({
+      id: Math.random().toString(36).substring(2, 9),
+      url,
+      filename,
+      type,
+      status: 'pending',
+      progress: 0
+    })
   }
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -310,7 +327,7 @@ export function SettingsModal({
           flexShrink: 0,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-on-active)' }}>
           <Settings size={15} />
           <h3 style={{ fontSize: '12.5px', fontWeight: 800, margin: 0, letterSpacing: '0.3px' }}>
             AMEVA Workstation Preferences
@@ -320,9 +337,9 @@ export function SettingsModal({
             fontWeight: 800,
             padding: '2px 6px',
             borderRadius: '4px',
-            background: isProPlan ? 'rgba(168, 85, 247, 0.12)' : 'rgba(255, 255, 255, 0.04)',
-            border: isProPlan ? '1px solid rgba(168, 85, 247, 0.25)' : '1px solid rgba(255, 255, 255, 0.08)',
-            color: isProPlan ? '#a855f7' : 'var(--text-muted)',
+            background: isProPlan ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            color: '#fff',
             letterSpacing: '0.5px',
             display: 'inline-flex',
             alignItems: 'center',
@@ -334,7 +351,7 @@ export function SettingsModal({
         <button
           onClick={onClose}
           style={{
-            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+            background: 'transparent', border: 'none', color: 'var(--text-on-active)',
             cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px',
           }}
         >
@@ -358,6 +375,7 @@ export function SettingsModal({
         }}>
           {[
             { id: 'General', label: 'General', icon: Sliders },
+            { id: 'AIEngine', label: 'AI Engine', icon: Cpu },
             { id: 'Account', label: 'Account', icon: User },
             { id: 'Permissions', label: 'Permissions', icon: Shield },
             { id: 'Credentials', label: 'Credentials', icon: Key },
@@ -377,7 +395,7 @@ export function SettingsModal({
                   display: 'flex', alignItems: 'center', gap: '8px',
                   padding: '8px 12px', borderRadius: '6px', border: 'none',
                   background: isSelected ? 'var(--bg-glass-active)' : 'transparent',
-                  color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
+                  color: isSelected ? 'var(--text-on-active)' : 'var(--text-muted)',
                   fontSize: '11px', fontWeight: isSelected ? 700 : 500,
                   cursor: 'pointer', textAlign: 'left',
                   transition: 'background 0.15s, color 0.15s',
@@ -399,6 +417,14 @@ export function SettingsModal({
             onUpdateSettings={updateDraft}
             isProPlan={isProPlan}
             handleToggleProPlan={handleToggleProPlan}
+          />
+
+          {/* AIEngine Tab */}
+          <SettingsTabAIEngine
+            activeTab={activeTab}
+            aiSettings={draftAISettings}
+            onUpdateAISettings={updateDraftAI}
+            gpuName={gpuName}
           />
 
           {/* Account Tab */}
@@ -434,7 +460,6 @@ export function SettingsModal({
             activeTab={activeTab}
             settings={draftSettings}
             onUpdateSettings={updateDraft}
-            downloadStatus={downloadStatus}
             localModels={localModels}
             localCodeModels={localCodeModels}
             formatBytes={formatBytes}
@@ -485,7 +510,7 @@ export function SettingsModal({
           onClick={handleSaveAndApply}
           disabled={isApplying}
         >
-          {isDirty ? '적용 및 저장' : '닫기'}
+          {isAnyDirty ? '적용 및 저장' : '닫기'}
         </button>
       </div>
 
@@ -528,6 +553,7 @@ export function SettingsModal({
 }
 
 export { SettingsTabGeneral } from './settings/SettingsTabGeneral'
+export { SettingsTabAIEngine } from './settings/SettingsTabAIEngine'
 export { SettingsTabAccount } from './settings/SettingsTabAccount'
 export { SettingsTabPermissions } from './settings/SettingsTabPermissions'
 export { SettingsTabAppearance } from './settings/SettingsTabAppearance'

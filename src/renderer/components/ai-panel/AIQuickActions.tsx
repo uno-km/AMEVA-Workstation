@@ -163,12 +163,14 @@ export const AIQuickActions: React.FC<AIQuickActionsProps> = ({
                   const target = e.currentTarget as HTMLButtonElement;
                   target.style.borderColor = getBorderColor(true);
                   target.style.background = getBackgroundColor(true);
+                  target.style.color = 'var(--text-on-active)';
                 }
               }}
               onMouseLeave={e => {
                 const target = e.currentTarget as HTMLButtonElement;
                 target.style.borderColor = getBorderColor(false);
                 target.style.background = getBackgroundColor(false);
+                target.style.color = 'var(--text-main)';
               }}
             >
               <action.icon size={14} style={{ color: selectedText ? 'var(--secondary)' : 'var(--primary)', flexShrink: 0 }} />

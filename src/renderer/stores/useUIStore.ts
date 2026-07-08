@@ -9,7 +9,8 @@ import { create } from 'zustand'
 export interface UIState {
   // ── 모달 열림/닫힘 ──────────────────────────────────────────────────────────
   isSettingsOpen: boolean
-  setIsSettingsOpen: (val: boolean) => void
+  settingsInitialTab?: string
+  setIsSettingsOpen: (val: boolean, tab?: string) => void
   toggleSettings: () => void
 
   isAboutOpen: boolean
@@ -77,8 +78,9 @@ export interface UIState {
 
 export const useUIStore = create<UIState>((set, get) => ({
   isSettingsOpen: false,
-  setIsSettingsOpen: (val) => set({ isSettingsOpen: val }),
-  toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen })),
+  settingsInitialTab: undefined,
+  setIsSettingsOpen: (val, tab) => set({ isSettingsOpen: val, settingsInitialTab: tab }),
+  toggleSettings: () => set((state) => ({ isSettingsOpen: !state.isSettingsOpen, settingsInitialTab: undefined })),
 
   isAboutOpen: false,
   setIsAboutOpen: (val) => set({ isAboutOpen: val }),

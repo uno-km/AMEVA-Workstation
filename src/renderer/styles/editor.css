@@ -539,3 +539,42 @@
     box-shadow: none;
   }
 }
+
+/* Win98 Theme specific styles for CLI Console */
+[data-theme='win98'] .win98-scrollbar::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+[data-theme='win98'] .win98-scrollbar::-webkit-scrollbar-track {
+  background: #dfdfdf;
+  border-left: 1px solid #ffffff;
+  border-top: 1px solid #ffffff;
+}
+[data-theme='win98'] .win98-scrollbar::-webkit-scrollbar-thumb {
+  background: #c0c0c0;
+  border-top: 1px solid #ffffff;
+  border-left: 1px solid #ffffff;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
+}
+[data-theme='win98'] .win98-scrollbar::-webkit-scrollbar-button {
+  background: #c0c0c0;
+  border-top: 1px solid #ffffff;
+  border-left: 1px solid #ffffff;
+  border-bottom: 1px solid #000000;
+  border-right: 1px solid #000000;
+  display: block;
+}
+[data-theme='win98'] .win98-font {
+  font-family: 'Gulim', '굴림', 'MS Sans Serif', sans-serif !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0 !important;
+}
+.terminal-focused {
+  outline: none;
+}
+[data-theme='win98'] .terminal-focused {
+  outline: 1px dotted #000000;
+  outline-offset: -2px;
+}

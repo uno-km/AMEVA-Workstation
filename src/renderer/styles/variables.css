@@ -34,6 +34,9 @@
   
   --sidebar-width: 280px;
   --header-height: 52px;
+  
+  --text-on-primary: #ffffff;
+  --text-on-active: var(--text-main);
 }
 
 /* 테마 스위칭 지원 */
@@ -52,6 +55,8 @@
   --primary-glow: rgba(148, 163, 184, 0.15);
   --secondary: #475569;
   --secondary-glow: rgba(71, 85, 105, 0.15);
+  --text-on-primary: #ffffff;
+  --text-on-active: var(--text-main);
 }
 
 [data-theme='gray'] {
@@ -69,6 +74,8 @@
   --primary-glow: rgba(137, 180, 250, 0.3);
   --secondary: #f38ba8;
   --secondary-glow: rgba(243, 139, 168, 0.3);
+  --text-on-primary: #1e1e2e;
+  --text-on-active: var(--text-main);
 }
 
 [data-theme='white'] {
@@ -86,6 +93,8 @@
   --primary-glow: rgba(109, 40, 217, 0.2);
   --secondary: #0891b2;
   --secondary-glow: rgba(8, 145, 178, 0.2);
+  --text-on-primary: #ffffff;
+  --text-on-active: var(--text-main);
 }
 
 [data-theme='hacker'] {
@@ -103,6 +112,8 @@
   --primary-glow: rgba(0, 255, 0, 0.5);
   --secondary: #00aa00;
   --secondary-glow: rgba(0, 170, 0, 0.4);
+  --text-on-primary: #000000;
+  --text-on-active: #00ff00;
 }
 
 [data-theme='nature'] {
@@ -120,6 +131,8 @@
   --primary-glow: rgba(76, 175, 80, 0.3);
   --secondary: #8bc34a;
   --secondary-glow: rgba(139, 195, 74, 0.3);
+  --text-on-primary: #ffffff;
+  --text-on-active: var(--text-main);
 }
 
 [data-theme='win98'] {
@@ -137,6 +150,8 @@
   --primary-glow: rgba(0, 0, 128, 0.3);
   --secondary: #008080;
   --secondary-glow: rgba(0, 128, 128, 0.3);
+  --text-on-primary: #ffffff;
+  --text-on-active: #ffffff;
   --font-sans: 'Dotum', 'Gulim', sans-serif;
   --font-mono: 'Fixedsys', monospace;
 }

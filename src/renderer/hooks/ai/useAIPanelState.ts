@@ -7,7 +7,6 @@ export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement
   const [manualMode, setManualMode] = useState<'auto' | 'edit' | 'summary' | 'chat'>('auto')
   const [useContext, setUseContext] = useState(true)
   const [isLogsExpanded, setIsLogsExpanded] = useState(false)
-  const [showSettings, setShowSettings] = useState(false)
   const [gpuName] = useState('')
 
   // 커스텀 이벤트 (우클릭 등)로 텍스트 주입
@@ -42,7 +41,6 @@ export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement
     manualMode, setManualMode,
     useContext, setUseContext,
     isLogsExpanded, setIsLogsExpanded,
-    showSettings, setShowSettings,
     gpuName
   }
 }

@@ -18,6 +18,8 @@ import { ModalManager } from './ModalManager'
 import { type EditorMode, type DocumentSnapshot } from '../../../shared/types'
 import { type AmevaEditor as AppEditor } from '../../editor/amevaBlockSchema'
 import { useNatureThemeColors } from '../../hooks/app/useNatureThemeColors'
+import { GlobalDownloadProgress } from '../download/GlobalDownloadProgress'
+import { useDownloadManager } from '../../hooks/app/useDownloadManager'
 
 export interface AppLayoutProps {
   settings: AppSettings
@@ -40,7 +42,8 @@ export interface AppLayoutProps {
   setShowStatusBar: (show: boolean) => void
   showSidebar: boolean
   setShowSidebar: (show: boolean) => void
-  setIsSettingsOpen: (open: boolean) => void
+  setIsSettingsOpen: (open: boolean, tab?: string) => void
+  settingsInitialTab?: string
   setIsAboutOpen: (open: boolean) => void
   setIsGuideOpen: (open: boolean) => void
   setShowMarketplaceModal: (show: boolean) => void
@@ -188,7 +191,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
     activeRightTab, engineLogs, setEngineLogs, showModelHub, setShowModelHub, refreshModels, importModel,
     downloadStatus, setDownloadStatus, handleScrollToBlock, pendingQueue, removeFromQueue,
     handleToggleRightTab, pipVideoId, setPipVideoId, pipPosition, handlePiPMouseDown, isDiffOpen,
-    setIsDiffOpen, selectedSnapshot, getLineDiff, handleRollback, isSettingsOpen, refreshMcpServers,
+    setIsDiffOpen, selectedSnapshot, getLineDiff, handleRollback, isSettingsOpen, settingsInitialTab, refreshMcpServers,
     isAboutOpen, isGuideOpen, showMarketplaceModal, showPricingModal, exportProgress, setExportProgress,
     exportMinimized, setExportMinimized, toggleExportMinimized, serverRunning, serverPort, setServerPort,
     serverHost, setServerHost, useLocalServer, setUseLocalServer, toggleLocalServer, collaborationLink,
@@ -198,6 +201,9 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
 
   // 🌿 자연산 테마 반응형 컬러 훅 연결
   useNatureThemeColors(settings.theme)
+
+  // 📥 글로벌 다운로드 큐 매니저 구동
+  useDownloadManager()
 
   return (
     <div
@@ -431,6 +437,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
               onScrollToBlock={handleScrollToBlock}
               pendingQueue={pendingQueue}
               removeFromQueue={removeFromQueue}
+              onOpenGlobalSettings={(tab) => setIsSettingsOpen(true, tab)}
             />
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0a0f', padding: '20px', borderLeft: '1px solid rgba(255,255,255,0.05)', userSelect: 'none' }}>
@@ -487,10 +494,13 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
         getLineDiff={getLineDiff}
         handleRollback={handleRollback}
         isSettingsOpen={isSettingsOpen}
-        setIsSettingsOpen={setIsSettingsOpen}
+        settingsInitialTab={settingsInitialTab as any}
+        setIsSettingsOpen={setIsSettingsOpen as any}
         refreshMcpServers={refreshMcpServers}
         settings={settings}
         handleUpdateSettings={handleUpdateSettings}
+        aiSettings={aiSettings}
+        updateAISettings={updateAISettings}
         username={username}
         userColor={userColor}
         setUsername={setUsername}
@@ -580,6 +590,9 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* 하단 글로벌 모델 다운로드 상태창 */}
+      <GlobalDownloadProgress />
 
       <FindReplaceBar
         isOpen={showFindReplace}

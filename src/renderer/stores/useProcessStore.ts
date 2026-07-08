@@ -16,9 +16,15 @@ export const IDLE_EXPORT_PROGRESS: ExportProgress = {
 }
 
 export interface ProcessState {
-  // ── 모델 다운로드 상태 ─────────────────────────────────────────────────────
+  // ── 모델 다운로드 큐 상태 ─────────────────────────────────────────────────────
   downloadStatus: any
   setDownloadStatus: (status: any) => void
+
+  downloadQueue: any[]
+  addDownloadToQueue: (item: any) => void
+  removeDownloadFromQueue: (id: string) => void
+  updateDownloadInQueue: (id: string, updates: any) => void
+  clearCompletedDownloads: () => void
 
   // ── 내보내기 진행 상태 ─────────────────────────────────────────────────────
   exportProgress: ExportProgress
@@ -67,6 +73,24 @@ function loadIsProPlan(): boolean {
 export const useProcessStore = create<ProcessState>((set) => ({
   downloadStatus: null,
   setDownloadStatus: (status) => set({ downloadStatus: status }),
+
+  downloadQueue: [],
+  addDownloadToQueue: (item) =>
+    set((state) => ({ downloadQueue: [...state.downloadQueue, item] })),
+  removeDownloadFromQueue: (id) =>
+    set((state) => ({
+      downloadQueue: state.downloadQueue.filter((q: any) => q.id !== id)
+    })),
+  updateDownloadInQueue: (id, updates) =>
+    set((state) => ({
+      downloadQueue: state.downloadQueue.map((q: any) =>
+        q.id === id ? { ...q, ...updates } : q
+      )
+    })),
+  clearCompletedDownloads: () =>
+    set((state) => ({
+      downloadQueue: state.downloadQueue.filter((q: any) => q.status !== 'completed' && q.status !== 'error')
+    })),
 
   exportProgress: IDLE_EXPORT_PROGRESS,
   setExportProgress: (progress) => set({ exportProgress: progress }),

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { X, Check, Award, ShieldAlert, Sparkles, Shield, Key, Network } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Check, Award, Sparkles, Shield, Key, Network } from 'lucide-react'
 import * as ipc from '../services/ipc/electronApiAdapter'
 
 interface PricingModalProps {
@@ -58,13 +58,14 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(10, 10, 12, 0.82)',
+        background: 'var(--bg-glass-active)',
         backdropFilter: 'blur(20px)',
         display: 'flex',
         alignItems: 'center',
@@ -74,18 +75,19 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
       }}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '840px',
           height: '560px',
-          background: 'linear-gradient(145deg, #16161a 0%, #0d0d0f 100%)',
-          border: '1px solid rgba(139, 92, 246, 0.25)',
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border-muted)',
           borderRadius: '16px',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.7), 0 0 40px rgba(139,92,246,0.1)',
+          boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 40px color-mix(in srgb, var(--primary) 10%, transparent)',
           overflow: 'hidden',
           position: 'relative',
-          color: '#f8fafc',
+          color: 'var(--text-main)',
           fontFamily: 'var(--font-sans)'
         }}
       >
@@ -141,8 +143,8 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
           <div
             style={{
               flex: 1,
-              background: 'rgba(255, 255, 255, 0.01)',
-              border: '1px solid rgba(255, 255, 255, 0.04)',
+              background: 'color-mix(in srgb, var(--bg-main) 50%, transparent)',
+              border: '1px solid var(--border-muted)',
               borderRadius: '12px',
               padding: '18px',
               display: 'flex',
@@ -208,9 +210,9 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
           <div
             style={{
               flex: 1,
-              background: 'linear-gradient(180deg, rgba(168, 85, 247, 0.05) 0%, rgba(0, 0, 0, 0) 100%)',
-              border: '1px solid rgba(168, 85, 247, 0.4)',
-              boxShadow: '0 0 15px rgba(168, 85, 247, 0.08)',
+              background: 'linear-gradient(180deg, color-mix(in srgb, var(--primary) 5%, transparent) 0%, transparent 100%)',
+              border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)',
+              boxShadow: '0 0 15px color-mix(in srgb, var(--primary) 8%, transparent)',
               borderRadius: '12px',
               padding: '18px',
               display: 'flex',
@@ -229,7 +231,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
               POPULAR
             </div>
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#a855f7', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 PRO PLAN <Sparkles size={11} />
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', margin: '6px 0 12px' }}>

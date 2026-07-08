@@ -34,7 +34,7 @@ export function WelcomeBanner({
         overflow: 'hidden',
       }}>
         <div style={{ zIndex: 2 }}>
-          <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px 0', background: 'linear-gradient(90deg, #a78bfa, #fdba74)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 6px 0', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
             🚀 AMEVA Workstation Guide Book
           </h1>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.5 }}>
@@ -55,7 +55,10 @@ export function WelcomeBanner({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+              background: 'var(--primary)',
+              color: 'var(--text-on-primary)',
+              boxShadow: '0 4px 12px var(--primary-glow)',
+              border: 'none',
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}
@@ -74,9 +77,9 @@ export function WelcomeBanner({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#fff',
+              background: 'var(--bg-glass-active)',
+              border: '1px solid var(--border-muted)',
+              color: 'var(--text-on-active)',
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}
@@ -95,9 +98,9 @@ export function WelcomeBanner({
               display: 'flex',
               alignItems: 'center',
               gap: '6px',
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#fff',
+              background: 'var(--bg-glass-active)',
+              border: '1px solid var(--border-muted)',
+              color: 'var(--text-on-active)',
               cursor: 'pointer',
               transition: 'all 0.2s',
             }}

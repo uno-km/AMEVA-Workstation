@@ -1,15 +1,12 @@
 
-import React, { useRef } from 'react'
+import { useRef } from 'react'
 import { FileText, Wand2, Languages, Expand, Lightbulb } from 'lucide-react'
 import { useAIPanelLogic } from '../hooks/ai/useAIPanelLogic'
 import { AIChatList } from './ai-panel/AIChatList'
 import { AIPanelHeader } from './ai/AIPanelHeader'
-import { AISettingsPanel } from './ai/AISettingsPanel'
 import { AIInputBar } from './ai/AIInputBar'
 import { AIWelcomeScreen } from './ai/AIWelcomeScreen'
-import { AILogDrawer } from './ai/AILogDrawer'
 import { AIDownloadProgress } from './ai/AIDownloadProgress'
-import { AIModelHubModal } from './ai/AIModelHubModal'
 import { AIInputContextBar } from './ai/AIInputContextBar'
 import { AIDocumentOutline } from './ai/AIDocumentOutline'
 import { AIPluginViews } from './ai/AIPluginViews'
@@ -27,13 +24,8 @@ export function AIPanel(props: any) {
     input, setInput,
     manualMode, setManualMode,
     useContext, setUseContext,
-    isLogsExpanded, setIsLogsExpanded,
-    showSettings, setShowSettings,
     gpuName,
-    isKeySaved,
-    textareaRef, messagesContainerRef, messagesEndRef, logContainerRef, logEndRef,
-    handleSaveKey, handleDeleteKey, handleApiKeyChange,
-    handleDownloadModel,
+    textareaRef, messagesContainerRef, messagesEndRef,
     handleSend, handleKeyDown, handleQuickAction
   } = useAIPanelLogic(props)
 
@@ -44,15 +36,13 @@ export function AIPanel(props: any) {
     onApplySuggestion, onUpdateDiffState,
     onApplyInsertSuggestion, onUpdateInsertSuggestionStatus,
     blocks, activeTab = 'ai',
-    showModelHub, setShowModelHub,
     downloadStatus,
     taggedBlocks, setTaggedBlocks,
     pendingQueue, removeFromQueue,
-    importModel,
+    onOpenGlobalSettings,
   } = props
 
-  const chatContainerRef = useRef<HTMLDivElement | null>(null)
-  const resizeRef = useRef<HTMLDivElement | null>(null)
+
 
   if (!isOpen) return null
   const isWhiteTheme = settings.theme === 'white'
@@ -66,29 +56,14 @@ export function AIPanel(props: any) {
       fontFamily: 'var(--font-sans)', zIndex: 100, transition: 'width 0.3s ease'
     }}>
       <AIPanelHeader 
-        title={settings.apiType === 'wasm' ? 'Local Edge' : 'Cloud API'}
-        providerLabel={settings.apiProvider === 'gemini' ? 'Google Gemini' : settings.apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT'}
+        title={settings.apiType === 'wasm' ? 'Local Edge' : settings.apiType === 'local' ? 'Native Core' : settings.apiType === 'ollama' ? 'Ollama' : 'Cloud API'}
+        providerLabel={settings.apiType === 'api' ? (settings.apiProvider === 'gemini' ? 'Google Gemini' : settings.apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT') : (settings.apiType === 'local' ? 'Llama.cpp' : settings.apiType === 'ollama' ? 'Local Server' : 'WebGPU')}
         modelLabel={displayModelLabel}
         isGenerating={isGenerating}
-        showSettings={showSettings}
-        onOpenSettings={() => setShowSettings(!showSettings)}
+        onOpenSettings={() => onOpenGlobalSettings?.('AIEngine')}
         onClearMessages={props.onClear}
         onClose={onClose}
       />
-
-      {showSettings && (
-        <AISettingsPanel
-          settings={settings}
-          onUpdateSettings={props.onUpdateSettings}
-          models={models}
-          isKeySaved={isKeySaved}
-          handleApiKeyChange={handleApiKeyChange}
-          handleSaveKey={handleSaveKey}
-          handleDeleteKey={handleDeleteKey}
-          onClose={() => setShowSettings(false)}
-          setShowModelHub={setShowModelHub}
-        />
-      )}
 
       {activeTab === 'ai' && (
         <>
@@ -151,15 +126,6 @@ export function AIPanel(props: any) {
       {activeTab !== 'ai' && activeTab !== 'outline' && (
         <AIPluginViews activeTab={activeTab} />
       )}
-
-      <AIModelHubModal 
-        show={showModelHub} 
-        onClose={() => setShowModelHub?.(false)} 
-        models={models} 
-        onDownload={handleDownloadModel} 
-        downloadStatus={downloadStatus} 
-        importModel={importModel} 
-      />
     </div>
   )
 }

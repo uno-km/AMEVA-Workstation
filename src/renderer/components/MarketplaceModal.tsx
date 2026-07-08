@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import type { PluginMetadata, MarketplaceModalProps } from './marketplace/types'
 import { MarketplaceHeader } from './marketplace/MarketplaceHeader'
 import { MarketplaceToolbar } from './marketplace/MarketplaceToolbar'
@@ -126,13 +126,14 @@ export function MarketplaceModal({
 
   return (
     <div
+      onClick={onClose}
       style={{
         position: 'fixed',
         top: 0,
         left: 0,
         right: 0,
         bottom: 0,
-        background: 'rgba(10, 10, 12, 0.75)',
+        background: 'var(--bg-glass-active)',
         backdropFilter: 'blur(16px)',
         display: 'flex',
         alignItems: 'center',
@@ -141,11 +142,12 @@ export function MarketplaceModal({
       }}
     >
       <div
+        onClick={(e) => e.stopPropagation()}
         style={{
           width: '560px',
           height: '580px',
-          background: '#18181c',
-          border: '1px solid #2e2e38',
+          background: 'var(--bg-panel)',
+          border: '1px solid var(--border-muted)',
           borderRadius: '12px',
           display: 'flex',
           flexDirection: 'column',
@@ -268,10 +270,10 @@ export function MarketplaceModal({
           width: 6px;
         }
         .marketplace-scroll::-webkit-scrollbar-track {
-          background: #18181c;
+          background: transparent;
         }
         .marketplace-scroll::-webkit-scrollbar-thumb {
-          background: #2e2e38;
+          background: var(--border-muted);
           border-radius: 3px;
         }
         .marketplace-scroll::-webkit-scrollbar-thumb:hover {

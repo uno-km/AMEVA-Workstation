@@ -7,8 +7,6 @@ let activeDownloadRequest: any = null
 // [SEC-W-003] 허용 다운로드 호스트 화이트리스트
 const ALLOWED_DOWNLOAD_HOSTS = [
   'huggingface.co',
-  'cdn-lfs.huggingface.co',
-  'cdn-lfs-us-1.huggingface.co',
   'cdn.ollama.ai',
   'ollama.ai',
   'github.com',
@@ -49,7 +47,11 @@ export function registerDownloadModelHandler(): void {
       if (parsedUrl.protocol !== 'https:') {
         return { success: false, error: '보안 정책: HTTPS URL만 허용됩니다.' }
       }
-      if (!ALLOWED_DOWNLOAD_HOSTS.includes(parsedUrl.hostname)) {
+      if (
+        !ALLOWED_DOWNLOAD_HOSTS.includes(parsedUrl.hostname) &&
+        !parsedUrl.hostname.endsWith('.huggingface.co') &&
+        !parsedUrl.hostname.endsWith('.hf.co')
+      ) {
         return { success: false, error: `보안 정책: 허용되지 않은 다운로드 호스트입니다. (${parsedUrl.hostname})` }
       }
 

@@ -83,7 +83,7 @@ export default function App() {
   const { handleExport } = useAppExport(editor)
 
   const {
-    isSettingsOpen, setIsSettingsOpen, isAboutOpen, setIsAboutOpen,
+    isSettingsOpen, setIsSettingsOpen, settingsInitialTab, isAboutOpen, setIsAboutOpen,
     isGuideOpen, setIsGuideOpen, isDiffOpen, setIsDiffOpen,
     showMarketplaceModal, setShowMarketplaceModal,
     showPricingModal, setShowPricingModal, showModelHub, setShowModelHub,
@@ -243,7 +243,7 @@ export default function App() {
       editorMode={editorMode} handleSwitchMode={handleSwitchMode}
       showStatusBar={showStatusBar} setShowStatusBar={setShowStatusBar}
       showSidebar={showSidebar} setShowSidebar={setShowSidebar}
-      setIsSettingsOpen={setIsSettingsOpen} setIsAboutOpen={setIsAboutOpen}
+      isSettingsOpen={isSettingsOpen} setIsSettingsOpen={setIsSettingsOpen} settingsInitialTab={settingsInitialTab} setIsAboutOpen={setIsAboutOpen}
       setIsGuideOpen={setIsGuideOpen} setShowMarketplaceModal={setShowMarketplaceModal}
       setShowPricingModal={setShowPricingModal} isProPlan={isProPlan}
       sidebarWidth={sidebarWidth} isSidebarReady={isSidebarReady}
@@ -284,7 +284,7 @@ export default function App() {
       handlePiPMouseDown={handlePiPMouseDown} isDiffOpen={isDiffOpen}
       setIsDiffOpen={setIsDiffOpen} selectedSnapshot={selectedSnapshot}
       getLineDiff={getLineDiff} handleRollback={handleRollback}
-      isSettingsOpen={isSettingsOpen} refreshMcpServers={refreshMcpServers}
+      refreshMcpServers={refreshMcpServers}
       isAboutOpen={isAboutOpen} isGuideOpen={isGuideOpen}
       showMarketplaceModal={showMarketplaceModal} showPricingModal={showPricingModal}
       exportProgress={exportProgress} setExportProgress={setExportProgress}

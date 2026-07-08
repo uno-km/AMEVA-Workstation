@@ -1,4 +1,3 @@
-import React from 'react'
 
 interface SaaSPluginCardProps {
   id: string
@@ -23,8 +22,8 @@ export function SaaSPluginCard({
     <div
       style={{
         padding: '14px 16px',
-        background: 'linear-gradient(135deg, #130f1e 0%, #0f0f11 100%)',
-        border: '1px dashed rgba(139, 92, 246, 0.25)',
+        background: 'linear-gradient(135deg, color-mix(in srgb, var(--primary) 5%, var(--bg-main)) 0%, var(--bg-main) 100%)',
+        border: '1px dashed color-mix(in srgb, var(--primary) 25%, transparent)',
         borderRadius: '8px',
         display: 'flex',
         alignItems: 'center',
@@ -34,26 +33,26 @@ export function SaaSPluginCard({
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = 'var(--primary)'
-        e.currentTarget.style.boxShadow = '0 0 8px rgba(139,92,246,0.2)'
+        e.currentTarget.style.boxShadow = '0 0 8px color-mix(in srgb, var(--primary) 20%, transparent)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.25)'
+        e.currentTarget.style.borderColor = 'color-mix(in srgb, var(--primary) 25%, transparent)'
         e.currentTarget.style.boxShadow = 'none'
       }}
     >
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#f8fafc' }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: 'var(--text-main)' }}>
             👑 {name}
           </span>
-          <span style={{ fontSize: '9px', color: 'var(--primary)', background: 'rgba(139,92,246,0.1)', padding: '1px 5px', borderRadius: '4px' }}>
+          <span style={{ fontSize: '9px', color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', padding: '1px 5px', borderRadius: '4px' }}>
             v{version}
           </span>
           <span style={{
             fontSize: '9px',
-            color: '#a855f7',
-            background: 'rgba(168,85,247,0.15)',
-            border: '1px solid rgba(168,85,247,0.2)',
+            color: 'var(--primary)',
+            background: 'color-mix(in srgb, var(--primary) 15%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)',
             padding: '1px 5px',
             borderRadius: '4px',
             textTransform: 'uppercase',
@@ -76,8 +75,8 @@ export function SaaSPluginCard({
           fontSize: '11px',
           fontWeight: 'bold',
           cursor: 'pointer',
-          background: isEnabled ? 'rgba(168,85,247,0.2)' : '#1c1c24',
-          border: isEnabled ? '1px solid rgba(168,85,247,0.4)' : '1px solid #2e2e38',
+          background: isEnabled ? 'color-mix(in srgb, var(--primary) 20%, transparent)' : 'var(--bg-panel)',
+          border: isEnabled ? '1px solid color-mix(in srgb, var(--primary) 40%, transparent)' : '1px solid var(--border-muted)',
           color: isEnabled ? 'var(--primary)' : 'var(--text-muted)',
           display: 'flex',
           alignItems: 'center',

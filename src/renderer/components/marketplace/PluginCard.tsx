@@ -1,4 +1,3 @@
-import React from 'react'
 import { Check } from 'lucide-react'
 import type { PluginMetadata } from './types'
 
@@ -19,8 +18,8 @@ export function PluginCard({
     <div
       style={{
         padding: '14px 16px',
-        background: '#0f0f11',
-        border: '1px solid #2e2e38',
+        background: 'var(--bg-main)',
+        border: '1px solid var(--border-muted)',
         borderRadius: '8px',
         display: 'flex',
         alignItems: 'center',
@@ -30,19 +29,19 @@ export function PluginCard({
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = 'var(--primary)'
-        e.currentTarget.style.boxShadow = '0 0 8px rgba(139,92,246,0.1)'
+        e.currentTarget.style.boxShadow = '0 0 8px color-mix(in srgb, var(--primary) 10%, transparent)'
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = '#2e2e38'
+        e.currentTarget.style.borderColor = 'var(--border-muted)'
         e.currentTarget.style.boxShadow = 'none'
       }}
     >
       <div style={{ flex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
-          <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: '#f8fafc' }}>
+          <span style={{ fontSize: '12.5px', fontWeight: 'bold', color: 'var(--text-main)' }}>
             {p.name}
           </span>
-          <span style={{ fontSize: '9px', color: 'var(--text-muted)', background: '#1c1c24', padding: '1px 5px', borderRadius: '4px' }}>
+          <span style={{ fontSize: '9px', color: 'var(--text-muted)', background: 'var(--bg-panel)', padding: '1px 5px', borderRadius: '4px' }}>
             v{p.version}
           </span>
           <span style={{

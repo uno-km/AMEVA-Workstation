@@ -34,7 +34,7 @@ export function AIWelcomeScreen({ QUICK_ACTIONS, isAvailable, onAction }: any) {
               display: 'flex', alignItems: 'center', gap: '8px',
               padding: '10px 12px', borderRadius: '10px',
               background: 'var(--bg-glass-active)', border: '1px solid var(--border-muted)',
-              color: 'var(--text-main)', cursor: isAvailable ? 'pointer' : 'not-allowed',
+              color: 'var(--text-on-active)', cursor: isAvailable ? 'pointer' : 'not-allowed',
               opacity: isAvailable ? 1 : 0.5,
               fontSize: '12px', textAlign: 'left', transition: 'all 0.2s',
             }}

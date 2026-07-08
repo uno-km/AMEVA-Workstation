@@ -8,6 +8,7 @@ import { MarketplaceModal } from '../MarketplaceModal'
 import { PricingModal } from '../PricingModal'
 import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
 import { type DocumentSnapshot, type ExportProgress } from '../../../shared/types'
+import type { AISettings } from '../../types/aiTypes'
 
 export interface ModalManagerProps {
   isDiffOpen: boolean
@@ -17,10 +18,13 @@ export interface ModalManagerProps {
   getLineDiff: any
   handleRollback: (content: string) => void
   isSettingsOpen: boolean
+  settingsInitialTab?: any
   setIsSettingsOpen: (open: boolean) => void
   refreshMcpServers: () => void
   settings: AppSettings
   handleUpdateSettings: (newSettings: Partial<AppSettings>) => void
+  aiSettings: AISettings
+  updateAISettings: (settings: Partial<AISettings>) => void
   username: string
   userColor: string
   setUsername: (name: string) => void
@@ -53,10 +57,13 @@ export function ModalManager({
   getLineDiff,
   handleRollback,
   isSettingsOpen,
+  settingsInitialTab,
   setIsSettingsOpen,
   refreshMcpServers,
   settings,
   handleUpdateSettings,
+  aiSettings,
+  updateAISettings,
   username,
   userColor,
   setUsername,
@@ -92,12 +99,15 @@ export function ModalManager({
       />
       <SettingsModal
         isOpen={isSettingsOpen}
+        initialTab={settingsInitialTab}
         onClose={() => {
           setIsSettingsOpen(false)
           refreshMcpServers()
         }}
         settings={settings}
         onUpdateSettings={handleUpdateSettings}
+        aiSettings={aiSettings}
+        onUpdateAISettings={updateAISettings}
         username={username}
         userColor={userColor}
         onUpdateUser={(name, color) => {

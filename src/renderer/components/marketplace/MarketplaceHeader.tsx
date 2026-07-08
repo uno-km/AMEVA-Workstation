@@ -1,4 +1,3 @@
-import React from 'react'
 import { Layers, RefreshCw, X } from 'lucide-react'
 
 interface MarketplaceHeaderProps {
@@ -12,7 +11,7 @@ export function MarketplaceHeader({ onRefresh, loading, onClose }: MarketplaceHe
     <div
       style={{
         padding: '16px 20px',
-        borderBottom: '1px solid #2e2e38',
+        borderBottom: '1px solid var(--border-muted)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -20,7 +19,7 @@ export function MarketplaceHeader({ onRefresh, loading, onClose }: MarketplaceHe
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <Layers size={18} style={{ color: 'var(--primary)' }} />
-        <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#f8fafc', letterSpacing: '0.5px' }}>
+        <span style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-main)', letterSpacing: '0.5px' }}>
           Marketplace
         </span>
       </div>

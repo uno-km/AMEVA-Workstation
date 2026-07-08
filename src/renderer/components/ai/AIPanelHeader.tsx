@@ -1,14 +1,11 @@
-import React from 'react'
+
 import { Settings2, X, Sparkles } from 'lucide-react'
 
 export interface AIPanelHeaderProps {
   title: string
   providerLabel: string
   modelLabel: string
-  isGenerating: boolean
-  showSettings: boolean
   onOpenSettings: () => void
-  onClearMessages: () => void
   onClose?: () => void
 }
 
@@ -16,10 +13,7 @@ export function AIPanelHeader({
   title,
   providerLabel,
   modelLabel,
-  isGenerating,
-  showSettings,
   onOpenSettings,
-  onClearMessages,
   onClose
 }: AIPanelHeaderProps) {
   return (
@@ -51,10 +45,11 @@ export function AIPanelHeader({
           <span style={{
             fontSize: '9px',
             padding: '2px 6px',
-            background: 'var(--bg-glass-active)',
+            background: 'color-mix(in srgb, var(--primary) 15%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--primary) 40%, transparent)',
             borderRadius: '4px',
-            color: 'var(--primary)',
-            fontWeight: 600,
+            color: 'var(--text-main)',
+            fontWeight: 700,
             whiteSpace: 'nowrap',
           }}>
             {title}
@@ -75,7 +70,7 @@ export function AIPanelHeader({
         <button
           onClick={onOpenSettings}
           style={{
-            background: showSettings ? 'var(--bg-glass-active)' : 'transparent',
+            background: 'transparent',
             border: 'none', cursor: 'pointer',
             color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
             padding: '4px', borderRadius: '5px', transition: 'all 0.15s',
