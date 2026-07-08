@@ -1,10 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react'
-import {
-  X, Settings, Sliders, Monitor, Move,
-  Bot, ToyBrick, User, Shield, Keyboard, ShieldAlert, Key, Cpu
-} from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Settings, Sliders, Monitor, Move, Bot, ToyBrick, User, Shield, Keyboard, ShieldAlert, Key, Cpu } from 'lucide-react'
 import * as ipc from '../services/ipc/electronApiAdapter'
-import { useSettingsModalResize } from '../hooks/app/useSettingsModalResize'
+import { FreeModal } from './ui/modals/FreeModal'
 import { SettingsTabCredentials } from './settings/SettingsTabCredentials'
 import { SettingsTabMCP } from './settings/SettingsTabMCP'
 import { SettingsTabHotkeys } from './settings/SettingsTabHotkeys'
@@ -85,11 +82,6 @@ export function SettingsModal({
   const [isAIDirty, setIsAIDirty] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
 
-  // 1. 드래그 가능한 포지션 상태
-  const [pos, setPos] = useState({ x: 100, y: 100 })
-  const [isDragging, setIsDragging] = useState(false)
-  const dragStart = useRef({ x: 0, y: 0 })
-
   // 2. 활성 탭 상태 (기본 General 또는 initialTab)
   const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'General')
 
@@ -137,7 +129,6 @@ export function SettingsModal({
   })
   const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
 
-  const { modalSize, handleResizeMouseDown } = useSettingsModalResize()
 
   const isUserDirty = tempName !== username || tempColor !== userColor
   const isAnyDirty = isAppDirty || isAIDirty || isUserDirty
@@ -242,34 +233,6 @@ export function SettingsModal({
     })
   }
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('.resize-handle')) return
-    setIsDragging(true)
-    dragStart.current = { x: e.clientX - pos.x, y: e.clientY - pos.y }
-  }
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging) {
-        setPos({
-          x: e.clientX - dragStart.current.x,
-          y: e.clientY - dragStart.current.y,
-        })
-      }
-    }
-    const handleMouseUp = () => {
-      setIsDragging(false)
-    }
-
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove)
-      window.addEventListener('mouseup', handleMouseUp)
-    }
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove)
-    }
-  }, [isDragging])
 
   const themes: { id: AppSettings['theme']; label: string; previewColor: string }[] = [
     { id: 'dark', label: 'Dark (Antigravity)', previewColor: '#0a0a0f' },
@@ -293,73 +256,15 @@ export function SettingsModal({
   }
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        left: `${pos.x}px`,
-        top: `${pos.y}px`,
-        width: `${modalSize.width}px`,
-        height: `${modalSize.height}px`,
-        borderRadius: '12px',
-        border: '1px solid var(--border-muted)',
-        boxShadow: '0 25px 60px rgba(0,0,0,0.65)',
-        zIndex: 10000,
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        backgroundColor: 'var(--bg-main)',
-        backdropFilter: 'blur(20px)',
-        color: 'var(--text-main)',
-        userSelect: 'none',
-      }}
+    <FreeModal
+      isOpen={isOpen}
+      onClose={handleCancel}
+      title="AMEVA Workstation Settings"
+      icon={<Settings size={18} />}
+      initialWidth={820}
+      initialHeight={580}
+      hideHeader
     >
-      {/* 1. 최상단 헤더 */}
-      <div
-        onMouseDown={handleMouseDown}
-        style={{
-          padding: '12px 18px',
-          borderBottom: '1px solid var(--border-muted)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: 'var(--bg-glass-active)',
-          cursor: isDragging ? 'grabbing' : 'grab',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-on-active)' }}>
-          <Settings size={15} />
-          <h3 style={{ fontSize: '12.5px', fontWeight: 800, margin: 0, letterSpacing: '0.3px' }}>
-            AMEVA Workstation Preferences
-          </h3>
-          <span style={{
-            fontSize: '8px',
-            fontWeight: 800,
-            padding: '2px 6px',
-            borderRadius: '4px',
-            background: isProPlan ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.04)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            color: '#fff',
-            letterSpacing: '0.5px',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '3px'
-          }}>
-            {isProPlan ? '👑 PRO PLAN' : 'FREE PLAN'}
-          </span>
-        </div>
-        <button
-          onClick={onClose}
-          style={{
-            background: 'transparent', border: 'none', color: 'var(--text-on-active)',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '4px',
-          }}
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      {/* 2. 바디 영역 (좌측 탭 리스트 + 우측 디테일 창 분할) */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         
         {/* 좌측 사이드바 탭 */}
@@ -513,42 +418,9 @@ export function SettingsModal({
           {isAnyDirty ? '적용 및 저장' : '닫기'}
         </button>
       </div>
-
-      {/* 📐 리사이즈 핸들 레이어 */}
-      {/* 우측 핸들 */}
-      <div
-        className="resize-handle"
-        onMouseDown={(e) => handleResizeMouseDown('e', e)}
-        style={{
-          position: 'absolute', right: 0, top: 0, width: '6px', height: '100%',
-          cursor: 'ew-resize', zIndex: 100
-        }}
-      />
-      {/* 하단 핸들 */}
-      <div
-        className="resize-handle"
-        onMouseDown={(e) => handleResizeMouseDown('s', e)}
-        style={{
-          position: 'absolute', left: 0, bottom: 0, width: '100%', height: '6px',
-          cursor: 'ns-resize', zIndex: 100
-        }}
-      />
-      {/* 우하단 모서리 (대각선) 핸들 */}
-      <div
-        className="resize-handle"
-        onMouseDown={(e) => handleResizeMouseDown('se', e)}
-        style={{
-          position: 'absolute', right: 0, bottom: 0, width: '12px', height: '12px',
-          cursor: 'nwse-resize', zIndex: 101,
-          background: 'linear-gradient(135deg, transparent 40%, var(--primary) 60%)',
-          opacity: 0.7,
-          borderRadius: '0 0 12px 0'
-        }}
-      />
-      
       {/* 🚀 Transition Overlay */}
       <SettingsTransitionOverlay isVisible={isApplying} />
-    </div>
+    </FreeModal>
   )
 }
 

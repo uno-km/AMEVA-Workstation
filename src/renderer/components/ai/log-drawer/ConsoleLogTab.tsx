@@ -61,7 +61,7 @@ export function ConsoleLogTab() {
   return (
     <>
       <div 
-        className="win98-scrollbar win98-font"
+        className="win98-font"
         ref={logContainerRef}
         onContextMenu={handleContextMenu}
         style={{
@@ -70,7 +70,7 @@ export function ConsoleLogTab() {
           fontSize: '11.5px', lineHeight: '1.5', whiteSpace: 'pre-wrap',
           userSelect: 'text',
           cursor: 'text',
-          color: 'var(--text-main)'
+          color: 'var(--term-text)'
         }}
       />
       

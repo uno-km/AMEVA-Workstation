@@ -1,5 +1,5 @@
-import React from 'react'
-import { X, Award, Shield, Cpu, ExternalLink } from 'lucide-react'
+import { Award, Cpu, ExternalLink } from 'lucide-react'
+import { StrictModal } from './ui/modals/StrictModal'
 
 interface AboutModalProps {
   isOpen: boolean
@@ -11,59 +11,23 @@ export function AboutModal({ isOpen, onClose, onOpenGithub }: AboutModalProps) {
   if (!isOpen) return null
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: 'var(--bg-deep)',
-        opacity: 0.95,
-        backdropFilter: 'blur(12px)',
-        zIndex: 10001,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div
-        className="glass-panel glow-primary"
-        style={{
-          width: '90%',
-          maxWidth: '560px',
-          borderRadius: '16px',
-          border: '1px solid var(--border-glow)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 25px 60px rgba(139, 92, 246, 0.35)',
-          animation: 'scaleUp 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          color: 'var(--text-main)',
-        }}
-      >
-        {/* 헤더 */}
-        <div
-          style={{
-            padding: '20px 24px',
-            borderBottom: '1px solid var(--border-muted)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: 'var(--bg-glass-active)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
-            <Award size={20} />
-            <h3 style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'var(--font-sans)' }}>About AMEVA Ecosystem</h3>
-          </div>
-          <button
-            onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}
-          >
-            <X size={20} />
+    <StrictModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="About AMEVA Ecosystem"
+      icon={<Award size={20} />}
+      width={560}
+      footer={
+        <>
+          <button className="btn btn-glass" style={{ fontSize: '12px' }} onClick={onOpenGithub}>
+            <ExternalLink size={12} /> Contact Us (Github)
           </button>
-        </div>
+          <button className="btn btn-primary" style={{ padding: '6px 20px', fontSize: '12px' }} onClick={onClose}>
+            닫기
+          </button>
+        </>
+      }
+    >
 
         {/* 바디 */}
         <div style={{ padding: '30px 24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -130,26 +94,6 @@ export function AboutModal({ isOpen, onClose, onOpenGithub }: AboutModalProps) {
             </div>
           </div>
         </div>
-
-        {/* 푸터 */}
-        <div
-          style={{
-            padding: '16px 24px',
-            borderTop: '1px solid var(--border-muted)',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '12px',
-            backgroundColor: 'var(--bg-glass-active)',
-          }}
-        >
-          <button className="btn btn-glass" style={{ fontSize: '12px' }} onClick={onOpenGithub}>
-            <ExternalLink size={12} /> Contact Us (Github)
-          </button>
-          <button className="btn btn-primary" style={{ padding: '6px 20px', fontSize: '12px' }} onClick={onClose}>
-            닫기
-          </button>
-        </div>
-      </div>
-    </div>
+    </StrictModal>
   )
 }

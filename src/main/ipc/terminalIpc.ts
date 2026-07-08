@@ -45,7 +45,11 @@ export function registerTerminalIpc(): void {
       }
 
       // 일반 명령어 실행
-      const { stdout, stderr } = await execAsync(cmd, { cwd: execCwd, shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash' });
+      let finalCmd = cmd;
+      if (process.platform === 'win32') {
+        finalCmd = `chcp 65001 >$null; ${cmd}`;
+      }
+      const { stdout, stderr } = await execAsync(finalCmd, { cwd: execCwd, shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash' });
       return { stdout, stderr, newCwd: execCwd };
     } catch (error: any) {
       return { stdout: '', stderr: error.message || String(error), newCwd: currentCwd };

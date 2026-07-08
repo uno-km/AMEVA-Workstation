@@ -37,6 +37,20 @@
   
   --text-on-primary: #ffffff;
   --text-on-active: var(--text-main);
+  
+  /* 전역 스크롤바 추상화 객체 */
+  --sb-w: 6px;
+  --sb-track: transparent;
+  --sb-thumb: color-mix(in srgb, var(--primary) 30%, transparent);
+  --sb-thumb-hover: color-mix(in srgb, var(--primary) 60%, transparent);
+  --sb-thumb-border: none;
+  --sb-thumb-border-br: none; /* bottom-right for win98 3d effect */
+  --sb-thumb-radius: 99px;
+  --sb-btn-display: none;
+  
+  /* 터미널(콘솔) 전용 색상 */
+  --term-bg: transparent;
+  --term-text: var(--text-main);
 }
 
 /* 테마 스위칭 지원 */
@@ -154,4 +168,18 @@
   --text-on-active: #ffffff;
   --font-sans: 'Dotum', 'Gulim', sans-serif;
   --font-mono: 'Fixedsys', monospace;
+  
+  /* Win98 전용 레트로 스크롤바 오버라이딩 */
+  --sb-w: 16px;
+  --sb-track: #dfdfdf;
+  --sb-thumb: #c0c0c0;
+  --sb-thumb-hover: #c0c0c0;
+  --sb-thumb-border: 1px solid #ffffff;
+  --sb-thumb-border-br: 1px solid #000000;
+  --sb-thumb-radius: 0px;
+  --sb-btn-display: block;
+  
+  /* Win98 전용 콘솔(MS-DOS 스타일) 색상 */
+  --term-bg: #000000;
+  --term-text: #c0c0c0;
 }

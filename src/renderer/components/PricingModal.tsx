@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { X, Check, Award, Sparkles, Shield, Key, Network } from 'lucide-react'
+import { Check, Award, Sparkles, Shield, Key, Network } from 'lucide-react'
+import { StrictModal } from './ui/modals/StrictModal'
 import * as ipc from '../services/ipc/electronApiAdapter'
 
 interface PricingModalProps {
@@ -57,77 +58,16 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
   }
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'var(--bg-glass-active)',
-        backdropFilter: 'blur(20px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 11000,
-        userSelect: 'none'
-      }}
+    <StrictModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="AMEVA Workstation Subscription Plans & Capability Matrix"
+      icon={<Award size={18} />}
+      width={840}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '840px',
-          height: '560px',
-          background: 'var(--bg-panel)',
-          border: '1px solid var(--border-muted)',
-          borderRadius: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 25px 60px rgba(0,0,0,0.5), 0 0 40px color-mix(in srgb, var(--primary) 10%, transparent)',
-          overflow: 'hidden',
-          position: 'relative',
-          color: 'var(--text-main)',
-          fontFamily: 'var(--font-sans)'
-        }}
-      >
         {/* 장식적 네온 보더라인 */}
         <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '3px', background: 'linear-gradient(90deg, #a855f7, #06b6d4, #10b981)' }} />
 
-        {/* 헤더 */}
-        <div
-          style={{
-            padding: '18px 24px',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Award size={18} style={{ color: 'var(--primary)' }} />
-            <span style={{ fontSize: '13.5px', fontWeight: 800, letterSpacing: '0.5px' }}>
-              AMEVA Workstation Subscription Plans & Capability Matrix
-            </span>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              padding: '4px',
-              transition: 'color 0.15s'
-            }}
-            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
-            onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
-          >
-            <X size={16} />
-          </button>
-        </div>
 
         {/* 바디 (요금제 매트릭스 카드 3개 수평 배치) */}
         <div
@@ -373,8 +313,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: '#86efac' }}>
             <Network size={12} /> WebRTC Dual-audio
           </span>
-        </div>
       </div>
-    </div>
+    </StrictModal>
   )
 }

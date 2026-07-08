@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export function useSettingsModalResize(initialWidth = 820, initialHeight = 580) {
+export function useModalResize(initialWidth = 820, initialHeight = 580) {
   const [modalSize, setModalSize] = useState({ width: initialWidth, height: initialHeight })
 
   const handleResizeMouseDown = (dir: 'e' | 's' | 'se', e: React.MouseEvent) => {

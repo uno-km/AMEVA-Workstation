@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import type { PluginMetadata, MarketplaceModalProps } from './marketplace/types'
-import { MarketplaceHeader } from './marketplace/MarketplaceHeader'
 import { MarketplaceToolbar } from './marketplace/MarketplaceToolbar'
 import { SaaSPluginCard } from './marketplace/SaaSPluginCard'
 import { PluginCard } from './marketplace/PluginCard'
+import { FreeModal } from './ui/modals/FreeModal'
+import { Layers } from 'lucide-react'
 
 export type { PluginMetadata, MarketplaceModalProps }
 
@@ -125,143 +126,123 @@ export function MarketplaceModal({
   ]
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'var(--bg-glass-active)',
-        backdropFilter: 'blur(16px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-      }}
+    <FreeModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Plugin Marketplace"
+      icon={<Layers size={20} />}
+      initialWidth={800}
+      initialHeight={600}
+      headerExtra={
+        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '12px', backgroundColor: 'rgba(168, 85, 247, 0.15)', color: 'var(--primary)' }}>
+          {installedPlugins.length} Installed
+        </span>
+      }
     >
+      <MarketplaceToolbar
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+        categories={categories}
+      />
+
+      {/* 본문 영역 (스크롤바 완비) */}
       <div
-        onClick={(e) => e.stopPropagation()}
+        className="marketplace-scroll"
         style={{
-          width: '560px',
-          height: '580px',
-          background: 'var(--bg-panel)',
-          border: '1px solid var(--border-muted)',
-          borderRadius: '12px',
+          padding: '8px 20px 20px 20px',
+          overflowY: 'auto',
+          flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-          overflow: 'hidden',
+          gap: '10px',
         }}
       >
-        <MarketplaceHeader onRefresh={fetchPlugins} loading={loading} onClose={onClose} />
+        {loading && (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
+            익스텐션 목록을 가져오는 중입니다...
+          </div>
+        )}
 
-        <MarketplaceToolbar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          categories={categories}
-        />
+        {error && (
+          <div
+            style={{
+              padding: '16px',
+              background: 'rgba(239,68,68,0.06)',
+              border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: '8px',
+              color: '#f87171',
+              fontSize: '11px',
+              lineHeight: '1.5',
+              textAlign: 'center',
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-        {/* 본문 영역 (스크롤바 완비) */}
-        <div
-          className="marketplace-scroll"
-          style={{
-            padding: '8px 20px 20px 20px',
-            overflowY: 'auto',
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '10px',
-          }}
-        >
-          {loading && (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
-              익스텐션 목록을 가져오는 중입니다...
-            </div>
-          )}
+        {!loading && !error && filteredPlugins.length === 0 && (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
+            조건에 맞는 플러그인이 없습니다.
+          </div>
+        )}
 
-          {error && (
-            <div
-              style={{
-                padding: '16px',
-                background: 'rgba(239,68,68,0.06)',
-                border: '1px solid rgba(239,68,68,0.2)',
-                borderRadius: '8px',
-                color: '#f87171',
-                fontSize: '11px',
-                lineHeight: '1.5',
-                textAlign: 'center',
-              }}
-            >
-              {error}
-            </div>
-          )}
+        {/* 👑 SaaS Premium Toggles (DuckDuckGo, Python Sandbox, Request Queue) */}
+        {!loading && categories.length > 0 && (() => {
+          const saasItems = [
+            {
+              id: 'webSearch',
+              name: 'DuckDuckGo Web Search API (Pro)',
+              description: 'ReAct 에이전트가 외부 웹 검색(실시간 인터넷 정보 및 뉴스)을 통해 추론하고 결과를 조합할 수 있게 권한을 위임합니다.',
+              type: 'tool' as const,
+              version: '1.2.0'
+            },
+            {
+              id: 'pythonConsole',
+              name: 'Python Sandbox Executor (Pro)',
+              description: '로컬 파이썬 샌드박스를 연동하여 복잡한 수식 연산 및 데이터 처리 알고리즘 코드를 실제 런타임에서 실행해 줍니다.',
+              type: 'tool' as const,
+              version: '2.0.4'
+            },
+            {
+              id: 'requestQueue',
+              name: 'Sequential Request Queue (Pro)',
+              description: '질문을 연달아 우다다닥 보낼 때 취소되지 않고 안전하게 백그라운드 큐 버퍼에 쌓여 차례로 실행해 주는 순차 처리기입니다.',
+              type: 'feature' as const,
+              version: '1.0.1'
+            }
+          ]
 
-          {!loading && !error && filteredPlugins.length === 0 && (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
-              조건에 맞는 플러그인이 없습니다.
-            </div>
-          )}
+          const filteredSaas = saasItems.filter(p => {
+            const matchesCategory = selectedCategory === 'all' || p.type === selectedCategory
+            const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase())
+            return matchesCategory && matchesSearch
+          })
 
-          {/* 👑 SaaS Premium Toggles (DuckDuckGo, Python Sandbox, Request Queue) */}
-          {!loading && categories.length > 0 && (() => {
-            const saasItems = [
-              {
-                id: 'webSearch',
-                name: 'DuckDuckGo Web Search API (Pro)',
-                description: 'ReAct 에이전트가 외부 웹 검색(실시간 인터넷 정보 및 뉴스)을 통해 추론하고 결과를 조합할 수 있게 권한을 위임합니다.',
-                type: 'tool' as const,
-                version: '1.2.0'
-              },
-              {
-                id: 'pythonConsole',
-                name: 'Python Sandbox Executor (Pro)',
-                description: '로컬 파이썬 샌드박스를 연동하여 복잡한 수식 연산 및 데이터 처리 알고리즘 코드를 실제 런타임에서 실행해 줍니다.',
-                type: 'tool' as const,
-                version: '2.0.4'
-              },
-              {
-                id: 'requestQueue',
-                name: 'Sequential Request Queue (Pro)',
-                description: '질문을 연달아 우다다닥 보낼 때 취소되지 않고 안전하게 백그라운드 큐 버퍼에 쌓여 차례로 실행해 주는 순차 처리기입니다.',
-                type: 'feature' as const,
-                version: '1.0.1'
-              }
-            ]
-
-            const filteredSaas = saasItems.filter(p => {
-              const matchesCategory = selectedCategory === 'all' || p.type === selectedCategory
-              const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase())
-              return matchesCategory && matchesSearch
-            })
-
-            return filteredSaas.map(p => (
-              <SaaSPluginCard
-                key={p.id}
-                id={p.id}
-                name={p.name}
-                version={p.version}
-                type={p.type}
-                description={p.description}
-                isEnabled={enabledPlugins[p.id] ?? false}
-                onToggle={handleToggleSaaSPlugin}
-              />
-            ))
-          })()}
-
-          {!loading && !error && filteredPlugins.map((p) => (
-            <PluginCard
+          return filteredSaas.map(p => (
+            <SaaSPluginCard
               key={p.id}
-              plugin={p}
-              isInstalled={installedPlugins.includes(p.id)}
-              isActionLoading={!!actionLoading[p.id]}
-              onToggleInstall={handleToggleInstall}
+              id={p.id}
+              name={p.name}
+              version={p.version}
+              type={p.type}
+              description={p.description}
+              isEnabled={enabledPlugins[p.id] ?? false}
+              onToggle={handleToggleSaaSPlugin}
             />
-          ))}
-        </div>
+          ))
+        })()}
+
+        {!loading && !error && filteredPlugins.map((p) => (
+          <PluginCard
+            key={p.id}
+            plugin={p}
+            isInstalled={installedPlugins.includes(p.id)}
+            isActionLoading={!!actionLoading[p.id]}
+            onToggleInstall={handleToggleInstall}
+          />
+        ))}
       </div>
       
       {/* 슬림 다크 스크롤바 커스텀 주입 */}
@@ -280,6 +261,6 @@ export function MarketplaceModal({
           background: var(--primary);
         }
       `}</style>
-    </div>
+    </FreeModal>
   )
 }

@@ -16,24 +16,39 @@ body {
   user-select: none;
 }
 
-/* 스크롤바 커스터마이징 (초슬림 & 글로우) */
+/* 스크롤바 추상화 (테마별 자동 적용) */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: var(--sb-w);
+  height: var(--sb-w);
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--sb-track);
+  border-left: var(--sb-thumb-border);
+  border-top: var(--sb-thumb-border);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.15);
-  border-radius: 99px;
-  transition: var(--transition-fast);
+  background: var(--sb-thumb);
+  border-radius: var(--sb-thumb-radius);
+  border-left: var(--sb-thumb-border);
+  border-top: var(--sb-thumb-border);
+  border-right: var(--sb-thumb-border-br);
+  border-bottom: var(--sb-thumb-border-br);
+  transition: background 0.15s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.45) !important;
+  background: var(--sb-thumb-hover) !important;
+}
+
+::-webkit-scrollbar-button {
+  display: var(--sb-btn-display);
+  background: var(--sb-thumb);
+  border-left: var(--sb-thumb-border);
+  border-top: var(--sb-thumb-border);
+  border-right: var(--sb-thumb-border-br);
+  border-bottom: var(--sb-thumb-border-br);
 }
 
 /* 네온 글로우 및 애니메이션 유틸리티 */

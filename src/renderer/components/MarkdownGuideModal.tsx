@@ -1,5 +1,5 @@
-import React from 'react'
-import { X, HelpCircle, BookOpen, Key } from 'lucide-react'
+import { Key, BookOpen, HelpCircle } from 'lucide-react'
+import { StrictModal } from './ui/modals/StrictModal'
 
 interface MarkdownGuideModalProps {
   isOpen: boolean
@@ -10,59 +10,14 @@ export function MarkdownGuideModal({ isOpen, onClose }: MarkdownGuideModalProps)
   if (!isOpen) return null
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: 'var(--bg-deep)',
-        opacity: 0.95,
-        backdropFilter: 'blur(12px)',
-        zIndex: 10001,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
+    <StrictModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="AMEVA Markdown Guide"
+      icon={<BookOpen size={20} />}
+      width={700}
+      height="80vh"
     >
-      <div
-        className="glass-panel glow-primary"
-        style={{
-          width: '90%',
-          maxWidth: '700px',
-          height: '80vh',
-          borderRadius: '16px',
-          border: '1px solid var(--border-glow)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 25px 60px rgba(139, 92, 246, 0.35)',
-          color: 'var(--text-main)',
-        }}
-      >
-        {/* 헤더 */}
-        <div
-          style={{
-            padding: '20px 24px',
-            borderBottom: '1px solid var(--border-muted)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            backgroundColor: 'var(--bg-glass-active)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)' }}>
-            <BookOpen size={20} />
-            <h3 style={{ fontSize: '16px', fontWeight: 800, fontFamily: 'var(--font-sans)' }}>AMEVA Markdown Guide</h3>
-          </div>
-          <button
-            onClick={onClose}
-            style={{ background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'pointer' }}
-          >
-            <X size={20} />
-          </button>
-        </div>
 
         {/* 바디 (스크롤 가능) */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -154,8 +109,7 @@ export function MarkdownGuideModal({ isOpen, onClose }: MarkdownGuideModalProps)
           <button className="btn btn-primary" style={{ padding: '6px 20px', fontSize: '12px' }} onClick={onClose}>
             닫기
           </button>
-        </div>
       </div>
-    </div>
+    </StrictModal>
   )
 }

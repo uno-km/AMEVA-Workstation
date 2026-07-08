@@ -51,7 +51,7 @@ export function ConsoleContextMenu({ x, y, onCopy, onPaste, onInsertToBody, onCl
         position: 'fixed',
         top: safeY,
         left: safeX,
-        background: 'var(--bg-panel)',
+        background: 'var(--bg-glass)',
         border: '1px solid var(--border-muted)',
         borderRadius: '6px',
         padding: '4px',

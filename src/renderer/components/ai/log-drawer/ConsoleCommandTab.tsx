@@ -15,6 +15,8 @@ export function ConsoleCommandTab() {
   const [input, setInput] = useState('');
   const [cwd, setCwd] = useState('~/workspace');
   const [isFocused, setIsFocused] = useState(false);
+  const [cmdHistory, setCmdHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
   
   // 컨텍스트 메뉴 상태
@@ -27,9 +29,31 @@ export function ConsoleCommandTab() {
   useEffect(() => scrollToBottom(), [history]);
 
   const handleCommand = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && input.trim()) {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (cmdHistory.length > 0) {
+        const nextIndex = historyIndex > 0 ? historyIndex - 1 : 0;
+        setHistoryIndex(nextIndex);
+        setInput(cmdHistory[nextIndex]);
+      }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (historyIndex < cmdHistory.length - 1) {
+        const nextIndex = historyIndex + 1;
+        setHistoryIndex(nextIndex);
+        setInput(cmdHistory[nextIndex]);
+      } else if (historyIndex === cmdHistory.length - 1) {
+        setHistoryIndex(cmdHistory.length);
+        setInput('');
+      }
+    } else if (e.key === 'Enter' && input.trim()) {
       const cmd = input.trim();
       setInput('');
+      setCmdHistory(prev => {
+        const newHistory = [...prev, cmd];
+        setHistoryIndex(newHistory.length);
+        return newHistory;
+      });
       setHistory(prev => [...prev, { type: 'in', text: `${cwd} $ ${cmd}` }]);
       
       if (cmd === 'clear') {
@@ -73,7 +97,7 @@ export function ConsoleCommandTab() {
 
   return (
     <div 
-      className={`win98-scrollbar win98-font ${isFocused ? 'terminal-focused' : ''}`} 
+      className={`win98-font ${isFocused ? 'terminal-focused' : ''}`} 
       onContextMenu={handleContextMenu}
       style={{ 
         flex: 1, 
@@ -81,20 +105,23 @@ export function ConsoleCommandTab() {
         padding: '12px', 
         fontFamily: "'JetBrains Mono', 'Fira Code', monospace", 
         fontSize: '11.5px', 
-        color: 'var(--text-main)',
+        color: 'var(--term-text)',
         transition: 'box-shadow 0.2s',
         boxShadow: isFocused ? 'inset 0 0 0 1px var(--primary), inset 0 0 10px var(--primary-glow)' : 'none',
         userSelect: 'text',
         cursor: 'text'
       }}
       onClick={() => {
+        if (window.getSelection()?.toString().trim()) {
+          return; // Allow text selection without stealing focus
+        }
         const inputEl = document.getElementById('terminal-input');
         if (inputEl) inputEl.focus();
       }}
     >
       {history.map((item, i) => (
         <div key={i} style={{ 
-          color: item.type === 'err' ? '#fca5a5' : item.type === 'in' ? '#fbbf24' : 'var(--text-main)',
+          color: item.type === 'err' ? '#fca5a5' : item.type === 'in' ? '#fbbf24' : 'var(--term-text)',
           whiteSpace: 'pre-wrap', 
           marginBottom: '4px',
           wordBreak: 'break-all'
@@ -118,7 +145,7 @@ export function ConsoleCommandTab() {
             flex: 1, 
             background: 'transparent', 
             border: 'none', 
-            color: 'var(--text-main)',
+            color: 'var(--term-text)',
             fontFamily: 'inherit', 
             fontSize: 'inherit', 
             outline: 'none',

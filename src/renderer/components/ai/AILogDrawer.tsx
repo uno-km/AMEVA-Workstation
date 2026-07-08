@@ -29,7 +29,7 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
   return (
     <div style={{
       position: 'absolute', bottom: 0, left: 0, right: 0,
-      background: 'var(--bg-panel)', backdropFilter: 'blur(10px)',
+      background: 'var(--bg-glass)', backdropFilter: 'blur(10px)',
       borderTop: '1px solid var(--border-muted)',
       boxShadow: '0 -4px 20px rgba(0,0,0,0.4)',
       transform: isExpanded ? 'translateY(0)' : 'translateY(100%)',
@@ -78,7 +78,7 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
         >
           <div style={{
             width: '100%', height: '100%', borderRadius: '50%',
-            background: 'var(--bg-panel)',
+            background: 'var(--bg-glass)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             color: isHovered ? '#fff' : 'var(--primary)',
             transition: 'background 0.3s ease',
@@ -90,7 +90,7 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
       
       {/* Tab Header */}
       <div style={{
-        padding: '0 12px', background: 'var(--bg-panel)',
+        padding: '0 12px', background: 'var(--bg-glass)',
         borderBottom: '1px solid var(--border-muted)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
         height: '36px'
@@ -107,8 +107,14 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
         </div>
       </div>
       
-      {/* Tab Content */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Drawer Content */}
+      <div style={{ 
+        flex: 1, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        overflow: 'hidden',
+        background: 'var(--term-bg)',
+      }}>
         {activeTab === 'log' ? <ConsoleLogTab /> : <ConsoleCommandTab />}
       </div>
     </div>
