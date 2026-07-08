@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Video, Play, ExternalLink } from 'lucide-react'
 
@@ -19,7 +19,7 @@ export const YoutubeBlockSpec = createReactBlockSpec(
       const { videoId, url, title, description, thumbnail } = block.props
       const [isPlaying, setIsPlaying] = useState(false)
       const [localTitle, setLocalTitle] = useState(title)
-      const [localThumbnail, setLocalThumbnail] = useState(thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''))
+      const [localThumbnail] = useState(thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''))
 
       useEffect(() => {
         if (videoId && title === 'YouTube Video') {

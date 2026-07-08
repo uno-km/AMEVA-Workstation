@@ -85,8 +85,6 @@ export default function App() {
   const { handleExport } = useAppExport(editor)
 
   const {
-    isSettingsOpen, setIsSettingsOpen, settingsInitialTab, isAboutOpen, setIsAboutOpen,
-    isGuideOpen, setIsGuideOpen, isDiffOpen, setIsDiffOpen,
     showMarketplaceModal, setShowMarketplaceModal,
     showPricingModal, setShowPricingModal, showModelHub, setShowModelHub,
     showAIPanel, setShowAIPanel, toggleAIPanel, activeRightTab, setActiveRightTab,
@@ -95,12 +93,12 @@ export default function App() {
     findReplaceMode, isChatFloating, setIsChatFloating,
     hasChatUnread, setHasChatUnread,
     isQuitConfirmOpen, setIsQuitConfirmOpen,
-    isRefreshConfirmOpen, setIsRefreshConfirmOpen
+    isRefreshConfirmOpen, setIsRefreshConfirmOpen,
+    setIsDiffOpen
   } = useUIStore()
 
   const {
-    downloadStatus, setDownloadStatus, exportProgress, setExportProgress,
-    exportMinimized, setExportMinimized, toggleExportMinimized,
+    downloadStatus, setDownloadStatus,
     isProPlan, setIsProPlan, mcpServersState, setMcpServersState,
     editorZoom, browserZoom
   } = useProcessStore()
@@ -251,128 +249,35 @@ export default function App() {
       refreshMcpServers
     }}>
       <AppLayout
-        settings={settings} handleUpdateSettings={handleUpdateSettings}
-        handleInstallPlugin={handleInstallPlugin} handleUninstallPlugin={handleUninstallPlugin}
-        handleOpenGithub={handleOpenGithub} handleCloseApp={handleCloseApp}
-        handleToggleFullscreen={handleToggleFullscreen} handleZoomIn={handleZoomIn}
-        handleZoomOut={handleZoomOut} handleZoomReset={handleZoomReset}
-        handleOpenFile={handleOpenFile} handleSaveFile={handleSaveFile}
-        handleSaveAsFile={handleSaveAsFile} handleExport={handleExport}
-        editorMode={editorMode} handleSwitchMode={handleSwitchMode}
-        showStatusBar={showStatusBar} setShowStatusBar={setShowStatusBar}
-        showSidebar={showSidebar} setShowSidebar={setShowSidebar}
-        isSettingsOpen={isSettingsOpen} setIsSettingsOpen={setIsSettingsOpen} settingsInitialTab={settingsInitialTab} setIsAboutOpen={setIsAboutOpen}
-        setIsGuideOpen={setIsGuideOpen} setShowMarketplaceModal={setShowMarketplaceModal}
-        setShowPricingModal={setShowPricingModal} isProPlan={isProPlan}
-        sidebarWidth={sidebarWidth} isSidebarReady={isSidebarReady}
-        filePath={filePath} currentContent={currentContent} setCurrentContent={setCurrentContent}
-        originalContent={originalContent} lastSavedTime={lastSavedTime}
-        fileOpenMode={fileOpenMode} handleSwitchOpenMode={handleSwitchOpenMode}
-        appendedFiles={appendedFiles} handleSelectAppendedFile={handleSelectAppendedFile}
-        tabs={tabs} activeTabId={activeTabId} handleSelectTab={handleSelectTab}
-        handleCloseTab={handleCloseTab} chatMessages={chatMessages}
-        sendChatMessage={sendChatMessage} clearChatMessages={clearChatMessages}
-        username={username} userColor={userColor} setUserColor={setUserColor}
-        setUsername={setUsername} isChatFloating={isChatFloating}
-        setIsChatFloating={setIsChatFloating} setHasChatUnread={setHasChatUnread}
-        hasChatUnread={hasChatUnread} handleSidebarResizeStart={handleSidebarResizeStart}
-        isSidebarDragging={isSidebarDragging} editorZoom={editorZoom} browserZoom={browserZoom}
-        editor={editor} peers={peers} handleMouseMove={handleMouseMove}
-        updateDragSelection={updateDragSelection} updateBlockHighlight={updateBlockHighlight}
-        editorContainerRef={editorContainerRef} handleStartWelcomeEdit={handleStartWelcomeEdit}
-        handleStartNewDocument={handleStartNewDocument} taggedBlocks={taggedBlocks}
-        customSetTaggedBlocks={customSetTaggedBlocks} setTaggedBlocks={setTaggedBlocks}
-        showAIPanel={showAIPanel} setShowAIPanel={setShowAIPanel}
-        aiPanelWidth={aiPanelWidth} isAIPanelDragging={isAIPanelDragging}
-        handleAIPanelResizeStart={handleAIPanelResizeStart} isAIPanelReady={isAIPanelReady}
-        aiMessages={aiMessages} isGenerating={isGenerating} isAvailable={isAvailable}
-        models={models} aiSettings={aiSettings} generateResponse={generateResponse}
-        abortGeneration={abortGeneration} clearAIHistory={clearAIHistory}
-        updateAISettings={updateAISettings} selectedText={selectedText}
-        setSelectedText={setSelectedText} handleApplySuggestion={handleApplySuggestion}
-        updateMessageDiffState={updateMessageDiffState} handleApplyInsertSuggestion={handleApplyInsertSuggestion}
-        updateInsertSuggestionStatus={updateInsertSuggestionStatus} activeBlockId={activeBlockId}
-        activeRightTab={activeRightTab} setActiveRightTab={setActiveRightTab}
-        engineLogs={engineLogs} setEngineLogs={setEngineLogs} showModelHub={showModelHub}
-        setShowModelHub={setShowModelHub} refreshModels={refreshModels} importModel={importModel}
-        downloadStatus={downloadStatus} setDownloadStatus={setDownloadStatus}
-        handleScrollToBlock={handleScrollToBlock} pendingQueue={pendingQueue}
-        removeFromQueue={removeFromQueue} handleToggleRightTab={handleToggleRightTab}
-        pipVideoId={pipVideoId} setPipVideoId={setPipVideoId} pipPosition={pipPosition}
-        handlePiPMouseDown={handlePiPMouseDown} isDiffOpen={isDiffOpen}
-        setIsDiffOpen={setIsDiffOpen} selectedSnapshot={selectedSnapshot}
-        getLineDiff={getLineDiff} handleRollback={handleRollback}
         settings={settings}
-        editorMode={editorMode}
+        showStatusBar={showStatusBar}
         showSidebar={showSidebar}
+        setShowSidebar={setShowSidebar}
         sidebarWidth={sidebarWidth}
         isSidebarReady={isSidebarReady}
-        filePath={filePath}
-        currentContent={currentContent}
-        fileOpenMode={fileOpenMode}
-        handleSwitchOpenMode={handleSwitchOpenMode}
-        appendedFiles={appendedFiles}
-        handleSelectAppendedFile={handleSelectAppendedFile}
-        tabs={tabs}
-        activeTabId={activeTabId}
-        handleSelectTab={handleSelectTab}
-        handleCloseTab={handleCloseTab}
-        chatMessages={chatMessages}
-        sendChatMessage={sendChatMessage}
-        clearChatMessages={clearChatMessages}
-        username={username}
-        userColor={userColor}
-        isChatFloating={isChatFloating}
-        setIsChatFloating={setIsChatFloating}
-        handleSidebarResizeStart={handleSidebarResizeStart}
-        isSidebarDragging={isSidebarDragging}
-        editorZoom={editorZoom}
         editor={editor}
-        peers={peers}
-        handleMouseMove={handleMouseMove}
-        updateDragSelection={updateDragSelection}
-        updateBlockHighlight={updateBlockHighlight}
         editorContainerRef={editorContainerRef}
-        taggedBlocks={taggedBlocks}
-        setTaggedBlocks={setTaggedBlocks}
         showAIPanel={showAIPanel}
         aiPanelWidth={aiPanelWidth}
         isAIPanelDragging={isAIPanelDragging}
         handleAIPanelResizeStart={handleAIPanelResizeStart}
         isAIPanelReady={isAIPanelReady}
-        selectedText={selectedText}
-        setSelectedText={setSelectedText}
         showModelHub={showModelHub}
-        handleScrollToBlock={handleScrollToBlock}
-        serverRunning={serverRunning}
-        serverPort={serverPort}
-        setServerPort={setServerPort}
-        serverHost={serverHost}
-        setServerHost={setServerHost}
-        useLocalServer={useLocalServer}
-        setUseLocalServer={setUseLocalServer}
-        toggleLocalServer={toggleLocalServer}
-        collaborationLink={collaborationLink}
-        isConnected={isConnected}
-        snapshots={snapshots}
-        createSnapshot={createSnapshot}
-        deleteSnapshot={deleteSnapshot}
-        handleSelectSnapshotForDiff={handleSelectSnapshotForDiff}
+        handleSidebarResizeStart={handleSidebarResizeStart}
+        isSidebarDragging={isSidebarDragging}
+        editorZoom={editorZoom}
+        handleMouseMove={handleMouseMove}
+        updateDragSelection={updateDragSelection}
+        updateBlockHighlight={updateBlockHighlight}
+        setSelectedText={setSelectedText}
+        taggedBlocks={taggedBlocks}
+        setTaggedBlocks={setTaggedBlocks}
+        isChatFloating={isChatFloating}
         toastMessage={toastMessage}
+        showFindReplace={showFindReplace}
+        setShowFindReplace={setShowFindReplace}
+        handleScrollToBlock={handleScrollToBlock}
         findReplaceMode={findReplaceMode}
-        toggleAIPanel={toggleAIPanel}
-        isQuitConfirmOpen={isQuitConfirmOpen}
-        setIsQuitConfirmOpen={setIsQuitConfirmOpen}
-        handleQuitConfirm={() => {
-          setIsQuitConfirmOpen(false)
-          import('./services/ipc/adapters/appAdapter').then(ipc => ipc.forceCloseApp())
-        }}
-        isRefreshConfirmOpen={isRefreshConfirmOpen}
-        setIsRefreshConfirmOpen={setIsRefreshConfirmOpen}
-        handleRefreshConfirm={() => {
-          setIsRefreshConfirmOpen(false)
-          window.location.reload()
-        }}
       />
     </AppProvider>
   )

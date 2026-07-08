@@ -1,4 +1,3 @@
-import React from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { MapPin, Lock } from 'lucide-react'
 

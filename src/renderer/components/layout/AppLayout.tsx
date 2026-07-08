@@ -1,6 +1,5 @@
 import React from 'react'
 import { PanelLeft, Sparkles } from 'lucide-react'
-import * as ipc from '../../services/ipc/electronApiAdapter'
 import { Sidebar } from '../Sidebar'
 import { MarkdownEditor } from '../MarkdownEditor'
 
@@ -21,10 +20,12 @@ import { useNatureThemeColors } from '../../hooks/app/useNatureThemeColors'
 import { GlobalDownloadProgress } from '../download/GlobalDownloadProgress'
 import { useDownloadManager } from '../../hooks/app/useDownloadManager'
 
+
 export interface AppLayoutProps {
-  settings: AppSettings
+  settings: any
   showStatusBar: boolean
   showSidebar: boolean
+  setShowSidebar: (show: boolean) => void
   sidebarWidth: number
   isSidebarReady: boolean
   editor: AppEditor | null
@@ -35,18 +36,34 @@ export interface AppLayoutProps {
   handleAIPanelResizeStart: (e: React.MouseEvent) => void
   isAIPanelReady: boolean
   showModelHub: boolean
-  serverRunning: boolean
-  toggleAIPanel: () => void
+  handleSidebarResizeStart: (e: React.MouseEvent) => void
+  isSidebarDragging: boolean
+  editorZoom: number
+  handleMouseMove: (e: React.MouseEvent) => void
+  updateDragSelection: any
+  updateBlockHighlight: any
+  setSelectedText: (text: string) => void
+  taggedBlocks: any[]
+  setTaggedBlocks: (blocks: any[]) => void
+  isChatFloating: boolean
+  toastMessage: string | null
+  showFindReplace: boolean
+  setShowFindReplace: (show: boolean) => void
+  handleScrollToBlock: (id: string) => void
+  findReplaceMode: 'find' | 'replace'
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = (props) => {
   const [isLogsExpanded, setIsLogsExpanded] = React.useState(false)
 
   const {
-    settings, showStatusBar, showSidebar, sidebarWidth, isSidebarReady,
+    settings, showStatusBar, showSidebar, setShowSidebar, sidebarWidth, isSidebarReady,
     editor, editorContainerRef, showAIPanel, aiPanelWidth, isAIPanelDragging,
-    handleAIPanelResizeStart, isAIPanelReady, showModelHub, serverRunning,
-    toggleAIPanel
+    handleAIPanelResizeStart, isAIPanelReady, showModelHub,
+    handleSidebarResizeStart, isSidebarDragging, editorZoom,
+    handleMouseMove, updateDragSelection, updateBlockHighlight, setSelectedText,
+    taggedBlocks, setTaggedBlocks, isChatFloating, toastMessage, showFindReplace,
+    setShowFindReplace, handleScrollToBlock, findReplaceMode
   } = props
 
   // 🌿 자연산 테마 반응형 컬러 훅 연결

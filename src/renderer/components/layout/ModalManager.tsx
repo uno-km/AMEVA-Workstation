@@ -1,6 +1,6 @@
 import * as ipc from '../../services/ipc/electronApiAdapter'
 import { DiffModal } from '../DiffModal'
-import { SettingsModal, type AppSettings } from '../SettingsModal'
+import { SettingsModal } from '../SettingsModal'
 import { AboutModal } from '../AboutModal'
 import { MarkdownGuideModal } from '../MarkdownGuideModal'
 import { MarketplaceModal } from '../MarketplaceModal'

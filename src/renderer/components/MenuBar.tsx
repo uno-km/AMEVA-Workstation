@@ -6,7 +6,7 @@ import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 
 import { useAppContext } from '../contexts/AppContext'
 import { useUIStore } from '../stores/useUIStore'
-import * as ipc from '../../services/ipc/electronApiAdapter'
+import * as ipc from '../services/ipc/electronApiAdapter'
 
 export interface MenuBarProps {}
 

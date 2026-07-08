@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react'
-import { AlertCircle, RotateCw, X } from 'lucide-react'
+import { useEffect } from 'react'
+import { RotateCw } from 'lucide-react'
 
 export interface RefreshConfirmModalProps {
   isOpen: boolean
