@@ -151,9 +151,9 @@ app.whenReady().then(() => {
   })
 
   // [PERF] 2. 나머지 무거운 작업들은 윈도우 생성 완료 이후 백그라운드로 지연 실행 (1초 뒤)
-  setTimeout(() => {
+  setTimeout(async () => {
     // [MEM-CLEANUP] 프로그램 기동 시점에 OS 상에 유령으로 남아있던 모든 llama 프로세스 일괄 정리
-    LLMProcessManager.forceCleanupLocalLLMProcesses()
+    await LLMProcessManager.asyncCleanupOrphanedProcesses()
 
   // 🤖 [Background Warmup] 앱 기동 시 로컬 LLM 백그라운드 비동기 기동 (웜업)
   try {
@@ -181,38 +181,43 @@ app.whenReady().then(() => {
   }, 1000)
 })
 
-app.on('window-all-closed', () => {
-  if (LLMProcessManager.activeLLMProcess) {
-    LLMProcessManager.activeLLMProcess.kill()
-    LLMProcessManager.activeLLMProcess = null
-  }
-  if (LLMProcessManager.activeServerProcess) {
-    try { LLMProcessManager.activeServerProcess.kill('SIGKILL') } catch {}
-    LLMProcessManager.activeServerProcess = null
-  }
-  try { MCPProcessManager.killAll() } catch {}
+let isShuttingDown = false
 
+const handleGracefulExit = async () => {
+  if (isShuttingDown) return
+  isShuttingDown = true
+  await LLMProcessManager.gracefulShutdown()
+  try { MCPProcessManager.killAll() } catch {}
+  app.quit()
+}
+
+app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
-app.on('will-quit', () => {
-  if (LLMProcessManager.activeServerProcess) {
-    try {
-      LLMProcessManager.activeServerProcess.kill('SIGKILL')
-    } catch {}
+app.on('will-quit', (e) => {
+  if (!isShuttingDown && LLMProcessManager.activeServerProcess) {
+    e.preventDefault()
+    handleGracefulExit()
+  } else {
+    try { MCPProcessManager.killAll() } catch {}
   }
-  LLMProcessManager.forceCleanupLocalLLMProcesses()
-  try { MCPProcessManager.killAll() } catch {}
 })
 
-// 🦾 [CONSOLE EXIT-GUARD] 터미널에서 Ctrl+C (SIGINT) 또는 SIGTERM 시그널로 강제 종료 시, 백그라운드 자식 프로세스를 즉각 동기적으로 정리
-process.on('SIGINT', () => {
-  LLMProcessManager.forceCleanupLocalLLMProcesses()
+// 🦾 [CONSOLE EXIT-GUARD] 터미널에서 Ctrl+C (SIGINT) 또는 SIGTERM 시그널로 강제 종료 시, 안전하게 엔진 종료
+process.on('SIGINT', async () => {
+  if (isShuttingDown) return
+  isShuttingDown = true
+  await LLMProcessManager.gracefulShutdown()
+  try { MCPProcessManager.killAll() } catch {}
   process.exit(0)
 })
-process.on('SIGTERM', () => {
-  LLMProcessManager.forceCleanupLocalLLMProcesses()
+process.on('SIGTERM', async () => {
+  if (isShuttingDown) return
+  isShuttingDown = true
+  await LLMProcessManager.gracefulShutdown()
+  try { MCPProcessManager.killAll() } catch {}
   process.exit(0)
 })

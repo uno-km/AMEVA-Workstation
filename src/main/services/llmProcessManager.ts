@@ -1,7 +1,7 @@
 import { app } from 'electron'
 import { join, basename } from 'path'
 import { existsSync } from 'fs'
-import { spawn, execSync, type ChildProcess } from 'child_process'
+import { spawn, exec, type ChildProcess } from 'child_process'
 
 class StreamLineFormatter {
   private buffer = '';
@@ -71,16 +71,45 @@ export class LLMProcessManager {
     return 'whisper-cli'
   }
 
-  static forceCleanupLocalLLMProcesses() {
-    try {
+  static async asyncCleanupOrphanedProcesses(): Promise<void> {
+    return new Promise(resolve => {
       if (process.platform === 'win32') {
-        execSync('taskkill /f /im llama-server.exe', { stdio: 'ignore' })
-        execSync('taskkill /f /im llama-cli.exe', { stdio: 'ignore' })
+        exec('taskkill /f /im llama-server.exe', () => {
+          exec('taskkill /f /im llama-cli.exe', () => {
+            resolve()
+          })
+        })
       } else {
-        execSync('killall -9 llama-server llama-cli', { stdio: 'ignore' })
+        exec('killall -9 llama-server llama-cli', () => resolve())
       }
-    } catch (e) {
-      // 프로세스 없을 시 예외 무시
+    })
+  }
+
+  static async gracefulShutdown(): Promise<void> {
+    if (this.activeServerProcess) {
+      this.logToRenderer('[System] AI 엔진 정상 종료 대기 중...\n')
+      return new Promise(resolve => {
+        const timer = setTimeout(() => {
+          if (this.activeServerProcess) {
+            try { this.activeServerProcess.kill('SIGKILL') } catch {}
+          }
+          this.activeServerProcess = null
+          resolve()
+        }, 3000)
+
+        this.activeServerProcess!.on('exit', () => {
+          clearTimeout(timer)
+          this.activeServerProcess = null
+          resolve()
+        })
+
+        try {
+          this.activeServerProcess!.kill('SIGINT')
+        } catch {
+          clearTimeout(timer)
+          resolve()
+        }
+      })
     }
   }
 
@@ -138,7 +167,7 @@ export class LLMProcessManager {
         this.activeServerProcess = null
         this.activeServerModelPath = ''
       }
-      this.forceCleanupLocalLLMProcesses()
+      await this.asyncCleanupOrphanedProcesses()
 
       const isPackaged = app.isPackaged
       const llamaDir = isPackaged

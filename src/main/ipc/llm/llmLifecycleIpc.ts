@@ -70,7 +70,7 @@ export function registerLlmLifecycleIpc(): void {
         LLMProcessManager.activeServerProcess = null
       }
       LLMProcessManager.serverStartingPromise = null
-      LLMProcessManager.forceCleanupLocalLLMProcesses()
+      await LLMProcessManager.asyncCleanupOrphanedProcesses()
       
       LLMProcessManager.logToRenderer('[System] 수동 재구동 요청 수신. llama-server 웜업 재기동...\n')
       const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
@@ -110,7 +110,7 @@ export function registerLlmLifecycleIpc(): void {
         LLMProcessManager.activeServerProcess = null
       }
       LLMProcessManager.serverStartingPromise = null
-      LLMProcessManager.forceCleanupLocalLLMProcesses()
+      await LLMProcessManager.asyncCleanupOrphanedProcesses()
       return { success: true }
     } catch (err: any) {
       return { success: false, error: err.message }
