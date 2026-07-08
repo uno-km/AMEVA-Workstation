@@ -177,10 +177,10 @@ export function MessageBubble({
                   onClick={() => onScrollToBlock?.(block.id)}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '4px',
-                    background: 'rgba(139, 92, 246, 0.22)', color: '#d8b4fe',
+                    background: 'var(--primary-glow)', color: isWhiteTheme ? 'var(--primary)' : '#d8b4fe',
                     fontSize: '9px', fontWeight: 700, padding: '2px 6px',
                     borderRadius: '4px', cursor: onScrollToBlock ? 'pointer' : 'default',
-                    border: '1px solid rgba(139, 92, 246, 0.35)', userSelect: 'none',
+                    border: '1px solid var(--border-glow)', userSelect: 'none',
                   }}
                   title="클릭 시 에디터 상의 해당 위치로 이동 및 하이라이트"
                 >

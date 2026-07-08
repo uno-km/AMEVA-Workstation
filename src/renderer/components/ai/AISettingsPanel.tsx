@@ -46,11 +46,73 @@ export function AISettingsPanel({
   importModel,
   gpuName
 }: AISettingsPanelProps) {
-  const { apiType = 'wasm', apiProvider = 'gemini', apiKey = '', apiEndpoint = '', apiModel = '', gpuOnly = true } = settings
+  
+  const [localSettings, setLocalSettings] = useState(settings)
+  const [isSaving, setIsSaving] = useState(false)
+  const [loadingTip, setLoadingTip] = useState('')
+  const { apiType = 'wasm', apiProvider = 'gemini', apiKey = '', apiEndpoint = '', apiModel = '', gpuOnly = true } = localSettings
+
   const isWhiteTheme = settings.theme === 'white'
   
   const [downloadStatus, setDownloadStatus] = useState<{ filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number } | null>(null)
-  const isAvailable = true
+  
+  const handleUpdateLocal = (updates: Partial<AISettings>) => {
+    setLocalSettings(prev => ({ ...prev, ...updates }))
+  }
+
+  const handleSaveSettings = async () => {
+    setIsSaving(true)
+    const tips = [
+      "WGU 모드를 사용하면 브라우저 내부에서 안전하게 실행됩니다.",
+      "Ollama 서버를 활용하면 다양한 오픈소스 모델을 스위칭할 수 있습니다.",
+      "로컬 고성능 엔진은 사용자의 GPU를 최대한 활용해 응답이 빠릅니다.",
+      "단축키를 활용하여 AI 어시스턴트를 더 빠르게 호출해 보세요.",
+      "명령 프롬프트를 정확히 작성하면 AI가 더 훌륭한 답변을 제공합니다."
+    ]
+    setLoadingTip(tips[Math.floor(Math.random() * tips.length)])
+
+    try {
+      if (localSettings.apiType === 'local') {
+        if (settings.apiType !== 'local' || settings.modelPath !== localSettings.modelPath) {
+          // 기존 서버 종료 대기
+          await ipc.llmStop()
+          // 새 서버 기동 대기
+          if (localSettings.modelPath) {
+            await ipc.llmStart(localSettings.modelPath)
+          }
+        }
+      } else {
+        // 로컬이 아닌 모드로 전환 시, 돌아가던 로컬 서버가 있었다면 종료 대기
+        if (settings.apiType === 'local') {
+          await ipc.llmStop()
+        }
+      }
+    } catch (err) {
+      console.error("서버 상태 전환 중 오류:", err)
+    }
+
+    onUpdateSettings(localSettings)
+    setIsSaving(false)
+    onClose()
+  }
+
+  if (isSaving) {
+    return (
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+        background: 'var(--bg-deep)', display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center', padding: '32px', textAlign: 'center'
+      }}>
+        <div style={{ width: '40px', height: '40px', border: '3px solid var(--border-muted)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '24px' }} />
+        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+        <h2 style={{ color: 'var(--text-main)', fontSize: '18px', marginBottom: '12px' }}>AI 시스템 재구성 중...</h2>
+        <p style={{ color: 'var(--primary)', fontSize: '13px', maxWidth: '400px', lineHeight: 1.5 }}>
+          💡 꿀팁: {loadingTip}
+        </p>
+      </div>
+    )
+  }
+
   console.debug("Unused vars (AISettingsPanel):", { React, isKeySaved, handleSaveKey, handleDeleteKey, isWhiteTheme });
 
   return (
@@ -84,7 +146,7 @@ export function AISettingsPanel({
             <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>AI 실행 유형</label>
             <select
               value={apiType}
-              onChange={e => onUpdateSettings({ apiType: e.target.value as AISettings['apiType'] })}
+              onChange={e => handleUpdateLocal({ apiType: e.target.value as AISettings['apiType'] })}
               style={{
                 width: '100%',
                 background: 'var(--bg-glass)',
@@ -110,7 +172,7 @@ export function AISettingsPanel({
                 <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>API 제공사</label>
                 <select
                   value={apiProvider}
-                  onChange={e => onUpdateSettings({ apiProvider: e.target.value as 'gemini' | 'openai' | 'anthropic' | 'custom' })}
+                  onChange={e => handleUpdateLocal({ apiProvider: e.target.value as 'gemini' | 'openai' | 'anthropic' | 'custom' })}
                   style={{
                     width: '100%',
                     background: 'var(--bg-glass)',
@@ -133,7 +195,10 @@ export function AISettingsPanel({
                 <input
                   type="password"
                   value={apiKey}
-                  onChange={e => handleApiKeyChange(e.target.value)}
+                  onChange={e => {
+                    handleApiKeyChange(e.target.value)
+                    handleUpdateLocal({ apiKey: e.target.value })
+                  }}
                   placeholder="키를 입력하면 제공사가 자동 감지됩니다"
                   style={{
                     width: '100%',
@@ -153,12 +218,12 @@ export function AISettingsPanel({
                 <input
                   type="text"
                   value={apiEndpoint}
-                  onChange={e => onUpdateSettings({ apiEndpoint: e.target.value })}
+                  onChange={e => handleUpdateLocal({ apiEndpoint: e.target.value })}
                   disabled={apiProvider !== 'custom'}
                   placeholder="https://api.openai.com/v1/chat/completions"
                   style={{
                     width: '100%',
-                    background: apiProvider === 'custom' ? 'var(--bg-glass)' : 'rgba(255, 255, 255, 0.05)',
+                    background: apiProvider === 'custom' ? 'var(--bg-glass)' : 'var(--bg-glass-active)',
                     border: '1px solid var(--border-muted)',
                     borderRadius: '6px',
                     padding: '5px 8px',
@@ -176,7 +241,7 @@ export function AISettingsPanel({
                   <input
                     type="text"
                     value={apiModel}
-                    onChange={e => onUpdateSettings({ apiModel: e.target.value })}
+                    onChange={e => handleUpdateLocal({ apiModel: e.target.value })}
                     placeholder="gpt-4o-mini | claude-3-5-sonnet-20241022"
                     style={{
                       width: '100%',
@@ -192,7 +257,7 @@ export function AISettingsPanel({
                 ) : (
                   <select
                     value={apiModel}
-                    onChange={e => onUpdateSettings({ apiModel: e.target.value })}
+                    onChange={e => handleUpdateLocal({ apiModel: e.target.value })}
                     style={{
                       width: '100%',
                       background: 'var(--bg-glass)',
@@ -211,7 +276,7 @@ export function AISettingsPanel({
               </div>
               {/* Anthropic 선택 시 경고/주의 안내문구 추가 */}
               {apiProvider === 'anthropic' && (
-                <div style={{ fontSize: '9px', color: '#fbbf24', marginTop: '2px', lineHeight: '1.2' }}>
+                <div style={{ fontSize: '9px', color: 'var(--accent)', marginTop: '2px', lineHeight: '1.2' }}>
                   ⚠️ Anthropic 공식 API는 헤더 규격이 달라 직접 연동 시 에러가 날 수 있습니다. OpenRouter나 OpenAI 호환 프록시를 사용할 때는 제공사를 Custom으로 지정하여 설정하세요.
                 </div>
               )}
@@ -237,7 +302,7 @@ export function AISettingsPanel({
                 <div style={{
                   padding: '8px', borderRadius: '6px',
                   background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
-                  fontSize: '11px', color: '#f87171',
+                  fontSize: '11px', color: 'var(--danger)',
                   display: 'flex', flexDirection: 'column', gap: '6px',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -248,7 +313,7 @@ export function AISettingsPanel({
                     onClick={() => setShowModelHub?.(true)}
                     style={{
                       width: '100%', padding: '4px 8px', borderRadius: '4px',
-                      background: 'var(--primary)', color: '#fff', border: 'none',
+                      background: 'var(--primary)', color: 'var(--bg-deep)', border: 'none',
                       fontSize: '10px', fontWeight: 700, cursor: 'pointer',
                       textAlign: 'center',
                     }}
@@ -259,8 +324,8 @@ export function AISettingsPanel({
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                   <select
-                    value={settings.modelPath}
-                    onChange={e => onUpdateSettings({ modelPath: e.target.value })}
+                    value={localSettings.modelPath}
+                    onChange={e => handleUpdateLocal({ modelPath: e.target.value })}
                     style={{
                       width: '100%',
                       background: 'var(--bg-glass)',
@@ -282,7 +347,7 @@ export function AISettingsPanel({
                       onClick={importModel}
                       style={{
                         alignSelf: 'flex-start',
-                        fontSize: '9.5px', color: 'rgba(167,139,250,0.85)', background: 'none', border: 'none',
+                        fontSize: '9.5px', color: 'var(--primary)', background: 'none', border: 'none',
                         cursor: 'pointer', padding: '1px 0', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px'
                       }}
                     >
@@ -302,7 +367,7 @@ export function AISettingsPanel({
                   type="checkbox"
                   id="gpuOnly-checkbox"
                   checked={gpuOnly}
-                  onChange={e => onUpdateSettings({ gpuOnly: e.target.checked })}
+                  onChange={e => handleUpdateLocal({ gpuOnly: e.target.checked })}
                   style={{ accentColor: 'var(--primary)' }}
                 />
                 <label htmlFor="gpuOnly-checkbox" style={{ fontSize: '11px', color: 'var(--text-main)', cursor: 'pointer' }}>
@@ -321,12 +386,12 @@ export function AISettingsPanel({
           <div>
             <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
               <span>Temperature (창의성)</span>
-              <span style={{ color: 'var(--primary)' }}>{settings.temperature.toFixed(1)}</span>
+              <span style={{ color: 'var(--primary)' }}>{localSettings.temperature.toFixed(1)}</span>
             </label>
             <input
               type="range" min="0" max="1" step="0.1"
-              value={settings.temperature}
-              onChange={e => onUpdateSettings({ temperature: parseFloat(e.target.value) })}
+              value={localSettings.temperature}
+              onChange={e => handleUpdateLocal({ temperature: parseFloat(e.target.value) })}
               style={{ width: '100%', accentColor: 'var(--primary)' }}
             />
           </div>
@@ -335,12 +400,12 @@ export function AISettingsPanel({
           <div>
             <label style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
               <span>최대 토큰</span>
-              <span style={{ color: 'var(--primary)' }}>{settings.maxTokens}</span>
+              <span style={{ color: 'var(--primary)' }}>{localSettings.maxTokens}</span>
             </label>
             <input
               type="range" min="128" max="2048" step="128"
-              value={settings.maxTokens}
-              onChange={e => onUpdateSettings({ maxTokens: parseInt(e.target.value) })}
+              value={localSettings.maxTokens}
+              onChange={e => handleUpdateLocal({ maxTokens: parseInt(e.target.value) })}
               style={{ width: '100%', accentColor: 'var(--primary)' }}
             />
           </div>
@@ -360,7 +425,7 @@ export function AISettingsPanel({
                 return (
                   <div key={m.file} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    background: 'rgba(255,255,255,0.02)', padding: '6px 8px', borderRadius: '6px',
+                    background: 'var(--bg-card)', padding: '6px 8px', borderRadius: '6px',
                     border: '1px solid var(--border-muted)'
                   }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -379,8 +444,8 @@ export function AISettingsPanel({
                         }
                       }}
                       style={{
-                        background: isDownloading ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
-                        border: 'none', color: '#fff', fontSize: '10px', padding: '4px 10px',
+                        background: isDownloading ? 'var(--bg-glass-active)' : 'linear-gradient(135deg, var(--primary), var(--secondary))',
+                        border: 'none', color: 'var(--text-main)', fontSize: '10px', padding: '4px 10px',
                         borderRadius: '4px', cursor: isDownloading ? 'not-allowed' : 'pointer', fontWeight: 700
                       }}
                     >
@@ -393,7 +458,7 @@ export function AISettingsPanel({
           </div>
 
           {/* llama.cpp 설치 안내 (로컬 고성능 엔진 모드일 때만 안내 노출) */}
-          {apiType === 'local' && !isAvailable && (
+          {apiType === 'local' && (
             <div style={{
               padding: '8px', borderRadius: '6px',
               background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.3)',
@@ -403,6 +468,18 @@ export function AISettingsPanel({
               C:\ameva\llama\llama-cli.exe
             </div>
           )}
+
+          {/* 하단 액션 버튼 */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border-muted)' }}>
+            <button onClick={onClose} style={{
+              flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--border-muted)',
+              background: 'transparent', color: 'var(--text-main)', cursor: 'pointer', fontSize: '11px', fontWeight: 600
+            }}>취소</button>
+            <button onClick={handleSaveSettings} style={{
+              flex: 1, padding: '8px', borderRadius: '6px', border: 'none',
+              background: 'var(--primary)', color: 'var(--bg-deep)', cursor: 'pointer', fontSize: '11px', fontWeight: 600
+            }}>저장 및 적용</button>
+          </div>
         </div>
         </div>
       

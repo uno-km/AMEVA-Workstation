@@ -39,13 +39,13 @@ export function registerListModelsHandler(): void {
 
     const llmDir = type === 'code' ? 'C:\\ameva\\models\\code' : 'C:\\ameva\\models\\llm'
     try {
-      const { readdir } = await import('fs/promises')
       if (!existsSync(llmDir)) return []
+      const { readdir } = require('fs').promises
       const files = await readdir(llmDir)
       const filtered = files
-        .filter(f => f.endsWith('.gguf'))
-        .map(f => ({
-          name: f.replace('.gguf', '').replace(/-/g, ' '),
+        .filter((f: string) => f.toLowerCase().endsWith('.gguf'))
+        .map((f: string) => ({
+          name: f.replace(/\.gguf$/i, '').replace(/-/g, ' '),
           filename: f,
           path: join(llmDir, f),
           size: (() => {
@@ -56,7 +56,8 @@ export function registerListModelsHandler(): void {
           })(),
         }))
       return filtered
-    } catch {
+    } catch (e) {
+      console.error('[listModelsHandler] Failed to list models in', llmDir, e)
       return []
     }
   })

@@ -99,7 +99,7 @@ export function AIStatusIndicator({
               </div>
               
               {/* 🤖 오프라인 시 재구동(Restart) 버튼 노출 */}
-              {!aiAvailable && type !== 'api' && (
+              {!aiAvailable && type !== 'api' && type !== 'wasm' && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()

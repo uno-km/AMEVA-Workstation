@@ -97,7 +97,8 @@ export function StatusBar({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0 16px',
-        backgroundColor: 'rgba(5, 5, 10, 0.5)',
+        backgroundColor: 'var(--bg-main)',
+        color: 'var(--text-main)',
         zIndex: 101,
         userSelect: 'none',
       }}

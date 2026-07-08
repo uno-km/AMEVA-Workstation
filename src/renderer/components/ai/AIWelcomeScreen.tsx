@@ -1,6 +1,8 @@
 
 import React from 'react'
 
+import { Bot } from 'lucide-react'
+
 export function AIWelcomeScreen({ QUICK_ACTIONS, isAvailable, onAction }: any) {
   return (
     <div style={{
@@ -13,7 +15,7 @@ export function AIWelcomeScreen({ QUICK_ACTIONS, isAvailable, onAction }: any) {
           background: 'linear-gradient(135deg, rgba(6,182,212,0.1), rgba(124,58,237,0.1))',
           display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px'
         }}>
-          <img src="https://avatars.githubusercontent.com/u/150068467?v=4" alt="AMEVA" style={{ width: '40px', height: '40px', borderRadius: '50%', opacity: 0.9 }} />
+          <Bot size={32} color="var(--primary)" />
         </div>
         <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-main)', fontSize: '16px', fontWeight: 600 }}>
           AMEVA AI Assistant
