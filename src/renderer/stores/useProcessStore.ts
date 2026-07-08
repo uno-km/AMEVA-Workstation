@@ -72,7 +72,7 @@ function loadIsProPlan(): boolean {
 
 export const useProcessStore = create<ProcessState>((set) => ({
   downloadStatus: null,
-  setDownloadStatus: (status) => set({ downloadStatus: status }),
+  setDownloadStatus: (status) => set((state) => ({ downloadStatus: typeof status === 'function' ? status(state.downloadStatus) : status })),
 
   downloadQueue: [],
   addDownloadToQueue: (item) =>

@@ -5,7 +5,7 @@
   /* 안티그래비티 IDE 스타일의 극도로 세련된 모노크롬 매트 차콜 & 슬레이트 실버 팔레트 */
   --bg-deep: #0f0f11;
   --bg-main: #18181c;
-  --bg-card: rgba(30, 30, 35, 0.35);
+  --bg-card: rgba(30, 30, 35, 0.85);
   --bg-glass: rgba(24, 24, 28, 0.75);
   --bg-glass-active: rgba(255, 255, 255, 0.05);
   
@@ -59,7 +59,7 @@
 [data-theme='dark'] {
   --bg-deep: #0f0f11;
   --bg-main: #18181c;
-  --bg-card: rgba(30, 30, 35, 0.35);
+  --bg-card: rgba(30, 30, 35, 0.85);
   --bg-glass: rgba(24, 24, 28, 0.75);
   --bg-glass-active: rgba(255, 255, 255, 0.05);
   --border-glow: rgba(255, 255, 255, 0.12);

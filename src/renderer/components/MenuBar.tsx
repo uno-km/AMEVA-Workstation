@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Check } from 'lucide-react'
-import type { EditorMode } from '../../shared/types'
-import type { HotkeyConfig } from './SettingsModal'
+
 import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 
 import { useAppContext } from '../contexts/AppContext'

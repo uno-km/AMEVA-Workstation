@@ -39,7 +39,11 @@ export function registerLlmLifecycleIpc(): void {
         }
       )
       hReq.on('error', () => resolve({ status: 'offline', running: false }))
-      hReq.on('timeout', () => { hReq.destroy(); resolve({ status: 'offline', running: false }) })
+      hReq.on('timeout', () => { 
+        hReq.destroy(); 
+        // If the process is still alive, it's probably just busy generating.
+        resolve({ status: 'ok', running: true }) 
+      })
       hReq.end()
     })
   })

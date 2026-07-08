@@ -242,14 +242,16 @@ export function SettingsTabAIEngine({
                 )}
               </select>
               <button 
-                onClick={() => {
-                  setIsOllamaLoading(true)
-                  fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
-                    .then(res => res.json())
-                    .then(data => {
-                      if (data.models) setOllamaModels(data.models)
-                    })
-                    .finally(() => setIsOllamaLoading(false))
+                onClick={async () => {
+                  try {
+                    const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
+                    if (!res.ok) throw new Error('Ollama 서버 응답 없음')
+                    const data = await res.json()
+                    if (data.models) setOllamaModels(data.models)
+                    alert(`Ollama 연결 성공! ${data.models?.length || 0}개의 모델을 찾았습니다.`)
+                  } catch (e) {
+                    alert('Ollama 연결 실패: ' + (e as Error).message)
+                  }
                 }}
                 style={{ padding: '0 12px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer' }}
               >

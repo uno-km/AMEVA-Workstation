@@ -117,7 +117,7 @@ export function StatusBar({}: StatusBarProps = {}) {
           height: '20px',
         }}>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            📥 {downloadStatus.filename.split(/[\\/]/).pop()}: {downloadStatus.progress}%
+            📥 {downloadStatus.filename?.split(/[\\/]/).pop()}: {downloadStatus.progress}%
           </span>
           <div style={{ width: '70px', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '2px', overflow: 'hidden' }}>
             <div style={{ width: `${downloadStatus.progress}%`, height: '100%', background: 'linear-gradient(90deg, var(--primary), var(--secondary))' }} />

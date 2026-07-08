@@ -77,7 +77,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
         background: 'var(--bg-deep)',
         borderLeft: '1px solid var(--border-muted)',
         paddingTop: '16px',
-        gap: '12px',
+        gap: '6px',
         flexShrink: 0,
         zIndex: 100,
         userSelect: 'none',

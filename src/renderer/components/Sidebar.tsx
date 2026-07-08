@@ -102,7 +102,7 @@ export function Sidebar() {
 
         {/* 사이드바 접기 버튼 (Inline Embedding) */}
         <button
-          onClick={onToggleSidebar}
+          onClick={() => setShowSidebar(false)}
           title="사이드바 접기"
           style={{
             marginLeft: 'auto',

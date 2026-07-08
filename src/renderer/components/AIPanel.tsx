@@ -76,7 +76,7 @@ export function AIPanel() {
 
   return (
     <div 
-      className={`ai-panel ${isAIPanelDragging ? 'dragging' : ''}`}
+      className="ai-panel"
       onDragOver={(e) => {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'copy'
