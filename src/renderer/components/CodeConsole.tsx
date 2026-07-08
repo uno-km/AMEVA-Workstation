@@ -14,8 +14,8 @@ export function CodeConsole({ outputs, isRunning, success, onClose }: CodeConsol
       className="glow-primary"
       style={{
         marginTop: '8px',
-        backgroundColor: '#0a0a0f',
-        border: '1px solid var(--border-glow)',
+        backgroundColor: 'var(--term-bg)',
+        border: '1px solid var(--term-border)',
         borderRadius: '6px',
         fontFamily: 'var(--font-mono)',
         fontSize: '12px',
@@ -36,7 +36,7 @@ export function CodeConsole({ outputs, isRunning, success, onClose }: CodeConsol
           backgroundColor: 'rgba(255, 255, 255, 0.02)',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--term-icon-color)' }}>
           <Terminal size={14} />
           <span>콘솔 출력 결과</span>
         </div>
@@ -75,7 +75,7 @@ export function CodeConsole({ outputs, isRunning, success, onClose }: CodeConsol
           padding: '10px 14px',
           maxHeight: '160px',
           overflowY: 'auto',
-          color: '#e5e7eb',
+          color: 'var(--term-text)',
           whiteSpace: 'pre-wrap',
           wordBreak: 'break-all',
           lineHeight: '1.5',
@@ -85,7 +85,7 @@ export function CodeConsole({ outputs, isRunning, success, onClose }: CodeConsol
           <span style={{ color: 'var(--text-dark)' }}>출력 결과가 없습니다. 코드를 실행해 보십시오.</span>
         ) : (
           outputs.map((line, idx) => {
-            let color = '#e5e7eb'
+            let color = 'var(--term-text)'
             if (line.includes('[ERROR]') || line.includes('[TIMEOUT ERROR]') || line.includes('[COMPILATION ERROR]') || line.includes('[RUNTIME ERROR]')) {
               color = 'var(--danger)'
             } else if (line.includes('[WARN]')) {

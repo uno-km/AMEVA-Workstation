@@ -49,8 +49,10 @@
   --sb-btn-display: none;
   
   /* 터미널(콘솔) 전용 색상 */
-  --term-bg: transparent;
-  --term-text: var(--text-main);
+  --term-bg: #0a0a0f;
+  --term-text: #e5e7eb;
+  --term-border: var(--border-glow);
+  --term-icon-color: var(--primary);
 }
 
 /* 테마 스위칭 지원 */
@@ -71,6 +73,11 @@
   --secondary-glow: rgba(71, 85, 105, 0.15);
   --text-on-primary: #ffffff;
   --text-on-active: var(--text-main);
+
+  --term-bg: #0a0a0f;
+  --term-text: #e5e7eb;
+  --term-border: var(--border-glow);
+  --term-icon-color: var(--primary);
 }
 
 [data-theme='gray'] {
@@ -90,6 +97,11 @@
   --secondary-glow: rgba(243, 139, 168, 0.3);
   --text-on-primary: #1e1e2e;
   --text-on-active: var(--text-main);
+
+  --term-bg: #11111b;
+  --term-text: #cdd6f4;
+  --term-border: var(--border-glow);
+  --term-icon-color: var(--primary);
 }
 
 [data-theme='white'] {
@@ -109,6 +121,11 @@
   --secondary-glow: rgba(8, 145, 178, 0.2);
   --text-on-primary: #ffffff;
   --text-on-active: var(--text-main);
+
+  --term-bg: #f8fafc;
+  --term-text: #0f172a;
+  --term-border: #cbd5e1;
+  --term-icon-color: #0f172a;
 }
 
 [data-theme='hacker'] {
@@ -119,15 +136,21 @@
   --bg-glass-active: rgba(0, 255, 0, 0.2);
   --border-glow: rgba(0, 255, 0, 0.45);
   --border-muted: rgba(0, 255, 0, 0.18);
-  --text-main: #39ff14; /* Matrix Green */
-  --text-muted: #00dd00;
-  --text-dark: #006600;
+  /* Hacker mode visibility fix: normal text is white, accents are green */
+  --text-main: #e3e3e6;
+  --text-muted: #8e9196;
+  --text-dark: #52545c;
   --primary: #00ff00;
   --primary-glow: rgba(0, 255, 0, 0.5);
   --secondary: #00aa00;
   --secondary-glow: rgba(0, 170, 0, 0.4);
   --text-on-primary: #000000;
   --text-on-active: #00ff00;
+
+  --term-bg: #000000;
+  --term-text: #39ff14; /* Terminal keeps matrix green text */
+  --term-border: var(--border-glow);
+  --term-icon-color: #39ff14;
 }
 
 [data-theme='nature'] {
@@ -147,6 +170,11 @@
   --secondary-glow: rgba(139, 195, 74, 0.3);
   --text-on-primary: #ffffff;
   --text-on-active: var(--text-main);
+
+  --term-bg: #e8f5e9;
+  --term-text: #1b5e20;
+  --term-border: rgba(76, 175, 80, 0.5);
+  --term-icon-color: #1b5e20;
 }
 
 [data-theme='win98'] {
@@ -182,4 +210,6 @@
   /* Win98 전용 콘솔(MS-DOS 스타일) 색상 */
   --term-bg: #000000;
   --term-text: #c0c0c0;
+  --term-border: #ffffff;
+  --term-icon-color: #c0c0c0;
 }

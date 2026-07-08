@@ -98,8 +98,8 @@ export function JupyterCodeEditorTerminal({
         <div
           className="jupyter-cell-terminal editor-cell-terminal"
           style={{
-            background: '#07080b',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'var(--term-bg)',
+            borderTop: '1px solid var(--term-border)',
             fontFamily: 'Consolas, Monaco, monospace',
             fontSize: '12px',
             textAlign: 'left',
@@ -113,7 +113,7 @@ export function JupyterCodeEditorTerminal({
             onClick={() => setIsCollapsed(!isCollapsed)}
             style={{
               display: 'flex', alignItems: 'center',
-              padding: '8px 14px', background: '#0e1017', borderBottom: '1px solid rgba(255,255,255,0.05)',
+              padding: '8px 14px', background: 'var(--bg-glass-active)', borderBottom: '1px solid var(--term-border)',
               userSelect: 'none', justifyContent: 'space-between', cursor: 'pointer'
             }}
           >
@@ -139,19 +139,18 @@ export function JupyterCodeEditorTerminal({
               </span>
             )}
           </div>
-          <div style={{
             padding: isCollapsed ? '0px 16px' : '12px 16px',
             maxHeight: isCollapsed ? '0px' : '180px',
             overflowY: 'auto',
             transition: 'max-height 0.25s ease-out, padding 0.25s ease-out',
-            whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: '#e5e7eb',
+            whiteSpace: 'pre-wrap', wordBreak: 'break-all', color: 'var(--term-text)',
             lineHeight: '1.5'
           }}>
             {runState.outputLines.map((line, idx) => (
               <div
                 key={idx}
                 style={{
-                  color: line.type === 'stderr' ? '#f87171' : line.type === 'info' ? `${accentColor}cc` : '#e5e7eb',
+                  color: line.type === 'stderr' ? 'var(--danger)' : line.type === 'info' ? `${accentColor}cc` : 'var(--term-text)',
                   marginBottom: '2px',
                 }}
               >
@@ -172,8 +171,8 @@ export function JupyterCodeEditorTerminal({
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
           style={{
-            background: '#07080b',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'var(--term-bg)',
+            borderTop: '1px solid var(--term-border)',
             fontFamily: 'system-ui, -apple-system, sans-serif',
             fontSize: '12px',
             textAlign: 'left',
@@ -187,7 +186,7 @@ export function JupyterCodeEditorTerminal({
             onClick={() => setIsCollapsed(!isCollapsed)}
             style={{
               display: 'flex', alignItems: 'center',
-              padding: '8px 14px', background: '#0e1017', borderBottom: '1px solid rgba(255,255,255,0.05)',
+              padding: '8px 14px', background: 'var(--bg-glass-active)', borderBottom: '1px solid var(--term-border)',
               userSelect: 'none', justifyContent: 'space-between', cursor: 'pointer'
             }}
           >
@@ -220,7 +219,7 @@ export function JupyterCodeEditorTerminal({
             transition: 'max-height 0.25s ease-out, padding 0.25s ease-out',
           }}>
             {runState.success && runState.tableData ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e5e7eb', textAlign: 'left', fontSize: '12px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--term-text)', textAlign: 'left', fontSize: '12px' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.03)' }}>
                     {runState.tableData.columns.map((col: string, i: number) => (
@@ -239,7 +238,7 @@ export function JupyterCodeEditorTerminal({
                 </tbody>
               </table>
             ) : (
-              <div style={{ color: runState.success ? '#e5e7eb' : '#f87171', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
+              <div style={{ color: runState.success ? 'var(--term-text)' : 'var(--danger)', whiteSpace: 'pre-wrap', fontFamily: 'monospace' }}>
                 {runState.outputLines.map(l => l.text).join('\n')}
               </div>
             )}
@@ -256,8 +255,8 @@ export function JupyterCodeEditorTerminal({
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
           style={{
-            background: '#0a0b10',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            background: 'var(--term-bg)',
+            borderTop: '1px solid var(--term-border)',
             borderBottomLeftRadius: '8px',
             borderBottomRightRadius: '8px',
             padding: '12px',
@@ -286,8 +285,8 @@ export function JupyterCodeEditorTerminal({
       {/* Mermaid 라이브 프리뷰 패널 */}
       {language === 'mermaid' && showMermaidPreview && (
         <div style={{
-          background: '#0a0b10',
-          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          background: 'var(--term-bg)',
+          borderTop: '1px solid var(--term-border)',
           borderBottomLeftRadius: '8px',
           borderBottomRightRadius: '8px',
           padding: '16px',

@@ -153,12 +153,13 @@ export function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps
       </div>
       
       {/* 코드 본문 (Syntax Highlighting은 향후 별도 라이브러리 적용 가능하도록 구조화) */}
-      <div style={{
-        padding: '12px', overflowX: 'auto', fontSize: '11px', lineHeight: '1.6',
-        color: '#e5e7eb', whiteSpace: 'pre', background: '#0a0c14',
+      <pre style={{
+        margin: '4px 0', padding: '12px', borderRadius: '6px',
+        color: 'var(--term-text)', whiteSpace: 'pre', background: 'var(--term-bg)',
+        overflowX: 'auto', border: '1px solid var(--term-border)'
       }}>
         <code>{code}</code>
-      </div>
+      </pre>
     </div>
   );
 }

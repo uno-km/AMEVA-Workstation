@@ -1,6 +1,16 @@
 # AMEVA OS Changelog
 
-## 2026-07-07 (Phase 1-B: Document Exporters Type Hardening)
+## 2026-07-08 (Graceful Shutdown & Window Defense Modularization)
+
+### 🚀 Major Architectural Changes
+- **Graceful Shutdown Pipeline**: Eliminated a severe 10-second main thread blocking bottleneck caused by synchronous `taskkill` calls during `LLMProcessManager` startup. Implemented an asynchronous cleanup routine (`asyncCleanupOrphanedProcesses`) and introduced a `gracefulShutdown` method that safely signals `SIGINT` to the local AI engine, awaiting VRAM deallocation up to 3 seconds before forcing a `SIGKILL`. Integrated this pipeline into `index.ts` capturing `SIGINT`, `SIGTERM`, and `will-quit` events.
+- **Window Defense Manager Modularization (`WindowDefenseManager.ts`)**: Extracted all window-level event interceptors (hotkey prevention, window closing) from `index.ts` to solve the God File anti-pattern. Intercepts accidental refresh commands (`F5`, `Ctrl+R`) to prevent uncommitted VFS data loss, while allowing hard refreshes (`Ctrl+Shift+R`). Implemented an explicit close confirmation `dialog.showMessageBoxSync` triggered upon user-initiated window closures (Ctrl+W, Alt+F4, X button), while correctly ignoring the dialog prompt during background programmatic shutdowns.
+
+### 📁 Files Modified / Added
+- `[NEW]` `src/main/services/windowDefenseManager.ts` - Centralized defense logic, implementing `applyDefenses`.
+- `[MODIFY]` `src/main/index.ts` - Removed inline `before-input-event` logic. Applied `WindowDefenseManager.applyDefenses`. Replaced all synchronous process cleanups with the new Graceful Exit pipeline.
+- `[MODIFY]` `src/main/services/llmProcessManager.ts` - Refactored `forceCleanupLocalLLMProcesses` into async `asyncCleanupOrphanedProcesses`. Added `gracefulShutdown` logic.
+- `[MODIFY]` `src/main/ipc/llm/llmLifecycleIpc.ts` - Updated `llm:restart` and `llm:stop` to use async cleanup routines.## 2026-07-07 (Phase 1-B: Document Exporters Type Hardening)
 
 ### 🚀 Major Architectural Changes
 - **Document Exporters Type Hardening (`officeExporter.ts`, `exportersHelper.ts`, `htmlExporter.ts`, `hwpExporter.ts`)**: Complete elimination of all 47 `any` type escape hatches across the entire document exporting suite. Introduced shared AST interfaces (`ExporterBlock`, `ExporterInlineContent`, `ExporterTableRow`, `ExporterInlineStyle`) in `exportersHelper.ts` and integrated strict library typing (`import('exceljs').Cell`, `import('exceljs').Column`). Achieved 100% strict type safety across HTML, XML, Word (DOCX), Excel (XLSX), PPTX, and HWPX exporters while preserving zero variable renames, zero function renames, zero signature breaks, and zero runtime behavior changes.

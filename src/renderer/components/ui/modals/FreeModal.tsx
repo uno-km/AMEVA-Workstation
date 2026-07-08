@@ -3,31 +3,65 @@ import { BaseModal } from './BaseModal'
 import type { BaseModalProps } from './BaseModal'
 import { useDraggable } from '../../../hooks/app/useDraggable'
 import { useModalResize } from '../../../hooks/app/useModalResize'
+import { useUIStore } from '../../../stores/useUIStore'
+import { useState, useEffect } from 'react'
 
 export interface FreeModalProps extends BaseModalProps {
   initialX?: number
   initialY?: number
   initialWidth?: number
   initialHeight?: number
+  hasBackdrop?: boolean
 }
 
 export function FreeModal(props: FreeModalProps) {
-  const { isOpen, initialX = 100, initialY = 100, initialWidth = 820, initialHeight = 580, ...rest } = props
+  const { isOpen, initialX = 100, initialY = 100, initialWidth = 820, initialHeight = 580, hasBackdrop, ...rest } = props
+  
+  const bringToFront = useUIStore(s => s.bringToFront)
+  const [zIndex, setZIndex] = useState(10000)
+
+  // 컴포넌트가 마운트될 때, 또는 열릴 때 한 번 z-index를 최상단으로 올립니다.
+  useEffect(() => {
+    if (isOpen) setZIndex(bringToFront())
+  }, [isOpen, bringToFront])
   
   const { pos, handleMouseDown } = useDraggable({ x: initialX, y: initialY })
   const { modalSize, handleResizeMouseDown } = useModalResize(initialWidth, initialHeight)
 
+  const handleModalFocus = () => {
+    setZIndex(bringToFront())
+  }
+
   if (!isOpen) return null
 
   return (
-    <div
-      style={{
-        position: 'fixed',
+    <>
+      {/* 선택적 백드롭 오버레이 */}
+      {hasBackdrop && (
+        <div
+          onClick={rest.onClose}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: zIndex - 1,
+            backgroundColor: 'var(--bg-deep)',
+            opacity: 0.5,
+            backdropFilter: 'blur(4px)',
+            pointerEvents: 'auto'
+          }}
+        />
+      )}
+      
+      {/* 플로팅 모달 본체 */}
+      <div
+        onMouseDownCapture={handleModalFocus}
+        style={{
+          position: 'fixed',
         left: `${pos.x}px`,
         top: `${pos.y}px`,
         width: `${modalSize.width}px`,
         height: `${modalSize.height}px`,
-        zIndex: 10000,
+        zIndex,
         pointerEvents: 'auto',
       }}
     >
@@ -68,5 +102,6 @@ export function FreeModal(props: FreeModalProps) {
         }}
       />
     </div>
+    </>
   )
 }

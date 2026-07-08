@@ -74,6 +74,10 @@ export interface UIState {
 
   // ── 복합 액션 ───────────────────────────────────────────────────────────────
   toggleRightTab: (tab: string) => void
+
+  // ── Z-Index 관리 ────────────────────────────────────────────────────────────
+  baseZIndex: number
+  bringToFront: () => number
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
@@ -145,5 +149,15 @@ export const useUIStore = create<UIState>((set, get) => ({
     } else {
       set({ activeRightTab: tab, showAIPanel: true })
     }
+  },
+
+  baseZIndex: 10000,
+  bringToFront: () => {
+    let newZ = 10000;
+    set(state => {
+      newZ = state.baseZIndex + 10;
+      return { baseZIndex: newZ };
+    });
+    return newZ;
   }
 }))

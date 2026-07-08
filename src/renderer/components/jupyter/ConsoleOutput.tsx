@@ -18,7 +18,7 @@ export function ConsoleOutput({
 }: ConsoleOutputProps) {
   return (
     <div style={{
-      background: '#0a0b10',
+      background: 'var(--term-bg)',
       borderTop: `1px solid ${accentColor}22`,
       fontFamily: 'Consolas, Monaco, monospace',
       fontSize: '12px',
@@ -28,7 +28,7 @@ export function ConsoleOutput({
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '6px 14px', background: '#0e1017', borderBottom: '1px solid rgba(255,255,255,0.05)',
+        padding: '6px 14px', background: 'var(--bg-glass-active)', borderBottom: '1px solid var(--term-border)',
         userSelect: 'none'
       }}>
         <span style={{ color: 'var(--text-muted)', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '5px' }}>
@@ -48,11 +48,11 @@ export function ConsoleOutput({
       </div>
       <div style={{
         padding: '12px 16px', maxHeight: '200px', overflowY: 'auto',
-        color: '#e5e7eb',
+        color: 'var(--term-text)',
         lineHeight: '1.5'
       }}>
         {resolvedLanguage === 'sql' && success && tableData ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse', color: '#e5e7eb', textAlign: 'left', fontSize: '12px' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--term-text)', textAlign: 'left', fontSize: '12px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.03)' }}>
                 {tableData.columns.map((col: string, i: number) => (
@@ -76,7 +76,7 @@ export function ConsoleOutput({
               <div
                 key={idx}
                 style={{
-                  color: line.type === 'stderr' ? '#f87171' : line.type === 'info' ? `${accentColor}cc` : '#e5e7eb',
+                  color: line.type === 'stderr' ? 'var(--danger)' : line.type === 'info' ? `${accentColor}cc` : 'var(--term-text)',
                   marginBottom: '2px',
                 }}
               >

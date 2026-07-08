@@ -176,6 +176,15 @@ export function SettingsModal({
     }
   }, [isOpen])
 
+  // 라이브 테마 프리뷰: Appearance 설정 탭에서 고르면 닫기 전까지 임시 적용
+  useEffect(() => {
+    if (isOpen) {
+      document.documentElement.setAttribute('data-theme', draftSettings.theme)
+    } else {
+      document.documentElement.setAttribute('data-theme', settings.theme)
+    }
+  }, [isOpen, draftSettings.theme, settings.theme])
+
   const handleToggleProPlan = async () => {
     if (isFreeModeLocked) {
       alert('⚠️ 무료 모드 데모 플래그(--free)로 실행되어 요금제 강제 전환이 불가능합니다.')
@@ -263,7 +272,7 @@ export function SettingsModal({
       icon={<Settings size={18} />}
       initialWidth={820}
       initialHeight={580}
-      hideHeader
+      hasBackdrop={true}
     >
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         

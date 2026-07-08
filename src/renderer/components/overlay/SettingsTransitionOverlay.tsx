@@ -40,7 +40,7 @@ export function SettingsTransitionOverlay({ isVisible }: SettingsTransitionOverl
       style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: 'rgba(10, 10, 15, 0.85)',
+        backgroundColor: 'var(--bg-glass)',
         backdropFilter: 'blur(16px)',
         zIndex: 9999,
         display: 'flex',

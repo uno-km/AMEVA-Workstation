@@ -28,3 +28,7 @@ AMEVA Workstation is a serverless local AI & WASM hybrid operating system runnin
 ## Error Handling & Resiliency
 - Strict "No Swallow" policy on exceptions.
 - System-level interactions (LLM binding, WebSocket connections) must catch errors and emit them back to the renderer to prevent memory leaks and VFS corruption.
+- **Graceful Shutdown & Window Defense**:
+  - `WindowDefenseManager`: Centralized module preventing accidental renderer data loss (blocks `F5`, `Ctrl+R` while allowing `Ctrl+Shift+R`). Intercepts `close` events with a synchronous confirmation dialog to safeguard unsaved work.
+  - Background LLM processes (`llama-server`) are gracefully shut down via `SIGINT` signals with a 3-second timeout before forced `SIGKILL` on application quit (`SIGINT`, `SIGTERM`, `will-quit`).
+  - Heavy synchronous cleanups (`execSync('taskkill')`) are strictly replaced with asynchronous tracking and teardowns to prevent main thread blocking during Electron startup.

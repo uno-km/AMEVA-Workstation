@@ -92,7 +92,7 @@ export function DiffModal({
             padding: '20px',
             fontFamily: 'var(--font-mono)',
             fontSize: '13px',
-            backgroundColor: '#0a0a0f',
+            backgroundColor: 'var(--bg-deep)',
             lineHeight: '1.6',
           }}
         >
