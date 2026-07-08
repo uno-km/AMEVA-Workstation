@@ -1,4 +1,4 @@
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, ChildProcess, execSync } from 'child_process'
 
 export class MCPProcessManager {
   private static processes: Map<string, {
@@ -112,7 +112,11 @@ export class MCPProcessManager {
     const state = this.processes.get(serverId)
     if (state) {
       try {
-        state.process.kill()
+        if (process.platform === 'win32' && state.process.pid) {
+          execSync(`taskkill /pid ${state.process.pid} /T /F`, { stdio: 'ignore', timeout: 1000 })
+        } else {
+          state.process.kill()
+        }
       } catch {}
       this.processes.delete(serverId)
     }

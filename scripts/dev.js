@@ -20,6 +20,11 @@ const viteProcess = spawn('npx', ['vite'], {
   shell: true
 });
 
+viteProcess.on('close', (code) => {
+  if (marketProcess) marketProcess.kill();
+  process.exit(code);
+});
+
 process.on('SIGINT', () => {
   if (marketProcess) marketProcess.kill();
   viteProcess.kill();

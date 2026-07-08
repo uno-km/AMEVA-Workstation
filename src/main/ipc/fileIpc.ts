@@ -7,6 +7,7 @@ import * as exportersMain from '../exportersMain.js'
 import { CollabServerManager } from '../services/collabServer.js'
 import { getProPlanMemory } from '../services/planState.js'
 import { fetchHtmlMetadata } from '../services/htmlScraper.js'
+import { WindowDefenseManager } from '../services/windowDefenseManager.js'
 
 const require = createRequire(import.meta.url)
 const pdfModule = require('pdf-parse')
@@ -337,7 +338,6 @@ export function registerFileIpc(
   ipcMain.on('window:force-close', (event) => {
     const win = getActiveWindow(event, getMainWindow)
     if (win) {
-      const { WindowDefenseManager } = require('../services/windowDefenseManager.js')
       WindowDefenseManager.forceQuit(win)
     }
   })

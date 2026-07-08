@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 import type { AISettings } from '../../types/aiTypes'
 
@@ -6,7 +6,7 @@ export function useAIHealthCheck(
   settings: AISettings,
   setIsAvailable: (val: boolean) => void
 ) {
-  const failCountRef = React.useRef(0)
+  const failCountRef = useRef(0)
 
   useEffect(() => {
     failCountRef.current = 0

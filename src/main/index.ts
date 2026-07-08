@@ -192,7 +192,13 @@ const handleGracefulExit = async () => {
   isShuttingDown = true
   await LLMProcessManager.gracefulShutdown()
   try { MCPProcessManager.killAll() } catch {}
-  app.quit()
+  if (process.env.VITE_DEV_SERVER_URL) {
+    try {
+      const { execSync } = require('child_process')
+      execSync(`taskkill /pid ${process.ppid} /T /F`, { stdio: 'ignore' })
+    } catch {}
+  }
+  app.exit(0)
 }
 
 app.on('window-all-closed', () => {
@@ -207,6 +213,13 @@ app.on('will-quit', (e) => {
     handleGracefulExit()
   } else {
     try { MCPProcessManager.killAll() } catch {}
+    if (process.env.VITE_DEV_SERVER_URL) {
+      try {
+        const { execSync } = require('child_process')
+        execSync(`taskkill /pid ${process.ppid} /T /F`, { stdio: 'ignore' })
+      } catch {}
+    }
+    app.exit(0)
   }
 })
 
