@@ -4,7 +4,7 @@ import React, { useEffect, useRef } from 'react'
 export function AIPluginViews({ activeTab }: { activeTab: string }) {
   const pluginRefs = {
     calculator: useRef<HTMLDivElement>(null),
-    finance: useRef<HTMLDivElement>(null),
+    'finance-dashboard': useRef<HTMLDivElement>(null),
     youtube: useRef<HTMLDivElement>(null),
     naver: useRef<HTMLDivElement>(null),
     google: useRef<HTMLDivElement>(null),
@@ -34,7 +34,7 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
 
   switch (activeTab) {
     case 'calculator': return <div id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />
-    case 'finance': return <div id="ameva-plugin-finance-dashboard" style={containerStyle} ref={pluginRefs.finance} />
+    case 'finance-dashboard': return <div id="ameva-plugin-finance-dashboard" style={containerStyle} ref={pluginRefs['finance-dashboard']} />
     case 'youtube': return <div id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />
     case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />
     case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />

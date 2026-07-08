@@ -12,6 +12,7 @@ import { JupyterBlock } from '../components/JupyterBlock'
 import { DrawingBlock } from '../components/DrawingBlock'
 import { LinkPreviewBlock } from '../components/LinkPreviewBlock'
 import { YoutubeBlock } from '../components/YoutubeBlock'
+import { MapBlock } from '../components/MapBlock'
 
 export const amevaSchema = BlockNoteSchema.create({
   blockSpecs: {
@@ -19,7 +20,8 @@ export const amevaSchema = BlockNoteSchema.create({
     jupyter: JupyterBlock,
     drawing: DrawingBlock,
     linkPreview: LinkPreviewBlock,
-    youtube: YoutubeBlock
+    youtube: YoutubeBlock,
+    map: MapBlock
   }
 })
 

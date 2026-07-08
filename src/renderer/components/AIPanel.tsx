@@ -19,37 +19,76 @@ const QUICK_ACTIONS = [
   { id: 'explain', icon: Lightbulb, label: '설명', prompt: '이 개념을 쉽게 풀어서 설명해줘.' },
 ]
 
-export function AIPanel(props: any) {
+import { useUIStore } from '../stores/useUIStore'
+import { useWorkspaceStore } from '../stores/useWorkspaceStore'
+import { useProcessStore } from '../stores/useProcessStore'
+import { useAI } from '../hooks/useAI'
+import { useAppContext } from '../contexts/AppContext'
+import { useAppAISuggestions } from '../hooks/app/useAppAISuggestions'
+
+export function AIPanel() {
+  const { showAIPanel: isOpen, setShowAIPanel, activeRightTab: activeTab, setIsSettingsOpen, showModelHub, setShowModelHub } = useUIStore()
+  const { currentContent, selectedText, setSelectedText, activeBlockId, taggedBlocks, setTaggedBlocks } = useWorkspaceStore()
+  const { downloadStatus, setDownloadStatus, aiPanelWidth: panelWidth = 320 } = useProcessStore()
+  
   const {
-    input, setInput,
-    manualMode, setManualMode,
-    useContext, setUseContext,
-    gpuName,
+    messages, isGenerating, isAvailable, models, settings,
+    generateResponse, abortGeneration, clearHistory, updateSettings,
+    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs, setEngineLogs,
+    refreshModels, importModel, pendingQueue, removeFromQueue
+  } = useAI()
+  
+  const { editor } = useAppContext()
+  const blocks = editor?.document || []
+  
+  const { handleApplySuggestion, handleApplyInsertSuggestion } = useAppAISuggestions(editor, updateInsertSuggestionStatus)
+  const onApplySuggestion = handleApplySuggestion
+  const onApplyInsertSuggestion = handleApplyInsertSuggestion
+  const onUpdateDiffState = updateMessageDiffState
+  const onUpdateInsertSuggestionStatus = updateInsertSuggestionStatus
+  const onClearSelectedText = () => setSelectedText('')
+  const onOpenGlobalSettings = (tab: any) => setIsSettingsOpen(true, tab)
+  const onClose = () => setShowAIPanel(false)
+  const onClear = clearHistory
+  
+  const onSend = (msg: string, ctx?: string, orig?: string, bId?: string, runtimeSettings?: any) => {
+    generateResponse(msg, ctx, orig, bId, runtimeSettings, editor, taggedBlocks)
+    setTaggedBlocks([])
+  }
+
+  // Pack the props for useAIPanelLogic to avoid changing it entirely yet
+  const logicProps = {
+    messages, engineLogs, taggedBlocks, isOpen, settings,
+    blocks, currentContent, selectedText, activeBlockId,
+    onSend, showModelHub, refreshModels, setDownloadStatus,
+    onUpdateSettings: updateSettings, setTaggedBlocks
+  }
+
+  const {
+    input, setInput, manualMode, setManualMode, useContext, setUseContext, gpuName,
     textareaRef, messagesContainerRef, messagesEndRef,
     handleSend, handleKeyDown, handleQuickAction
-  } = useAIPanelLogic(props)
-
-  const {
-    isOpen, onClose, messages, isGenerating, isAvailable,
-    models, settings, panelWidth = 320,
-    selectedText, onClearSelectedText,
-    onApplySuggestion, onUpdateDiffState,
-    onApplyInsertSuggestion, onUpdateInsertSuggestionStatus,
-    blocks, activeTab = 'ai',
-    downloadStatus,
-    taggedBlocks, setTaggedBlocks,
-    pendingQueue, removeFromQueue,
-    onOpenGlobalSettings,
-  } = props
-
-
+  } = useAIPanelLogic(logicProps)
 
   if (!isOpen) return null
   const isWhiteTheme = settings.theme === 'white'
   const displayModelLabel = settings.apiModel || (gpuName ? `GPU: ${gpuName}` : 'auto')
 
   return (
-    <div style={{
+    <div 
+      className={`ai-panel ${isAIPanelDragging ? 'dragging' : ''}`}
+      onDragOver={(e) => {
+        e.preventDefault()
+        e.dataTransfer.dropEffect = 'copy'
+      }}
+      onDrop={(e) => {
+        e.preventDefault()
+        let url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+        if (url) {
+          setInput((prev: string) => prev + (prev ? ' ' : '') + url.trim())
+        }
+      }}
+      style={{
       width: `${panelWidth}px`, height: '100%',
       background: 'var(--bg-main)', borderLeft: '1px solid var(--border-muted)',
       display: 'flex', flexDirection: 'column', position: 'relative',
@@ -61,7 +100,7 @@ export function AIPanel(props: any) {
         modelLabel={displayModelLabel}
         isGenerating={isGenerating}
         onOpenSettings={() => onOpenGlobalSettings?.('AIEngine')}
-        onClearMessages={props.onClear}
+        onClearMessages={onClear}
         onClose={onClose}
       />
 
@@ -113,7 +152,7 @@ export function AIPanel(props: any) {
               textareaRef={textareaRef}
               onChange={setInput}
               onSubmit={handleSend}
-              onAbort={props.onAbort}
+              onAbort={abortGeneration}
               onKeyDown={handleKeyDown}
               selectedText={selectedText}
             />

@@ -138,8 +138,10 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
       return
     }
 
-    // 강력 새로고침 (Ctrl+Shift+R)은 통과시킴 (브라우저 기본 동작 유지)
+    // 강력 새로고침 (Ctrl+Shift+R)은 통과시킴 (브라우저 기본 동작 유지) -> 수정: 새로고침 확인 모달 띄우기
     if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
+      e.preventDefault()
+      useUIStore.getState().setIsRefreshConfirmOpen(true)
       return
     }
 

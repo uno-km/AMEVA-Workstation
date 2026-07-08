@@ -3,29 +3,17 @@ import { ChatPanel } from './ChatPanel'
 import { MessageCircle, Minimize2, Pin } from 'lucide-react'
 import type { ChatMessage } from '../hooks/useChat'
 
-interface FloatingChatProps {
-  messages: ChatMessage[]
-  onSend: (content: string) => void
-  onClear: () => void
-  username: string
-  userColor: string
-  serverRunning: boolean
-  onDockBack: () => void
-  hasUnread: boolean
-  onClearUnread: () => void
-}
+import { useAppContext } from '../contexts/AppContext'
+import { useUIStore } from '../stores/useUIStore'
 
-export function FloatingChat({
-  messages,
-  onSend,
-  onClear,
-  username,
-  userColor,
-  serverRunning,
-  onDockBack,
-  hasUnread,
-  onClearUnread,
-}: FloatingChatProps) {
+export interface FloatingChatProps {}
+
+export function FloatingChat({}: FloatingChatProps = {}) {
+  const { chatMessages: messages, sendChatMessage: onSend, clearChatMessages: onClear, username, userColor, serverRunning } = useAppContext()
+  const { hasChatUnread: hasUnread, setHasChatUnread, setIsChatFloating } = useUIStore()
+  
+  const onDockBack = () => setIsChatFloating(false)
+  const onClearUnread = () => setHasChatUnread(false)
   // 위치 및 크기 상태
   const [pos, setPos] = useState({ x: window.innerWidth - 340, y: window.innerHeight - 520 })
   const [size, setSize] = useState({ width: 310, height: 460 })

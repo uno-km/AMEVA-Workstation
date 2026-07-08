@@ -1,18 +1,11 @@
 import React from 'react'
 
-export interface FloatingPiPVideoProps {
-  pipVideoId: string | null
-  pipPosition: { x: number; y: number }
-  handlePiPMouseDown: (e: React.MouseEvent) => void
-  setPipVideoId: (id: string | null) => void
-}
+import { useYoutubePiP } from '../../hooks/app/useYoutubePiP'
 
-export function FloatingPiPVideo({
-  pipVideoId,
-  pipPosition,
-  handlePiPMouseDown,
-  setPipVideoId,
-}: FloatingPiPVideoProps) {
+export interface FloatingPiPVideoProps {}
+
+export function FloatingPiPVideo({}: FloatingPiPVideoProps = {}) {
+  const { pipVideoId, pipPosition, handlePiPMouseDown, setPipVideoId } = useYoutubePiP()
   if (!pipVideoId) return null
 
   return (
@@ -46,6 +39,17 @@ export function FloatingPiPVideo({
           cursor: 'move',
         }}
         onMouseDown={handlePiPMouseDown}
+        draggable
+        onDragStart={(e) => {
+          e.dataTransfer.setData('text/plain', `https://youtube.com/watch?v=${pipVideoId}`)
+          e.dataTransfer.effectAllowed = 'copy'
+        }}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          // Right click context menu (optional if user mentioned it)
+          const evt = new CustomEvent('app:insert-youtube', { detail: { videoId: pipVideoId } })
+          window.dispatchEvent(evt)
+        }}
       >
         <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-muted)' }}>📺 Floating YouTube PiP Player</span>
         <button

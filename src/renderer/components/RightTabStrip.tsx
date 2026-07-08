@@ -1,19 +1,25 @@
 import { Sparkles, List, Calculator, TrendingUp, Play, Globe, Search, Calendar, HardDrive } from 'lucide-react'
 import type { HotkeyConfig } from './SettingsModal'
 
-interface RightTabStripProps {
-  activeTab: string
-  isOpen: boolean
-  onToggleTab: (tab: string) => void
-  hasChatUnread?: boolean
-  installedPlugins?: string[]
-  hotkeys?: HotkeyConfig
-  isProPlan?: boolean
-}
+import { useUIStore } from '../stores/useUIStore'
+import { useAppContext } from '../contexts/AppContext'
 
-export function RightTabStrip({
-  activeTab, isOpen, onToggleTab, hasChatUnread = false, installedPlugins = [], hotkeys, isProPlan = false
-}: RightTabStripProps) {
+export interface RightTabStripProps {}
+
+export function RightTabStrip({}: RightTabStripProps = {}) {
+  const { activeRightTab: activeTab, showAIPanel: isOpen, setShowAIPanel, setActiveRightTab, hasChatUnread } = useUIStore()
+  const { settings, isProPlan } = useAppContext()
+  const installedPlugins = settings?.installedPlugins || []
+  const hotkeys = settings?.hotkeys
+  
+  const onToggleTab = (tab: string) => {
+    if (isOpen && activeTab === tab) {
+      setShowAIPanel(false)
+    } else {
+      setActiveRightTab(tab)
+      setShowAIPanel(true)
+    }
+  }
   const formatHotkey = (raw: string | undefined): string => {
     if (!raw) return ''
     return raw

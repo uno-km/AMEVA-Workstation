@@ -19,6 +19,12 @@ function buildPreviewSegments(markdown: string) {
   const customBlocks: { lang: string; code: string }[] = []
 
   const renderer = new marked.Renderer()
+  renderer.heading = function({ tokens, depth, text }) {
+    // Generate an ID for the outline scroll logic
+    // We strip tags and lowercase it for a simple ID, then format the anchor
+    const escapedText = text.toLowerCase().replace(/[^\wㄱ-ㅎㅏ-ㅣ가-힣]+/g, '-')
+    return `<h${depth} id="${escapedText}">${text}</h${depth}>`
+  }
   renderer.image = function({ href, title, text }) {
     const isVideo = href.toLowerCase().endsWith('.mp4') || 
                     href.toLowerCase().endsWith('.webm') || 

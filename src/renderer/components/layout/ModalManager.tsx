@@ -1,4 +1,3 @@
-
 import * as ipc from '../../services/ipc/electronApiAdapter'
 import { DiffModal } from '../DiffModal'
 import { SettingsModal, type AppSettings } from '../SettingsModal'
@@ -8,92 +7,46 @@ import { MarketplaceModal } from '../MarketplaceModal'
 import { PricingModal } from '../PricingModal'
 import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
 import { QuitConfirmModal } from '../QuitConfirmModal'
-import { type DocumentSnapshot, type ExportProgress } from '../../../shared/types'
-import type { AISettings } from '../../types/aiTypes'
 
-export interface ModalManagerProps {
-  isDiffOpen: boolean
-  setIsDiffOpen: (open: boolean) => void
-  selectedSnapshot: DocumentSnapshot | null
-  currentContent: string
-  getLineDiff: any
-  handleRollback: (content: string) => void
-  isSettingsOpen: boolean
-  settingsInitialTab?: any
-  setIsSettingsOpen: (open: boolean) => void
-  refreshMcpServers: () => void
-  settings: AppSettings
-  handleUpdateSettings: (newSettings: Partial<AppSettings>) => void
-  aiSettings: AISettings
-  updateAISettings: (settings: Partial<AISettings>) => void
-  username: string
-  userColor: string
-  setUsername: (name: string) => void
-  setUserColor: (color: string) => void
-  setShowModelHub: (show: boolean) => void
-  isAboutOpen: boolean
-  setIsAboutOpen: (open: boolean) => void
-  handleOpenGithub: () => void
-  isGuideOpen: boolean
-  setIsGuideOpen: (open: boolean) => void
-  showMarketplaceModal: boolean
-  setShowMarketplaceModal: (show: boolean) => void
-  handleInstallPlugin: (id: string, scriptUrl: string) => Promise<void>
-  handleUninstallPlugin: (id: string) => void
-  isProPlan: boolean
-  showPricingModal: boolean
-  setShowPricingModal: (show: boolean) => void
-  exportProgress: ExportProgress
-  setExportProgress: (prog: ExportProgress) => void
-  exportMinimized: boolean
-  setExportMinimized: (min: boolean) => void
-  toggleExportMinimized: () => void
-  isQuitConfirmOpen: boolean
-  setIsQuitConfirmOpen: (open: boolean) => void
-  handleQuitConfirm: () => void
-}
+import { RefreshConfirmModal } from '../RefreshConfirmModal'
 
-export function ModalManager({
-  isDiffOpen,
-  setIsDiffOpen,
-  selectedSnapshot,
-  currentContent,
-  getLineDiff,
-  handleRollback,
-  isSettingsOpen,
-  settingsInitialTab,
-  setIsSettingsOpen,
-  refreshMcpServers,
-  settings,
-  handleUpdateSettings,
-  aiSettings,
-  updateAISettings,
-  username,
-  userColor,
-  setUsername,
-  setUserColor,
-  setShowModelHub,
-  isAboutOpen,
-  setIsAboutOpen,
-  handleOpenGithub,
-  isGuideOpen,
-  setIsGuideOpen,
-  showMarketplaceModal,
-  setShowMarketplaceModal,
-  handleInstallPlugin,
-  handleUninstallPlugin,
-  isProPlan,
-  showPricingModal,
-  setShowPricingModal,
-  exportProgress,
-  setExportProgress,
-  exportMinimized,
-  setExportMinimized,
-  toggleExportMinimized,
-  isQuitConfirmOpen,
-  setIsQuitConfirmOpen,
-  handleQuitConfirm,
-}: ModalManagerProps) {
+import { useAppContext } from '../../contexts/AppContext'
+import { useUIStore } from '../../stores/useUIStore'
+import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
+import { useProcessStore } from '../../stores/useProcessStore'
+import { useAI } from '../../hooks/useAI'
+
+export interface ModalManagerProps {}
+
+export function ModalManager({}: ModalManagerProps = {}) {
+  const {
+    settings, handleUpdateSettings, handleInstallPlugin, handleUninstallPlugin, isProPlan,
+    username, setUsername, userColor, setUserColor, getLineDiff, handleRollback,
+    handleOpenGithub, refreshMcpServers, handleCloseApp
+  } = useAppContext()
+  
+  const {
+    isDiffOpen, setIsDiffOpen, isSettingsOpen, settingsInitialTab, setIsSettingsOpen,
+    setShowModelHub, isAboutOpen, setIsAboutOpen, isGuideOpen, setIsGuideOpen,
+    showMarketplaceModal, setShowMarketplaceModal, showPricingModal, setShowPricingModal,
+    isQuitConfirmOpen, setIsQuitConfirmOpen, isRefreshConfirmOpen, setIsRefreshConfirmOpen
+  } = useUIStore()
+
+  const { selectedSnapshot, currentContent } = useWorkspaceStore()
+  
+  const { exportProgress, setExportProgress, exportMinimized, setExportMinimized, toggleExportMinimized } = useProcessStore()
+
+  const { settings: aiSettings, updateSettings: updateAISettings } = useAI()
+
+  const handleQuitConfirm = () => {
+    setIsQuitConfirmOpen(false)
+    handleCloseApp()
+  }
+
+  const handleRefreshConfirm = () => {
+    setIsRefreshConfirmOpen(false)
+    window.location.reload()
+  }
   return (
     <>
       <DiffModal
@@ -106,7 +59,7 @@ export function ModalManager({
       />
       <SettingsModal
         isOpen={isSettingsOpen}
-        initialTab={settingsInitialTab}
+        initialTab={settingsInitialTab as any}
         onClose={() => {
           setIsSettingsOpen(false)
           refreshMcpServers()
@@ -162,6 +115,13 @@ export function ModalManager({
         onClose={() => setIsQuitConfirmOpen(false)}
         onConfirm={handleQuitConfirm}
       />
+      {isRefreshConfirmOpen && setIsRefreshConfirmOpen && handleRefreshConfirm && (
+        <RefreshConfirmModal
+          isOpen={isRefreshConfirmOpen}
+          onClose={() => setIsRefreshConfirmOpen(false)}
+          onConfirm={handleRefreshConfirm}
+        />
+      )}
     </>
   )
 }

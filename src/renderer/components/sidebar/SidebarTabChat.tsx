@@ -3,21 +3,18 @@ import { MessageCircle, Share2 } from 'lucide-react'
 import type { ChatMessage } from '../../hooks/useChat'
 import { ChatPanel } from '../ChatPanel'
 
-export interface SidebarTabChatProps {
-  chatMessages: ChatMessage[]
-  onChatSend: (content: string) => void
-  onChatClear: () => void
-  username: string
-  userColor: string
-  isChatFloating: boolean
-  onToggleChatFloat: () => void
-  serverRunning: boolean
-}
+import { useAppContext } from '../../contexts/AppContext'
+import { useUIStore } from '../../stores/useUIStore'
 
-export function SidebarTabChat({
-  chatMessages, onChatSend, onChatClear, username, userColor,
-  isChatFloating, onToggleChatFloat, serverRunning,
-}: SidebarTabChatProps) {
+export interface SidebarTabChatProps {}
+
+export function SidebarTabChat({}: SidebarTabChatProps = {}) {
+  const { chatMessages, sendChatMessage, clearChatMessages, username, userColor, serverRunning } = useAppContext()
+  const { isChatFloating, setIsChatFloating } = useUIStore()
+  
+  const onChatSend = sendChatMessage
+  const onChatClear = clearChatMessages
+  const onToggleChatFloat = () => setIsChatFloating(!isChatFloating)
   return (
     <div
       data-focus-region="sidebar-chat"

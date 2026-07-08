@@ -6,43 +6,25 @@ import { MCPStatusIndicator } from './statusbar/MCPStatusIndicator'
 import { DocStatusIndicator } from './statusbar/DocStatusIndicator'
 import { CollabIndicator } from './statusbar/CollabIndicator'
 
-interface StatusBarProps {
-  filePath: string | null
-  currentContent: string
-  zoomLevel: number
-  browserZoom?: number   // webFrame 사이드바 줌 (1.0 = 100%)
-  peers: PeerState[]
-  serverRunning: boolean
-  wordWrap: boolean
-  onToggleWordWrap: () => void
-  onOpenSettings: () => void
-  downloadStatus?: any
-  isDirty?: boolean
-  lastSavedTime?: Date | null
-  aiSettings?: any
-  aiAvailable?: boolean
-  mcpServers?: any[] // [FIX-MCP-UI] MCP 설정 주입
-  isProPlan?: boolean
-}
+import { useAppContext } from '../contexts/AppContext'
+import { useUIStore } from '../stores/useUIStore'
+import { useWorkspaceStore } from '../stores/useWorkspaceStore'
+import { useProcessStore } from '../stores/useProcessStore'
+import { useAI } from '../hooks/useAI'
 
-export function StatusBar({
-  filePath,
-  currentContent,
-  zoomLevel,
-  browserZoom = 1.0,
-  peers,
-  serverRunning,
-  wordWrap,
-  onToggleWordWrap,
-  onOpenSettings,
-  downloadStatus,
-  isDirty = false,
-  lastSavedTime = null,
-  aiSettings,
-  aiAvailable = false,
-  mcpServers,
-  isProPlan = false,
-}: StatusBarProps) {
+export interface StatusBarProps {}
+
+export function StatusBar({}: StatusBarProps = {}) {
+  const { peers, serverRunning, settings, handleUpdateSettings, mcpServers, isProPlan } = useAppContext()
+  const { editorZoom: zoomLevel, browserZoom = 1.0, setIsSettingsOpen } = useUIStore()
+  const { filePath, currentContent, lastSavedTime, originalContent } = useWorkspaceStore()
+  const { downloadStatus } = useProcessStore()
+  const { settings: aiSettings, isAvailable: aiAvailable } = useAI()
+  
+  const wordWrap = settings?.wordWrap || false
+  const onToggleWordWrap = () => handleUpdateSettings({ wordWrap: !wordWrap })
+  const onOpenSettings = () => setIsSettingsOpen(true)
+  const isDirty = currentContent !== originalContent
   // 🦾 커스텀 툴팁 상태 관리
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const tooltipTimerRef = useRef<any>(null)

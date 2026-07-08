@@ -2,17 +2,17 @@ import React, { useState } from 'react'
 import { Plus, RefreshCw, Trash2 } from 'lucide-react'
 import type { DocumentSnapshot } from '../../../shared/types'
 
+import { useAppContext } from '../../contexts/AppContext'
+
 export interface SidebarTabHistoryProps {
-  snapshots: DocumentSnapshot[]
-  onCreateSnapshot: (title: string) => void
-  onDeleteSnapshot: (id: string) => void
-  onSelectSnapshotForDiff: (snapshot: DocumentSnapshot) => void
   sectionLabel: (text: string) => React.ReactNode
 }
 
-export function SidebarTabHistory({
-  snapshots, onCreateSnapshot, onDeleteSnapshot, onSelectSnapshotForDiff, sectionLabel,
-}: SidebarTabHistoryProps) {
+export function SidebarTabHistory({ sectionLabel }: SidebarTabHistoryProps) {
+  const { snapshots, createSnapshot, deleteSnapshot, handleSelectSnapshotForDiff } = useAppContext()
+  const onCreateSnapshot = createSnapshot
+  const onDeleteSnapshot = deleteSnapshot
+  const onSelectSnapshotForDiff = handleSelectSnapshotForDiff
   const [snapTitle, setSnapTitle] = useState('')
 
   return (

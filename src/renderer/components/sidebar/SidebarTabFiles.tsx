@@ -17,32 +17,51 @@ const EXPORT_FORMATS: { format: ExportFormat; label: string; color?: string }[] 
   { format: 'xml',  label: 'XML' },
 ]
 
+import { useAppContext } from '../../contexts/AppContext'
+import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
+
 export interface SidebarTabFilesProps {
-  filePath: string | null
-  editorMode: EditorMode
-  setEditorMode: (mode: EditorMode) => void
-  onOpenFile: () => void
-  onSaveFile: () => void
-  onExport: (format: ExportFormat) => void
-  fileOpenMode: 'replace' | 'append' | 'tab'
-  setFileOpenMode: (mode: 'replace' | 'append' | 'tab') => void
-  appendedFiles: Array<{ id: string; filePath: string; startBlockId: string }>
-  onSelectAppendedFile: (startBlockId: string) => void
-  tabs: Array<{ id: string; filePath: string | null; content: string; blocks: any[] }>
-  activeTabId: string | null
-  onSelectTab: (id: string) => void
-  onCloseTab: (id: string) => void
-  formatHotkey: (raw: string | undefined) => string
-  hkeys: HotkeyConfig
   sectionLabel: (text: string) => React.ReactNode
 }
 
-export function SidebarTabFiles({
-  filePath, editorMode, setEditorMode, onOpenFile, onSaveFile, onExport,
-  fileOpenMode, setFileOpenMode, appendedFiles, onSelectAppendedFile,
-  tabs, activeTabId, onSelectTab, onCloseTab,
-  formatHotkey, hkeys, sectionLabel,
-}: SidebarTabFilesProps) {
+export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
+  const {
+    editorMode, setEditorMode, handleOpenFile, handleSaveFile, handleExport,
+    settings
+  } = useAppContext()
+  
+  const {
+    filePath, fileOpenMode, setFileOpenMode, appendedFiles,
+    tabs, activeTabId, setActiveTabId, removeTab
+  } = useWorkspaceStore()
+  
+  const hkeys = settings?.hotkeys || {
+    save: 'Control+s', open: 'Control+o', newFile: 'Control+n', pdfExport: 'Control+p',
+    toggleAI: 'Control+\\', toggleMode: 'Control+h', zoomIn: 'Control+=', zoomOut: 'Control+-', zoomReset: 'Control+0'
+  }
+  
+  const formatHotkey = (raw: string | undefined): string => {
+    if (!raw) return ''
+    return raw.replace('Control', 'Ctrl').replace('Shift', 'Shift').replace('Alt', 'Alt').replace('Meta', 'Cmd')
+      .split('+').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' + ')
+  }
+  
+  const onSelectAppendedFile = (startBlockId: string) => {
+    const el = document.querySelector(`[data-id="${startBlockId}"], [data-block-id="${startBlockId}"]`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const outer = el.closest('.bn-block-outer') || el
+      outer.setAttribute('data-highlighted-temp', 'true')
+      setTimeout(() => { outer.removeAttribute('data-highlighted-temp') }, 1800)
+    }
+  }
+  
+  const onOpenFile = handleOpenFile
+  const onSaveFile = handleSaveFile
+  const onExport = handleExport
+  const onSelectTab = (id: string) => setActiveTabId(id)
+  const onCloseTab = (id: string) => removeTab(id)
+
   const [exportOpen, setExportOpen] = useState(false)
 
   const handleExportClick = (format: ExportFormat) => {

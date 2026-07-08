@@ -2,64 +2,13 @@ import React, { useState } from 'react'
 import {
   FileText, History, Users, MessageCircle, PanelLeftClose,
 } from 'lucide-react'
-import type { EditorMode, ExportFormat, DocumentSnapshot, PeerState } from '../../shared/types'
-import type { ChatMessage } from '../hooks/useChat'
-import type { HotkeyConfig } from './SettingsModal'
 import { SidebarTabFiles } from './sidebar/SidebarTabFiles'
 import { SidebarTabHistory } from './sidebar/SidebarTabHistory'
 import { SidebarTabCollab } from './sidebar/SidebarTabCollab'
 import { SidebarTabChat } from './sidebar/SidebarTabChat'
-
-interface SidebarProps {
-  filePath: string | null
-  editorMode: EditorMode
-  setEditorMode: (mode: EditorMode) => void
-  onOpenFile: () => void
-  onSaveFile: () => void
-  onExport: (format: ExportFormat) => void
-
-  // 히스토리
-  snapshots: DocumentSnapshot[]
-  onCreateSnapshot: (title: string) => void
-  onDeleteSnapshot: (id: string) => void
-  onSelectSnapshotForDiff: (snapshot: DocumentSnapshot) => void
-
-  // 협업
-  peers: PeerState[]
-  serverRunning: boolean
-  serverPort: number
-  setServerPort: (port: number) => void
-  serverHost: string
-  setServerHost: (host: string) => void
-  useLocalServer: boolean
-  setUseLocalServer: (val: boolean) => void
-  onToggleServer: () => void
-  collaborationLink: string
-  isConnected: boolean
-
-  // 파일 오픈 모드 및 다중 파일 관리
-  fileOpenMode: 'replace' | 'append' | 'tab'
-  setFileOpenMode: (mode: 'replace' | 'append' | 'tab') => void
-  appendedFiles: Array<{ id: string; filePath: string; startBlockId: string }>
-  onSelectAppendedFile: (startBlockId: string) => void
-  tabs: Array<{ id: string; filePath: string | null; content: string; blocks: any[] }>
-  activeTabId: string | null
-  onSelectTab: (id: string) => void
-  onCloseTab: (id: string) => void
-
-  // 사이드바 접기/열기 콜백
-  onToggleSidebar: () => void
-
-  // 채팅
-  chatMessages: ChatMessage[]
-  onChatSend: (content: string) => void
-  onChatClear: () => void
-  username: string
-  userColor: string
-  isChatFloating: boolean
-  onToggleChatFloat: () => void
-  hotkeys?: HotkeyConfig
-}
+import { useAppContext } from '../contexts/AppContext'
+import { useWorkspaceStore } from '../stores/useWorkspaceStore'
+import { useUIStore } from '../stores/useUIStore'
 
 type TabId = 'files' | 'history' | 'collab' | 'chat'
 
@@ -70,20 +19,22 @@ const TABS: { id: TabId; icon: React.FC<any>; label: string }[] = [
   { id: 'chat',    icon: MessageCircle, label: '채팅' },
 ]
 
-export function Sidebar({
-  filePath, editorMode, setEditorMode, onOpenFile, onSaveFile, onExport,
-  snapshots, onCreateSnapshot, onDeleteSnapshot, onSelectSnapshotForDiff,
-  peers, serverRunning, serverPort, setServerPort, serverHost, setServerHost,
-  useLocalServer, setUseLocalServer,
-  onToggleServer, collaborationLink, isConnected,
-  fileOpenMode, setFileOpenMode,
-  appendedFiles, onSelectAppendedFile,
-  tabs, activeTabId, onSelectTab, onCloseTab,
-  onToggleSidebar,
-  chatMessages, onChatSend, onChatClear, username, userColor,
-  isChatFloating, onToggleChatFloat,
-  hotkeys,
-}: SidebarProps) {
+export function Sidebar() {
+  const {
+    editorMode, setEditorMode, handleOpenFile, handleSaveFile, handleExport,
+    snapshots, createSnapshot, deleteSnapshot, handleSelectSnapshotForDiff,
+    peers, serverRunning, serverPort, setServerPort, serverHost, setServerHost,
+    useLocalServer, setUseLocalServer, toggleLocalServer, collaborationLink, isConnected,
+    chatMessages, sendChatMessage, clearChatMessages, username, userColor, settings
+  } = useAppContext()
+
+  const {
+    filePath, fileOpenMode, setFileOpenMode, appendedFiles,
+    tabs, activeTabId, setActiveTabId, removeTab
+  } = useWorkspaceStore()
+
+  const { isChatFloating, setIsChatFloating, setShowSidebar } = useUIStore()
+
   const formatHotkey = (raw: string | undefined): string => {
     if (!raw) return ''
     return raw
@@ -96,7 +47,7 @@ export function Sidebar({
       .join(' + ')
   }
 
-  const hkeys = hotkeys || {
+  const hkeys = settings?.hotkeys || {
     save: 'Control+s',
     open: 'Control+o',
     newFile: 'Control+n',
@@ -224,68 +175,22 @@ export function Sidebar({
 
         {/* ── 파일 탭 ── */}
         {activeTab === 'files' && (
-          <SidebarTabFiles
-            filePath={filePath}
-            editorMode={editorMode}
-            setEditorMode={setEditorMode}
-            onOpenFile={onOpenFile}
-            onSaveFile={onSaveFile}
-            onExport={onExport}
-            fileOpenMode={fileOpenMode}
-            setFileOpenMode={setFileOpenMode}
-            appendedFiles={appendedFiles}
-            onSelectAppendedFile={onSelectAppendedFile}
-            tabs={tabs}
-            activeTabId={activeTabId}
-            onSelectTab={onSelectTab}
-            onCloseTab={onCloseTab}
-            formatHotkey={formatHotkey}
-            hkeys={hkeys}
-            sectionLabel={sectionLabel}
-          />
+          <SidebarTabFiles sectionLabel={sectionLabel} />
         )}
 
         {/* ── 히스토리 탭 ── */}
         {activeTab === 'history' && (
-          <SidebarTabHistory
-            snapshots={snapshots}
-            onCreateSnapshot={onCreateSnapshot}
-            onDeleteSnapshot={onDeleteSnapshot}
-            onSelectSnapshotForDiff={onSelectSnapshotForDiff}
-            sectionLabel={sectionLabel}
-          />
+          <SidebarTabHistory sectionLabel={sectionLabel} />
         )}
 
         {/* ── 협업 탭 ── */}
         {activeTab === 'collab' && (
-          <SidebarTabCollab
-            peers={peers}
-            serverRunning={serverRunning}
-            serverPort={serverPort}
-            setServerPort={setServerPort}
-            serverHost={serverHost}
-            setServerHost={setServerHost}
-            useLocalServer={useLocalServer}
-            setUseLocalServer={setUseLocalServer}
-            onToggleServer={onToggleServer}
-            collaborationLink={collaborationLink}
-            isConnected={isConnected}
-            sectionLabel={sectionLabel}
-          />
+          <SidebarTabCollab sectionLabel={sectionLabel} />
         )}
 
         {/* ── 채팅 탭 ── */}
         {activeTab === 'chat' && (
-          <SidebarTabChat
-            chatMessages={chatMessages}
-            onChatSend={onChatSend}
-            onChatClear={onChatClear}
-            username={username}
-            userColor={userColor}
-            isChatFloating={isChatFloating}
-            onToggleChatFloat={onToggleChatFloat}
-            serverRunning={serverRunning}
-          />
+          <SidebarTabChat />
         )}
       </div>
     </aside>

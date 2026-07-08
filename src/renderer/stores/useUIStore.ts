@@ -76,6 +76,10 @@ export interface UIState {
   isQuitConfirmOpen: boolean
   setIsQuitConfirmOpen: (val: boolean) => void
 
+  // ── 새로고침 확인 모달 ────────────────────────────────────────────────────────
+  isRefreshConfirmOpen: boolean
+  setIsRefreshConfirmOpen: (val: boolean) => void
+
   // ── 복합 액션 ───────────────────────────────────────────────────────────────
   toggleRightTab: (tab: string) => void
 
@@ -148,6 +152,9 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   isQuitConfirmOpen: false,
   setIsQuitConfirmOpen: (val) => set({ isQuitConfirmOpen: val }),
+
+  isRefreshConfirmOpen: false,
+  setIsRefreshConfirmOpen: (val) => set({ isRefreshConfirmOpen: val }),
 
   toggleRightTab: (tab) => {
     const { showAIPanel, activeRightTab } = get()

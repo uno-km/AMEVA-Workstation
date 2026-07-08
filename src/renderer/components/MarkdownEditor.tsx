@@ -1,10 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect } from 'react'
 import { BlockNoteView } from '@blocknote/mantine'
-import { type AmevaEditor } from '../editor/amevaBlockSchema'
 import { SuggestionMenuController, SideMenuController, SideMenu, RemoveBlockItem, DragHandleMenu, BlockColorsItem } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
-import type { PeerState } from '../../shared/types'
-import { ImageLightbox } from './ImageLightbox'
 import { X, Users, FileText, Sparkles } from 'lucide-react'
 import mermaid from 'mermaid'
 import { useBacktickFence } from './useBacktickFence'
@@ -27,175 +24,59 @@ import { MarkdownPreview } from './MarkdownPreview'
 import { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
 import { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
 import { WelcomeBanner } from './editor/WelcomeBanner'
+import { RichStyleToolbar } from './editor/RichStyleToolbar'
+import { ImageLightbox } from './ImageLightbox'
 
-import type { EditorMode } from '../../shared/types'
+import { useHoverBlock } from '../hooks/editor/useHoverBlock'
+import { useSideMenuHoverSync } from '../hooks/editor/useSideMenuHoverSync'
+import { useEditorDragDrop } from '../hooks/editor/useEditorDragDrop'
+import { useEditorPaste } from '../hooks/editor/useEditorPaste'
+import { useImageLightbox } from '../hooks/editor/useImageLightbox'
+import { useSelectionTracking } from '../hooks/editor/useSelectionTracking'
 
-interface MarkdownEditorProps {
-  editor: AmevaEditor | null
-  editorMode: EditorMode
-  peers: PeerState[]
-  onMouseMove: (e: React.MouseEvent) => void
-  onSelectionChange: (selection: { anchorBlockId: string; focusBlockId: string } | null) => void
+import { useAppContext } from '../contexts/AppContext'
+import { useWorkspaceStore } from '../stores/useWorkspaceStore'
+
+export interface MarkdownEditorProps {
+  onMouseMove?: (e: React.MouseEvent) => void
+  onSelectionChange?: (selection: { anchorBlockId: string; focusBlockId: string } | null) => void
   onBlockHighlight?: (blockId: string | null, isEditing: boolean) => void
   editorContainerRef: React.RefObject<HTMLDivElement | null>
-  currentContent: string
-  setCurrentContent: (content: string) => void
-  wordWrap: boolean
-  showCodeRunner: boolean
-  theme: 'dark' | 'gray' | 'white' | 'hacker' | 'nature' | 'win98'
   onSelectedTextChange?: (text: string) => void
-  installedPlugins?: string[]
-  onOpenFile?: () => void
-  onStartWelcomeEdit?: () => void
-  onStartNewDocument?: () => void
-  taggedBlocks: { id: string; text: string }[]
-  setTaggedBlocks: (blocks: { id: string; text: string }[]) => void
-  tabs?: Array<{ id: string; filePath: string | null; content: string; blocks: any[] }>
-  isProPlan?: boolean
+  taggedBlocks?: { id: string; text: string }[]
+  setTaggedBlocks?: (blocks: { id: string; text: string }[]) => void
 }
 
 // ─────────────────────────────────────────────────────────────
 // 🏁 MarkdownEditor 메인 컴포넌트
 // ─────────────────────────────────────────────────────────────
 export function MarkdownEditor({
-  editor,
-  editorMode,
-  peers,
-  onMouseMove,
-  onSelectionChange,
-  onBlockHighlight,
+  onMouseMove = () => {},
+  onSelectionChange = () => {},
+  onBlockHighlight = () => {},
   editorContainerRef,
-  currentContent,
-  setCurrentContent,
-  wordWrap,
-  showCodeRunner,
-  theme,
   onSelectedTextChange,
-  installedPlugins = [],
-  onOpenFile,
-  onStartWelcomeEdit,
-  onStartNewDocument,
-  taggedBlocks,
-  setTaggedBlocks,
-  tabs = [],
-  isProPlan = false,
+  taggedBlocks = [],
+  setTaggedBlocks = () => {},
 }: MarkdownEditorProps) {
+  const { editor, editorMode, peers, settings, isProPlan, handleOpenFile, handleStartWelcomeEdit, handleStartNewDocument } = useAppContext()
+  const { currentContent, setCurrentContent, tabs } = useWorkspaceStore()
+  
+  const wordWrap = settings?.wordWrap || false
+  const showCodeRunner = settings?.showCodeConsole || false
+  const theme = settings?.theme || 'dark'
+  const installedPlugins = settings?.installedPlugins || []
+
   console.debug("Unused vars (MarkdownEditor):", { X, showCodeRunner, taggedBlocks });
-  const [selectedImg, setSelectedImg] = useState<string | null>(null)
   const [selectedFont, setSelectedFont] = useState('Pretendard')
   const [selectedSize, setSelectedSize] = useState('14px')
 
-  // 🤖 AI 태깅용 마우스 호버 블록 상태 및 추적 핸들러
-  const [hoverBlock, setHoverBlock] = useState<{ id: string; rect: DOMRect; text: string } | null>(null)
-
-  const handleEditorMouseMove = useCallback((e: React.MouseEvent) => {
-    // 부모 마우스 무브 연계 실행
-    onMouseMove(e)
-
-    if (!isProPlan) {
-      if (hoverBlock) setHoverBlock(null)
-      return
-    }
-
-    if (editorMode !== 'edit' || !editor) {
-      setHoverBlock(null)
-      return
-    }
-
-    const container = editorContainerRef.current
-    if (!container) return
-
-    const clientX = e.clientX
-    const clientY = e.clientY
-
-    // 커서 좌표의 요소 구하기
-    const el = document.elementFromPoint(clientX, clientY)
-    if (!el) return
-
-    // 1. 별표 버튼 위에 있거나 근처일 때는 호버 상태 락 유지
-    const isOverSparkle = el.closest('.sparkle-hover-btn')
-    if (isOverSparkle) {
-      return
-    }
-
-    const blockOuter = el.closest('.bn-block-outer') as HTMLElement
-    if (blockOuter) {
-      const blockId = blockOuter.getAttribute('data-id') || blockOuter.querySelector('[data-id]')?.getAttribute('data-id')
-      if (blockId) {
-        try {
-          const targetBlock = editor.getBlock(blockId)
-          if (targetBlock) {
-            const textContent = targetBlock.content
-              ? (targetBlock.content as any).map((c: any) => c.text).join('')
-              : ''
-
-            const rect = blockOuter.getBoundingClientRect()
-            const containerRect = container.getBoundingClientRect()
-
-            setHoverBlock({
-              id: blockId,
-              rect: {
-                top: rect.top - containerRect.top + container.scrollTop,
-                left: rect.left - containerRect.left,
-                width: rect.width,
-                height: rect.height,
-              } as DOMRect,
-              text: textContent.trim() || (targetBlock.type === 'heading' ? '제목 문단' : '본문 문단')
-            })
-            return
-          }
-        } catch {}
-      }
-    }
-
-    // 2. 마우스가 블록 옆 공백으로 나갔으나 Y축 세로 범위 안이면 버튼 노출 락 유지
-    if (hoverBlock) {
-      const blockDom = document.querySelector(`[data-id="${hoverBlock.id}"], [data-block-id="${hoverBlock.id}"]`)
-      if (blockDom) {
-        const outer = blockDom.closest('.bn-block-outer') || blockDom
-        const bRect = outer.getBoundingClientRect()
-        if (clientY >= bRect.top - 8 && clientY <= bRect.bottom + 8) {
-          return
-        }
-      }
-    }
-
-    setHoverBlock(null)
-  }, [editor, editorMode, onMouseMove, editorContainerRef, hoverBlock])
+  const { hoverBlock, handleEditorMouseMove } = useHoverBlock(
+    editor, editorMode, editorContainerRef, onMouseMove, isProPlan
+  )
 
   // 🖱️ 사이드 메뉴(+ ::) 포털 렌더링 시 CSS hover 우회 문제 해결 (JS 기반 호버 동기화)
-  useEffect(() => {
-    let lastHoveredBlock: Element | null = null
-
-    const handleSideMenuHover = (e: MouseEvent) => {
-      const target = e.target as HTMLElement
-      // BlockNote 사이드 메뉴 클래스 혹은 버튼에 호버했는지 확인
-      const isSideMenu = target.closest('.bn-side-menu') || target.closest('button[data-test-id="side-menu-button"]') || target.closest('button[data-test-id="drag-handle"]')
-      
-      if (isSideMenu) {
-        // 아이콘 위치에서 우측으로 60px 이동한 지점의 요소를 찾아 블록을 매핑
-        const el = document.elementFromPoint(e.clientX + 60, e.clientY)
-        const blockOuter = el?.closest('.bn-block-outer')
-        
-        if (blockOuter && lastHoveredBlock !== blockOuter) {
-          if (lastHoveredBlock) lastHoveredBlock.removeAttribute('data-bn-hover-sync')
-          blockOuter.setAttribute('data-bn-hover-sync', 'true')
-          lastHoveredBlock = blockOuter
-        }
-      } else {
-        if (lastHoveredBlock) {
-          lastHoveredBlock.removeAttribute('data-bn-hover-sync')
-          lastHoveredBlock = null
-        }
-      }
-    }
-
-    window.addEventListener('mousemove', handleSideMenuHover)
-    return () => {
-      window.removeEventListener('mousemove', handleSideMenuHover)
-      if (lastHoveredBlock) lastHoveredBlock.removeAttribute('data-bn-hover-sync')
-    }
-  }, [])
+  useSideMenuHoverSync()
 
   const hasRichStyling = installedPlugins.includes('rich-styling')
 
@@ -218,34 +99,15 @@ export function MarkdownEditor({
   useCollaborationHighlight(editor, onBlockHighlight, editorContainerRef)
   useNativeUploadIntercept(editor, editorContainerRef)
 
+  // 드롭 & 페이스트 (URL 렌더링) 처리 훅
+  const { onDropCapture } = useEditorDragDrop(editor, editorMode)
+  const { onPasteCapture } = useEditorPaste(editor, editorMode)
+
   // 1. 이미지 클릭 라이트박스
-  useEffect(() => {
-    if (!editorContainerRef.current) return
-    const container = editorContainerRef.current
-    const handleImgClick = (e: MouseEvent) => {
-      const t = e.target as HTMLElement
-      if (t.tagName === 'IMG') setSelectedImg((t as HTMLImageElement).src)
-    }
-    container.addEventListener('click', handleImgClick)
-    return () => container.removeEventListener('click', handleImgClick)
-  }, [editorContainerRef])
+  const { selectedImg, setSelectedImg } = useImageLightbox(editorContainerRef)
 
   // 2. 드래그 셀렉션 트래킹
-  const handleSelection = () => {
-    if (!editor) return
-
-    const selText = window.getSelection()?.toString() || ''
-    if (onSelectedTextChange) {
-      onSelectedTextChange(selText)
-    }
-
-    const sel = editor.getSelection()
-    if (sel && sel.blocks && sel.blocks.length > 0) {
-      onSelectionChange({ anchorBlockId: sel.blocks[0].id, focusBlockId: sel.blocks[sel.blocks.length - 1].id })
-    } else {
-      onSelectionChange(null)
-    }
-  }
+  const { handleSelection } = useSelectionTracking(editor, onSelectedTextChange, onSelectionChange)
 
   if (!editor) {
     return (
@@ -260,71 +122,24 @@ export function MarkdownEditor({
       flex: 1, display: 'flex', flexDirection: 'column',
       height: '100%', position: 'relative', backgroundColor: 'var(--bg-main)',
     }}>
-      {hasRichStyling && editorMode === 'edit' && (
-        <div style={{
-          padding: '8px 16px',
-          borderBottom: '1px solid var(--border-muted)',
-          backgroundColor: 'var(--bg-deep)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          zIndex: 50,
-          flexShrink: 0,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Font</span>
-            <select
-              value={selectedFont}
-              onChange={(e) => setSelectedFont(e.target.value)}
-              style={{
-                background: '#16161a',
-                border: '1px solid #2e2e38',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '11px',
-                padding: '3px 6px',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="Pretendard">Pretendard (Gothic)</option>
-              <option value="'Courier New', Courier, monospace">Monospace (Hacker)</option>
-              <option value="'Gungsuh', '궁서', serif">궁서체 (Classic)</option>
-              <option value="'Batang', '바탕', serif">바탕체 (Serif)</option>
-              <option value="system-ui, sans-serif">System UI</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Size</span>
-            <select
-              value={selectedSize}
-              onChange={(e) => setSelectedSize(e.target.value)}
-              style={{
-                background: '#16161a',
-                border: '1px solid #2e2e38',
-                borderRadius: '4px',
-                color: '#fff',
-                fontSize: '11px',
-                padding: '3px 6px',
-                outline: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              <option value="12px">12px (Compact)</option>
-              <option value="14px">14px (Default)</option>
-              <option value="16px">16px (Medium)</option>
-              <option value="18px">18px (Large)</option>
-              <option value="22px">22px (Huge)</option>
-            </select>
-          </div>
-        </div>
+      {hasRichStyling && (
+        <RichStyleToolbar
+          editor={editor}
+          editorMode={editorMode}
+          hasRichStyling={hasRichStyling}
+          selectedFont={selectedFont}
+          setSelectedFont={setSelectedFont}
+          selectedSize={selectedSize}
+          setSelectedSize={setSelectedSize}
+        />
       )}
       <div
         ref={editorContainerRef}
         onMouseMove={handleEditorMouseMove}
         onMouseUp={handleSelection}
         onKeyUp={handleSelection}
+        onDropCapture={onDropCapture}
+        onPasteCapture={onPasteCapture}
         className={!wordWrap ? 'wrap-disabled' : ''}
         style={{ flex: 1, overflowY: 'auto', padding: '40px 60px', position: 'relative' }}
       >
@@ -413,9 +228,9 @@ export function MarkdownEditor({
 
         {editorMode === 'welcome' ? (
           <WelcomeBanner
-            onStartWelcomeEdit={onStartWelcomeEdit}
-            onStartNewDocument={onStartNewDocument}
-            onOpenFile={onOpenFile}
+            onStartWelcomeEdit={handleStartWelcomeEdit}
+            onStartNewDocument={handleStartNewDocument}
+            onOpenFile={handleOpenFile}
             currentContent={currentContent}
             editor={editor}
           />

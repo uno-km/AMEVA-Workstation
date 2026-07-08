@@ -120,5 +120,25 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     }
   ] : []
 
-  return [...filtered, ...codeItems, ...drawingItems]
+  const mapItem = {
+    title: 'Google Map Embed',
+    onItemClick: () => {
+      try {
+        const pos = editorInstance.getTextCursorPosition()
+        if (!pos) return
+        editorInstance.updateBlock(pos.block.id, {
+          type: 'map',
+          props: { lat: '37.5665', lng: '126.9780', zoom: '14', locationName: '서울 특별시' }
+        } as any)
+        editorInstance.setTextCursorPosition(pos.block.id, 'start')
+        editorInstance.focus()
+      } catch {}
+    },
+    aliases: ['map', 'googlemap', 'location', '지도'],
+    group: 'Media',
+    icon: <Globe size={16} color="#10b981" />,
+    subtext: '구글 지도 임베드 블록 삽입 (/map)',
+  }
+
+  return [...filtered, ...codeItems, ...drawingItems, mapItem]
 }

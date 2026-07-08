@@ -73,7 +73,6 @@ export function SettingsModal({
   onUpdateUser,
   onOpenModelHub,
 }: SettingsModalProps) {
-  if (!isOpen) return null
   void { Move, ShieldAlert, onOpenModelHub };
 
   // 0. 설정 Draft 및 전환 상태
@@ -263,6 +262,8 @@ export function SettingsModal({
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)}MB`
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`
   }
+
+  if (!isOpen) return null
 
   return (
     <FreeModal

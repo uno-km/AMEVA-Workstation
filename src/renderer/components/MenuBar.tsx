@@ -4,66 +4,49 @@ import type { EditorMode } from '../../shared/types'
 import type { HotkeyConfig } from './SettingsModal'
 import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 
-interface MenuBarProps {
-  onOpenFile: () => void
-  onSaveFile: () => void
-  onSaveAs: () => void
-  onPrint: () => void
-  onCloseApp: () => void
-  onNewWindow: () => void
+import { useAppContext } from '../contexts/AppContext'
+import { useUIStore } from '../stores/useUIStore'
+import * as ipc from '../../services/ipc/electronApiAdapter'
 
-  editorMode: EditorMode
-  setEditorMode: (mode: EditorMode) => void
-  showStatusBar: boolean
-  setShowStatusBar: (val: boolean) => void
-  showConsole: boolean
-  setShowConsole: (val: boolean) => void
-  showSidebar: boolean
-  setShowSidebar: (val: boolean) => void
+export interface MenuBarProps {}
 
-  onZoomIn: () => void
-  onZoomOut: () => void
-  onZoomReset: () => void
-  onToggleFullscreen: () => void
+export function MenuBar({}: MenuBarProps = {}) {
+  const {
+    handleOpenFile: onOpenFile,
+    handleSaveFile: onSaveFile,
+    handleSaveAsFile: onSaveAs,
+    handleExport,
+    handleCloseApp: onCloseApp,
+    editorMode,
+    handleSwitchMode: setEditorMode,
+    handleZoomIn: onZoomIn,
+    handleZoomOut: onZoomOut,
+    handleZoomReset: onZoomReset,
+    handleToggleFullscreen: onToggleFullscreen,
+    handleOpenGithub: onOpenGithub,
+    settings,
+    handleUpdateSettings,
+    isProPlan,
+  } = useAppContext()
+  
+  const {
+    showStatusBar, setShowStatusBar,
+    showSidebar, setShowSidebar,
+    setIsSettingsOpen, setIsAboutOpen, setIsGuideOpen,
+    setShowMarketplaceModal, setShowPricingModal
+  } = useUIStore()
 
-  onOpenSettings: () => void
-  onOpenAbout: () => void
-  onOpenGuide: () => void
-  onOpenGithub: () => void
-  onOpenMarketplace: () => void
-  onOpenPricing?: () => void
-  hotkeys?: HotkeyConfig
-  isProPlan?: boolean // [BM-FREE-MODE] 유료 전용 여부
-}
-
-export function MenuBar({
-  onOpenFile,
-  onSaveFile,
-  onSaveAs,
-  onPrint,
-  onCloseApp,
-  onNewWindow,
-  editorMode,
-  setEditorMode,
-  showStatusBar,
-  setShowStatusBar,
-  showConsole,
-  setShowConsole,
-  showSidebar,
-  setShowSidebar,
-  onZoomIn,
-  onZoomOut,
-  onZoomReset,
-  onToggleFullscreen,
-  onOpenSettings,
-  onOpenAbout,
-  onOpenGuide,
-  onOpenGithub,
-  onOpenMarketplace,
-  onOpenPricing,
-  hotkeys,
-  isProPlan = false,
-}: MenuBarProps) {
+  const hotkeys = settings?.hotkeys
+  const showConsole = settings?.showCodeConsole || false
+  const setShowConsole = (val: boolean) => handleUpdateSettings({ showCodeConsole: val })
+  
+  const onPrint = () => handleExport('pdf')
+  const onNewWindow = ipc.newWindow
+  const onOpenSettings = () => setIsSettingsOpen(true)
+  const onOpenAbout = () => setIsAboutOpen(true)
+  const onOpenGuide = () => setIsGuideOpen(true)
+  const onOpenMarketplace = () => setShowMarketplaceModal(true)
+  const onOpenPricing = () => setShowPricingModal(true)
   const formatHotkey = (raw: string | undefined): string => {
     if (!raw) return ''
     return raw

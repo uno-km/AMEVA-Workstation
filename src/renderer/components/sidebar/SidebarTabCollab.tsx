@@ -2,26 +2,19 @@ import React from 'react'
 import { Server, Share2 } from 'lucide-react'
 import type { PeerState } from '../../../shared/types'
 
+import { useAppContext } from '../../contexts/AppContext'
+
 export interface SidebarTabCollabProps {
-  peers: PeerState[]
-  serverRunning: boolean
-  serverPort: number
-  setServerPort: (port: number) => void
-  serverHost: string
-  setServerHost: (host: string) => void
-  useLocalServer: boolean
-  setUseLocalServer: (val: boolean) => void
-  onToggleServer: () => void
-  collaborationLink: string
-  isConnected: boolean
   sectionLabel: (text: string) => React.ReactNode
 }
 
-export function SidebarTabCollab({
-  peers, serverRunning, serverPort, setServerPort, serverHost, setServerHost,
-  useLocalServer, setUseLocalServer, onToggleServer, collaborationLink, isConnected,
-  sectionLabel,
-}: SidebarTabCollabProps) {
+export function SidebarTabCollab({ sectionLabel }: SidebarTabCollabProps) {
+  const {
+    peers, serverRunning, serverPort, setServerPort, serverHost, setServerHost,
+    useLocalServer, setUseLocalServer, toggleLocalServer, collaborationLink, isConnected,
+  } = useAppContext()
+  
+  const onToggleServer = () => toggleLocalServer(serverPort)
   return (
     <div
       data-focus-region="sidebar-collab"
