@@ -46,6 +46,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ── 앱 종료 및 새 창 ──
   closeApp: () => ipcRenderer.send('window:close'),
+  forceCloseApp: () => ipcRenderer.send('window:force-close'),
   newWindow: () => ipcRenderer.send('window:new-window'),
 
   // ── 🤖 로컬 LLM (llama.cpp) ──

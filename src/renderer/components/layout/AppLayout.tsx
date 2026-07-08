@@ -166,6 +166,9 @@ export interface AppLayoutProps {
   findReplaceMode: 'find' | 'replace'
   mcpServersState: any
   toggleAIPanel: () => void
+  isQuitConfirmOpen: boolean
+  setIsQuitConfirmOpen: (open: boolean) => void
+  handleQuitConfirm: () => void
 }
 
 export const AppLayout: React.FC<AppLayoutProps> = (props) => {
@@ -196,7 +199,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
     exportMinimized, setExportMinimized, toggleExportMinimized, serverRunning, serverPort, setServerPort,
     serverHost, setServerHost, useLocalServer, setUseLocalServer, toggleLocalServer, collaborationLink,
     isConnected, snapshots, createSnapshot, deleteSnapshot, handleSelectSnapshotForDiff, toastMessage,
-    showFindReplace, setShowFindReplace, findReplaceMode, mcpServersState,
+    showFindReplace, setShowFindReplace, findReplaceMode, mcpServersState, isQuitConfirmOpen, setIsQuitConfirmOpen, handleQuitConfirm
   } = props
 
   // 🌿 자연산 테마 반응형 컬러 훅 연결
@@ -523,6 +526,9 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
         exportMinimized={exportMinimized}
         setExportMinimized={setExportMinimized}
         toggleExportMinimized={toggleExportMinimized}
+        isQuitConfirmOpen={isQuitConfirmOpen}
+        setIsQuitConfirmOpen={setIsQuitConfirmOpen}
+        handleQuitConfirm={handleQuitConfirm}
       />
 
       {isChatFloating && (

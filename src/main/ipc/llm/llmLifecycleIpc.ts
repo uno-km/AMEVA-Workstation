@@ -24,7 +24,7 @@ export function registerLlmLifecycleIpc(): void {
     return new Promise<{ status: string; running: boolean }>((resolve) => {
       const httpM = require('http')
       const hReq = httpM.request(
-        { hostname: '127.0.0.1', port: LLMProcessManager.serverPort, path: '/health', method: 'GET', timeout: 1200 },
+        { hostname: '127.0.0.1', port: LLMProcessManager.serverPort, path: '/health', method: 'GET', timeout: 5000 },
         (hRes: any) => {
           let body = ''
           hRes.on('data', (d: Buffer) => { body += d.toString() })

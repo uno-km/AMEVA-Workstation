@@ -6,25 +6,44 @@ export function useAIHealthCheck(
   settings: AISettings,
   setIsAvailable: (val: boolean) => void
 ) {
+  const failCountRef = React.useRef(0)
+
   useEffect(() => {
+    failCountRef.current = 0
 
     const checkHealth = async () => {
       const type = settings.apiType || 'local'
 
-      if (type === 'api') {
+      const handleSuccess = () => {
+        failCountRef.current = 0
         setIsAvailable(true)
+      }
+
+      const handleFail = () => {
+        failCountRef.current += 1
+        if (failCountRef.current >= 2) {
+          setIsAvailable(false)
+        }
+      }
+
+      if (type === 'api') {
+        handleSuccess()
         return
       }
 
       if (type === 'ollama') {
         try {
-          const res = await fetch('http://localhost:11434/api/tags', {
+          const ep = settings.apiEndpoint || 'http://127.0.0.1:11434'
+          const res = await fetch(`${ep}/api/tags`, {
             method: 'GET',
-            signal: AbortSignal.timeout(1500)
+            signal: AbortSignal.timeout(2000)
           })
-          setIsAvailable(res.ok)
+          if (res.ok) handleSuccess()
+          else handleFail()
         } catch {
-          setIsAvailable(false)
+          // 커넥션 에러 등 명백한 실패 시 더 빠른 피드백을 위해 바로 반영할 수도 있지만
+          // 깜빡임 방지를 위해 failCount 정책을 따릅니다.
+          handleFail()
         }
         return
       }
@@ -33,9 +52,9 @@ export function useAIHealthCheck(
       const result = await ipc.llmCheckHealth()
       
       if (result.status === 'ok' || result.status === 'loading model') {
-        setIsAvailable(true)
+        handleSuccess()
       } else {
-        setIsAvailable(false)
+        handleFail()
       }
     }
 

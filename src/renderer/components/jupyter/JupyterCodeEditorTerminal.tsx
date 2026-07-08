@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Terminal, Eye, EyeOff, ChevronDown } from 'lucide-react'
 import mermaid from 'mermaid'
 import { getLangMeta } from './langMeta'

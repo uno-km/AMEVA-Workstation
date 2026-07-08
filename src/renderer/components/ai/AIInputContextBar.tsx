@@ -1,14 +1,11 @@
 
-import React from 'react'
-import { Check, Trash2, Settings2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 
 export function AIInputContextBar({
   manualMode, setManualMode,
   selectedText, onClearSelectedText,
-  useContext, setUseContext,
   taggedBlocks, setTaggedBlocks,
-  pendingQueue, removeFromQueue,
-  models, apiModel, onModelChange
+  pendingQueue, removeFromQueue
 }: any) {
   return (
     <>
@@ -46,7 +43,7 @@ export function AIInputContextBar({
         </div>
       )}
 
-      {taggedBlocks.length > 0 && (
+      {Array.isArray(taggedBlocks) && taggedBlocks.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
           {taggedBlocks.map((tag: any) => (
             <div key={tag.id} style={{
@@ -59,7 +56,7 @@ export function AIInputContextBar({
                 {tag.text || '빈 블록'}
               </span>
               <button 
-                onClick={() => setTaggedBlocks((p: any) => p.filter((t: any) => t.id !== tag.id))}
+                onClick={() => setTaggedBlocks((p: any) => Array.isArray(p) ? p.filter((t: any) => t.id !== tag.id) : [])}
                 style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 0 }}
               >
                 <Trash2 size={10} />

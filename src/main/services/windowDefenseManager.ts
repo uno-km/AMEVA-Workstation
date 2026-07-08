@@ -9,6 +9,13 @@ import { BrowserWindow, dialog } from 'electron'
  * - 창 닫기 시 확인 팝업 (데이터 유실 방지)
  */
 export class WindowDefenseManager {
+  static isForceQuit = false
+
+  static forceQuit(window: BrowserWindow) {
+    this.isForceQuit = true
+    window.close()
+  }
+
   static applyDefenses(window: BrowserWindow, isShuttingDown: () => boolean) {
     // 1. 단축키 방어 (새로고침 등)
     window.webContents.on('before-input-event', (event, input) => {
@@ -23,10 +30,9 @@ export class WindowDefenseManager {
     })
 
     // 2. 창 닫기 방어 (Ctrl+W, Alt+F4, X버튼 등)
-    let isForceQuit = false
     window.on('close', (e) => {
       // 시스템 전체 셧다운 플래그가 켜져있거나, 이미 종료 승인을 받은 경우 방어 해제
-      if (isShuttingDown() || isForceQuit) {
+      if (isShuttingDown() || WindowDefenseManager.isForceQuit) {
         return
       }
 
@@ -46,7 +52,7 @@ export class WindowDefenseManager {
 
       // '예' 선택 (0번 버튼)
       if (choice === 0) {
-        isForceQuit = true
+        WindowDefenseManager.isForceQuit = true
         window.close() // 다시 종료 시도 (이번엔 isForceQuit이 true라 통과됨)
       }
     })

@@ -131,6 +131,25 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
       e.preventDefault()
       useUIStore.getState().toggleAbout()
     }
+
+    // ── 새로고침 방어 로직 (사용자 요청 사항 반영) ──
+    if (e.key === 'F5' || (e.ctrlKey && e.key.toLowerCase() === 'r' && !e.shiftKey)) {
+      e.preventDefault() // 일반 F5, Ctrl+R 완전 차단
+      return
+    }
+
+    // 강력 새로고침 (Ctrl+Shift+R)은 통과시킴 (브라우저 기본 동작 유지)
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'r') {
+      return
+    }
+
+    // ── 창 닫기 방어 모달 ──
+    if ((e.ctrlKey && e.key.toLowerCase() === 'w') || (e.altKey && e.key === 'F4')) {
+      e.preventDefault()
+      useUIStore.getState().setIsQuitConfirmOpen(true)
+      return
+    }
+
   }, [settings.hotkeys, onSave, onOpen, onNewTab, onToggleAI, onToggleMode, onZoomIn, onZoomOut, onZoomReset])
 
   const handleWheelZoom = useCallback((e: WheelEvent) => {

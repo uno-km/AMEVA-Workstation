@@ -91,7 +91,8 @@ export default function App() {
     showSidebar, setShowSidebar, showStatusBar, setShowStatusBar,
     toastMessage, showFindReplace, setShowFindReplace,
     findReplaceMode, isChatFloating, setIsChatFloating,
-    hasChatUnread, setHasChatUnread
+    hasChatUnread, setHasChatUnread,
+    isQuitConfirmOpen, setIsQuitConfirmOpen
   } = useUIStore()
 
   const {
@@ -299,6 +300,12 @@ export default function App() {
       showFindReplace={showFindReplace} setShowFindReplace={setShowFindReplace}
       findReplaceMode={findReplaceMode} mcpServersState={mcpServersState}
       toggleAIPanel={toggleAIPanel}
+      isQuitConfirmOpen={isQuitConfirmOpen}
+      setIsQuitConfirmOpen={setIsQuitConfirmOpen}
+      handleQuitConfirm={() => {
+        setIsQuitConfirmOpen(false)
+        import('./services/ipc/adapters/appAdapter').then(ipc => ipc.forceCloseApp())
+      }}
     />
   )
 }

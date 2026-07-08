@@ -81,6 +81,7 @@ declare global {
       printToPDF?: (htmlContent: string) => Promise<string | null>
       newWindow?: () => void
       closeApp?: () => void
+      forceCloseApp?: () => void
       saveExportedFile?: (data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]) => Promise<string | null>
       exportConvert?: (payload: { blocks: Record<string, unknown>[]; format: string; defaultName: string }) => Promise<{ success: boolean; savedPath?: string; error?: string }>
       runPythonCode?: (code: string) => Promise<{ success: boolean; result?: string; error?: string }>

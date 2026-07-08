@@ -334,6 +334,14 @@ export function registerFileIpc(
     if (win) win.close()
   })
 
+  ipcMain.on('window:force-close', (event) => {
+    const win = getActiveWindow(event, getMainWindow)
+    if (win) {
+      const { WindowDefenseManager } = require('../services/windowDefenseManager.js')
+      WindowDefenseManager.forceQuit(win)
+    }
+  })
+
   ipcMain.handle('keychain:set', async (_event, key: string, value: string) => {
     try {
       if (!safeStorage.isEncryptionAvailable()) {

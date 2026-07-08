@@ -7,6 +7,7 @@ import { MarkdownGuideModal } from '../MarkdownGuideModal'
 import { MarketplaceModal } from '../MarketplaceModal'
 import { PricingModal } from '../PricingModal'
 import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
+import { QuitConfirmModal } from '../QuitConfirmModal'
 import { type DocumentSnapshot, type ExportProgress } from '../../../shared/types'
 import type { AISettings } from '../../types/aiTypes'
 
@@ -47,6 +48,9 @@ export interface ModalManagerProps {
   exportMinimized: boolean
   setExportMinimized: (min: boolean) => void
   toggleExportMinimized: () => void
+  isQuitConfirmOpen: boolean
+  setIsQuitConfirmOpen: (open: boolean) => void
+  handleQuitConfirm: () => void
 }
 
 export function ModalManager({
@@ -86,6 +90,9 @@ export function ModalManager({
   exportMinimized,
   setExportMinimized,
   toggleExportMinimized,
+  isQuitConfirmOpen,
+  setIsQuitConfirmOpen,
+  handleQuitConfirm,
 }: ModalManagerProps) {
   return (
     <>
@@ -149,6 +156,11 @@ export function ModalManager({
           const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
           ipc.openExternalLink(fileUrl)
         }}
+      />
+      <QuitConfirmModal
+        isOpen={isQuitConfirmOpen}
+        onClose={() => setIsQuitConfirmOpen(false)}
+        onConfirm={handleQuitConfirm}
       />
     </>
   )

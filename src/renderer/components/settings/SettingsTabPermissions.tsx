@@ -15,41 +15,66 @@ export function SettingsTabPermissions({
 
   return (
     <>
-      <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Security & Permissions</h3>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>보안 설정 모드 (Security Preset)</label>
-          <select
-            value={settings.securityPreset || 'turbo'}
-            onChange={e => onUpdateSettings({ securityPreset: e.target.value as AppSettings['securityPreset'] })}
-            style={{
-              width: '100%', background: 'var(--bg-glass)',
-              border: '1px solid var(--border-muted)', borderRadius: '6px',
-              padding: '5px 8px', color: 'var(--text-main)', fontSize: '11px',
-            }}
-          >
-            <option value="paranoiac">Paranoid Maximum (가장 안전 / 자동실행 금지)</option>
-            <option value="turbo">Turbo Mode (기본 성능 중심)</option>
-            <option value="restricted">Restricted Sandbox (격리 샌드박스 강제)</option>
-          </select>
-        </div>
+      <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Agent security mode</h3>
+      <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '0 0 16px' }}>Select one of the three options. Agent settings and permissions can be further customized below.</p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '24px' }}>
+        {[
+          { id: 'turbo', title: 'Turbo Mode', desc: '기본 성능 중심. 빠른 실행을 우선합니다.' },
+          { id: 'restricted', title: 'Restricted Sandbox', desc: '에이전트를 안전한 샌드박스 내에서만 실행합니다.' },
+          { id: 'paranoiac', title: 'Paranoid Maximum', desc: '가장 강력한 보안. 자동 실행을 완전히 금지합니다.' }
+        ].map(item => {
+          const isActive = (settings.securityPreset || 'turbo') === item.id;
+          return (
+            <div
+              key={item.id}
+              onClick={() => onUpdateSettings({ securityPreset: item.id as AppSettings['securityPreset'] })}
+              style={{
+                background: isActive ? 'var(--bg-glass-active)' : 'transparent',
+                border: isActive ? '1px solid var(--primary)' : '1px solid var(--border-muted)',
+                borderRadius: '8px',
+                padding: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                opacity: isActive ? 1 : 0.6
+              }}
+            >
+              <div style={{ fontSize: '13px', color: isActive ? 'var(--primary)' : 'var(--text-main)', marginBottom: '8px' }}>{item.title}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>{item.desc}</div>
+            </div>
+          );
+        })}
+      </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <label style={{ fontSize: '10px', color: 'var(--text-muted)' }}>아티팩트 자동 실행 허용 여부</label>
-          <select
-            value={settings.artifactReviewPolicy || 'ask'}
-            onChange={e => onUpdateSettings({ artifactReviewPolicy: e.target.value as AppSettings['artifactReviewPolicy'] })}
-            style={{
-              width: '100%', background: 'var(--bg-glass)',
-              border: '1px solid var(--border-muted)', borderRadius: '6px',
-              padding: '5px 8px', color: 'var(--text-main)', fontSize: '11px',
-            }}
-          >
-            <option value="always">항상 검토 없이 바로 실행 (Always Allow)</option>
-            <option value="never">자동 실행 비활성화 (Always Block)</option>
-            <option value="ask">실행 시 확인 창 띄우기 (Always Ask)</option>
-          </select>
-        </div>
+      <h3 style={{ fontSize: '13px', fontWeight: 700, margin: '0 0 6px' }}>Artifact Auto-execution</h3>
+      <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '0 0 16px' }}>아티팩트 자동 실행 허용 여부를 설정합니다.</p>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+        {[
+          { id: 'always', title: 'Always Allow', desc: '항상 검토 없이 바로 실행합니다.' },
+          { id: 'ask', title: 'Always Ask', desc: '실행 시 항상 확인 창을 띄웁니다.' },
+          { id: 'never', title: 'Always Block', desc: '자동 실행을 완전히 비활성화합니다.' }
+        ].map(item => {
+          const isActive = (settings.artifactReviewPolicy || 'ask') === item.id;
+          return (
+            <div
+              key={item.id}
+              onClick={() => onUpdateSettings({ artifactReviewPolicy: item.id as AppSettings['artifactReviewPolicy'] })}
+              style={{
+                background: isActive ? 'var(--bg-glass-active)' : 'transparent',
+                border: isActive ? '1px solid var(--primary)' : '1px solid var(--border-muted)',
+                borderRadius: '8px',
+                padding: '16px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                opacity: isActive ? 1 : 0.6
+              }}
+            >
+              <div style={{ fontSize: '13px', color: isActive ? 'var(--primary)' : 'var(--text-main)', marginBottom: '8px' }}>{item.title}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>{item.desc}</div>
+            </div>
+          );
+        })}
       </div>
     </>
   )

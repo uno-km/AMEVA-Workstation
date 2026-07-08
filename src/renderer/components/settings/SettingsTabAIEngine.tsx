@@ -1,4 +1,5 @@
-import { Cpu, Zap, SlidersHorizontal, Shield } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Cpu, Zap, SlidersHorizontal, Shield, Server, ExternalLink } from 'lucide-react'
 import type { AISettings } from '../../types/aiTypes'
 import { PROVIDER_MODELS } from '../../../shared/constants/aiSettings'
 
@@ -18,6 +19,31 @@ export function SettingsTabAIEngine({
   if (activeTab !== 'AIEngine') return null
 
   const { apiType = 'wasm', apiProvider = 'gemini', apiEndpoint = '', apiModel = '', gpuOnly = true, temperature = 0.7, maxTokens = 1024 } = aiSettings
+
+  const [ollamaModels, setOllamaModels] = useState<{name: string}[]>([])
+  const [isOllamaLoading, setIsOllamaLoading] = useState(false)
+
+  useEffect(() => {
+    if (apiType === 'ollama') {
+      setIsOllamaLoading(true)
+      fetch('http://127.0.0.1:11434/api/tags')
+        .then(res => res.json())
+        .then(data => {
+          if (data.models && Array.isArray(data.models)) {
+            setOllamaModels(data.models)
+            // 첫 진입 시 선택된 모델이 없으면 가장 첫 번째 모델 자동 선택
+            if (!apiModel && data.models.length > 0) {
+              onUpdateAISettings({ apiModel: data.models[0].name })
+            }
+          }
+        })
+        .catch(err => {
+          console.error('Ollama 모델 목록을 가져오는데 실패했습니다:', err)
+          setOllamaModels([])
+        })
+        .finally(() => setIsOllamaLoading(false))
+    }
+  }, [apiType])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
@@ -162,6 +188,94 @@ export function SettingsTabAIEngine({
               API Key는 좌측의 <strong>Credentials</strong> 탭에서 안전하게 시스템 KeyChain에 등록할 수 있습니다.
               {apiProvider === 'anthropic' && <span style={{ color: 'var(--accent)', display: 'block', marginTop: '4px' }}>⚠️ Anthropic 공식 API는 헤더 규격이 달라 직접 연동 시 에러가 날 수 있습니다. OpenRouter 프록시 사용을 권장합니다.</span>}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* 2.5 Ollama 로컬 서비스 설정 */}
+      {apiType === 'ollama' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', background: 'rgba(59, 130, 246, 0.03)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Server size={14} color="#3b82f6" />
+            <h4 style={{ fontSize: '11.5px', fontWeight: 700, margin: 0, color: '#3b82f6' }}>Ollama 로컬 연동</h4>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-main)' }}>서버 엔드포인트</label>
+            <input
+              type="text"
+              value={apiEndpoint}
+              onChange={e => onUpdateAISettings({ apiEndpoint: e.target.value })}
+              placeholder="http://127.0.0.1:11434"
+              style={{
+                width: '100%', padding: '8px 10px', borderRadius: '6px',
+                background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                color: 'var(--text-main)', fontSize: '11px', outline: 'none'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-main)' }}>사용할 모델 선택</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={apiModel}
+                onChange={e => onUpdateAISettings({ apiModel: e.target.value })}
+                disabled={isOllamaLoading || ollamaModels.length === 0}
+                style={{
+                  flex: 1, padding: '8px 10px', borderRadius: '6px',
+                  background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                  color: 'var(--text-main)', fontSize: '11px', outline: 'none'
+                }}
+              >
+                {isOllamaLoading ? (
+                  <option value="">모델 불러오는 중...</option>
+                ) : ollamaModels.length > 0 ? (
+                  <>
+                    <option value="" disabled>모델을 선택해주세요</option>
+                    {ollamaModels.map(m => (
+                      <option key={m.name} value={m.name}>{m.name}</option>
+                    ))}
+                  </>
+                ) : (
+                  <option value="">설치된 모델 없음</option>
+                )}
+              </select>
+              <button 
+                onClick={() => {
+                  setIsOllamaLoading(true)
+                  fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
+                    .then(res => res.json())
+                    .then(data => {
+                      if (data.models) setOllamaModels(data.models)
+                    })
+                    .finally(() => setIsOllamaLoading(false))
+                }}
+                style={{ padding: '0 12px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer' }}
+              >
+                새로고침
+              </button>
+            </div>
+            {ollamaModels.length === 0 && !isOllamaLoading && (
+              <p style={{ margin: 0, fontSize: '10px', color: '#ef4444' }}>
+                Ollama가 꺼져있거나 설치된 모델이 없습니다.
+              </p>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px' }}>
+            <ExternalLink size={14} color="var(--text-muted)" style={{ marginTop: '2px', flexShrink: 0 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <p style={{ margin: 0, fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                새로운 모델을 다운로드하려면 터미널(명령 프롬프트)을 열고 아래 명령어를 입력하세요.
+              </p>
+              <code style={{ fontSize: '10px', color: 'var(--accent)', background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '4px', marginTop: '2px' }}>
+                ollama run llama3.1
+              </code>
+              <a href="https://ollama.com/library" target="_blank" rel="noreferrer" style={{ fontSize: '9.5px', color: '#3b82f6', textDecoration: 'none', marginTop: '2px' }}>
+                Ollama 공식 라이브러리에서 모델 찾기 →
+              </a>
+            </div>
           </div>
         </div>
       )}

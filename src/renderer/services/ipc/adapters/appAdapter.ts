@@ -68,3 +68,8 @@ export function closeApp(): void {
   if (!window.electronAPI?.closeApp) return
   window.electronAPI.closeApp()
 }
+
+export function forceCloseApp(): void {
+  if (!window.electronAPI?.forceCloseApp) return
+  window.electronAPI.forceCloseApp()
+}

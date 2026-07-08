@@ -72,6 +72,10 @@ export interface UIState {
   hasChatUnread: boolean
   setHasChatUnread: (val: boolean) => void
 
+  // ── 종료 확인 모달 ──────────────────────────────────────────────────────────
+  isQuitConfirmOpen: boolean
+  setIsQuitConfirmOpen: (val: boolean) => void
+
   // ── 복합 액션 ───────────────────────────────────────────────────────────────
   toggleRightTab: (tab: string) => void
 
@@ -141,6 +145,9 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   hasChatUnread: false,
   setHasChatUnread: (val) => set({ hasChatUnread: val }),
+
+  isQuitConfirmOpen: false,
+  setIsQuitConfirmOpen: (val) => set({ isQuitConfirmOpen: val }),
 
   toggleRightTab: (tab) => {
     const { showAIPanel, activeRightTab } = get()
