@@ -139,6 +139,7 @@ export function JupyterCodeEditorTerminal({
               </span>
             )}
           </div>
+          <div style={{
             padding: isCollapsed ? '0px 16px' : '12px 16px',
             maxHeight: isCollapsed ? '0px' : '180px',
             overflowY: 'auto',
