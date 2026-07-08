@@ -16,7 +16,6 @@ import { useAIEngineLogs } from './ai/useAIEngineLogs'
 import * as ipc from '../services/ipc/electronApiAdapter'
 
 // Extracted Hooks
-import { useAISettings } from './ai/useAISettings'
 import { useAIModels } from './ai/useAIModels'
 import { useAIHealthCheck } from './ai/useAIHealthCheck'
 import { useAIBlockProcessor } from './ai/useAIBlockProcessor'
@@ -24,7 +23,18 @@ import { useAIResponseHandler } from './ai/useAIResponseHandler'
 import { useAIGenerator } from './ai/useAIGenerator'
 
 export function useAIAgent() {
-  const { isGenerating, setIsGenerating: _setIsGenerating, isAvailable, setIsAvailable, models, setModels, codeModels, setCodeModels } = useAIState()
+  const {
+    isGenerating,
+    setIsGenerating: _setIsGenerating,
+    isAvailable,
+    setIsAvailable,
+    models,
+    setModels,
+    codeModels,
+    setCodeModels,
+    settings,
+    updateSettings
+  } = useAIState()
   
   const isGeneratingRef = useRef(false)
   const setIsGenerating = useCallback((val: boolean) => {
@@ -32,9 +42,9 @@ export function useAIAgent() {
     isGeneratingRef.current = val
   }, [_setIsGenerating])
 
-  const { settings, setSettings, updateSettings } = useAISettings()
   const { engineLogs, setEngineLogs } = useAIEngineLogs()
   const { subscribeSession, unsubscribeSession } = useAIIpc()
+
   
   const {
     rawAccumRef,
@@ -64,6 +74,11 @@ export function useAIAgent() {
   const { setMessages, setStreamingText } = useAILogStore()
   const editorRef = useRef<any>(null)
   const processNextQueueRef = useRef<(() => void) | null>(null)
+
+  const setSettings = useCallback((updater: any) => {
+    const next = typeof updater === 'function' ? updater(settings) : updater
+    updateSettings(next)
+  }, [settings, updateSettings])
 
   const { refreshModels } = useAIModels(settings, setSettings, setModels, setCodeModels, setIsAvailable)
   useAIHealthCheck(settings, setIsAvailable)

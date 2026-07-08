@@ -21,10 +21,13 @@ aside.glass-panel {
   position: relative; /* ResizeHandle 절대위치 기준 */
 }
 
-/* AI 패널: 우측 슬라이드인 패널도 줌에 무관하게 고정 */
+/* AI 패널: 우측 슬라이드인 패널도 줌에 무관하게 고정.
+   width는 AppLayout 인라인 스타일(useProcessStore.aiPanelWidth)이 단독으로 제어한다.
+   AIPanel 내부는 width: 100% — 이 래퍼의 크기를 그대로 따른다. */
 .ai-panel-wrapper {
   flex-shrink: 0;
   flex-grow: 0;
+  height: 100%;
   overflow: hidden;
   position: relative; /* ResizeHandle 절대위치 기준 */
 }

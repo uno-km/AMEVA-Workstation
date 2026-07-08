@@ -45,7 +45,7 @@ const DEFAULT_SETTINGS: AISettings = {
 - 삽입 위치나 수정 대상 블록을 결정하는 이유를 설명하십시오.
 예시:
 <think>
-사용자가 치즈 보관 방법에 대해 요청했다. 문서가 비어있으므로 afterBlockId=START, type=heading, level=1이 적합하다.
+사용자가 [요청 주제]에 대해 작성/수정을 요청했다. 문서 상태가 [비어있음/내용있음]이므로 afterBlockId=[블록ID], type=[블록타입]이 적합하다.
 </think>
 
 # 절대 금지 사항
@@ -55,9 +55,21 @@ const DEFAULT_SETTINGS: AISettings = {
 
 const loadInitialSettings = (): AISettings => {
   try {
-    const saved = localStorage.getItem('ameva_ai_settings');
+    // ameva_ai_settings와 ai-settings 두 키 모두 확인하여 마이그레이션 호환성 보장
+    const saved = localStorage.getItem('ameva_ai_settings') || localStorage.getItem('ai-settings');
     if (saved) {
-      return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      const parsed = JSON.parse(saved);
+      // 구버전 치즈 예시나 구버전 프롬프트가 저장되어 있는 경우 기본값으로 덮어씀
+      if (parsed.systemPrompt && (
+        parsed.systemPrompt.includes('치즈') ||
+        parsed.systemPrompt.includes('간결하고 명확하게 답하세요') ||
+        !parsed.systemPrompt.includes('CoT 사고 과정 지침')
+      )) {
+        parsed.systemPrompt = DEFAULT_SETTINGS.systemPrompt;
+        localStorage.setItem('ameva_ai_settings', JSON.stringify(parsed));
+        localStorage.setItem('ai-settings', JSON.stringify(parsed));
+      }
+      return { ...DEFAULT_SETTINGS, ...parsed };
     }
   } catch (e) {
     console.error('설정 로드 실패:', e);

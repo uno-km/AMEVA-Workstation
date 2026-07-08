@@ -163,45 +163,43 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           />
         </div>
 
-        {/* [FIX-TAB-002] ai-panel-wrapper를 flex row로 변경하여 RightTabStrip이 항상 패널 바로 오른쪽에 붙어있도록 함.
-             패널이 닫혀도 탭 스트립은 항상 화면 우측 끝에 표시된다. */}
+        {/* [LAYOUT-FIX] ai-panel-wrapper: 리사이즈 가능한 AI 패널 컨테이너.
+             width를 JS(useProcessStore.aiPanelWidth)로만 제어. overflow hidden으로 내부 패널 클리핑.
+             AIPanel 자체는 width: 100% → 부모를 꽉 채움. 충돌 없음. */}
         <div
+          className="ai-panel-wrapper"
+          data-focus-region="ai-panel"
           style={{
-            display: 'flex',
-            flexDirection: 'row',
+            position: 'relative',
+            width: showAIPanel ? aiPanelWidth : 0,
+            minWidth: 0,
+            overflow: 'hidden',
             height: '100%',
             flexShrink: 0,
+            transition: isAIPanelDragging ? 'none' : 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
-          <div
-            className="ai-panel-wrapper"
-            data-focus-region="ai-panel"
-            style={{
-              position: 'relative',
-              width: showAIPanel ? aiPanelWidth : 0,
-              overflow: 'hidden',
-              transition: isAIPanelDragging ? 'none' : 'width 0.2s ease',
-            }}
-          >
-            {showAIPanel && (
-              <ResizeHandle
-                onMouseDown={handleAIPanelResizeStart}
-                isDragging={isAIPanelDragging}
-                placement="left"
-              />
-            )}
-            {isAIPanelReady ? (
-              <AIPanel />
-            ) : (
-              <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)', padding: '20px', borderLeft: '1px solid var(--border-muted)', userSelect: 'none' }}>
-                <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--primary)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
-                <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '12px' }}>AI 엔진 및 도구 준비 중...</span>
-              </div>
-            )}
-          </div>
-
-          <RightTabStrip />
+          {showAIPanel && (
+            <ResizeHandle
+              onMouseDown={handleAIPanelResizeStart}
+              isDragging={isAIPanelDragging}
+              placement="left"
+            />
+          )}
+          {isAIPanelReady ? (
+            <AIPanel />
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)', padding: '20px', borderLeft: '1px solid var(--border-muted)', userSelect: 'none' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--primary)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '12px' }}>AI 엔진 및 도구 준비 중...</span>
+            </div>
+          )}
         </div>
+
+        {/* [LAYOUT-FIX] RightTabStrip: main-layout-row의 직접 자식으로 항상 우측 끝에 고정.
+             AI 패널 열림/닫힘에 무관하게 위치 이동 없음. flexShrink: 0 보장. */}
+        <RightTabStrip />
+
       </div>
 
       {showStatusBar && (

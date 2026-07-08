@@ -107,11 +107,12 @@ export function AIPanel() {
         }
       }}
       style={{
-      width: `${panelWidth}px`, height: '100%',
+      width: '100%', height: '100%',
       background: 'var(--bg-main)', borderLeft: '1px solid var(--border-muted)',
       display: 'flex', flexDirection: 'column', position: 'relative',
-      fontFamily: 'var(--font-sans)', zIndex: 100, transition: 'width 0.3s ease'
+      fontFamily: 'var(--font-sans)', zIndex: 100,
     }}>
+
       <AIPanelHeader 
         title={settings.apiType === 'wasm' ? 'Local Edge' : settings.apiType === 'local' ? 'Native Core' : settings.apiType === 'ollama' ? 'Ollama' : 'Cloud API'}
         providerLabel={settings.apiType === 'api' ? (settings.apiProvider === 'gemini' ? 'Google Gemini' : settings.apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT') : (settings.apiType === 'local' ? 'Llama.cpp' : settings.apiType === 'ollama' ? 'Local Server' : 'WebGPU')}

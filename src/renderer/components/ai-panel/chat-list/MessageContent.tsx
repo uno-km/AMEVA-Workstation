@@ -176,12 +176,21 @@ export function renderMessageContent(
   // 방어 코드: 문자열이 비어있거나 유효하지 않으면 렌더링 생략
   if (!content) return null;
 
+  // [UI-CLEANUP] [INSERT_SUGGESTION] 및 [EDIT_SUGGESTION] 내부 지시 태그를 화면 렌더링에서 제거
+  const cleaned = content
+    .replace(/\[INSERT_SUGGESTION:[^\]]*\]/gi, '')
+    .replace(/\[EDIT_SUGGESTION:[^\]]*\]/gi, '')
+    .trim();
+
+  if (!cleaned) return null;
+
   // 🦾 [MCP-Visual-WOW] "✔ **MCP 데이터 연동 완료**" 패턴 존재 시 시각적으로 돋보이는 초록색 연동 알림 카드를 그립니다.
   // AI가 시스템(호스트/터미널/DB)과 연동하여 특수 동작을 수행했을 때 사용자에게 명확한 피드백을 주기 위함입니다.
-  if (content.includes("✔ **MCP 데이터 연동 완료**") || content.includes("✔ MCP 데이터 연동 완료")) {
-    const lines = content.split('\n');
+  if (cleaned.includes("✔ **MCP 데이터 연동 완료**") || cleaned.includes("✔ MCP 데이터 연동 완료")) {
+    const lines = cleaned.split('\n');
     const title = "✔ MCP 데이터 연동 완료";
     const description = lines.filter(l => !l.includes("✔")).join('\n').trim();
+
 
     return (
       <div style={{

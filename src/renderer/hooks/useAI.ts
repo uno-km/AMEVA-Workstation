@@ -52,7 +52,7 @@ export function useAI() {
     clearHistory: agent.clearHistory,
     updateMessageDiffState: agent.updateMessageDiffState,
     updateInsertSuggestionStatus: agent.updateInsertSuggestionStatus,
-    removeFromQueue,
+    removeFromQueue: agent.removeFromQueue,
     
     // 로컬 엔진 액션 (useLocalAIEngine)
     loadModels: localEngine.loadModels,
