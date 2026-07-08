@@ -117,8 +117,8 @@ registerLlmIpc()
 registerTerminalIpc()
 
 app.whenReady().then(() => {
-  // [MEM-CLEANUP] 프로그램 기동 시점에 OS 상에 유령으로 남아있던 모든 llama 프로세스 일괄 정리
-  LLMProcessManager.forceCleanupLocalLLMProcesses()
+  // [PERF] 1. 가장 먼저 윈도우 생성 (블로킹 방지 및 즉각적인 UI 피드백 제공)
+  createWindow()
 
   // [SEC-W-021] Content-Security-Policy 설정
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
@@ -146,10 +146,14 @@ app.whenReady().then(() => {
     return { success: true }
   })
 
-  createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+
+  // [PERF] 2. 나머지 무거운 작업들은 윈도우 생성 완료 이후 백그라운드로 지연 실행 (1초 뒤)
+  setTimeout(() => {
+    // [MEM-CLEANUP] 프로그램 기동 시점에 OS 상에 유령으로 남아있던 모든 llama 프로세스 일괄 정리
+    LLMProcessManager.forceCleanupLocalLLMProcesses()
 
   // 🤖 [Background Warmup] 앱 기동 시 로컬 LLM 백그라운드 비동기 기동 (웜업)
   try {
@@ -170,10 +174,11 @@ app.whenReady().then(() => {
       LLMProcessManager.startLlamaServerWithFallback(llamaPath, defaultModelPath, 8192, true)
         .then(ok => console.log('Background Warmup Status:', ok))
         .catch(err => console.error('Background Warmup Failed:', err))
+      }
+    } catch (err) {
+      console.error('Failed to trigger background warmup:', err)
     }
-  } catch (err) {
-    console.error('Failed to trigger background warmup:', err)
-  }
+  }, 1000)
 })
 
 app.on('window-all-closed', () => {
