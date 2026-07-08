@@ -160,6 +160,7 @@ export function ConsoleCommandTab() {
         <ConsoleContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
+          selectedText={contextMenu.text}
           onCopy={() => {
             if (contextMenu.text) navigator.clipboard.writeText(contextMenu.text);
           }}
@@ -169,7 +170,9 @@ export function ConsoleCommandTab() {
               setInput(prev => prev + text);
               const inputEl = document.getElementById('terminal-input');
               if (inputEl) inputEl.focus();
-            } catch (err) {}
+            } catch (err) {
+              console.error('clipboard read failed:', err);
+            }
           }}
           onInsertToBody={contextMenu.text ? () => {
             const event = new CustomEvent('ameva:insert-text', { detail: contextMenu.text });

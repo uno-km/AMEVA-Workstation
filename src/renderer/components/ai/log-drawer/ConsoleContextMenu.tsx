@@ -3,13 +3,17 @@ import React, { useEffect, useRef } from 'react';
 export interface ConsoleContextMenuProps {
   x: number;
   y: number;
+  selectedText: string;
   onCopy: () => void;
   onPaste?: () => void;
   onInsertToBody?: () => void;
+  onAskAI?: () => void;
   onClose: () => void;
 }
 
-export function ConsoleContextMenu({ x, y, onCopy, onPaste, onInsertToBody, onClose }: ConsoleContextMenuProps) {
+export function ConsoleContextMenu({
+  x, y, selectedText, onCopy, onPaste, onInsertToBody, onAskAI, onClose
+}: ConsoleContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,8 +32,8 @@ export function ConsoleContextMenu({ x, y, onCopy, onPaste, onInsertToBody, onCl
   }, [onClose]);
 
   // Prevent menu from going off-screen
-  const safeX = Math.min(x, window.innerWidth - 160);
-  const safeY = Math.min(y, window.innerHeight - 120);
+  const safeX = Math.min(x, window.innerWidth - 180);
+  const safeY = Math.min(y, window.innerHeight - 200);
 
   const btnStyle: React.CSSProperties = {
     background: 'transparent',
@@ -42,7 +46,12 @@ export function ConsoleContextMenu({ x, y, onCopy, onPaste, onInsertToBody, onCl
     borderRadius: '4px',
     width: '100%',
     transition: 'background 0.2s',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
   };
+
+  const hasSelection = !!selectedText.trim();
 
   return (
     <div 
@@ -53,23 +62,26 @@ export function ConsoleContextMenu({ x, y, onCopy, onPaste, onInsertToBody, onCl
         left: safeX,
         background: 'var(--bg-glass)',
         border: '1px solid var(--border-muted)',
-        borderRadius: '6px',
+        borderRadius: '8px',
         padding: '4px',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 99999,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.08)',
         fontFamily: 'var(--font-sans)',
-        minWidth: '140px'
+        minWidth: '160px',
+        backdropFilter: 'blur(12px)',
       }}
     >
+      {/* 복사 — 선택된 텍스트가 있을 때만 활성화 */}
       <button 
-        style={btnStyle} 
-        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-glass-active)')}
+        style={{ ...btnStyle, opacity: hasSelection ? 1 : 0.4 }}
+        disabled={!hasSelection}
+        onMouseEnter={e => hasSelection && (e.currentTarget.style.background = 'var(--bg-glass-active)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        onClick={() => { onCopy(); onClose(); }}
+        onClick={() => { if (hasSelection) { onCopy(); onClose(); }}}
       >
-        복사 (Copy)
+        <span>📋</span> 복사 (Copy)
       </button>
       
       {onPaste && (
@@ -79,11 +91,11 @@ export function ConsoleContextMenu({ x, y, onCopy, onPaste, onInsertToBody, onCl
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
           onClick={() => { onPaste(); onClose(); }}
         >
-          붙여넣기 (Paste)
+          <span>📌</span> 붙여넣기 (Paste)
         </button>
       )}
       
-      {onInsertToBody && (
+      {onInsertToBody && hasSelection && (
         <>
           <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
           <button 
@@ -92,7 +104,28 @@ export function ConsoleContextMenu({ x, y, onCopy, onPaste, onInsertToBody, onCl
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
             onClick={() => { onInsertToBody(); onClose(); }}
           >
-            본문에 삽입 (Insert)
+            <span>📄</span> 본문에 삽입 (Insert)
+          </button>
+        </>
+      )}
+
+      {/* [FEAT-4] AI에게 물어보기 */}
+      {hasSelection && (
+        <>
+          <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
+          <button 
+            style={{ ...btnStyle, color: 'var(--primary)' }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.1)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+            onClick={() => {
+              // AI 패널 입력창에 선택 텍스트 주입
+              window.dispatchEvent(new CustomEvent('ameva:fill-ai-input', {
+                detail: `다음 터미널 출력에 대해 설명해줘:\n\`\`\`\n${selectedText}\n\`\`\``
+              }));
+              onClose();
+            }}
+          >
+            <span>✨</span> AI에게 물어보기
           </button>
         </>
       )}

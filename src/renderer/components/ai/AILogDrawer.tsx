@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { Terminal, ListTree } from 'lucide-react';
+import React, { useState, useCallback, useRef } from 'react';
+import { Terminal, ListTree, Plus, Minus } from 'lucide-react';
 import { ConsoleLogTab } from './log-drawer/ConsoleLogTab';
 import { ConsoleCommandTab } from './log-drawer/ConsoleCommandTab';
 
 export function AILogDrawer({ isExpanded, onToggle }: any) {
   const [isHovered, setIsHovered] = useState(false);
   const [activeTab, setActiveTab] = useState<'log' | 'cmd'>('log');
+  // [FEAT-3] 드로어 높이 조절 상태 — 기본값 35vh (픽셀)
+  const [drawerHeight, setDrawerHeight] = useState<number | null>(null);
+  const isDraggingRef = useRef(false);
+  const startYRef = useRef(0);
+  const startHeightRef = useRef(0);
 
   const scale = isHovered ? '1.1' : '1';
   const opacity = isHovered || isExpanded ? 1 : 0.4;
@@ -26,18 +31,70 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
     transition: 'all 0.2s',
   });
 
+  // [FEAT-3] 상단 리사이즈 드래그 핸들 핸들러
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    isDraggingRef.current = true;
+    startYRef.current = e.clientY;
+    // 현재 실제 높이를 픽셀로 캡처
+    const drawerEl = (e.target as HTMLElement).closest('[data-drawer-root]') as HTMLElement | null;
+    startHeightRef.current = drawerEl?.offsetHeight ?? (window.innerHeight * 0.35);
+
+    const onMouseMove = (me: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      const delta = startYRef.current - me.clientY; // 위로 드래그 = 높이 증가
+      const newHeight = Math.max(120, Math.min(window.innerHeight * 0.8, startHeightRef.current + delta));
+      setDrawerHeight(newHeight);
+    };
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  // [FEAT-3] +/- 버튼으로 높이 증감
+  const adjustHeight = (delta: number) => {
+    setDrawerHeight(prev => {
+      const base = prev ?? (window.innerHeight * 0.35);
+      return Math.max(120, Math.min(window.innerHeight * 0.8, base + delta));
+    });
+  };
+
+  const resolvedHeight = drawerHeight ? `${drawerHeight}px` : '35vh';
+
   return (
-    <div style={{
-      position: 'absolute', bottom: 0, left: 0, right: 0,
-      background: 'var(--bg-glass)', backdropFilter: 'blur(10px)',
-      borderTop: '1px solid var(--border-muted)',
-      boxShadow: '0 -4px 20px rgba(0,0,0,0.4)',
-      transform: isExpanded ? 'translateY(0)' : 'translateY(100%)',
-      transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-      zIndex: 100,
-      display: 'flex', flexDirection: 'column',
-      height: '35vh'
-    }}>
+    <div
+      data-drawer-root
+      style={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        background: 'var(--bg-glass)', backdropFilter: 'blur(10px)',
+        borderTop: '1px solid var(--border-muted)',
+        boxShadow: '0 -4px 20px rgba(0,0,0,0.4)',
+        transform: isExpanded ? 'translateY(0)' : 'translateY(100%)',
+        transition: isDraggingRef.current ? 'none' : 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+        zIndex: 100,
+        display: 'flex', flexDirection: 'column',
+        height: resolvedHeight,
+      }}>
+      {/* [FEAT-3] 리사이즈 드래그 핸들 (상단) */}
+      <div
+        onMouseDown={handleResizeMouseDown}
+        style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0,
+          height: '5px',
+          cursor: 'ns-resize',
+          background: isDraggingRef.current ? 'var(--primary)' : 'transparent',
+          zIndex: 102,
+          transition: 'background 0.15s',
+        }}
+        title="드래그하여 높이 조절"
+      />
+
       {/* Hover Trigger Wrapper */}
       <div
         onMouseEnter={() => setIsHovered(true)}
@@ -66,7 +123,7 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
             height: '42px',
             borderRadius: '50%',
             background: isHovered ? 'var(--primary)' : 'var(--bg-glass-active)',
-            padding: '2px', // Gradient border thickness
+            padding: '2px',
             boxShadow: isHovered 
               ? '0 0 20px var(--primary-glow)' 
               : '0 4px 12px rgba(0,0,0,0.15)',
@@ -93,7 +150,8 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
         padding: '0 12px', background: 'var(--bg-glass)',
         borderBottom: '1px solid var(--border-muted)',
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
-        height: '36px'
+        height: '36px',
+        flexShrink: 0,
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', height: '100%' }}>
           <button style={tabStyle(activeTab === 'log')} onClick={() => setActiveTab('log')}>
@@ -103,6 +161,34 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
           <button style={tabStyle(activeTab === 'cmd')} onClick={() => setActiveTab('cmd')}>
             <Terminal size={12} />
             Terminal (CMD)
+          </button>
+        </div>
+
+        {/* [FEAT-3] 크기 조절 +/- 버튼 */}
+        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', paddingBottom: '4px' }}>
+          <button
+            onClick={() => adjustHeight(60)}
+            title="터미널 높이 늘리기"
+            style={{
+              width: '22px', height: '22px', borderRadius: '4px',
+              background: 'var(--bg-glass-active)', border: '1px solid var(--border-muted)',
+              color: 'var(--text-muted)', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', padding: 0
+            }}
+          >
+            <Plus size={11} />
+          </button>
+          <button
+            onClick={() => adjustHeight(-60)}
+            title="터미널 높이 줄이기"
+            style={{
+              width: '22px', height: '22px', borderRadius: '4px',
+              background: 'var(--bg-glass-active)', border: '1px solid var(--border-muted)',
+              color: 'var(--text-muted)', cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', padding: 0
+            }}
+          >
+            <Minus size={11} />
           </button>
         </div>
       </div>

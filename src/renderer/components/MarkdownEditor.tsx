@@ -235,7 +235,7 @@ export function MarkdownEditor({
             editor={editor}
           />
         ) : editorMode === 'edit' ? (
-          <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable>
+          <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
             <SideMenuController
               sideMenu={(props) => (
                 <SideMenu

@@ -243,14 +243,16 @@ export function SettingsTabAIEngine({
               </select>
               <button 
                 onClick={async () => {
+                  setIsOllamaLoading(true)
                   try {
                     const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
                     if (!res.ok) throw new Error('Ollama 서버 응답 없음')
                     const data = await res.json()
                     if (data.models) setOllamaModels(data.models)
-                    alert(`Ollama 연결 성공! ${data.models?.length || 0}개의 모델을 찾았습니다.`)
                   } catch (e) {
-                    alert('Ollama 연결 실패: ' + (e as Error).message)
+                    console.error('Ollama 연결 실패:', e)
+                  } finally {
+                    setIsOllamaLoading(false)
                   }
                 }}
                 style={{ padding: '0 12px', background: 'var(--bg-glass-active)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: 'var(--text-main)', fontSize: '11px', cursor: 'pointer' }}
@@ -258,10 +260,48 @@ export function SettingsTabAIEngine({
                 새로고침
               </button>
             </div>
+            {/* [FEAT-OLLAMA] Ollama 서버가 꺼져있을 때 시작 버튼 표시 */}
             {ollamaModels.length === 0 && !isOllamaLoading && (
-              <p style={{ margin: 0, fontSize: '10px', color: '#ef4444' }}>
-                Ollama가 꺼져있거나 설치된 모델이 없습니다.
-              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px' }}>
+                <p style={{ margin: 0, fontSize: '10px', color: '#ef4444', fontWeight: 600 }}>
+                  ⚠️ Ollama 서버가 꺼져있거나 응답이 없습니다.
+                </p>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={async () => {
+                      try {
+                        if ((window as any).electronAPI?.executeTerminal) {
+                          await (window as any).electronAPI.executeTerminal('ollama serve')
+                          // 2초 뒤 재연결 시도
+                          setTimeout(async () => {
+                            try {
+                              const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
+                              if (res.ok) {
+                                const data = await res.json()
+                                if (data.models) setOllamaModels(data.models)
+                              }
+                            } catch {}
+                          }, 2000)
+                        } else {
+                          alert('터미널에서 "ollama serve" 명령을 실행해 서버를 시작한 후 새로고침하세요.')
+                        }
+                      } catch (e) {
+                        console.error('Ollama serve 실행 실패:', e)
+                      }
+                    }}
+                    style={{
+                      padding: '6px 12px', background: 'rgba(59,130,246,0.15)',
+                      border: '1px solid rgba(59,130,246,0.4)', borderRadius: '6px',
+                      color: '#3b82f6', fontSize: '10.5px', cursor: 'pointer', fontWeight: 600
+                    }}
+                  >
+                    ▶ Ollama 서버 시작 (ollama serve)
+                  </button>
+                  <p style={{ margin: 'auto 0', fontSize: '9.5px', color: 'var(--text-muted)' }}>
+                    또는 터미널에서 직접 실행하세요.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
 

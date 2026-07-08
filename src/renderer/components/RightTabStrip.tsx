@@ -1,4 +1,4 @@
-import { Sparkles, List, Calculator, TrendingUp, Play, Globe, Search, Calendar, HardDrive } from 'lucide-react'
+import { Sparkles, List, Calculator, TrendingUp, Play, Globe, Search, Calendar, HardDrive, Map } from 'lucide-react'
 import type { HotkeyConfig } from './SettingsModal'
 
 import { useUIStore } from '../stores/useUIStore'
@@ -51,6 +51,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
   const isGoogleSubscribed = installedPlugins.includes('google')
   const isCalendarSubscribed = installedPlugins.includes('calendar')
   const isGoogleDriveSubscribed = installedPlugins.includes('google-drive')
+  const isGoogleMapsSubscribed = installedPlugins.includes('google-maps')
   
   const tabs = isProPlan ? [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
@@ -62,6 +63,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     ...(isGoogleSubscribed ? [{ id: 'google', icon: Search, label: '구글 검색', badge: false }] : []),
     ...(isCalendarSubscribed ? [{ id: 'calendar', icon: Calendar, label: '스케줄 캘린더', badge: false }] : []),
     ...(isGoogleDriveSubscribed ? [{ id: 'google-drive', icon: HardDrive, label: '구글 드라이브', badge: false }] : []),
+    ...(isGoogleMapsSubscribed ? [{ id: 'google-maps', icon: Map, label: '구글 지도', badge: false }] : []),
   ] : [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
   ]

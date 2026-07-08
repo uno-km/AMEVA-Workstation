@@ -1,5 +1,5 @@
 
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { FileText, Wand2, Languages, Expand, Lightbulb } from 'lucide-react'
 import { useAIPanelLogic } from '../hooks/ai/useAIPanelLogic'
 import { AIChatList } from './ai-panel/AIChatList'
@@ -69,6 +69,24 @@ export function AIPanel() {
     textareaRef, messagesContainerRef, messagesEndRef,
     handleSend, handleKeyDown, handleQuickAction
   } = useAIPanelLogic(logicProps)
+
+  // [FEAT-4] 터미널 '아이에게 물어보기' 옵션 지원
+  // ConsoleContextMenu에서 스로운 'ameva:fill-ai-input' 이벤트를 수신하여
+  // 선택된 터미널 텍스트를 AI 입력창에 자동 주입한다.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const text = (e as CustomEvent).detail as string
+      if (text) {
+        setInput(text)
+        // 포커스를 텍스트에어리얰로 이동
+        setTimeout(() => {
+          textareaRef?.current?.focus()
+        }, 50)
+      }
+    }
+    window.addEventListener('ameva:fill-ai-input', handler)
+    return () => window.removeEventListener('ameva:fill-ai-input', handler)
+  }, [setInput, textareaRef])
 
   if (!isOpen) return null
   const isWhiteTheme = settings.theme === 'white'

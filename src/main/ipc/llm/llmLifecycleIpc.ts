@@ -18,6 +18,11 @@ export function registerLlmLifecycleIpc(): void {
 
   // 🤖 [llm:check-health] 포트 12345 llama-server 상태 체크 핸들러
   ipcMain.handle('llm:check-health', async (_event) => {
+    // [FIX-FLICKER-001] 기동 중인 경우 'loading model' 상태를 반환하여
+    // UI가 offline 으로 표시되지 않도록 한다.
+    if (LLMProcessManager.isStarting) {
+      return { status: 'loading model', running: true }
+    }
     if (!LLMProcessManager.activeServerProcess) {
       return { status: 'offline', running: false }
     }

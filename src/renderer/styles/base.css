@@ -161,6 +161,18 @@ body {
   animation: pulse-glow 1.5s infinite;
 }
 
+/* [FEAT-ANIM] spin — RefreshCw 아이콘 로딩 표시 */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* [FEAT-ANIM] pulse — 스켈레톤 로딩 효과 */
+@keyframes pulse {
+  0%, 100% { opacity: 0.6; }
+  50%       { opacity: 0.3; }
+}
+
 @keyframes fadeInUp {
   from { transform: translateY(10px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }

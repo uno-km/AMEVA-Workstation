@@ -22,6 +22,11 @@ export function handleUrlConversion(
               videoId = textVal.split('watch?v=')[1].split('&')[0]
             } else if (textVal.includes('youtu.be/')) {
               videoId = textVal.split('youtu.be/')[1].split('?')[0]
+            } else if (textVal.includes('youtube.com/shorts/')) {
+              // [FIX-YT-001] YouTube Shorts URL 지원
+              videoId = textVal.split('/shorts/')[1].split('?')[0]
+            } else if (textVal.includes('youtube.com/live/')) {
+              videoId = textVal.split('/live/')[1].split('?')[0]
             }
 
             if (videoId) {

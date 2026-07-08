@@ -11,6 +11,19 @@ export function useAIHealthCheck(
   useEffect(() => {
     failCountRef.current = 0
 
+    // [FIX-FLICKER-007] wasm 모드는 브라우저 내부에서 실행되므로
+    // 별도의 서버 헬스체크 없이 항상 사용 가능 상태로 간주한다.
+    if (settings.apiType === 'wasm') {
+      setIsAvailable(true)
+      return
+    }
+
+    // [FIX-FLICKER-API] API 모드도 항상 사용 가능으로 처리.
+    if (settings.apiType === 'api') {
+      setIsAvailable(true)
+      return
+    }
+
     const checkHealth = async () => {
       const type = settings.apiType || 'local'
 
@@ -19,16 +32,13 @@ export function useAIHealthCheck(
         setIsAvailable(true)
       }
 
+      // [FIX-FLICKER-001] fail threshold를 5로 높여서 일시적인 응답 지연(토큰 생성 중 등)으로
+      // UI가 offline으로 전환되는 깜빡임을 방지한다.
       const handleFail = () => {
         failCountRef.current += 1
-        if (failCountRef.current >= 2) {
+        if (failCountRef.current >= 5) {
           setIsAvailable(false)
         }
-      }
-
-      if (type === 'api') {
-        handleSuccess()
-        return
       }
 
       if (type === 'ollama') {
@@ -36,7 +46,7 @@ export function useAIHealthCheck(
           const ep = settings.apiEndpoint || 'http://127.0.0.1:11434'
           const res = await fetch(`${ep}/api/tags`, {
             method: 'GET',
-            signal: AbortSignal.timeout(2000)
+            signal: AbortSignal.timeout(3000)
           })
           if (res.ok) handleSuccess()
           else handleFail()
@@ -48,7 +58,8 @@ export function useAIHealthCheck(
         return
       }
 
-      // 'local' 또는 'wasm' 모드: llama-server 헬스 체크
+      // 'local' 모드: llama-server IPC 헬스 체크
+      // isStarting 플래그가 true이면 'loading model'을 반환하여 handleSuccess로 처리됨.
       const result = await ipc.llmCheckHealth()
       
       if (result.status === 'ok' || result.status === 'loading model') {
@@ -59,7 +70,7 @@ export function useAIHealthCheck(
     }
 
     checkHealth()
-    const timer = setInterval(checkHealth, 4000)
+    const timer = setInterval(checkHealth, 5000)
     return () => clearInterval(timer)
-  }, [settings.apiType, setIsAvailable])
+  }, [settings.apiType, settings.apiEndpoint, setIsAvailable])
 }

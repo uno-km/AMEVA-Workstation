@@ -10,20 +10,23 @@ export function useEditorDragDrop(editor: AmevaEditor | null, editorMode: Editor
     if (!url) return
     url = url.trim()
 
-    // 유튜브 정규식
-    const ytRegex = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([\w-]{11})(?:\S+)?$/
+    // [FIX-YT-001] YouTube Shorts URL (/shorts/) 패턴 추가
+    const ytRegex = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/|youtube\.com\/live\/)?([\w-]{11})(?:[?&][^\s]*)?$/
     const ytMatch = url.match(ytRegex)
+    // YouTube Shorts는 /shorts/VIDEO_ID 형식
+    const shortsMatch = url.match(/youtube\.com\/shorts\/([\w-]{11})/)
     
     // 일반 URL 정규식
     const urlRegex = /^https?:\/\/[^\s]+$/
     const isUrl = urlRegex.test(url)
 
-    if (ytMatch) {
+    if (ytMatch || shortsMatch) {
       e.preventDefault()
       e.stopPropagation()
+      const videoId = shortsMatch?.[1] || ytMatch?.[1] || ''
       editor.insertBlocks([{
         type: 'youtube',
-        props: { url, videoId: ytMatch[1] }
+        props: { url, videoId }
       }], editor.getTextCursorPosition().block, 'after')
     } else if (isUrl) {
       e.preventDefault()

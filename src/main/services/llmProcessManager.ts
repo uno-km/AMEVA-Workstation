@@ -33,6 +33,8 @@ export class LLMProcessManager {
   static activeServerProcess: ChildProcess | null = null
   static activeServerModelPath: string | null = null
   static serverStartingPromise: Promise<boolean> | null = null
+  // [FIX-FLICKER-001] 서버 기동 중 상태를 추적하여 헬스체크가 false를 반환하지 않도록 함
+  static isStarting = false
   static llamaLogBuffer = ''
   static formatters: Record<string, StreamLineFormatter> = {}
   static serverPort = 12345
@@ -125,10 +127,12 @@ export class LLMProcessManager {
         this.llamaLogBuffer = this.llamaLogBuffer.slice(-200000);
       }
       
-      const { webContents } = require('electron');
-      webContents.getAllWebContents().forEach((wc: any) => {
-        if (!wc.isDestroyed()) {
-          wc.send('llm:log', { text: formattedLine });
+      // [FIX-DUP-001] getAllWebContents()는 DevTools 등 여러 WebContents를 반환하여
+      // 로그가 창 수만큼 중복 전송되는 버그 발생. BrowserWindow의 webContents만 필터링.
+      const { BrowserWindow } = require('electron');
+      BrowserWindow.getAllWindows().forEach((win: any) => {
+        if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
+          win.webContents.send('llm:log', { text: formattedLine });
         }
       });
       process.stderr.write(formattedLine);
@@ -160,6 +164,9 @@ export class LLMProcessManager {
       this.logToRenderer('[System] 다른 요청이 서버 기동 중입니다. 대기...\n')
       return this.serverStartingPromise
     }
+    // [FIX-FLICKER-001] 기동 시작 시 isStarting = true 로 설정하여
+    // 헬스체크가 offline 을 반환하지 않도록 한다.
+    this.isStarting = true
 
     const doStart = async (ngl: number, threads: number): Promise<boolean> => {
       if (this.activeServerProcess) {
@@ -265,6 +272,7 @@ export class LLMProcessManager {
         const success = await doStart(99, threads)
         if (success) {
           this.serverStartingPromise = null
+          this.isStarting = false
           return true
         }
         this.logToRenderer('[System] GPU 가속 기동 실패. CPU 모드로 자동 폴백(Fallback) 기동합니다...\n')
@@ -272,6 +280,8 @@ export class LLMProcessManager {
 
       const cpuSuccess = await doStart(0, threads)
       this.serverStartingPromise = null
+      // [FIX-FLICKER-001] 기동 완료(성공 또는 실패) 후 isStarting 해제
+      this.isStarting = false
       return cpuSuccess
     })()
 
