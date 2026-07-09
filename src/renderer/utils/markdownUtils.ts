@@ -96,6 +96,55 @@ export function convertJupyterToCodeBlocks(blocks: any[]): any[] {
       copy.props = {
         language: 'ameva-map'
       }
+    } else if (copy.type === 'youtube') {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `copy.type === 'youtube'`
+       * - 만족 시: ameva-youtube 코드 블록 형태로 변환 직렬화하여 유튜브 메타데이터 유실 방지.
+       * - 불만족 시: 바이패스하여 하위 자식 노드를 순차 탐색함.
+       * - 예시: `if (copy.type === 'youtube')` 만족 시 codeBlock 변환 시작.
+       */
+      copy.type = 'codeBlock'
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ytData`
+       * - 자료형 / 예상 값: string (JSON 문자열)
+       * - 시나리오: url, videoId, title, description, thumbnail 등 유튜브 구성 속성들을 JSON으로 팩킹하여 콘텐츠로 저장.
+       */
+      const ytData = JSON.stringify({
+        url: copy.props?.url || '',
+        videoId: copy.props?.videoId || '',
+        title: copy.props?.title || 'YouTube Video',
+        description: copy.props?.description || '동영상 설명을 불러오려면 클릭하세요.',
+        thumbnail: copy.props?.thumbnail || ''
+      })
+      copy.content = [{ type: 'text', text: ytData, styles: {} }]
+      copy.props = {
+        language: 'ameva-youtube'
+      }
+    } else if (copy.type === 'linkPreview') {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `copy.type === 'linkPreview'`
+       * - 만족 시: ameva-link 코드 블록 형태로 변환 직렬화하여 링크 메타데이터 유실 방지.
+       */
+      copy.type = 'codeBlock'
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `linkData`
+       * - 자료형 / 예상 값: string (JSON 문자열)
+       * - 시나리오: url, title, description, thumbnail 등 링크 프리뷰 구성 속성들을 JSON으로 패킹하여 콘텐츠로 저장.
+       */
+      const linkData = JSON.stringify({
+        url: copy.props?.url || '',
+        title: copy.props?.title || 'Link Preview',
+        description: copy.props?.description || '',
+        thumbnail: copy.props?.thumbnail || ''
+      })
+      copy.content = [{ type: 'text', text: linkData, styles: {} }]
+      copy.props = {
+        language: 'ameva-link'
+      }
     } else if (copy.children) {
       copy.children = convertJupyterToCodeBlocks(copy.children)
     }
@@ -188,7 +237,7 @@ export function cleanCodeBlocks(blocks: any[]) {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const supportedLangs = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing', 'ameva-map']
+  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing', 'ameva-map', 'ameva-youtube', 'ameva-link']
   blocks.forEach(block => {
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -336,6 +385,68 @@ export function cleanCodeBlocks(blocks: any[]) {
         } catch (err) {
           console.error('[cleanCodeBlocks] Failed to parse ameva-map json:', err)
           block.props = { lat: '37.5665', lng: '126.9780', zoom: '14', locationName: '서울시' }
+        }
+        block.content = undefined
+        return
+      }
+
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `lang === 'ameva-youtube'`
+       * - 만족 시: 백킹 스토어의 ameva-youtube 가짜 코드 블록 데이터를 원래의 youtube 커스텀 미디어 블록으로 완벽히 복원 역직렬화.
+       * - 불만족 시: 바이패스하여 jupyter 코드 블록 기본 사양으로 폴백 처리함.
+       * - 예시: `if (lang === 'ameva-youtube')` 만족 시 youtube 블록 복구 시작.
+       */
+      if (lang === 'ameva-youtube') {
+        block.type = 'youtube'
+        try {
+          /*
+           * [RUN-TIME STATE / INVARIANT]
+           * - 변수 명: `parsed`
+           * - 자료형 / 예상 값: Object (유튜브 블록 메타데이터 파싱 정보)
+           * - 시나리오: JSON 문자열로 인코딩된 finalCode 텍스트를 디코딩하여 개별 미디어 속성들을 획득.
+           */
+          const parsed = JSON.parse(finalCode)
+          block.props = {
+            url: parsed.url || '',
+            videoId: parsed.videoId || '',
+            title: parsed.title || 'YouTube Video',
+            description: parsed.description || '동영상 설명을 불러오려면 클릭하세요.',
+            thumbnail: parsed.thumbnail || ''
+          }
+        } catch (err) {
+          console.error('[cleanCodeBlocks] Failed to parse ameva-youtube json:', err)
+          block.props = { url: '', videoId: '', title: 'YouTube Video', description: '동영상 설명을 불러오려면 클릭하세요.', thumbnail: '' }
+        }
+        block.content = undefined
+        return
+      }
+
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `lang === 'ameva-link'`
+       * - 만족 시: 백킹 스토어의 ameva-link 가짜 코드 블록 데이터를 원래의 linkPreview 커스텀 블록으로 완벽히 복원 역직렬화.
+       * - 불만족 시: 바이패스하여 jupyter 코드 블록 기본 사양으로 폴백 처리함.
+       */
+      if (lang === 'ameva-link') {
+        block.type = 'linkPreview'
+        try {
+          /*
+           * [RUN-TIME STATE / INVARIANT]
+           * - 변수 명: `parsed`
+           * - 자료형 / 예상 값: Object (링크 블록 메타데이터 파싱 정보)
+           * - 시나리오: JSON 문자열로 인코딩된 finalCode 텍스트를 디코딩하여 개별 링크 속성들을 획득.
+           */
+          const parsed = JSON.parse(finalCode)
+          block.props = {
+            url: parsed.url || '',
+            title: parsed.title || 'Link Preview',
+            description: parsed.description || '',
+            thumbnail: parsed.thumbnail || ''
+          }
+        } catch (err) {
+          console.error('[cleanCodeBlocks] Failed to parse ameva-link json:', err)
+          block.props = { url: '', title: 'Link Preview', description: '', thumbnail: '' }
         }
         block.content = undefined
         return

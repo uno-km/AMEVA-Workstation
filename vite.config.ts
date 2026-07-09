@@ -40,76 +40,97 @@ import { fileURLToPath } from 'url'
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 // Vite 마스터 번들 설정 정의
-export default defineConfig({
-  plugins: [
-    /* 
-     * [REACT BUNDLER PLUGIN]
-     * - React 17+ Fast Refresh 및 JSX 트랜스파일링 지원.
-     */
-    react(),
-    
-    /* 
-     * [ELECTRON COMPILATION CHAIN]
-     * - Electron 메인 스레드와 프리로드 브릿지 스크립트를 빌드하기 위한 플러그인 파이프라인.
-     */
-    electron([
-      {
-        // 1. Electron Main Process 컴파일 사양 지정
-        entry: 'src/main/index.ts',
-        vite: {
-          build: {
-            rollupOptions: {
-              output: {
-                // WARNING: Electron main process는 Node.js 네이티브 바인딩을 사용하므로 무조건 CJS로 출력되어야 함.
-                format: 'cjs',
+export default defineConfig(({ mode }) => {
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `isBrowser`
+   * - 자료형 / 예상 값: boolean
+   * - 시나리오: 실행 모드가 브라우저 모드인지 판별하여 Electron 플러그인의 로드 여부를 조절함.
+   */
+  const isBrowser = mode === 'browser'
+
+  return {
+    server: {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `port`
+       * - 자료형 / 예상 값: number
+       * - 시나리오: 브라우저 실행 시에는 포트번호를 5174로, 일렉트론 팝업 실행 시에는 포트번호를 5173으로 할당하여 충돌을 회피함.
+       */
+      port: isBrowser ? 5174 : 5173,
+    },
+    plugins: [
+      /* 
+       * [REACT BUNDLER PLUGIN]
+       * - React 17+ Fast Refresh 및 JSX 트랜스파일링 지원.
+       */
+      react(),
+      
+      /* 
+       * [ELECTRON COMPILATION CHAIN]
+       * - Electron 메인 스레드와 프리로드 브릿지 스크립트를 빌드하기 위한 플러그인 파이프라인.
+       * - 브라우저 단독 기동 모드(isBrowser === true)인 경우에는 플러그인을 활성화하지 않음.
+       */
+      !isBrowser && electron([
+        {
+          // 1. Electron Main Process 컴파일 사양 지정
+          entry: 'src/main/index.ts',
+          vite: {
+            build: {
+              rollupOptions: {
+                output: {
+                  // WARNING: Electron main process는 Node.js 네이티브 바인딩을 사용하므로 무조건 CJS로 출력되어야 함.
+                  format: 'cjs',
+                },
+              },
+            },
+            resolve: {
+              // __dirname 폴리필 관련 번들 처리 (필요시 활성화)
+              /* browserField: false */
+            },
+          },
+        },
+        {
+          // 2. Electron Preload Script 컴파일 사양 지정
+          entry: 'src/main/preload.ts',
+          onstart(options) {
+            // 프리로드 소스 변경 감지 시 BrowserWindow 인스턴스를 즉각 재로드(HMR)한다
+            options.reload()
+          },
+          vite: {
+            build: {
+              lib: {
+                entry: 'src/main/preload.ts',
+                formats: ['cjs'],
+                fileName: () => 'preload.js',
+              },
+              rollupOptions: {
+                // WARNING: electron 모듈은 런타임에 네이티브 윈도우 IPC 바인딩을 담당하므로 빌드 아웃풋에서 무조건 외장화(external) 처리할 것.
+                external: ['electron'],
               },
             },
           },
-          resolve: {
-            // __dirname 폴리필 관련 번들 처리 (필요시 활성화)
-            /* browserField: false */
-          },
         },
-      },
-      {
-        // 2. Electron Preload Script 컴파일 사양 지정
-        entry: 'src/main/preload.ts',
-        onstart(options) {
-          // 프리로드 소스 변경 감지 시 BrowserWindow 인스턴스를 즉각 재로드(HMR)한다
-          options.reload()
-        },
-        vite: {
-          build: {
-            lib: {
-              entry: 'src/main/preload.ts',
-              formats: ['cjs'],
-              fileName: () => 'preload.js',
-            },
-            rollupOptions: {
-              // WARNING: electron 모듈은 런타임에 네이티브 윈도우 IPC 바인딩을 담당하므로 빌드 아웃풋에서 무조건 외장화(external) 처리할 것.
-              external: ['electron'],
-            },
-          },
-        },
-      },
-    ]),
+      ]),
+      
+      /* 
+       * [ELECTRON RENDERER POLYFILL]
+       * - 렌더러 측 리액트 앱이 window.require 등을 통해 Node.js API 및 Electron 내장 모듈에 안전하게 노출(Integration)될 수 있도록 브릿지 폴리필을 적용한다.
+       * - 브라우저 단독 기동 모드(isBrowser === true)인 경우에는 플러그인을 활성화하지 않음.
+       */
+      !isBrowser && renderer(),
+    ].filter(Boolean),
     
-    /* 
-     * [ELECTRON RENDERER POLYFILL]
-     * - 렌더러 측 리액트 앱이 window.require 등을 통해 Node.js API 및 Electron 내장 모듈에 안전하게 노출(Integration)될 수 있도록 브릿지 폴리필을 적용한다.
-     */
-    renderer(),
-  ],
-  
-  resolve: {
-    /* 
-     * [PATH ALIAS CONTRACT]
-     * - 소스 코드 내에서 `@/components/...` 처럼 깔끔하게 절대 경로 형식으로 Renderer 코드를 참조할 수 있도록 매핑한다.
-     * - DOWNSTREAM DEPENDENCY: tsconfig.app.json의 "paths": { "@/*": ["./src/renderer/*"] } 설정과 반드시 1:1 싱크를 유지할 것.
-     */
-    alias: {
-      '@': resolve(__dirname, './src/renderer'),
+    resolve: {
+      /* 
+       * [PATH ALIAS CONTRACT]
+       * - 소스 코드 내에서 `@/components/...` 처럼 깔끔하게 절대 경로 형식으로 Renderer 코드를 참조할 수 있도록 매핑한다.
+       * - DOWNSTREAM DEPENDENCY: tsconfig.app.json의 "paths": { "@/*": ["./src/renderer/*"] } 설정과 반드시 1:1 싱크를 유지할 것.
+       */
+      alias: {
+        '@': resolve(__dirname, './src/renderer'),
+      },
     },
-  },
+  }
 })
 

@@ -20,8 +20,15 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
+import { Globe } from 'lucide-react'
 import { JupyterCodeViewer } from './JupyterCodeViewer'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
+
+// 찢어낸 마크다운 세그먼트 전용 인라인 렌더러 컴포넌트들 수입
+import { InlineMermaidRenderer } from './markdown/InlineMermaidRenderer'
+import { InlineLinkPreviewRenderer } from './markdown/InlineLinkPreviewRenderer'
+import { InlineMapRenderer } from './markdown/InlineMapRenderer'
+import { InlineYoutubeRenderer } from './markdown/InlineYoutubeRenderer'
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -30,6 +37,8 @@ import { type AmevaEditor } from '../editor/amevaBlockSchema'
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const MERMAID_PLACEHOLDER_PREFIX = ...` 형태로 안전 캐싱 후 가공 기동.
        */
+
+
 const MERMAID_PLACEHOLDER_PREFIX = 'MERMAIDPLACEHOLDERINDEX'
 
   /*
@@ -274,137 +283,53 @@ function buildPreviewSegments(markdown: string) {
   return segments
 }
 
+/*
+ * [FUNCTION CONTRACT]
+ * - 함수 명: `MarkdownPreview`
+ * - 역할: 마크다운 텍스트를 파싱하여 생성된 프리뷰 세그먼트들(HTML, Mermaid, 지도, 유튜브, 링크 프리뷰)을 순차적으로 렌더링함.
+ * - 예시: `MarkdownPreview({ markdown: "### Title" })` 형태로 마운트되어 React UI에 최종 문서 트리를 드로잉.
+ */
+export function MarkdownPreview({ markdown, editor }: { markdown: string; editor?: AmevaEditor | null }) {
   /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `InlineMermaidRenderer`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `InlineMermaidRenderer(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `segments`
+   * - 자료형 / 예상 값: Array<{type: string, html?: string, code?: string, language?: string}>
+   * - 시나리오: 입력받은 markdown 문자열이 변경될 때마다 buildPreviewSegments를 호출하여 내부 커스텀 블록과 일반 HTML 영역으로 파싱해 배열 캐시를 동적으로 할당함.
+   * - 예시 코드: `const segments = useMemo(() => buildPreviewSegments(markdown), [markdown])`
    */
-function InlineMermaidRenderer({ code }: { code: string }) {
-  const [svg, setSvg] = useState<string>('')
-  const [error, setError] = useState<string | null>(null)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `elementId`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const elementId = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const elementId = useRef(`mermaid-preview-${Math.random().toString(36).substr(2, 9)}`)
-
-  useEffect(() => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `active`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const active = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    let active = true
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `renderDiagram`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const renderDiagram = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const renderDiagram = async () => {
-      try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `cleanCode`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const cleanCode = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const cleanCode = code.replace(/^(\s*)end([가-힣a-zA-Z]+)/gm, '$1end\n$1$2')
-        const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanCode)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `active`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (active)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-        if (active) {
-          setSvg(renderedSvg)
-          setError(null)
-        }
-      } catch (err: any) {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `active`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (active)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-        if (active) {
-          setError(err.message || 'Mermaid 렌더링에 실패했습니다.')
-        }
-      }
+  const segments = useMemo(() => {
+    try {
+      const parsed = buildPreviewSegments(markdown)
+      console.log(`[MarkdownPreview] Successfully parsed markdown into ${parsed.length} segments.`)
+      return parsed
+    } catch (err) {
+      console.error('[MarkdownPreview] Failed to parse markdown segments:', err)
+      return []
     }
-    renderDiagram()
-    return () => { active = false }
-  }, [code])
+  }, [markdown])
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `error`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (error)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-  if (error) {
-    return (
-      <div style={{
-        padding: '12px 16px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)',
-        border: '1.5px solid rgba(239,68,68,0.25)', color: '#f87171', fontSize: '12px', textAlign: 'left'
-      }}>
-        <strong>[Mermaid Syntax Error]</strong>
-        <pre style={{ margin: '6px 0 0 0', overflowX: 'auto', fontSize: '11px', opacity: 0.85 }}>{error}</pre>
-      </div>
-    )
-  }
-
-  return (
-    <div
-      className="mermaid-svg-container"
-      style={{ display: 'flex', justifyContent: 'center', background: '#12121e', borderRadius: '8px', padding: '16px', overflowX: 'auto' }}
-      dangerouslySetInnerHTML={{ __html: svg || '<span style="color:#6b7280; font-size:12px;">Mermaid 로딩 중...</span>' }}
-    />
-  )
-}
-
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `MarkdownPreview`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `MarkdownPreview(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
-export function MarkdownPreview({ markdown, editor }: { markdown: string; editor: AmevaEditor | null }) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `segments`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const segments = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const segments = useMemo(() => buildPreviewSegments(markdown), [markdown])
   return (
     <div className="markdown-preview-body" style={{ padding: '10px 0', color: 'var(--text-main)', lineHeight: '1.7' }}>
-      {segments.length === 0 && (
+      {/* 
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `segments.length === 0`
+       * - 만족 시: 렌더링할 마크다운 파싱 결과가 없는 상태이므로 콘텐츠 없음 기본 안내 안내판을 띄움.
+       * - 불만족 시: 각 세그먼트 요소를 순회하며 렌더러로 인계함.
+       * - 예시: `if (segments.length === 0)` 만족 시 빈 결과 표시.
+       */
+      segments.length === 0 && (
         <div style={{ color: 'var(--text-muted)', padding: '20px', textAlign: 'center', fontSize: '13px' }}>
           내용이 없습니다.
         </div>
       )}
       {segments.map((seg, idx) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `seg.type === 'mermaid'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (seg.type === 'mermaid')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+        /* 
+         * [ALGORITHM BRANCH / DECISION]
+         * - 조건 식: `seg.type === 'mermaid'`
+         * - 만족 시: 마크다운 코드블록 중 mermaid 다이어그램에 해당하므로 전용 분리 컴포넌트인 InlineMermaidRenderer를 호출하여 주입함.
+         * - 불만족 시: 다음 세그먼트 타입 체크 분기로 폴백.
+         * - 예시: `if (seg.type === 'mermaid')` 만족 시 Mermaid 렌더링 진행.
+         */
         if (seg.type === 'mermaid') {
           return (
             <div key={idx} style={{ margin: '16px 0' }}>
@@ -412,13 +337,14 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             </div>
           )
         }
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `seg.type === 'html-preview'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (seg.type === 'html-preview')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+
+        /* 
+         * [ALGORITHM BRANCH / DECISION]
+         * - 조건 식: `seg.type === 'html-preview'`
+         * - 만족 시: 사용자 작성 HTML 코드를 안전한 sandboxed iframe 환경 내부 리소스 프레임(srcDoc)으로 격리 로드함.
+         * - 불만족 시: 다음 세그먼트 타입 체크 분기로 폴백.
+         * - 예시: `if (seg.type === 'html-preview')` 만족 시 iframe 로드.
+         */
         if (seg.type === 'html-preview') {
           return (
             <div key={idx} style={{ margin: '16px 0' }}>
@@ -431,160 +357,65 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             </div>
           )
         }
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `seg.type === 'code-runner'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (seg.type === 'code-runner')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+
+        /* 
+         * [ALGORITHM BRANCH / DECISION]
+         * - 조건 식: `seg.type === 'code-runner'`
+         * - 만족 시: 코드 블록 형태의 실행 도메인을 감지한 경우이며, 하위의 세부 컴포넌트 식별 언어 스펙에 따라 맵, 유튜브, 링크, 혹은 기본 JupyterCodeViewer로 라우팅.
+         * - 불만족 시: 바이패스하여 기본 HTML 태그 삽입 렌더링으로 폴백함.
+         * - 예시: `if (seg.type === 'code-runner')` 만족 시 하위 실행기 라우팅 작동.
+         */
         if (seg.type === 'code-runner') {
-          // [FIX-MAP-PREVIEW-001] ameva-map 코드블록을 감지하면 뷰모드에서 지도 뷰로 렌더링
+          /* 
+           * [ALGORITHM BRANCH / DECISION]
+           * - 조건 식: `seg.language === 'ameva-map'`
+           * - 만족 시: 지도 좌표 및 노선을 처리하는 ameva-map 컴포넌트로 전달함.
+           * - 불만족 시: 다음 특수 목적 코드블록 언어 검사로 이동.
+           * - 예시: `if (seg.language === 'ameva-map')` 만족 시 OSM 지도 뷰어로 이식.
+           */
           if (seg.language === 'ameva-map') {
-            try {
-              const data = JSON.parse(seg.code)
-              const lat = parseFloat(data.lat) || 37.5665
-              const lng = parseFloat(data.lng) || 126.9780
-              const destLat = data.destLat ? parseFloat(data.destLat) : null
-              const destLng = data.destLng ? parseFloat(data.destLng) : null
-              const zoom = parseInt(data.zoom, 10) || 14
-              const locationName = data.locationName || '서울시'
-              const destination = data.destination || ''
-              const legend = data.legend || ''
-              const memo = data.memo || ''
-              const routeType = data.routeType || 'none'
-              const routingEngine = data.routingEngine || 'osrm'
-              
-              let mapSrc = ''
-              if (destLat !== null && destLng !== null && !isNaN(destLat) && !isNaN(destLng)) {
-                let engineParam = 'fossgis_osrm_car'
-                if (routingEngine === 'osrm') {
-                  engineParam = routeType === 'car' ? 'fossgis_osrm_car' : routeType === 'bicycle' ? 'fossgis_osrm_bike' : 'fossgis_osrm_foot'
-                } else if (routingEngine === 'graphhopper') {
-                  engineParam = routeType === 'car' ? 'graphhopper_car' : routeType === 'bicycle' ? 'graphhopper_bicycle' : 'graphhopper_foot'
-                } else if (routingEngine === 'valhalla') {
-                  engineParam = routeType === 'car' ? 'valhalla_car' : routeType === 'bicycle' ? 'valhalla_bicycle' : 'valhalla_foot'
-                }
-                mapSrc = 'https://www.openstreetmap.org/directions?engine=' + engineParam + '&route=' + lat + ',' + lng + ';' + destLat + ',' + destLng
-              } else {
-                const delta = Math.max(0.001, 0.5 / Math.pow(2, zoom - 10))
-                const bbox = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`
-                mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`
-              }
-              
-              return (
-                <div key={idx} style={{
-                  margin: '16px 0',
-                  width: '100%',
-                  backgroundColor: '#18181c',
-                  border: '1px solid var(--border-muted)',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
-                }}>
-                  {/* 헤더 바 */}
-                  <div style={{
-                    padding: '10px 14px',
-                    borderBottom: '1px solid var(--border-muted)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                    background: '#121215',
-                    textAlign: 'left'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '12px', color: '#10b981' }}>📍</span>
-                        {destination ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', fontWeight: 'bold', color: '#f8fafc' }}>
-                            <span style={{ color: '#38bdf8' }}>[출발]</span> {locationName}
-                            <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>➔</span>
-                            <span style={{ color: '#facc15' }}>[도착]</span> {destination}
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '11.5px', fontWeight: 'bold', color: '#f8fafc' }}>{locationName}</span>
-                        )}
-                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>({lat}, {lng})</span>
-                      </div>
-                      <span style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>확대: ${zoom}x</span>
-                    </div>
-                    {legend && (
-                      <div style={{
-                        marginTop: '4px',
-                        padding: '4px 8px',
-                        borderRadius: '4px',
-                        background: 'rgba(56,189,248,0.08)',
-                        border: '1px solid rgba(56,189,248,0.2)',
-                        fontSize: '10px',
-                        color: '#38bdf8',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px'
-                      }}>
-                        <span>ℹ️</span>
-                        <span style={{ fontWeight: 'bold' }}>범례/경로 정보:</span>
-                        <span>{legend}</span>
-                      </div>
-                    )}
-                  </div>
-                  {/* 지도 */}
-                  <div style={{ height: '480px', width: '100%', position: 'relative', overflow: 'hidden' }}>
-                    <iframe
-                      src={mapSrc}
-                      width="100%"
-                      height="100%"
-                      frameBorder="0"
-                      style={{
-                        position: 'absolute',
-                        top: '-50px',
-                        left: 0,
-                        width: '100%',
-                        height: 'calc(100% + 50px)',
-                        border: 0,
-                        filter: 'invert(0.9) hue-rotate(180deg)'
-                      }}
-                      allowFullScreen
-                      loading="lazy"
-                      title={`지도: ${locationName}`}
-                    />
-                  </div>
-                  {/* 메모 */}
-                  {memo && (
-                    <div style={{
-                      padding: '10px 14px',
-                      borderTop: '1px solid var(--border-muted)',
-                      background: 'rgba(255,255,255,0.01)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px',
-                      textAlign: 'left'
-                    }}>
-                      <span style={{ fontSize: '10.5px', fontWeight: 'bold', color: 'var(--text-main)' }}>📝 사용자 메모</span>
-                      <div style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        background: 'rgba(255,255,255,0.02)',
-                        border: '1px dashed rgba(255,255,255,0.08)',
-                        color: 'var(--text-main)',
-                        fontSize: '11px',
-                        lineHeight: '1.5',
-                        whiteSpace: 'pre-wrap'
-                      }}>
-                        {memo}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )
-            } catch (err) {
-              console.error('Failed to render map preview:', err)
-            }
+            return (
+              <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
+                <InlineMapRenderer code={seg.code} />
+              </div>
+            )
+          }
+
+          /* 
+           * [ALGORITHM BRANCH / DECISION]
+           * - 조건 식: `seg.language === 'ameva-youtube'`
+           * - 만족 시: 동영상 재생을 위한 ameva-youtube 컴포넌트로 전달하여 재생 차단 우회 및 User-Agent 스푸핑 referer 필터 하에서 재생 프레임을 출력함.
+           * - 예시: `if (seg.language === 'ameva-youtube')` 만족 시 유튜브 우회 플레이어 UI 호출.
+           */
+          if (seg.language === 'ameva-youtube') {
+            return (
+              <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
+                <InlineYoutubeRenderer code={seg.code} />
+              </div>
+            )
+          }
+
+          /* 
+           * [ALGORITHM BRANCH / DECISION]
+           * - 조건 식: `seg.language === 'ameva-link'`
+           * - 만족 시: 링크 카드를 렌더링하고 내부 프리뷰 프레임을 유동 확장할 수 있는 ameva-link 컴포넌트로 전달함.
+           * - 예시: `if (seg.language === 'ameva-link')` 만족 시 카드 확장 샌드박스 컴포넌트 렌더링.
+           */
+          if (seg.language === 'ameva-link') {
+            return (
+              <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
+                <InlineLinkPreviewRenderer code={seg.code} />
+              </div>
+            )
           }
 
           if (editor) {
+            /*
+             * [RUN-TIME STATE / INVARIANT]
+             * - 변수 명: `runnerLang`
+             * - 자료형 / 예상 값: string
+             * - 시나리오: 주피터 코드 실행기(JupyterCodeViewer)에서 정상 구동 가능한 매핑 식별값(javascript, python 등)을 생성함.
+             */
             const runnerLang = seg.language === 'js' ? 'javascript' : seg.language === 'py' ? 'python' : (seg.language || 'javascript')
             return (
               <div key={idx} style={{ margin: '16px 0' }}>
@@ -596,9 +427,9 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             )
           }
         }
+
         return <div key={idx} dangerouslySetInnerHTML={{ __html: 'html' in seg ? seg.html : '' }} />
       })}
     </div>
   )
 }
-

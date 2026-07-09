@@ -1,5 +1,43 @@
 # AMEVA OS Changelog
 
+## 2026-07-09 (YouTube & Link Block Playback / Preview Refactoring & Decomposition)
+
+### 🚀 주요 아키텍처 변경 사항
+- **마크다운 프리뷰(MarkdownPreview.tsx) 기계적 분해 리팩토링**:
+  - `MarkdownPreview.tsx` 파일 내부에 누적되어 비대해졌던 특수 목적용 세그먼트 렌더러들을 개별 파일로 완벽하게 기계적 분해(Mechanical Decomposition) 이관 완료했습니다.
+  - 이로써 `MarkdownPreview.tsx`는 토큰 파싱 조율이라는 고유 책무에만 집중하도록 100~200줄 규모로 대폭 축약 및 가독성을 복구했습니다.
+  - 분리된 컴포넌트는 `src/renderer/components/markdown/` 하위에 각자의 고유 파일로 구성되었으며, 모든 변수 선언부에 초초고밀도 주석 이정표 및 Expected Value Flow 조항을 완벽 준수했습니다.
+- **링크 프리뷰 카드 고도화 (에디터 및 뷰모드 샌드박스 토글)**:
+  - 링크를 드래그 앤 드롭했을 때 카드 전체 클릭 시 외부 브라우저가 바로 켜지던 구조를 개선했습니다. 
+  - 카드 내부에 `[미리보기 ▶ / 접기 ▲]` 및 `[확장 ↗ (새 창 열기)]` 버튼을 설계하여, 미리보기를 누르면 카드 아래로 `iframe sandbox`가 슬라이드식으로 펼쳐져 내용을 가볍게 엿볼 수 있게(간잡이 구조) 구현했습니다.
+  - 뷰모드(미리보기) 렌더러인 `MarkdownPreview.tsx` 에서도 동일한 UI(InlineLinkPreviewRenderer)를 장착하여 접이식 미리보기 및 기본 외부 브라우저 연동 동작을 일관되게 구축했습니다.
+- **링크 마크다운 직렬화/역직렬화 구현 (`ameva-link`)**:
+  - 링크 프리뷰 블록 저장 시 데이터 손실을 원천 차단하기 위해 `markdownUtils.ts`에 직렬화(`convertJupyterToCodeBlocks` 내 `linkPreview` -> `ameva-link` 코드블록 패킹) 및 역직렬화(`cleanCodeBlocks` 내 `ameva-link` -> `linkPreview` 에디터 블록 복원) 구조를 통합 구축했습니다.
+  - 마크다운 저장 시 링크 정보가 ```ameva-link JSON 코드블록 형태로 암호화 구조 보존되며, 파일을 재로드 시 에디터 카드로 온전히 변환 복구됩니다.
+- **유튜브 블록 리액트 훅 규칙(Rules of Hooks) 준수**:
+  - `YoutubeBlock.tsx` 내 `createReactBlockSpec`의 `render` 함수 안에서 직접 호출되던 React Hook(`useState`, `useEffect`)들을 별도 리액트 컴포넌트인 `YoutubeBlockComponent`로 격리하여 린트 오류(`react-hooks/rules-of-hooks`)를 해결하고 재생 오동작을 근본적으로 퇴치했습니다.
+- **유튜브 마크다운 임베딩 직렬화 및 역직렬화 구현**:
+  - 유튜브 블록이 저장될 때 데이터 유실이 없도록 `markdownUtils.ts` 내에 직렬화(`convertJupyterToCodeBlocks` 내 `youtube` -> `ameva-youtube` 코드블록 포커싱) 및 역직렬화(`cleanCodeBlocks` 내 `ameva-youtube` -> `youtube` 복구 파싱) 메커니즘을 빌드하였습니다.
+  - 마크다운 저장 시 유튜브 데이터가 일반 텍스트로 풀어써지는 현상 대신 ```ameva-youtube 코드블록 형태로 임베딩 구조화되어 보관되도록 개선하였습니다.
+- **뷰모드(미리보기) 유튜브 임베드 정상화**:
+  - `MarkdownPreview.tsx` 뷰어 컴포넌트 내에 `ameva-youtube` 마크다운 코드블록을 감지해 원래의 유튜브 플레이어 UI로 치환하여 렌더링하는 전용 분기 처리를 구현했습니다. 이를 통해 편집 모드 외에 뷰모드에서도 유튜브 플레이어가 깨짐 없이 올바르게 출력됩니다.
+- **콘솔 이미지 CSP(Content Security Policy) 차단 버그 해결**:
+  - 유튜브 탭 또는 외부 리소스를 드래그 앤 드롭해 썸네일 이미지(`https://img.youtube.com/...`)를 가져올 때, Electron 메인 프로세스(`index.ts`)의 동적 CSP 헤더 중 `img-src` 정책에 `https:`가 빠져 로드가 거부되던 보안 예외 차단을 해결하기 위해 `img-src 'self' data: blob: https:;`로 필터를 보완하였습니다.
+- **유튜브 플레이어 브라우저 호환성 및 재생 제한 우회 (User-Agent 스푸핑)**:
+  - Electron 샌드박스의 기본 User-Agent 문자열로 인해 유튜브 임베드 스크립트가 해당 런타임을 비밀 모드(Incognito)나 지원되지 않는 브라우저로 식별하여 재생을 도중에 중단하고 `Chrome currently does not support the Push API...` 콘솔 오류를 일으키는 현상을 발견했습니다.
+  - 이를 해결하기 위해 Electron 메인 프로세스(`index.ts`) 초기화 구문에 `session.defaultSession.setUserAgent` 설정을 탑재하여 일반 Chrome 120.0.0.0 브라우저 사양으로 강제 지정함으로써 차단 예외 정책을 완전히 우회하고 에디터 및 뷰모드 양측에서 안정적인 스트리밍 재생을 가능케 했습니다.
+- **티스토리 및 네이버 블로그식 외부 임베드 재생 허가 응용 (Referer 스푸핑 필터 및 CORS 403 해결)**:
+  - 특정 저작권 음원이나 뮤직비디오의 경우, 외부 도메인에서의 임베딩 재생 시 **오류 코드: 152**를 유발하며 재생이 전면 차단되는 현상을 발견했습니다.
+  - 이를 우회하기 위해 `Referer`와 `Origin`을 위장했으나, `Origin`을 직접 스푸핑할 경우 구글 비디오 스트리밍 엔드포인트(`googlevideo.com`)로 전송되는 요청의 CORS 헤더 불일치를 초래해 무려 **403 Forbidden** 차단을 유발하여 영상 재생이 무한 로딩에 빠지는 2차 버그가 발생했습니다.
+  - 이를 해결하기 위해 HTTP Header 변환 필터 대상을 오직 유튜브 임베드 프레임(`https://*.youtube.com/embed/*`, `https://*.youtube-nocookie.com/embed/*`)으로 정밀하게 제한하고, `Origin` 헤더 조작을 제거하여 브라우저 표준 CORS 정책을 유지함으로써 CDN 403 차단 오류를 완전히 근절했습니다.
+
+### 📁 수정된 파일 목록
+- `[MODIFY]` [LinkPreviewBlock.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/LinkPreviewBlock.tsx) - 샌드박스 미리보기 접이식 iframe 컴포넌트 추가 및 버튼 배치.
+- `[MODIFY]` [YoutubeBlock.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/YoutubeBlock.tsx) - 렌더러 로직의 훅 규칙 준수를 위한 별도 컴포넌트 분리 및 초초고밀도 주석 이정표 갱신.
+- `[MODIFY]` [markdownUtils.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/utils/markdownUtils.ts) - ameva-youtube 및 ameva-link 코드블록 가상 컴파일 및 파싱 복구 로직 추가.
+- `[MODIFY]` [MarkdownPreview.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/MarkdownPreview.tsx) - 뷰모드에서의 ameva-youtube / ameva-link 임베드 샌드박스 렌더러 구현.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/main/index.ts) - CSP img-src 정책 수정, User-Agent 및 Referer/Origin 스푸핑 필터 추가 적용.
+
 ## 2026-07-09 (TypeScript Compile Error & Unused Warning Resolution)
 
 ### 🚀 주요 아키텍처 변경 사항

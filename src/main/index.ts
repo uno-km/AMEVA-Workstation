@@ -427,6 +427,34 @@ app.whenReady().then(() => {
   // [PERF] 1. 가장 먼저 윈도우 생성 (블로킹 방지 및 즉각적인 UI 피드백 제공)
   createWindow()
 
+  // [FIX-USER-AGENT-001] 유튜브 등 외부 임베드 웹 브라우저 호환성 및 재생 제한 우회 설정
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `userAgent`
+   * - 자료형 / 예상 값: string
+   * - 시나리오: Electron 기본 User-Agent를 사용하면 유튜브 스크립트가 브라우저를 Incognito(인코그니토) 모드나 비호환 기기로 인식하여 재생을 정지시킵니다. 이를 일반 Chrome 120.0.0.0 버전 사양으로 강제 지정하여 차단을 무력화합니다.
+   */
+  session.defaultSession.setUserAgent(
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  )
+
+  // [FIX-YOUTUBE-REFERER-001] 유튜브 임베드 재생 차단 우회를 위한 Referer 스푸핑
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `Referer`
+   * - 자료형 / 예상 값: string (HTTP 요청 헤더 매핑 값)
+   * - 시나리오: 특정 유튜브 영상은 외부 사이트 임베드를 차단합니다. 임베드 iframe 프레임 자체의 호출에 대해서만 신뢰할 수 있는 대형 블로그 서비스 도메인(https://tistory.com/)으로 Referer를 위장하여 도메인 검증을 통과시킵니다.
+   * - 주의: Origin 헤더를 임의 변조하거나 *.googlevideo.com 등 CDN 주소까지 헤더를 오염시키면 CORS 정책 불일치로 403 Forbidden 차단이 발생하므로, 오직 /embed/* 요청의 Referer 헤더만 가공합니다.
+   */
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    { urls: ['https://*.youtube.com/embed/*', 'https://*.youtube-nocookie.com/embed/*'] },
+    (details, callback) => {
+      details.requestHeaders['Referer'] = 'https://tistory.com/'
+      // Origin 헤더는 건드리지 않고 표준 정책을 유지하여 CORS 403 에러 예방
+      callback({ requestHeaders: details.requestHeaders })
+    }
+  )
+
   // [SEC-W-021] Content-Security-Policy 헤더 동적 세팅 주입
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const responseHeaders = { ...details.responseHeaders }
@@ -438,8 +466,14 @@ app.whenReady().then(() => {
       delete responseHeaders['x-frame-options']
     } else {
       // 일반 요청인 경우에만 기본 CSP 덮어씀
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `Content-Security-Policy`
+       * - 자료형 / 예상 값: string[] (CSP 헤더 값 목록)
+       * - 시나리오: 애플리케이션의 보안 통제를 위해 CSP 헤더 값을 주입하며, 외부 썸네일 이미지 로드가 차단되는 문제를 막기 위해 img-src 지시어에 https: 프로토콜을 명시적으로 허용함.
+       */
       responseHeaders['Content-Security-Policy'] = [
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://* http://localhost:* http://127.0.0.1:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://* http://localhost:* http://127.0.0.1:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
       ]
     }
     

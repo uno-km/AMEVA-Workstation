@@ -1,0 +1,603 @@
+﻿/**
+ * @file MarkdownPreview.tsx
+ * @system AMEVA OS Desktop Workstation
+ * @location src/renderer/components/MarkdownPreview.tsx
+ * @role Core module helper and integration logic
+ * 
+ * [?뚮퉬泥?- CONSUMERS / USAGE CONTEXT]
+ * - ?뚮퉬泥?A (src/renderer/AppLayout.tsx): ?덉씠?꾩썐 洹몃━???대? ?먮뒗 ?뚮줈???덉씠???곸뿭 ?댁뿉??洹몃━湲곕줈 ?뚮퉬.
+ * - ?뚮퉬泥?B (src/renderer/App.tsx): ?꾩뿭 紐⑤떖 留ㅻ땲? 諛?酉고룷???곹깭 ?ㅼ쐞移?뿉 ?곕씪 ?숈쟻 留덉슫?몃릺???뚮퉬.
+ * 
+ * [梨낆엫 踰붿쐞 - RESPONSIBILITY]
+ * - 蹂??뚯씪? AMEVA ?쒖뒪???댁뿉???꾨찓??紐⑹쟻??遺?⑺븯???곗궛 諛??곗씠??泥섎━ ?먮쫫???덉쟾?섍쾶 罹≪뒓?뷀븳??
+ * - ?몃? ?쇱씠釉뚮윭由?諛??섏쐞 醫낆냽?깆쓣 議곗쑉?섍퀬 寃곌낵 洹쒓꺽???쇨??섍쾶 ?쒓났?쒕떎.
+ * 
+ * [?덈? 源⑤㈃ ???섎뒗 怨꾩빟 - CONTRACT]
+ * - MUST: 紐⑤뱺 ?덉쇅 諛쒖깮 ???먮윭瑜?移⑤У?쒗궎吏 留먭퀬 ?먮윭 濡쒓렇瑜?紐낇솗?섍쾶 ?④만 寃?
+ * - MUST NOT: TypeScript any ?뺤떇???고쉶 ?섎떒?쇰줈 ?⑤?濡??좎뼵?섏? 留?寃?
+ */
+
+import { useState, useEffect, useRef, useMemo } from 'react'
+import { marked } from 'marked'
+import mermaid from 'mermaid'
+import { JupyterCodeViewer } from './JupyterCodeViewer'
+import { type AmevaEditor } from '../editor/amevaBlockSchema'
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `MERMAID_PLACEHOLDER_PREFIX`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const MERMAID_PLACEHOLDER_PREFIX = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+const MERMAID_PLACEHOLDER_PREFIX = 'MERMAIDPLACEHOLDERINDEX'
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - ?⑥닔 紐? `decodeHtmlEntities`
+   * - ??븷: ?몄옄 ?뺣낫瑜?寃?섑븯怨?鍮꾩쫰?덉뒪 怨꾩빟 議곌굔??留욎떠 理쒖쥌 諛붿씤??寃곌낵臾?諛붿씠?덈━ 踰꾪띁瑜?諛섑솚??
+   * - ?덉떆: `decodeHtmlEntities(...)` ?몄텧 ???고???鍮꾨룞湲??숆린 ?곗뇙 諛섏쓳 ?좊룄.
+   */
+function decodeHtmlEntities(str: string): string {
+  return str
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+}
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - ?⑥닔 紐? `buildPreviewSegments`
+   * - ??븷: ?몄옄 ?뺣낫瑜?寃?섑븯怨?鍮꾩쫰?덉뒪 怨꾩빟 議곌굔??留욎떠 理쒖쥌 諛붿씤??寃곌낵臾?諛붿씠?덈━ 踰꾪띁瑜?諛섑솚??
+   * - ?덉떆: `buildPreviewSegments(...)` ?몄텧 ???고???鍮꾨룞湲??숆린 ?곗뇙 諛섏쓳 ?좊룄.
+   */
+function buildPreviewSegments(markdown: string) {
+  const customBlocks: { lang: string; code: string }[] = []
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `renderer`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const renderer = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  const renderer = new marked.Renderer()
+  renderer.heading = function({ depth, text }) {
+    // Generate an ID for the outline scroll logic
+    // We strip tags and lowercase it for a simple ID, then format the anchor
+    const escapedText = text.toLowerCase().replace(/[^\w???롢뀖-?ｊ?-??+/g, '-')
+    return `<h${depth} id="${escapedText}">${text}</h${depth}>`
+  }
+  renderer.image = function({ href, title, text }) {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `isVideo`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const isVideo = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+    const isVideo = href.toLowerCase().endsWith('.mp4') || 
+                    href.toLowerCase().endsWith('.webm') || 
+                    href.toLowerCase().endsWith('.mov') || 
+                    href.toLowerCase().endsWith('.ogg') ||
+                    href.startsWith('data:video/')
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `isVideo`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (isVideo)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+    if (isVideo) {
+      return `<video src="${href}" controls style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: 8px 0;"></video>`
+    }
+    return `<img src="${href}" alt="${text}" title="${title || ''}" style="max-width: 100%;" />`
+  }
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `html`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const html = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  const html = marked.parse(markdown, {
+    renderer,
+    walkTokens(token) {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `token.type === 'code'`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (token.type === 'code')` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+      if (token.type === 'code') {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `lang`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const lang = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+        const lang = (token.lang || '').toLowerCase()
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `rawCode`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const rawCode = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+        const rawCode = decodeHtmlEntities(token.text)
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `idx`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const idx = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+        const idx = customBlocks.length
+        customBlocks.push({ lang, code: rawCode })
+
+        token.type = 'html'
+        token.text = `${MERMAID_PLACEHOLDER_PREFIX}${idx}`
+      }
+    }
+  }) as string
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `fullHtml`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const fullHtml = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  const fullHtml = html
+  const segments: ({ type: 'html'; html: string } | { type: 'mermaid'; code: string } | { type: 'html-preview'; code: string } | { type: 'code-runner'; code: string; language: string })[] = []
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `SPLIT_RE`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const SPLIT_RE = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  const SPLIT_RE = new RegExp(
+    `<p>\\s*${MERMAID_PLACEHOLDER_PREFIX}(\\d+)\\s*<\\/p>` +
+    `|${MERMAID_PLACEHOLDER_PREFIX}(\\d+)`,
+    'g'
+  )
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `lastIndex`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const lastIndex = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  SPLIT_RE.lastIndex = 0
+
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 猷⑦봽 議곌굔: `while ((match = SPLIT_RE.exec(fullHtml)) !== null) {`
+       * - ?덉긽 ?쒕굹由ъ삤: 吏?뺣맂 議곌굔 ?쒓퀎 ?꾨떖 ?쒖젏源뚯? 肄쒕젆????ぉ???쒖감 留ㅽ븨, 蹂??諛??숆린 ?곸옱 泥섎━瑜??섑뻾??
+       * - ?덉떆: `for (const item of list)` 猷⑦봽 ?ㅽ뻾 ??紐⑤뱺 媛쒕퀎 釉붾줉??html ?щ㎎ ?뺤젣 ?꾨즺 ???ㅽ깮 醫낃껐.
+       */
+  while ((match = SPLIT_RE.exec(fullHtml)) !== null) {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `before`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const before = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+    const before = fullHtml.slice(lastIndex, match.index)
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `before.trim()) segments.push({ type: 'html', html: before }`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (before.trim()) segments.push({ type: 'html', html: before })` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+    if (before.trim()) segments.push({ type: 'html', html: before })
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `idxStr`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const idxStr = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+    const idxStr = match[1] ?? match[2]
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `idx`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const idx = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+    const idx = Number(idxStr)
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `!isNaN(idx) && customBlocks[idx] !== undefined`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (!isNaN(idx) && customBlocks[idx] !== undefined)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+    if (!isNaN(idx) && customBlocks[idx] !== undefined) {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `block`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const block = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+      const block = customBlocks[idx]
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `block.lang === 'mermaid'`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (block.lang === 'mermaid')` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+      if (block.lang === 'mermaid') {
+        segments.push({ type: 'mermaid', code: block.code })
+      } else if (block.lang === 'html') {
+        segments.push({ type: 'html-preview', code: block.code })
+      } else {
+        segments.push({ type: 'code-runner', code: block.code, language: block.lang })
+      }
+    }
+    lastIndex = SPLIT_RE.lastIndex
+  }
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `remaining`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const remaining = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  const remaining = fullHtml.slice(lastIndex)
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `remaining.trim()) segments.push({ type: 'html', html: remaining }`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (remaining.trim()) segments.push({ type: 'html', html: remaining })` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+  if (remaining.trim()) segments.push({ type: 'html', html: remaining })
+
+  return segments
+}
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - ?⑥닔 紐? `InlineMermaidRenderer`
+   * - ??븷: ?몄옄 ?뺣낫瑜?寃?섑븯怨?鍮꾩쫰?덉뒪 怨꾩빟 議곌굔??留욎떠 理쒖쥌 諛붿씤??寃곌낵臾?諛붿씠?덈━ 踰꾪띁瑜?諛섑솚??
+   * - ?덉떆: `InlineMermaidRenderer(...)` ?몄텧 ???고???鍮꾨룞湲??숆린 ?곗뇙 諛섏쓳 ?좊룄.
+   */
+function InlineMermaidRenderer({ code }: { code: string }) {
+  const [svg, setSvg] = useState<string>('')
+  const [error, setError] = useState<string | null>(null)
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `elementId`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const elementId = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  const elementId = useRef(`mermaid-preview-${Math.random().toString(36).substr(2, 9)}`)
+
+  useEffect(() => {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `active`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const active = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+    let active = true
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `renderDiagram`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const renderDiagram = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+    const renderDiagram = async () => {
+      try {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `cleanCode`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const cleanCode = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+        const cleanCode = code.replace(/^(\s*)end([媛-?즑-zA-Z]+)/gm, '$1end\n$1$2')
+        const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanCode)
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `active`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (active)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+        if (active) {
+          setSvg(renderedSvg)
+          setError(null)
+        }
+      } catch (err: any) {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `active`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (active)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+        if (active) {
+          setError(err.message || 'Mermaid ?뚮뜑留곸뿉 ?ㅽ뙣?덉뒿?덈떎.')
+        }
+      }
+    }
+    renderDiagram()
+    return () => { active = false }
+  }, [code])
+
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `error`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (error)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+  if (error) {
+    return (
+      <div style={{
+        padding: '12px 16px', borderRadius: '8px', background: 'rgba(239,68,68,0.08)',
+        border: '1.5px solid rgba(239,68,68,0.25)', color: '#f87171', fontSize: '12px', textAlign: 'left'
+      }}>
+        <strong>[Mermaid Syntax Error]</strong>
+        <pre style={{ margin: '6px 0 0 0', overflowX: 'auto', fontSize: '11px', opacity: 0.85 }}>{error}</pre>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="mermaid-svg-container"
+      style={{ display: 'flex', justifyContent: 'center', background: '#12121e', borderRadius: '8px', padding: '16px', overflowX: 'auto' }}
+      dangerouslySetInnerHTML={{ __html: svg || '<span style="color:#6b7280; font-size:12px;">Mermaid 濡쒕뵫 以?..</span>' }}
+    />
+  )
+}
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - ?⑥닔 紐? `MarkdownPreview`
+   * - ??븷: ?몄옄 ?뺣낫瑜?寃?섑븯怨?鍮꾩쫰?덉뒪 怨꾩빟 議곌굔??留욎떠 理쒖쥌 諛붿씤??寃곌낵臾?諛붿씠?덈━ 踰꾪띁瑜?諛섑솚??
+   * - ?덉떆: `MarkdownPreview(...)` ?몄텧 ???고???鍮꾨룞湲??숆린 ?곗뇙 諛섏쓳 ?좊룄.
+   */
+export function MarkdownPreview({ markdown, editor }: { markdown: string; editor: AmevaEditor | null }) {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 蹂??紐? `segments`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const segments = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
+       */
+  const segments = useMemo(() => buildPreviewSegments(markdown), [markdown])
+  return (
+    <div className="markdown-preview-body" style={{ padding: '10px 0', color: 'var(--text-main)', lineHeight: '1.7' }}>
+      {segments.length === 0 && (
+        <div style={{ color: 'var(--text-muted)', padding: '20px', textAlign: 'center', fontSize: '13px' }}>
+          ?댁슜???놁뒿?덈떎.
+        </div>
+      )}
+      {segments.map((seg, idx) => {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `seg.type === 'mermaid'`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (seg.type === 'mermaid')` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+        if (seg.type === 'mermaid') {
+          return (
+            <div key={idx} style={{ margin: '16px 0' }}>
+              <InlineMermaidRenderer code={seg.code} />
+            </div>
+          )
+        }
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `seg.type === 'html-preview'`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (seg.type === 'html-preview')` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+        if (seg.type === 'html-preview') {
+          return (
+            <div key={idx} style={{ margin: '16px 0' }}>
+              <iframe
+                sandbox="allow-scripts"
+                title="HTML Preview Frame"
+                srcDoc={seg.code}
+                style={{ width: '100%', height: '380px', border: '1px solid rgba(249,115,22,0.3)', borderRadius: '10px', background: '#fff' }}
+              />
+            </div>
+          )
+        }
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 議곌굔 ?? `seg.type === 'code-runner'`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (seg.type === 'code-runner')` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
+       */
+        if (seg.type === 'code-runner') {
+          // [FIX-MAP-PREVIEW-001] ameva-map 肄붾뱶釉붾줉??媛먯??섎㈃ 酉곕え?쒖뿉??吏??酉곕줈 ?뚮뜑留?          if (seg.language === 'ameva-map') {
+            try {
+              const data = JSON.parse(seg.code)
+              const lat = parseFloat(data.lat) || 37.5665
+              const lng = parseFloat(data.lng) || 126.9780
+              const destLat = data.destLat ? parseFloat(data.destLat) : null
+              const destLng = data.destLng ? parseFloat(data.destLng) : null
+              const zoom = parseInt(data.zoom, 10) || 14
+              const locationName = data.locationName || '?쒖슱??
+              const destination = data.destination || ''
+              const legend = data.legend || ''
+              const memo = data.memo || ''
+              const routeType = data.routeType || 'none'
+              const routingEngine = data.routingEngine || 'osrm'
+              
+              let mapSrc = ''
+              if (destLat !== null && destLng !== null && !isNaN(destLat) && !isNaN(destLng)) {
+                let engineParam = 'fossgis_osrm_car'
+                if (routingEngine === 'osrm') {
+                  engineParam = routeType === 'car' ? 'fossgis_osrm_car' : routeType === 'bicycle' ? 'fossgis_osrm_bike' : 'fossgis_osrm_foot'
+                } else if (routingEngine === 'graphhopper') {
+                  engineParam = routeType === 'car' ? 'graphhopper_car' : routeType === 'bicycle' ? 'graphhopper_bicycle' : 'graphhopper_foot'
+                } else if (routingEngine === 'valhalla') {
+                  engineParam = routeType === 'car' ? 'valhalla_car' : routeType === 'bicycle' ? 'valhalla_bicycle' : 'valhalla_foot'
+                }
+                mapSrc = 'https://www.openstreetmap.org/directions?engine=' + engineParam + '&route=' + lat + ',' + lng + ';' + destLat + ',' + destLng
+              } else {
+                const delta = Math.max(0.001, 0.5 / Math.pow(2, zoom - 10))
+                const bbox = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`
+                mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`
+              }
+              
+              return (
+                <div key={idx} style={{
+                  margin: '16px 0',
+                  width: '100%',
+                  backgroundColor: '#18181c',
+                  border: '1px solid var(--border-muted)',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+                }}>
+                  {/* ?ㅻ뜑 諛?*/}
+                  <div style={{
+                    padding: '10px 14px',
+                    borderBottom: '1px solid var(--border-muted)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    background: '#121215',
+                    textAlign: 'left'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', color: '#10b981' }}>?뱧</span>
+                        {destination ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', fontWeight: 'bold', color: '#f8fafc' }}>
+                            <span style={{ color: '#38bdf8' }}>[異쒕컻]</span> {locationName}
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>??/span>
+                            <span style={{ color: '#facc15' }}>[?꾩갑]</span> {destination}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11.5px', fontWeight: 'bold', color: '#f8fafc' }}>{locationName}</span>
+                        )}
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>({lat}, {lng})</span>
+                      </div>
+                      <span style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>?뺣?: ${zoom}x</span>
+                    </div>
+                    {legend && (
+                      <div style={{
+                        marginTop: '4px',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(56,189,248,0.08)',
+                        border: '1px solid rgba(56,189,248,0.2)',
+                        fontSize: '10px',
+                        color: '#38bdf8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <span>?뱄툘</span>
+                        <span style={{ fontWeight: 'bold' }}>踰붾?/寃쎈줈 ?뺣낫:</span>
+                        <span>{legend}</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* 吏??*/}
+                  <div style={{ height: '480px', width: '100%', position: 'relative', overflow: 'hidden' }}>
+                    <iframe
+                      src={mapSrc}
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      style={{
+                        position: 'absolute',
+                        top: '-50px',
+                        left: 0,
+                        width: '100%',
+                        height: 'calc(100% + 50px)',
+                        border: 0,
+                        filter: 'invert(0.9) hue-rotate(180deg)'
+                      }}
+                      allowFullScreen
+                      loading="lazy"
+                      title={`吏?? ${locationName}`}
+                    />
+                  </div>
+                  {/* 硫붾え */}
+                  {memo && (
+                    <div style={{
+                      padding: '10px 14px',
+                      borderTop: '1px solid var(--border-muted)',
+                      background: 'rgba(255,255,255,0.01)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      textAlign: 'left'
+                    }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 'bold', color: 'var(--text-main)' }}>?뱷 ?ъ슜??硫붾え</span>
+                      <div style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px dashed rgba(255,255,255,0.08)',
+                        color: 'var(--text-main)',
+                        fontSize: '11px',
+                        lineHeight: '1.5',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        {memo}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            } catch (err) {
+              console.error('Failed to render map preview:', err)
+            }
+          }
+
+          if (editor) {
+            const runnerLang = seg.language === 'js' ? 'javascript' : seg.language === 'py' ? 'python' : (seg.language || 'javascript')
+            return (
+              <div key={idx} style={{ margin: '16px 0' }}>
+                <JupyterCodeViewer
+                  code={seg.code || ''}
+                  language={runnerLang}
+                />
+              </div>
+            )
+          }
+        }
+        return <div key={idx} dangerouslySetInnerHTML={{ __html: 'html' in seg ? seg.html : '' }} />
+      })}
+    </div>
+  )
+}
+

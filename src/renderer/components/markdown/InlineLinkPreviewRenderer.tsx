@@ -1,45 +1,50 @@
 /**
- * @file LinkPreviewBlock.tsx
+ * @file InlineLinkPreviewRenderer.tsx
  * @system AMEVA OS Desktop Workstation
- * @location src/renderer/components/LinkPreviewBlock.tsx
+ * @location src/renderer/components/markdown/InlineLinkPreviewRenderer.tsx
  * @role Core module helper and integration logic
  * 
  * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - 소비처 A (src/renderer/AppLayout.tsx): 레이아웃 그리드 내부 또는 플로팅 레이어 영역 내에서 그리기로 소비.
- * - 소비처 B (src/renderer/App.tsx): 전역 모달 매니저 및 뷰포트 상태 스위칭에 따라 동적 마운트되어 소비.
- * 
- * [책임 범위 - RESPONSIBILITY]
- * - 본 파일은 AMEVA 시스템 내에서 도메인 목적에 부합하는 연산 및 데이터 처리 흐름을 안전하게 캡슐화한다.
- * - 외부 라이브러리 및 하위 종속성을 조율하고 결과 규격을 일관되게 제공한다.
- * 
- * [절대 깨면 안 되는 계약 - CONTRACT]
- * - MUST: 모든 예외 발생 시 에러를 침묵시키지 말고 에러 로그를 명확하게 남길 것.
- * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
+ * - 소비처 A (src/renderer/components/MarkdownPreview.tsx): 마크다운 파싱 시 ameva-link 웹 링크 요약 세그먼트 전용 토글식 샌드박스 렌더러로 소비.
  */
 
 import React, { useState } from 'react'
-import { createReactBlockSpec } from '@blocknote/react'
-import { Globe, ExternalLink } from 'lucide-react'
+import { Globe } from 'lucide-react'
 
-/*
- * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - LinkPreviewBlockSpec 내 render 함수에서 컴포넌트 훅 세션 분리형 렌더러로 위임되어 소비됨.
- */
-function LinkPreviewComponent({ block }: { block: any }) {
-  const { url, title, description, thumbnail } = block.props
-  
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `InlineLinkPreviewRenderer`
+   * - 역할: ameva-link 가상 마크다운 코드블록의 JSON 데이터를 디코딩해 요약 카드 UI를 렌더링하고 토글식 샌드박스 미리보기 프레임을 관리함.
+   */
+export function InlineLinkPreviewRenderer({ code }: { code: string }) {
   /*
    * [RUN-TIME STATE / INVARIANT]
    * - 변수 명: `isExpanded`, `setIsExpanded`
    * - 자료형 / 예상 값: boolean
-   * - 시나리오: 사용자가 '미리보기' 버튼을 누르면 카드가 아래로 펼쳐지면서 해당 URL을 iframe 샌드박스로 로드함.
+   * - 시나리오: 사용자가 '미리보기' 토글을 수행하면 iframe 샌드박스가 하단에 전개됨.
    */
   const [isExpanded, setIsExpanded] = useState(false)
 
   /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `data`
+   * - 자료형 / 예상 값: { url: string, title: string, description: string, thumbnail: string }
+   * - 시나리오: JSON 파싱된 메타데이터 정보 획득.
+   */
+  let data: any = null
+  try {
+    data = JSON.parse(code)
+  } catch (err) {
+    console.error('[InlineLinkPreviewRenderer] JSON parse failed:', err)
+    return <div style={{ color: 'var(--text-muted)', fontSize: '11px' }}>링크 정보를 해석할 수 없습니다.</div>
+  }
+
+  const { url, title, description, thumbnail } = data
+  
+  /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `handleOpenExternal`
-   * - 역할: 크롬, 엣지 등 호스트 PC의 기본 브라우저를 구동하여 외부 링크를 띄움.
+   * - 역할: PC의 기본 웹 브라우저를 통해 링크를 새 창으로 열어 확장함.
    */
   const handleOpenExternal = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -56,7 +61,6 @@ function LinkPreviewComponent({ block }: { block: any }) {
 
   return (
     <div
-      className="bn-block-content-wrapper"
       style={{
         width: '100%',
         backgroundColor: 'rgba(30, 30, 40, 0.45)',
@@ -72,7 +76,6 @@ function LinkPreviewComponent({ block }: { block: any }) {
         boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
       }}
     >
-      {/* 카드 정보 영역 */}
       <div style={{ display: 'flex', width: '100%' }}>
         {thumbnail ? (
           <div style={{
@@ -121,11 +124,10 @@ function LinkPreviewComponent({ block }: { block: any }) {
               color: isFailed ? '#ef4444' : 'var(--text-main)',
               overflow: 'hidden',
             }}>
-              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
                 {title}
               </span>
               
-              {/* 확장(새창열기) 및 미리보기 버튼 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                 {!isFailed && !isLoading && url && (
                   <button
@@ -165,9 +167,6 @@ function LinkPreviewComponent({ block }: { block: any }) {
                       fontSize: '10.5px',
                       padding: '4px 8px',
                       cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
                       fontWeight: 'bold',
                       transition: 'all 0.25s'
                     }}
@@ -180,7 +179,7 @@ function LinkPreviewComponent({ block }: { block: any }) {
                       e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)'
                     }}
                   >
-                    <span>확장 ↗</span>
+                    확장 ↗
                   </button>
                 )}
               </div>
@@ -217,7 +216,6 @@ function LinkPreviewComponent({ block }: { block: any }) {
         </div>
       </div>
 
-      {/* 샌드박스 미리보기 iframe 컨테이너 */}
       {isExpanded && url && (
         <div style={{
           width: '100%',
@@ -228,10 +226,6 @@ function LinkPreviewComponent({ block }: { block: any }) {
         }}>
           <iframe
             src={url}
-            /*
-             * [FIX-LINK-SANDBOX-001] allow-scripts 및 allow-same-origin 설정으로 샌드박스 렌더링.
-             * - X-Frame-Options 차단 극복을 위해 Electron 메인 프록시가 작동하고 있지만, 보안 방벽 유지를 위해 sandboxed iframe을 탑재합니다.
-             */
             sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
             style={{ width: '100%', height: '100%', border: 'none' }}
             title={`Preview: ${title}`}
@@ -241,36 +235,3 @@ function LinkPreviewComponent({ block }: { block: any }) {
     </div>
   )
 }
-
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `LinkPreviewBlockSpec`
-   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
-   * - 예시: `LinkPreviewBlockSpec(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
-export const LinkPreviewBlockSpec = createReactBlockSpec(
-  {
-    type: 'linkPreview',
-    propSchema: {
-      url: { default: '' },
-      title: { default: 'Loading preview...' },
-      description: { default: '' },
-      thumbnail: { default: '' }
-    },
-    content: 'none'
-  },
-  {
-    render: ({ block }) => {
-      return <LinkPreviewComponent block={block} />
-    }
-  }
-)
-
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `LinkPreviewBlock`
-   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
-   * - 예시: `LinkPreviewBlock(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
-export const LinkPreviewBlock = LinkPreviewBlockSpec()
-
