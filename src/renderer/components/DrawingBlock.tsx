@@ -21,23 +21,37 @@ import React, { useState, useEffect, useRef } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Check, Edit2, FileImage } from 'lucide-react'
 
-// Dynamic import or guarded import of Excalidraw to bypass Node environment check during build
-let Excalidraw: any = null
+/*
+ * [FIX-DRAWING-001] Excalidraw ESM/Node 환경 호환 로드 가드 강화.
+ * - @excalidraw/excalidraw 는 브라우저 전용 API(window.ResizeObserver 등)에 강하게 의존한다.
+ * - require() 로드 실패 시 동적 import()를 시도하지만, 타임아웃 없이 폴링하면 무한 로딩 상태가 된다.
+ * - 해결: Promise.race + 5초 타임아웃으로 로드를 시도하고, 실패 시 excalidrawFailed 플래그를 세워
+ *   Canvas API 기반 경량 스케치패드 폴백으로 즉시 전환하도록 한다.
+ */
+let Excalidraw: React.ComponentType<any> | null = null
+let excalidrawFailed = false
+
+// 비동기 로드를 즉시 시작 (앱 부팅 시 한 번만 실행)
+const loadExcalidraw = async () => {
+  try {
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Excalidraw load timeout (5s)')), 5000)
+    )
+    const loaded = import('@excalidraw/excalidraw').then(m => m.Excalidraw)
+    Excalidraw = await Promise.race([loaded, timeout])
+  } catch (err) {
+    console.warn('[DrawingBlock] Excalidraw 로드 실패 — Canvas 폴백 활성화:', err)
+    excalidrawFailed = true
+  }
+}
+
+// require() 로 동기 로드 우선 시도 (CJS 번들 환경)
 try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `ex`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const ex = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const ex = require('@excalidraw/excalidraw')
+  const ex = require('@excalidraw/excalidraw') as { Excalidraw: typeof Excalidraw }
   Excalidraw = ex.Excalidraw
 } catch {
-  // ESM or fallback import
-  import('@excalidraw/excalidraw').then((m) => {
-    Excalidraw = m.Excalidraw
-  })
+  // CJS 로드 실패 시 비동기 로드 트리거
+  loadExcalidraw()
 }
 
   /*
@@ -62,33 +76,29 @@ export const DrawingBlockSpec = createReactBlockSpec(
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `saveTimeoutRef`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const saveTimeoutRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: NodeJS.Timeout | null
+       * - 시나리오: 드로잉 스트로크마다 에디터 업데이트가 연속으로 호출되는 것을 방지하는 디바운서 타이머 핸들.
        */
       const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+      // Canvas API 폴백용 캔버스 ref: Excalidraw 로드 실패 시 사용할 경량 스케치패드
+      const fallbackCanvasRef = useRef<HTMLCanvasElement>(null)
+      const isDrawingRef = useRef(false)
+      const lastPosRef = useRef<{ x: number; y: number } | null>(null)
 
       useEffect(() => {
         setMounted(true)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!Excalidraw`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!Excalidraw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-        if (!Excalidraw) {
-          // If not loaded via require, check dynamic import in interval
+        /*
+         * [FIX-DRAWING-POLL] Excalidraw 로드 완료 폴링 (최대 5초 후 자동 중단)
+         * - excalidrawFailed 플래그가 세워지거나, Excalidraw가 성공적으로 로드되면 폴링을 중단한다.
+         */
+        if (!Excalidraw && !excalidrawFailed) {
           const interval = setInterval(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `Excalidraw`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (Excalidraw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
             if (Excalidraw) {
               setExcalidrawLoaded(true)
+              clearInterval(interval)
+            } else if (excalidrawFailed) {
+              // 실패 플래그가 세워지면 폴백 뷰를 즉시 표시하기 위해 상태를 갱신한다.
+              setExcalidrawLoaded(false)
               clearInterval(interval)
             }
           }, 100)
@@ -142,26 +152,68 @@ export const DrawingBlockSpec = createReactBlockSpec(
       };
 
       /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!mounted || (!Excalidraw && !excalidrawLoaded)`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!mounted || (!Excalidraw && !excalidrawLoaded))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * [FIX-DRAWING-FALLBACK] Excalidraw 로드 실패 시 Canvas API 기반 경량 스케치패드를 표시한다.
+       * - excalidrawFailed가 true이고 mounted가 완료된 경우: 폴백 캔버스를 즉시 표시한다.
+       * - 아직 로드 중인 경우: 로딩 스피너를 표시하고 완료 대기한다.
        */
-      if (!mounted || (!Excalidraw && !excalidrawLoaded)) {
+      if (!mounted) {
         return (
           <div style={{
-            height: '350px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#16161a',
-            border: '1px dashed #2e2e38',
-            borderRadius: '8px',
-            color: 'var(--text-muted)',
-            fontSize: '12px'
+            height: '350px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: '#16161a', border: '1px dashed #2e2e38', borderRadius: '8px',
+            color: 'var(--text-muted)', fontSize: '12px'
           }}>
             드로잉 모듈을 준비 중입니다...
+          </div>
+        )
+      }
+
+      // Excalidraw 로드 실패 시 표시할 Canvas API 기반 경량 스케치패드
+      // [FIX-DRAWING-NULL-GUARD] excalidrawLoaded 상태와 무관하게, 실제 렌더 시점에
+      // Excalidraw 참조가 null이면 크래시를 방지하기 위해 폴백으로 즉시 전환한다.
+      if (excalidrawFailed || !Excalidraw || (!Excalidraw && !excalidrawLoaded)) {
+        return (
+          <div className="bn-block-content-wrapper" style={{
+            width: '100%', backgroundColor: '#18181c', border: '1px solid #2e2e38',
+            borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column', marginBottom: '10px'
+          }}>
+            <div style={{ padding: '8px 12px', borderBottom: '1px solid #2e2e38', display: 'flex', alignItems: 'center', gap: '6px', background: '#121215' }}>
+              <FileImage size={14} style={{ color: 'var(--primary)' }} />
+              <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#f8fafc' }}>Drawing Pad (경량 모드)</span>
+              <span style={{ fontSize: '9px', color: 'var(--text-muted)', marginLeft: 'auto' }}>마우스로 자유롭게 그리세요</span>
+            </div>
+            <canvas
+              ref={fallbackCanvasRef}
+              width={800}
+              height={380}
+              style={{ width: '100%', height: '380px', background: '#1e1e24', cursor: 'crosshair', display: 'block' }}
+              onMouseDown={(e) => {
+                isDrawingRef.current = true
+                const rect = e.currentTarget.getBoundingClientRect()
+                lastPosRef.current = { x: (e.clientX - rect.left) * (e.currentTarget.width / rect.width), y: (e.clientY - rect.top) * (e.currentTarget.height / rect.height) }
+              }}
+              onMouseMove={(e) => {
+                if (!isDrawingRef.current || !lastPosRef.current) return
+                const canvas = fallbackCanvasRef.current
+                if (!canvas) return
+                const ctx = canvas.getContext('2d')
+                if (!ctx) return
+                const rect = e.currentTarget.getBoundingClientRect()
+                const x = (e.clientX - rect.left) * (canvas.width / rect.width)
+                const y = (e.clientY - rect.top) * (canvas.height / rect.height)
+                ctx.strokeStyle = '#a78bfa'
+                ctx.lineWidth = 2
+                ctx.lineCap = 'round'
+                ctx.lineJoin = 'round'
+                ctx.beginPath()
+                ctx.moveTo(lastPosRef.current.x, lastPosRef.current.y)
+                ctx.lineTo(x, y)
+                ctx.stroke()
+                lastPosRef.current = { x, y }
+              }}
+              onMouseUp={() => { isDrawingRef.current = false; lastPosRef.current = null }}
+              onMouseLeave={() => { isDrawingRef.current = false; lastPosRef.current = null }}
+            />
           </div>
         )
       }
@@ -226,7 +278,14 @@ export const DrawingBlockSpec = createReactBlockSpec(
 
           {/* 캔버스 본체 */}
           <div style={{ height: '380px', width: '100%', position: 'relative' }}>
-            {isEditing ? (
+            {/* [FIX-DRAWING-NULL-GUARD] Excalidraw 참조가 null일 경우 추가 안전 가드 적용.
+               excalidrawLoaded 상태가 true로 갱신되었더라도 실제 컴포넌트 참조가 null이면
+               렌더링 시점에 크래시가 발생하므로 이중 가드로 폴백 캔버스를 대신 표시한다. */}
+          {!Excalidraw ? (
+            <div style={{ height: '380px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>
+              드로잉 모듈 로드 중...
+            </div>
+          ) : isEditing ? (
               <Excalidraw
                 initialData={{
                   elements: initialElements,

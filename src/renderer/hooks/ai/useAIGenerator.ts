@@ -252,6 +252,30 @@ export function useAIGenerator(
     setIsGenerating(true)
     setStreamingText('')
 
+    /*
+     * [FIX-STUCK-001] 120초 안전망 타임아웃: done 이벤트 누락으로 인한 무한 대기(UI stuck) 방지.
+     * - WASM/Local LLM 모드에서 스트림 done 이벤트가 간혹 소실되면 isGenerating 락이 영구적으로
+     *   true 상태로 남아 사용자가 다음 메시지를 전송할 수 없는 UI freeze 현상이 발생한다.
+     * - 120초(120,000ms) 초과 시 렌더러 측 락을 강제 해제하고 에러 상태로 메시지를 마무리한다.
+     * - 타이머는 생성이 정상 완료될 때 반드시 해제되어야 메모리 누수가 발생하지 않는다.
+     */
+    const safetyTimeoutHandle = setTimeout(() => {
+      // 타임아웃 시점에도 락이 여전히 걸려있는 경우에만 강제 해제를 수행한다.
+      if (isGeneratingRef.current) {
+        console.warn('[useAIGenerator] 120초 안전망 타임아웃 발동: isGenerating 락을 강제 해제합니다.')
+        setIsGenerating(false)
+        setStreamingText('')
+        // isStreaming 상태가 남아있는 모든 메시지를 에러 상태로 일괄 종결한다.
+        setMessages(
+          useAILogStore.getState().messages.map((m) =>
+            m.isStreaming
+              ? { ...m, isStreaming: false, error: true, content: m.content || '[타임아웃] 응답이 일정 시간 내에 완료되지 않았습니다.' }
+              : m
+          )
+        )
+      }
+    }, 120_000)
+
     // 시스템 지시 사항 프롬프트 조립
     const dynamicSystemPrompt = buildSystemPrompt({
       baseSystemPrompt: finalSettings.systemPrompt,
@@ -298,6 +322,8 @@ export function useAIGenerator(
      */
     if (!result.success && result.error) {
       console.error('[useAI] LLM 구동 실패:', result.error)
+      // IPC 에러 시 안전망 타이머를 즉시 해제하여 중복 실행을 방지한다.
+      clearTimeout(safetyTimeoutHandle)
       setIsGenerating(false)
       setMessages(useAILogStore.getState().messages.map((m) =>
         m.id === assistantId
@@ -306,6 +332,9 @@ export function useAIGenerator(
       ))
       currentAssistantIdRef.current = null
       setTimeout(() => processNextQueueRef.current?.(), 80)
+    } else {
+      // 정상 완료 시에도 안전망 타이머를 해제한다.
+      clearTimeout(safetyTimeoutHandle)
     }
 
     // 무료 플랜 사용량 누적 카운트 업

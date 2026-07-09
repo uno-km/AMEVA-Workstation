@@ -9,13 +9,21 @@
   - `AIPanel` 컴포넌트가 `useAI`로부터 받아오던 AI 테마 에러(`settings.theme` 문제)를 `useAppContext`의 전역 설정 `appSettings`를 직접 활용하는 방식으로 보정하여 비즈니스 논리에 알맞게 해결했습니다.
 - **템플릿 리터럴 구문 오류 수정 (useAppEditorInit.ts, useJSRuntime.ts, usePythonRuntime.ts)**:
   - 템플릿 리터럴 문자열 내부의 예제 코드, WebWorker 및 Pyodide Python 코드 블록 내부에 unescaped backtick(`)을 포함하여 구문 에러를 일으키던 자동 생성 주석 블록들을 일괄 제거했습니다. 이를 통해 템플릿 리터럴이 비정상적으로 닫히는 현상을 해결했으며, `useAppEditorInit` 훅의 반환형이 `void`로 오인되어 `App.tsx`에서 `'DEFAULT_WELCOME_TEXT' does not exist on type 'void'` 오류가 나던 현상을 완벽히 수정했습니다.
+- **Minimap 렌더링 무한 루프 에러(Maximum update depth exceeded) 해결**:
+  - `Minimap.tsx`에서 에디터의 스크롤 컨테이너로부터 스크롤 이벤트를 수신해 뷰포트 상태를 업데이트할 때, `scrollTop`, `scrollHeight`, `clientHeight` 값에 실제 변화가 없음에도 객체 리터럴 생성을 통해 React 상태를 매번 강제로 새로고침하여 렌더링 루프가 걸리던 오류를 방지했습니다.
+  - `setScrollState` 함수 호출을 함수형 업데이트(`setScrollState(prev => ...)`) 패턴으로 개선하고, 세부 수치의 값이 변경되었을 때만 새로운 상태를 반환하도록 비교 가드를 설계함으로써 무한 업데이트 루프 현상을 차단했습니다.
+- **AI 모델 목록 갱신(useAIModels.ts) 무한 업데이트 루프 해결**:
+  - `useAIAgent.ts` 내 `setSettings` 헬퍼가 매번 `settings` 변수를 dependency로 취급하여 settings가 변경될 때마다 새로운 함수 identity를 가졌고, 이로 인해 `useAIModels`의 `refreshModels` 함수 identity가 재구축되어 마운트 시 `useEffect`가 무한 재동작하는 연쇄 상태 갱신 루프를 해결했습니다.
+  - `setSettings` 함수가 local의 `settings` 변수 대신 Zustand 스토어의 `useAIState.getState().settings`를 동적으로 호출하게 하여 의존성 배열에서 `settings`를 안전하게 제거했습니다.
+  - `useAIState.ts`의 `updateSettings` 액션에 shallow equality 검사를 도입하여 변경 사항이 없을 시 Zustand의 상태 업데이트를 중단하는 가드를 설정했습니다.
+  - `useAIModels.ts` 내에서 스캔된 모델 목록(`models`, `codeModels`)을 Zustand 스토어에 갱신(`setModels`, `setCodeModels`)할 때, 모델의 리스트가 기존과 값 차원에서 동일할 경우 업데이트를 생략하는 `isSameList` 검사 가드를 설계하여 무한 업데이트 루프를 이중으로 차단했습니다.
 - **StrictModal.tsx 중복 CSS 속성 및 useAppFileOperations.ts 중복 type 키워드 해결**:
   - `StrictModal.tsx` 내 중복 정의되어 있던 `backdropFilter` 스타일 정의를 1개로 정리했습니다.
   - `useAppFileOperations.ts` 내 `import type { ..., type ... }`와 같이 중복 선언되어 TS2206 에러를 내던 `type` 지시어를 단일 선언으로 정비했습니다.
 - **Zustand 및 Hook 미사용 추출 자원 대규모 정리**:
   - `App.tsx`에서 20개 이상의 불필요한 스토어 상태/액션 구조 분해 할당을 정리하고, 실제 호출되지 않는 미사용 내부 핸들러(`handleToggleRightTab`, `handleSwitchOpenMode`, `handleSelectAppendedFile`)를 안전하게 제거했습니다. (정리 도중 본문 내 사용되던 `setHasChatUnread` 및 `setSelectedSnapshot` 복구 완료).
   - `StatusBar.tsx`, `AppLayout.tsx`, `RefreshConfirmModal.tsx`, `useAI.ts` 등에서 발생하던 불필요한 React 및 타입 임포트 구문을 완전히 걷어냄으로써 전체 코드베이스의 빌드 청결도를 유지했습니다.
-
+ 
 ### 📁 수정된 파일 목록
 - `[MODIFY]` [AIPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/AIPanel.tsx) - 미사용 변수 제거 및 테마 설정을 `appSettings`로 우회.
 - `[MODIFY]` [AIPanelHeader.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/ai/AIPanelHeader.tsx) - isGenerating, onClearMessages 속성 지원 및 로더 회전/휴지통 UI 구현.
@@ -30,6 +38,10 @@
 - `[MODIFY]` [usePythonRuntime.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/code-runtime/usePythonRuntime.ts) - 파이썬 샌드박스 스크립트 문자열 내부의 자동 생성된 주석 제거.
 - `[MODIFY]` [StrictModal.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/ui/modals/StrictModal.tsx) - backdropFilter 중복 선언 제거.
 - `[MODIFY]` [useAppFileOperations.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/app/useAppFileOperations.ts) - import type 내 중복 type 키워드 제거.
+- `[MODIFY]` [Minimap.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/Minimap.tsx) - handleScroll 스크롤 상태 비교 가드 추가.
+- `[MODIFY]` [useAIModels.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/ai/useAIModels.ts) - 스캔된 모델 목록 갱신을 방지하기 위한 isSameList 비교 가드 추가.
+- `[MODIFY]` [useAIAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/useAIAgent.ts) - setSettings 의존성에서 settings를 제거하여 참조 일관성 확보.
+- `[MODIFY]` [useAIState.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/stores/useAIState.ts) - updateSettings 액션 내 설정 변화 감지 가드 추가.
 
 ## 2026-07-08 (Zustand Subscription Optimization & Focus Loop Fix)
 

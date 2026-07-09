@@ -247,5 +247,34 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // ── 로컬 터미널 / 콘솔 커맨드 ──
   // ReAct 에이전트 및 블록 코드 실행용 호스트 터미널 (PowerShell UTF-8) 구동
   executeTerminal: (cmd: string, cwd?: string) => ipcRenderer.invoke('terminal:execute', cmd, cwd),
+
+  // ── 📈 Finance 주식/지수/환율 데이터 조회 ──
+  // [FIX-FINANCE-001] 렌더러의 CORS 제약을 우회하기 위해 메인 프로세스로 조회를 위임한다.
+  // - 소비처: src/renderer/components/ai/FinanceDashboardView.tsx
+  getFinanceQuotes: (symbols: string[]) =>
+    ipcRenderer.invoke('finance:get-quotes', symbols),
+
+  // ── 🦙 Ollama 로컬 AI 엔진 라이프사이클 관리 ──
+  // [FEAT-OLLAMA-001] 설치 여부 확인 → 서버 기동 → 모델 다운로드 자동화 브릿지.
+  // - 소비처: src/renderer/components/settings/SettingsTabAIEngine.tsx
+
+  // Ollama CLI 바이너리 설치 여부 진단 (where/which 명령어 기반)
+  checkOllamaInstalled: () =>
+    ipcRenderer.invoke('ollama:check-installed'),
+
+  // ollama serve 백그라운드 detached 기동 후 헬스체크 결과 반환
+  startOllamaServer: () =>
+    ipcRenderer.invoke('ollama:start-server'),
+
+  // ollama pull <modelName> 실행 (완료 시 { success, error? } 반환)
+  pullOllamaModel: (modelName: string) =>
+    ipcRenderer.invoke('ollama:pull-model', modelName),
+
+  // Ollama pull 실시간 진행률 수신 리스너 (percent, text 스트리밍)
+  onOllamaPullProgress: (callback: (data: { modelName: string; percent: number; text: string }) => void) => {
+    const subscription = (_event: Electron.IpcRendererEvent, data: { modelName: string; percent: number; text: string }) => callback(data)
+    ipcRenderer.on('ollama:pull-progress', subscription)
+    return () => ipcRenderer.removeListener('ollama:pull-progress', subscription)
+  },
 })
 

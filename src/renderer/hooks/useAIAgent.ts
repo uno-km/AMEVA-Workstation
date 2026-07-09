@@ -212,9 +212,9 @@ export function useAIAgent() {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const next = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const next = typeof updater === 'function' ? updater(settings) : updater
+    const next = typeof updater === 'function' ? updater(useAIState.getState().settings) : updater
     updateSettings(next)
-  }, [settings, updateSettings])
+  }, [updateSettings])
 
   /*
    * [SUB-DOMAINS REGISTRATION]
@@ -294,26 +294,36 @@ export function useAIAgent() {
    * - 사용자가 전송 도중 중단을 클릭 시, 대기 중인 큐를 전부 날리고 Electron 주 프로세스로 LLM 강제 중단 시그널을 발송한다.
    */
   const abortGeneration = useCallback(() => {
+    /*
+     * [FIX-ABORT-001] 중단 즉시 isGenerating 락을 해제하고 isStreaming 상태를 전부 초기화한다.
+     * - 기존 구현은 ipc.llmAbort() 시그널을 메인 프로세스에만 보내고 렌더러 측 락을 즉시 풀지 않았다.
+     * - 결과: 취소 직후 사용자가 메시지를 전송하면, isGenerating이 여전히 true이므로
+     *   enqueue()로 분기되어 pendingQueue에 쌓이고, UI에 "대기 중..." 줄이 복제되는 버그가 발생한다.
+     * - 해결: clearQueue() + setIsGenerating(false) + isStreaming 전체 패치를 원자적으로 수행한다.
+     */
     clearQueue()
-    setMessages(useAILogStore.getState().messages.filter((m) => !m.id.startsWith('msg_queue_')))
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!ipc.isElectronEnv() || !isGenerating`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!ipc.isElectronEnv() || !isGenerating)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (!ipc.isElectronEnv() || !isGenerating) return
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `currentSessionId`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const currentSessionId = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const currentSessionId = currentSessionIdRef.current || 'default'
-    ipc.llmAbort(currentSessionId)
-  }, [isGenerating, clearQueue, setMessages, currentSessionIdRef])
+
+    // 1. 모든 스트리밍 중인 메시지를 즉시 isStreaming: false로 패치하여 UI 복제 방지
+    setMessages(
+      useAILogStore.getState().messages
+        .filter((m) => !m.id.startsWith('msg_queue_'))
+        .map((m) => (m.isStreaming ? { ...m, isStreaming: false, aborted: true } : m))
+    )
+
+    // 2. 렌더러 측 생성 락을 즉시 해제한다 (메인 프로세스 응답을 기다리지 않음)
+    setIsGenerating(false)
+
+    /*
+     * [ALGORITHM BRANCH / DECISION]
+     * - 조건 식: `ipc.isElectronEnv()`
+     * - 만족 시: Electron 환경에서만 메인 프로세스로 LLM 강제 중단 시그널을 추가 발송한다.
+     * - 불만족 시: 렌더러 측 상태만 초기화하고 종료한다. (웹 환경 등)
+     */
+    if (ipc.isElectronEnv()) {
+      const currentSessionId = currentSessionIdRef.current || 'default'
+      ipc.llmAbort(currentSessionId)
+    }
+  }, [isGenerating, clearQueue, setMessages, setIsGenerating, currentSessionIdRef])
 
       /*
        * [RUN-TIME STATE / INVARIANT]

@@ -99,6 +99,7 @@ export function useAppEditorInit({
    * - Rationale: 협업 플래그 활성화 유무에 따라 인스턴스를 다르게 분기 생성하고, 초기 마운트 시 웰컴 문서를 세팅한다.
    */
   useEffect(() => {
+    console.log("useAppEditorInit: initializing editor", { ydoc, provider, isActive, username, userColor })
     /*
      * [LOCAL VARIABLES]
      * - activeEditor: 빌드 완료된 에디터 인스턴스 임시 보존 변수.

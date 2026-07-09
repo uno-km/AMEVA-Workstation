@@ -100,10 +100,31 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
        * - 예시: `if (!container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
       if (!container) return
-      setScrollState({
-        scrollTop: container.scrollTop,
-        scrollHeight: container.scrollHeight,
-        clientHeight: container.clientHeight,
+
+      const nextScrollTop = container.scrollTop
+      const nextScrollHeight = container.scrollHeight
+      const nextClientHeight = container.clientHeight
+
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prev.scrollTop === nextScrollTop && prev.scrollHeight === nextScrollHeight && prev.clientHeight === nextClientHeight`
+       * - 만족 시: 스크롤 위치 및 레이아웃 크기가 이전과 완전히 동일하므로 상태 갱신을 생략하여 무한 렌더링 루프를 방지함.
+       * - 불만족 시: 변경된 뷰포트 스크롤 상태를 동기화하여 미니맵 하이라이터 위치를 최신화함.
+       * - 예시: `if (prev.scrollTop === nextScrollTop ...)` 만족 시 React 렌더링 바이패스.
+       */
+      setScrollState((prev) => {
+        if (
+          prev.scrollTop === nextScrollTop &&
+          prev.scrollHeight === nextScrollHeight &&
+          prev.clientHeight === nextClientHeight
+        ) {
+          return prev
+        }
+        return {
+          scrollTop: nextScrollTop,
+          scrollHeight: nextScrollHeight,
+          clientHeight: nextClientHeight,
+        }
       })
     }
 

@@ -129,6 +129,18 @@ export const useAIState = create<AIState>((set) => ({
 
   settings: loadInitialSettings(),
   updateSettings: (newSettings) => set((state) => {
+    /*
+     * [ALGORITHM BRANCH / DECISION]
+     * - 조건 식: `!Object.keys(newSettings).some(key => state.settings[key] !== newSettings[key])`
+     * - 만족 시: 변경된 설정 항목이 없으므로 상태 업데이트를 스킵하여 불필요한 리렌더링과 무한 루프를 방지함.
+     * - 불만족 시: 병합된 새로운 설정을 상태에 반영함.
+     * - 예시: `if (!isDifferent)` 만족 시 기존 state를 그대로 반환하여 React 렌더 가동 중지.
+     */
+    const isDifferent = Object.keys(newSettings).some(
+      (key) => (state.settings as any)[key] !== (newSettings as any)[key]
+    )
+    if (!isDifferent) return state
+
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `updated`

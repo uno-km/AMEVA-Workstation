@@ -263,6 +263,132 @@ registerPythonIpc()
 registerLlmIpc()
 registerTerminalIpc()
 
+/*
+ * [FIX-FINANCE-001] Finance IPC 채널: CORS 우회 Yahoo Finance 주식/지수 조회
+ * - 렌더러(브라우저 샌드박스)에서 직접 Yahoo Finance API를 fetch하면
+ *   CORS 정책 및 Cookie 차단으로 403/CORS 에러가 발생한다.
+ * - 메인 프로세스에서 Node.js의 fetch를 이용하면 CORS 제약이 없으므로 안전하게 호출 가능하다.
+ * - [소비처] preload.ts → getFinanceQuotes → FinanceDashboardView.tsx
+ */
+ipcMain.handle('finance:get-quotes', async (_event, symbols: string[]) => {
+  try {
+    const fields = 'shortName,regularMarketPrice,regularMarketChangePercent,regularMarketChange,currency,marketCap,trailingPE,fiftyTwoWeekLow,fiftyTwoWeekHigh,regularMarketVolume,regularMarketOpen,regularMarketDayHigh,regularMarketDayLow'
+    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&fields=${fields}`
+    // 실제 브라우저처럼 User-Agent를 설정하여 Yahoo의 봇 필터링을 우회한다.
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
+      },
+      signal: AbortSignal.timeout(10000)
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json() as { quoteResponse?: { result?: unknown[] } }
+    return { success: true, result: data?.quoteResponse?.result || [] }
+  } catch (err: unknown) {
+    console.error('[finance:get-quotes] 조회 실패:', err)
+    return { success: false, result: [], error: String(err) }
+  }
+})
+
+/*
+ * [FEAT-OLLAMA-001] Ollama 라이프사이클 IPC 채널 그룹
+ * - ollama:check-installed: Ollama CLI 바이너리 설치 여부를 검사한다.
+ * - ollama:start-server: ollama serve를 백그라운드 detached 프로세스로 기동한다.
+ * - ollama:pull-model: ollama pull <model>을 실행하며 stdout 진행률을 스트리밍으로 브로드캐스팅한다.
+ * - [소비처] preload.ts → SettingsTabAIEngine.tsx
+ */
+
+// (1) Ollama 설치 여부 진단 채널
+ipcMain.handle('ollama:check-installed', async () => {
+  try {
+    const { execSync } = require('child_process') as typeof import('child_process')
+    // Windows: where ollama / Linux·macOS: which ollama
+    const cmd = process.platform === 'win32' ? 'where ollama' : 'which ollama'
+    const result = execSync(cmd, { encoding: 'utf-8', timeout: 5000 }).trim()
+    return { installed: !!result, path: result }
+  } catch {
+    return { installed: false, path: '' }
+  }
+})
+
+// (2) Ollama 서버 백그라운드 기동 채널 (detached spawn — 완료를 기다리지 않음)
+ipcMain.handle('ollama:start-server', async () => {
+  try {
+    const { spawn } = require('child_process') as typeof import('child_process')
+    // detached + unref()로 부모(Electron) 종료와 무관하게 독립 프로세스로 기동한다.
+    const child = spawn('ollama', ['serve'], {
+      detached: true,
+      stdio: 'ignore',
+      shell: process.platform === 'win32',
+    })
+    child.unref()
+    // 2초 대기 후 헬스체크를 수행하여 실제 기동 성공 여부를 확인한다.
+    await new Promise<void>(resolve => setTimeout(resolve, 2000))
+    try {
+      const res = await fetch('http://localhost:11434/api/tags', { signal: AbortSignal.timeout(3000) })
+      return { success: res.ok }
+    } catch {
+      // 아직 준비 중일 수 있으므로 에러가 아닌 진행 중 상태로 반환한다.
+      return { success: true, pending: true }
+    }
+  } catch (err: unknown) {
+    console.error('[ollama:start-server] 기동 실패:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
+// (3) Ollama 모델 다운로드(pull) 채널 — stdout 진행률 파싱 후 IPC 스트리밍
+ipcMain.handle('ollama:pull-model', async (event, modelName: string) => {
+  try {
+    const { spawn } = require('child_process') as typeof import('child_process')
+    return await new Promise<{ success: boolean; error?: string }>((resolve) => {
+      const child = spawn('ollama', ['pull', modelName], {
+        shell: process.platform === 'win32',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+      let lastProgress = 0
+
+      child.stdout?.on('data', (chunk: Buffer) => {
+        const text = chunk.toString('utf-8')
+        // 진행률 파싱: "pulling manifest... X% ..." 형식을 감지한다.
+        const match = text.match(/(\d+)%/)
+        if (match) {
+          const pct = parseInt(match[1], 10)
+          if (pct !== lastProgress) {
+            lastProgress = pct
+            // mainWindow로 실시간 진행률 브로드캐스팅
+            const win = BrowserWindow.fromWebContents(event.sender)
+            win?.webContents.send('ollama:pull-progress', { modelName, percent: pct, text: text.trim() })
+          }
+        }
+      })
+
+      child.stderr?.on('data', (chunk: Buffer) => {
+        const text = chunk.toString('utf-8')
+        const win = BrowserWindow.fromWebContents(event.sender)
+        win?.webContents.send('ollama:pull-progress', { modelName, percent: lastProgress, text: text.trim() })
+      })
+
+      child.on('close', (code) => {
+        if (code === 0) {
+          resolve({ success: true })
+        } else {
+          resolve({ success: false, error: `ollama pull exited with code ${code}` })
+        }
+      })
+
+      child.on('error', (err) => {
+        resolve({ success: false, error: err.message })
+      })
+    })
+  } catch (err: unknown) {
+    console.error('[ollama:pull-model] 실패:', err)
+    return { success: false, error: String(err) }
+  }
+})
+
 // Electron 준비 완료 시점의 윈도우 기동 및 CSP 보안 구성
 app.whenReady().then(() => {
   // [PERF] 1. 가장 먼저 윈도우 생성 (블로킹 방지 및 즉각적인 UI 피드백 제공)

@@ -369,80 +369,53 @@ export function MarkdownEditor({
         e.preventDefault()
         e.stopPropagation()
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `hoverBlock && editor`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (hoverBlock && editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-        if (hoverBlock && editor) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `block`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const block = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-          const block = editor.getBlock(hoverBlock.id)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `block`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (block)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-          if (block) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `isEmptyParagraph`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isEmptyParagraph = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const isEmptyParagraph = block.type === 'paragraph' && 
-              (!block.content || block.content.length === 0 || 
-               (block.content.length === 1 && block.content[0].type === 'text' && (block.content[0] as any).text === ''));
+        if (editor) {
+          /*
+           * [FIX-PLUS-BTN-001] [+] 버튼 클릭 시 hoverBlock이 null인 경우 폴백 처리.
+           * - hoverBlock은 마우스 호버 이벤트 기반 상태이므로 클릭 타이밍에 따라 null이 될 수 있다.
+           * - 폴백 전략: hoverBlock이 있으면 해당 블록 다음에 슬래시 메뉴를 삽입하고,
+           *   없으면 현재 에디터 포커스 위치(TextCursorPosition)의 블록을 폴백 타겟으로 사용한다.
+           * - 최종 안전망: 어떤 블록도 찾지 못하면 문서 마지막에 새 문단을 추가한다.
+           */
+          const targetBlockId = hoverBlock?.id ?? editor.getTextCursorPosition()?.block?.id ?? null
+          const block = targetBlockId ? editor.getBlock(targetBlockId) : null
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isEmptyParagraph`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isEmptyParagraph)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+          if (block) {
+            // 대상 블록이 빈 문단인 경우: 해당 블록 자체를 '/'로 대체하여 슬래시 메뉴를 즉시 활성화한다.
+            const isEmptyParagraph = block.type === 'paragraph' &&
+              (!block.content || block.content.length === 0 ||
+               (block.content.length === 1 && block.content[0].type === 'text' && (block.content[0] as any).text === ''))
+
             if (isEmptyParagraph) {
-              editor.updateBlock(block.id, {
-                type: 'paragraph',
-                content: '/'
-              } as any)
+              editor.updateBlock(block.id, { type: 'paragraph', content: '/' } as any)
               editor.setTextCursorPosition(block.id, 'end')
             } else {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `insertedBlocks`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const insertedBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+              // 대상 블록에 내용이 있는 경우: 바로 다음에 새 빈 문단을 삽입하고 슬래시를 기입한다.
               const insertedBlocks = editor.insertBlocks(
                 [{ type: 'paragraph', content: '/' }],
                 block,
                 'after'
               )
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `insertedBlocks && insertedBlocks.length > 0`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (insertedBlocks && insertedBlocks.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
               if (insertedBlocks && insertedBlocks.length > 0) {
                 editor.setTextCursorPosition(insertedBlocks[0].id, 'end')
               }
             }
-            editor.focus()
+          } else {
+            // 최종 안전망: 커서 위치나 hoverBlock 어느 것도 없는 경우 문서 끝에 새 문단을 추가한다.
+            const allBlocks = editor.document
+            if (allBlocks.length > 0) {
+              const lastBlock = allBlocks[allBlocks.length - 1]
+              const insertedBlocks = editor.insertBlocks(
+                [{ type: 'paragraph', content: '/' }],
+                lastBlock,
+                'after'
+              )
+              if (insertedBlocks && insertedBlocks.length > 0) {
+                editor.setTextCursorPosition(insertedBlocks[0].id, 'end')
+              }
+            }
           }
+          editor.focus()
         }
       }
     }
@@ -509,7 +482,7 @@ export function MarkdownEditor({
         onDropCapture={onDropCapture}
         onPasteCapture={onPasteCapture}
         className={!wordWrap ? 'wrap-disabled' : ''}
-        style={{ flex: 1, overflowY: 'auto', padding: '40px 60px', position: 'relative' }}
+        style={{ flex: 1, overflowY: 'auto', padding: '40px 60px 45vh 60px', position: 'relative' }}
       >
         <PeerBlockHighlightLayer peers={peers} containerRef={editorContainerRef} />
 

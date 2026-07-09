@@ -90,89 +90,76 @@ const DEFAULT_STOCK_SYMBOLS = ['AAPL', 'NVDA', 'TSLA', 'MSFT', '005930.KS'];
 const AUTO_REFRESH_MS = 60000;
 
 async function fetchQuotesBatch(symbols: string[]): Promise<StockQuote[]> {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fields`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fields = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const fields = 'shortName,regularMarketPrice,regularMarketChangePercent,regularMarketChange,currency,marketCap,trailingPE,fiftyTwoWeekLow,fiftyTwoWeekHigh,regularMarketVolume,regularMarketOpen,regularMarketDayHigh,regularMarketDayLow';
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `url`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const url = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const url = 'https://query2.finance.yahoo.com/v7/finance/quote?symbols=' + symbols.join(',') + '&fields=' + fields;
+  /*
+   * [FIX-FINANCE-IPC] 렌더러의 fetch -> 메인 프로세스 IPC 위임으로 전환.
+   * - 기존: 렌더러에서 query2.finance.yahoo.com 직접 fetch -> CORS/Cookie 차단으로 403 발생.
+   * - 변경: window.electronAPI.getFinanceQuotes() IPC 채널을 통해 메인 프로세스가 Node.js fetch로 대신 조회.
+   *
+   * [FIX-FINANCE-FALLBACK-002] IPC 실패 시 마켓플레이스 서버(3010) 프록시로 3단계 폴백 체인 구성.
+   * - 1단계: Electron IPC getFinanceQuotes (메인 프로세스 Node.js fetch — Yahoo v7)
+   * - 2단계: 마켓플레이스 서버 /api/finance/stock-detail 프록시 (Yahoo v8 기반 — 더 안정적)
+   * - 3단계: 렌더러 직접 fetch (비 Electron 환경 최후 폴백)
+   */
+
+  // 1단계: Electron IPC 채널을 통한 메인 프로세스 조회
   try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `res`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!res.ok) throw new Error('HTTP ' + res.status`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!res.ok) throw new Error('HTTP ' + res.status)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `data`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const data = await res.json();
-    return (data?.quoteResponse?.result as StockQuote[]) || [];
-  } catch {
-    try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `proxied`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const proxied = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const proxied = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `res`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const res = await fetch(proxied, { signal: AbortSignal.timeout(10000) });
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `parsed`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const parsed = JSON.parse((await res.json()).contents);
-      return (parsed?.quoteResponse?.result as StockQuote[]) || [];
-    } catch (e) {
-      console.error('[FinanceDashboard] fetch failed:', e);
-      return [];
+    const api = (window as Window & { electronAPI?: { getFinanceQuotes?: (symbols: string[]) => Promise<{ success: boolean; result: StockQuote[]; error?: string }> } }).electronAPI
+    if (api?.getFinanceQuotes) {
+      const res = await api.getFinanceQuotes(symbols)
+      if (res.success && res.result.length > 0) return res.result
+      console.warn('[FinanceDashboard] IPC 결과 없음 또는 실패 — 마켓플레이스 서버로 폴백:', res.error)
     }
+  } catch (ipcErr) {
+    console.error('[FinanceDashboard] IPC 채널 오류:', ipcErr)
+  }
+
+  // 2단계: 마켓플레이스 서버 v8 기반 프록시 (심볼별 병렬 요청)
+  // [ADAPTER-FINANCE-002] 마켓플레이스 서버 응답({ ticker, name, price, changePercent })을
+  // StockQuote 인터페이스({ symbol, shortName, regularMarketPrice, ... })로 변환한다.
+  try {
+    const marketplaceResults = await Promise.allSettled(
+      symbols.map(async (sym) => {
+        const res = await fetch(
+          `http://localhost:3010/api/finance/stock-detail?ticker=${encodeURIComponent(sym)}`,
+          { signal: AbortSignal.timeout(6000) }
+        )
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const json = await res.json() as { success: boolean; stock?: { ticker: string; name: string; price: number; changePercent: number } }
+        if (!json.success || !json.stock) throw new Error('No data')
+        const s = json.stock
+        return {
+          symbol: s.ticker,
+          shortName: s.name,
+          regularMarketPrice: s.price,
+          regularMarketChangePercent: s.changePercent,
+          regularMarketChange: 0,
+          currency: (sym.endsWith('.KS') || sym.endsWith('.KQ')) ? 'KRW' : 'USD',
+        } as StockQuote
+      })
+    )
+    const settled = marketplaceResults
+      .filter((r): r is PromiseFulfilledResult<StockQuote> => r.status === 'fulfilled')
+      .map(r => r.value)
+    if (settled.length > 0) return settled
+    console.warn('[FinanceDashboard] 마켓플레이스 서버도 결과 없음 — 직접 fetch 시도')
+  } catch (mktErr) {
+    console.error('[FinanceDashboard] 마켓플레이스 서버 프록시 실패:', mktErr)
+  }
+
+  // 3단계: 비 Electron 환경 또는 최후 폴백 — 렌더러 직접 fetch
+  try {
+    const fields = 'shortName,regularMarketPrice,regularMarketChangePercent,regularMarketChange,currency,marketCap,trailingPE,fiftyTwoWeekLow,fiftyTwoWeekHigh,regularMarketVolume,regularMarketOpen,regularMarketDayHigh,regularMarketDayLow'
+    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&fields=${fields}`
+    const res2 = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) })
+    if (!res2.ok) throw new Error('HTTP ' + res2.status)
+    const data = await res2.json() as { quoteResponse?: { result?: StockQuote[] } }
+    return data?.quoteResponse?.result || []
+  } catch (e) {
+    console.error('[FinanceDashboard] 직접 fetch 폴백도 실패:', e)
+    return []
   }
 }
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fmt`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fmt = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
 const fmt = (n?: number, d = 2) => n != null && !isNaN(n) ? n.toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d }) : '-';
       /*
        * [RUN-TIME STATE / INVARIANT]

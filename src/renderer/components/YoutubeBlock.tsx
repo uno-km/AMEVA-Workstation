@@ -42,7 +42,15 @@ export const YoutubeBlockSpec = createReactBlockSpec(
   {
     render: ({ block, editor }) => {
       const { videoId, url, title, description, thumbnail } = block.props
-      const [isPlaying, setIsPlaying] = useState(false)
+      /*
+       * [FIX-YOUTUBE-VIEW-002] 븷모드(미리보기)에서 유튜브 iframe이 보이지 않는 문제 수정.
+       * - editor.isEditable이 false인 경우(븷모드)에는 클릭 이벤트가 전달되지 않으므로
+       *   사용자가 쒨네일을 클릭해도 재생이 시작되지 않는다.
+       * - 해결: isEditable이 false일 때 isPlaying 기본값을 true로 설정해 iframe을 즉시 렌더링한다.
+       * - mute=1 파라미터를 유지하므로 autoplay 보안 정사을 준수한다.
+       */
+      const isViewMode = !editor.isEditable
+      const [isPlaying, setIsPlaying] = useState(isViewMode)
       const [localTitle, setLocalTitle] = useState(title)
       const [localThumbnail] = useState(thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''))
 
@@ -144,9 +152,17 @@ export const YoutubeBlockSpec = createReactBlockSpec(
               </div>
             ) : (
               <iframe
-                src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
-                title="YouTube video player" frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                /*
+                 * [FIX-YOUTUBE-001] youtube-nocookie.com 도메인 사용으로 Electron 내 X-Frame-Options 차단 우회.
+                 * - 기존 youtube.com/embed 은 Electron WebView 보안 정책에 의해 재생이 차단된다.
+                 * - youtube-nocookie.com 은 쿠키/추적 없는 프라이버시 임베드 도메인으로, CSP 제약 없이 렌더링된다.
+                 * - autoplay=1&mute=1: 클릭 시 즉시 자동재생, 브라우저 autoplay 정책 회피를 위해 mute=1로 시작.
+                 * - sandbox 속성은 명시하지 않아야 allow-scripts가 동작한다.
+                 */
+                src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                 allowFullScreen
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
               />

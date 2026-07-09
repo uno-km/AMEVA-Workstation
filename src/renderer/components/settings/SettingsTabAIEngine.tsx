@@ -17,7 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { Cpu, Zap, SlidersHorizontal, Shield, Server, ExternalLink } from 'lucide-react'
 import type { AISettings } from '../../types/aiTypes'
 import { PROVIDER_MODELS } from '../../../shared/constants/aiSettings'
@@ -55,31 +55,75 @@ export function SettingsTabAIEngine({
   const [ollamaModels, setOllamaModels] = useState<{name: string}[]>([])
   const [isOllamaLoading, setIsOllamaLoading] = useState(false)
 
+  /*
+   * [FIX-OLLAMA-STATE] Ollama 자동화 상태 변수 그룹
+   * - ollamaInstalled: Ollama CLI 바이너리 설치 여부 (null=미확인, true=설치됨, false=미설치)
+   * - ollamaServerStarting: ollama serve IPC 진행 중 플래그
+   * - ollamaPulling: 현재 다운로드 중인 모델 이름 (없으면 null)
+   * - ollamaPullPercent: 다운로드 진행률 (0~100)
+   * - ollamaPullLog: 최신 다운로드 상태 텍스트
+   */
+  const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null)
+  const [ollamaServerStarting, setOllamaServerStarting] = useState(false)
+  const [ollamaPulling, setOllamaPulling] = useState<string | null>(null)
+  const [ollamaPullPercent, setOllamaPullPercent] = useState(0)
+  const [ollamaPullLog, setOllamaPullLog] = useState('')
+  const [installedModelNames, setInstalledModelNames] = useState<string[]>([])
+
+  /*
+   * [FEAT-OLLAMA-CATALOG] 다운로드 가능한 대표 모델 카탈로그 상수 (3종 × 3사이즈)
+   * - 각 항목: { label, model, sizeMB } 형태
+   * - 메인 프로세스의 ollama:pull-model IPC 채널로 다운로드를 실행한다.
+   */
+  const OLLAMA_CATALOG = [
+    { group: 'Qwen 2.5', color: '#10b981', models: [
+      { label: 'Qwen2.5 1.5B', model: 'qwen2.5:1.5b', sizeGb: '1.0GB' },
+      { label: 'Qwen2.5 3B',   model: 'qwen2.5:3b',   sizeGb: '2.0GB' },
+      { label: 'Qwen2.5 7B',   model: 'qwen2.5:7b',   sizeGb: '4.7GB' },
+    ]},
+    { group: 'Gemma 3', color: '#6366f1', models: [
+      { label: 'Gemma3 1B',    model: 'gemma3:1b',    sizeGb: '0.9GB' },
+      { label: 'Gemma3 2B',    model: 'gemma3:2b',    sizeGb: '1.9GB' },
+      { label: 'Gemma3 8B',    model: 'gemma3:8b',    sizeGb: '5.1GB' },
+    ]},
+    { group: 'Llama', color: '#f59e0b', models: [
+      { label: 'Llama3.2 1B',  model: 'llama3.2:1b',  sizeGb: '1.3GB' },
+      { label: 'Llama3.2 3B',  model: 'llama3.2:3b',  sizeGb: '2.0GB' },
+      { label: 'Llama3.1 8B',  model: 'llama3.1:8b',  sizeGb: '5.0GB' },
+    ]},
+  ] as const
+
+  // apiType이 ollama로 진입할 때 설치 여부 자동 체크 및 모델 목록 조회
   useEffect(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `apiType === 'ollama'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (apiType === 'ollama')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if (apiType === 'ollama') {
       setIsOllamaLoading(true)
+
+      /*
+       * [FIX-OLLAMA-CHECK] 설치 여부를 IPC로 확인한다.
+       * - checkOllamaInstalled() 미지원 환경(웹 등)이면 기존 fetch 방식을 폴백으로 사용한다.
+       */
+      const api = (window as Window & { electronAPI?: {
+        checkOllamaInstalled?: () => Promise<{ installed: boolean }>
+        startOllamaServer?: () => Promise<{ success: boolean; pending?: boolean }>
+        pullOllamaModel?: (model: string) => Promise<{ success: boolean; error?: string }>
+        onOllamaPullProgress?: (cb: (d: { modelName: string; percent: number; text: string }) => void) => () => void
+      }}).electronAPI
+
+      if (api?.checkOllamaInstalled) {
+        api.checkOllamaInstalled()
+          .then(res => setOllamaInstalled(res.installed))
+          .catch(() => setOllamaInstalled(false))
+      }
+
+      // Ollama API에서 직접 모델 목록을 취득한다.
       fetch('http://127.0.0.1:11434/api/tags')
         .then(res => res.json())
         .then(data => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `data.models && Array.isArray(data.models)`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (data.models && Array.isArray(data.models))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
           if (data.models && Array.isArray(data.models)) {
             setOllamaModels(data.models)
-            // 첫 진입 시 선택된 모델이 없으면 가장 첫 번째 모델 자동 선택
+            setInstalledModelNames((data.models as { name: string }[]).map(m => m.name))
             if (!apiModel && data.models.length > 0) {
-              onUpdateAISettings({ apiModel: data.models[0].name })
+              onUpdateAISettings({ apiModel: (data.models as { name: string }[])[0].name })
             }
           }
         })
@@ -88,6 +132,33 @@ export function SettingsTabAIEngine({
           setOllamaModels([])
         })
         .finally(() => setIsOllamaLoading(false))
+
+      // pull 진행률 구독 등록
+      if (api?.onOllamaPullProgress) {
+        const unsub = api.onOllamaPullProgress((d) => {
+          setOllamaPullPercent(d.percent)
+          setOllamaPullLog(d.text)
+          // 100%에 도달하면 완료 처리 (1초 후 상태 초기화)
+          if (d.percent >= 100) {
+            setTimeout(() => {
+              setOllamaPulling(null)
+              setOllamaPullPercent(0)
+              setOllamaPullLog('')
+              // 모델 목록 자동 갱신
+              fetch('http://127.0.0.1:11434/api/tags')
+                .then(r => r.json())
+                .then(d2 => {
+                  if (d2.models) {
+                    setOllamaModels(d2.models)
+                    setInstalledModelNames((d2.models as { name: string }[]).map((m: { name: string }) => m.name))
+                  }
+                })
+                .catch(() => {})
+            }, 1000)
+          }
+        })
+        return unsub
+      }
     }
   }, [apiType])
 
@@ -244,6 +315,14 @@ export function SettingsTabAIEngine({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Server size={14} color="#3b82f6" />
             <h4 style={{ fontSize: '11.5px', fontWeight: 700, margin: 0, color: '#3b82f6' }}>Ollama 로컬 연동</h4>
+            {/* 설치 여부 배지 */}
+            {ollamaInstalled !== null && (
+              <span style={{ marginLeft: 'auto', fontSize: '9.5px', padding: '2px 8px', borderRadius: '99px',
+                background: ollamaInstalled ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                color: ollamaInstalled ? '#10b981' : '#ef4444', fontWeight: 700 }}>
+                {ollamaInstalled ? '✅ 설치됨' : '❌ 미설치'}
+              </span>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -287,42 +366,17 @@ export function SettingsTabAIEngine({
                   <option value="">설치된 모델 없음</option>
                 )}
               </select>
-              <button 
+              <button
                 onClick={async () => {
                   setIsOllamaLoading(true)
                   try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `res`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
                     const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!res.ok) throw new Error('Ollama 서버 응답 없음'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!res.ok) throw new Error('Ollama 서버 응답 없음')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
                     if (!res.ok) throw new Error('Ollama 서버 응답 없음')
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `data`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-                    const data = await res.json()
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `data.models) setOllamaModels(data.models`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (data.models) setOllamaModels(data.models)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-                    if (data.models) setOllamaModels(data.models)
+                    const data = await res.json() as { models?: { name: string }[] }
+                    if (data.models) {
+                      setOllamaModels(data.models)
+                      setInstalledModelNames(data.models.map(m => m.name))
+                    }
                   } catch (e) {
                     console.error('Ollama 연결 실패:', e)
                   } finally {
@@ -334,96 +388,137 @@ export function SettingsTabAIEngine({
                 새로고침
               </button>
             </div>
-            {/* [FEAT-OLLAMA] Ollama 서버가 꺼져있을 때 시작 버튼 표시 */}
+
+            {/* Ollama 서버가 꺼져있을 때: 스마트 자동 시작 버튼 */}
             {ollamaModels.length === 0 && !isOllamaLoading && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '10px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px' }}>
                 <p style={{ margin: 0, fontSize: '10px', color: '#ef4444', fontWeight: 600 }}>
-                  ⚠️ Ollama 서버가 꺼져있거나 응답이 없습니다.
+                  ⚠️ Ollama 서버가 응답하지 않습니다.
                 </p>
                 <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {/*
+                   * [FIX-OLLAMA-START] executeTerminal 대신 startOllamaServer IPC를 직접 호출한다.
+                   * - 기존 executeTerminal('ollama serve')는 해당 IPC 채널이 차단(blocking) 실행이어서
+                   *   Electron 렌더러에서 응답을 받지 못하고 무한 대기하는 버그가 있었다.
+                   * - startOllamaServer()는 detached spawn으로 비동기 기동하고 헬스체크 결과를 반환한다.
+                   */}
                   <button
+                    disabled={ollamaServerStarting}
                     onClick={async () => {
+                      setOllamaServerStarting(true)
                       try {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `(window as any).electronAPI?.executeTerminal`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if ((window as any).electronAPI?.executeTerminal)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-                        if ((window as any).electronAPI?.executeTerminal) {
-                          await (window as any).electronAPI.executeTerminal('ollama serve')
-                          // 2초 뒤 재연결 시도
-                          setTimeout(async () => {
-                            try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `res`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-                              const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `res.ok`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (res.ok)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-                              if (res.ok) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `data`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-                                const data = await res.json()
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `data.models) setOllamaModels(data.models`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (data.models) setOllamaModels(data.models)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-                                if (data.models) setOllamaModels(data.models)
-                              }
-                            } catch {}
-                          }, 2000)
-                        } else {
-                          alert('터미널에서 "ollama serve" 명령을 실행해 서버를 시작한 후 새로고침하세요.')
+                        const eAPI = (window as Window & { electronAPI?: { startOllamaServer?: () => Promise<{ success: boolean }> } }).electronAPI
+                        if (eAPI?.startOllamaServer) {
+                          await eAPI.startOllamaServer()
+                        }
+                        // 기동 후 모델 목록 재조회
+                        const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
+                        if (res.ok) {
+                          const data = await res.json() as { models?: { name: string }[] }
+                          if (data.models) {
+                            setOllamaModels(data.models)
+                            setInstalledModelNames(data.models.map(m => m.name))
+                          }
                         }
                       } catch (e) {
-                        console.error('Ollama serve 실행 실패:', e)
+                        console.error('Ollama 서버 시작 실패:', e)
+                      } finally {
+                        setOllamaServerStarting(false)
                       }
                     }}
                     style={{
                       padding: '6px 12px', background: 'rgba(59,130,246,0.15)',
                       border: '1px solid rgba(59,130,246,0.4)', borderRadius: '6px',
-                      color: '#3b82f6', fontSize: '10.5px', cursor: 'pointer', fontWeight: 600
+                      color: ollamaServerStarting ? 'var(--text-muted)' : '#3b82f6',
+                      fontSize: '10.5px', cursor: ollamaServerStarting ? 'not-allowed' : 'pointer', fontWeight: 600
                     }}
                   >
-                    ▶ Ollama 서버 시작 (ollama serve)
+                    {ollamaServerStarting ? '⏳ 기동 중...' : '▶ Ollama 서버 자동 시작'}
                   </button>
                   <p style={{ margin: 'auto 0', fontSize: '9.5px', color: 'var(--text-muted)' }}>
-                    또는 터미널에서 직접 실행하세요.
+                    또는 터미널에서 <code>ollama serve</code>를 실행하세요.
                   </p>
                 </div>
               </div>
             )}
           </div>
 
+          {/* 모델 카탈로그 다운로드 카드 */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderTop: '1px solid var(--border-muted)', paddingTop: '10px' }}>
+              <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-main)' }}>📦 모델 카탈로그 — 원클릭 다운로드</span>
+            </div>
+
+            {/* 다운로드 진행 바 (pull 중에만 표시) */}
+            {ollamaPulling && (
+              <div style={{ padding: '8px 10px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                  <span style={{ fontSize: '10px', color: '#6366f1', fontWeight: 700 }}>⬇️ {ollamaPulling} 다운로드 중...</span>
+                  <span style={{ fontSize: '10px', color: '#6366f1' }}>{ollamaPullPercent}%</span>
+                </div>
+                <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${ollamaPullPercent}%`, background: '#6366f1', borderRadius: '99px', transition: 'width 0.3s ease' }} />
+                </div>
+                {ollamaPullLog && (
+                  <p style={{ margin: '4px 0 0', fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {ollamaPullLog}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {OLLAMA_CATALOG.map(group => (
+              <div key={group.group} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '9.5px', fontWeight: 700, color: group.color, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{group.group}</span>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                  {group.models.map(m => {
+                    const isInstalled = installedModelNames.includes(m.model)
+                    const isPulling = ollamaPulling === m.model
+                    return (
+                      <button
+                        key={m.model}
+                        disabled={!!ollamaPulling || isInstalled}
+                        onClick={async () => {
+                          const eAPI = (window as Window & { electronAPI?: { pullOllamaModel?: (model: string) => Promise<{ success: boolean; error?: string }> } }).electronAPI
+                          if (!eAPI?.pullOllamaModel) return
+                          setOllamaPulling(m.model)
+                          setOllamaPullPercent(0)
+                          setOllamaPullLog('다운로드 준비 중...')
+                          try {
+                            const res = await eAPI.pullOllamaModel(m.model)
+                            if (!res.success) {
+                              console.error('[OllamaDownload] 실패:', res.error)
+                              setOllamaPulling(null)
+                            }
+                          } catch (e) {
+                            console.error('[OllamaDownload] 예외:', e)
+                            setOllamaPulling(null)
+                          }
+                        }}
+                        style={{
+                          padding: '5px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, cursor: (!!ollamaPulling || isInstalled) ? 'not-allowed' : 'pointer',
+                          background: isInstalled ? 'rgba(16,185,129,0.12)' : isPulling ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${isInstalled ? 'rgba(16,185,129,0.4)' : isPulling ? 'rgba(99,102,241,0.5)' : 'var(--border-muted)'}`,
+                          color: isInstalled ? '#10b981' : isPulling ? '#6366f1' : 'var(--text-main)',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {isInstalled ? `✅ ${m.label}` : isPulling ? `⬇️ ${m.label} ${ollamaPullPercent}%` : `⬇ ${m.label} (${m.sizeGb})`}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px' }}>
             <ExternalLink size={14} color="var(--text-muted)" style={{ marginTop: '2px', flexShrink: 0 }} />
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <p style={{ margin: 0, fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                새로운 모델을 다운로드하려면 터미널(명령 프롬프트)을 열고 아래 명령어를 입력하세요.
+                추가 모델은 Ollama 공식 라이브러리에서 검색할 수 있습니다.
               </p>
-              <code style={{ fontSize: '10px', color: 'var(--accent)', background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '4px', marginTop: '2px' }}>
-                ollama run llama3.1
-              </code>
-              <a href="https://ollama.com/library" target="_blank" rel="noreferrer" style={{ fontSize: '9.5px', color: '#3b82f6', textDecoration: 'none', marginTop: '2px' }}>
+              <a href="https://ollama.com/library" target="_blank" rel="noreferrer" style={{ fontSize: '9.5px', color: '#3b82f6', textDecoration: 'none' }}>
                 Ollama 공식 라이브러리에서 모델 찾기 →
               </a>
             </div>

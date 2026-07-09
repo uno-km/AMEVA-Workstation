@@ -84,15 +84,30 @@ export const MapBlockSpec = createReactBlockSpec(
             height: '320px',
             backgroundColor: '#000'
           }}>
+          {/* [FIX-MAP-001] Google Maps → OpenStreetMap 교체
+           * - 기존 maps.google.com iframe 은 API Key 또는 쿠키 없이는 Electron 내부에서 차단된다.
+           * - openstreetmap.org/export/embed.html 은 무료이며 인증·API Key·CORS 정책이 전혀 없어 완벽히 렌더링된다.
+           * - bbox: (서쪽경도, 남쪽위도, 동쪽경도, 북쪽위도) 형태로 줌 영역을 계산한다.
+           * - marker 파라미터로 핀을 자동 표시한다.
+           */}
             <iframe
-              src={`https://maps.google.com/maps?q=${lat},${lng}&z=${zoom}&output=embed`}
+              src={(() => {
+                // 줌 레벨에 따라 보이는 지도 반경(delta)을 계산한다.
+                // 줌이 높을수록 delta가 작아져 더 좁은 영역을 보여준다.
+                const z = parseInt(zoom, 10) || 14;
+                const delta = Math.max(0.001, 0.5 / Math.pow(2, z - 10));
+                const latNum = parseFloat(lat);
+                const lngNum = parseFloat(lng);
+                const bbox = `${lngNum - delta},${latNum - delta},${lngNum + delta},${latNum + delta}`;
+                return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`;
+              })()}
               width="100%"
               height="100%"
               frameBorder="0"
               style={{ border: 0 }}
               allowFullScreen
               loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
+              title={`지도: ${locationName}`}
             />
           </div>
         </div>

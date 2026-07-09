@@ -28,6 +28,18 @@
  * - useEffect: 마운트 시 최초 모델 목록 스캐닝 가동을 위한 리액트 훅.
  */
 import { useCallback, useEffect } from 'react'
+import { useAIState } from '../../stores/useAIState'
+
+/*
+ * [RUN-TIME STATE / INVARIANT]
+ * - 함수 명: `isSameList`
+ * - 역할: 스캔된 AI 모델 리스트와 현재 Zustand 스토어에 보존되어 있는 모델 리스트가 값 차원에서 동일한지 검사함.
+ * - 예시: `isSameList(mapped, currentModels)` 호출 결과가 true인 경우 상태 변경(setState)을 건너뛰어 루프 방지.
+ */
+const isSameList = (a: any[], b: any[]): boolean => {
+  if (a.length !== b.length) return false
+  return a.every((val, index) => val.path === b[index].path && val.name === b[index].name && val.size === b[index].size)
+}
 
 /* 
  * [ELECTRON IPC BRIDGE]
@@ -87,7 +99,17 @@ export function useAIModels(
         name: m.name || m.filename,
         size: m.size || 0
       }))
-      setModels(mappedList)
+
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isSameList(mappedList, useAIState.getState().models)`
+       * - 만족 시: 스캔된 모델 리스트가 기존과 다른 경우에만 상태를 갱신하여 무한 렌더 루프를 차단함.
+       * - 불만족 시: 상태 변경 없이 통과.
+       * - 예시: `if (!isSameList(...))` 만족 시 setModels 호출.
+       */
+      if (!isSameList(mappedList, useAIState.getState().models)) {
+        setModels(mappedList)
+      }
 
       // 모델이 스캔되었고 현재 modelPath가 비었거나 존재하지 않는 경로일 경우 디폴트 선택
       if (mappedList.length > 0) {
@@ -133,7 +155,17 @@ export function useAIModels(
         name: m.name || m.filename,
         size: m.size || 0
       }))
-      setCodeModels(mappedCodeList)
+
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isSameList(mappedCodeList, useAIState.getState().codeModels)`
+       * - 만족 시: 스캔된 코드 모델 리스트가 기존과 다른 경우에만 상태를 갱신하여 무한 렌더 루프를 차단함.
+       * - 불만족 시: 상태 변경 없이 통과.
+       * - 예시: `if (!isSameList(...))` 만족 시 setCodeModels 호출.
+       */
+      if (!isSameList(mappedCodeList, useAIState.getState().codeModels)) {
+        setCodeModels(mappedCodeList)
+      }
       
       // 코드용 modelPath가 비었거나 없는 경로인 경우 첫 번째 원소로 폴백 선택
       if (mappedCodeList.length > 0) {
