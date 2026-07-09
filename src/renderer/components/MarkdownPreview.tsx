@@ -17,7 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { marked } from 'marked'
 import mermaid from 'mermaid'
 import { JupyterCodeViewer } from './JupyterCodeViewer'
@@ -64,7 +64,7 @@ function buildPreviewSegments(markdown: string) {
        * - 예시 코드: `const renderer = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const renderer = new marked.Renderer()
-  renderer.heading = function({ tokens, depth, text }) {
+  renderer.heading = function({ depth, text }) {
     // Generate an ID for the outline scroll logic
     // We strip tags and lowercase it for a simple ID, then format the anchor
     const escapedText = text.toLowerCase().replace(/[^\wㄱ-ㅎㅏ-ㅣ가-힣]+/g, '-')
@@ -439,21 +439,144 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
        * - 예시: `if (seg.type === 'code-runner')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
         if (seg.type === 'code-runner') {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `editor`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+          // [FIX-MAP-PREVIEW-001] ameva-map 코드블록을 감지하면 뷰모드에서 지도 뷰로 렌더링
+          if (seg.language === 'ameva-map') {
+            try {
+              const data = JSON.parse(seg.code)
+              const lat = parseFloat(data.lat) || 37.5665
+              const lng = parseFloat(data.lng) || 126.9780
+              const destLat = data.destLat ? parseFloat(data.destLat) : null
+              const destLng = data.destLng ? parseFloat(data.destLng) : null
+              const zoom = parseInt(data.zoom, 10) || 14
+              const locationName = data.locationName || '서울시'
+              const destination = data.destination || ''
+              const legend = data.legend || ''
+              const memo = data.memo || ''
+              const routeType = data.routeType || 'none'
+              const routingEngine = data.routingEngine || 'osrm'
+              
+              let mapSrc = ''
+              if (destLat !== null && destLng !== null && !isNaN(destLat) && !isNaN(destLng)) {
+                let engineParam = 'fossgis_osrm_car'
+                if (routingEngine === 'osrm') {
+                  engineParam = routeType === 'car' ? 'fossgis_osrm_car' : routeType === 'bicycle' ? 'fossgis_osrm_bike' : 'fossgis_osrm_foot'
+                } else if (routingEngine === 'graphhopper') {
+                  engineParam = routeType === 'car' ? 'graphhopper_car' : routeType === 'bicycle' ? 'graphhopper_bicycle' : 'graphhopper_foot'
+                } else if (routingEngine === 'valhalla') {
+                  engineParam = routeType === 'car' ? 'valhalla_car' : routeType === 'bicycle' ? 'valhalla_bicycle' : 'valhalla_foot'
+                }
+                mapSrc = 'https://www.openstreetmap.org/directions?engine=' + engineParam + '&route=' + lat + ',' + lng + ';' + destLat + ',' + destLng
+              } else {
+                const delta = Math.max(0.001, 0.5 / Math.pow(2, zoom - 10))
+                const bbox = `${lng - delta},${lat - delta},${lng + delta},${lat + delta}`
+                mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`
+              }
+              
+              return (
+                <div key={idx} style={{
+                  margin: '16px 0',
+                  width: '100%',
+                  backgroundColor: '#18181c',
+                  border: '1px solid var(--border-muted)',
+                  borderRadius: '12px',
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
+                }}>
+                  {/* 헤더 바 */}
+                  <div style={{
+                    padding: '10px 14px',
+                    borderBottom: '1px solid var(--border-muted)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '4px',
+                    background: '#121215',
+                    textAlign: 'left'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '12px', color: '#10b981' }}>📍</span>
+                        {destination ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11.5px', fontWeight: 'bold', color: '#f8fafc' }}>
+                            <span style={{ color: '#38bdf8' }}>[출발]</span> {locationName}
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 'normal' }}>➔</span>
+                            <span style={{ color: '#facc15' }}>[도착]</span> {destination}
+                          </div>
+                        ) : (
+                          <span style={{ fontSize: '11.5px', fontWeight: 'bold', color: '#f8fafc' }}>{locationName}</span>
+                        )}
+                        <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>({lat}, {lng})</span>
+                      </div>
+                      <span style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>확대: ${zoom}x</span>
+                    </div>
+                    {legend && (
+                      <div style={{
+                        marginTop: '4px',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        background: 'rgba(56,189,248,0.08)',
+                        border: '1px solid rgba(56,189,248,0.2)',
+                        fontSize: '10px',
+                        color: '#38bdf8',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px'
+                      }}>
+                        <span>ℹ️</span>
+                        <span style={{ fontWeight: 'bold' }}>범례/경로 정보:</span>
+                        <span>{legend}</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* 지도 */}
+                  <div style={{ height: '320px', width: '100%' }}>
+                    <iframe
+                      src={mapSrc}
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      style={{ border: 0, filter: 'invert(0.9) hue-rotate(180deg)' }}
+                      allowFullScreen
+                      loading="lazy"
+                      title={`지도: ${locationName}`}
+                    />
+                  </div>
+                  {/* 메모 */}
+                  {memo && (
+                    <div style={{
+                      padding: '10px 14px',
+                      borderTop: '1px solid var(--border-muted)',
+                      background: 'rgba(255,255,255,0.01)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      textAlign: 'left'
+                    }}>
+                      <span style={{ fontSize: '10.5px', fontWeight: 'bold', color: 'var(--text-main)' }}>📝 사용자 메모</span>
+                      <div style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        background: 'rgba(255,255,255,0.02)',
+                        border: '1px dashed rgba(255,255,255,0.08)',
+                        color: 'var(--text-main)',
+                        fontSize: '11px',
+                        lineHeight: '1.5',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        {memo}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            } catch (err) {
+              console.error('Failed to render map preview:', err)
+            }
+          }
+
           if (editor) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `runnerLang`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const runnerLang = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
             const runnerLang = seg.language === 'js' ? 'javascript' : seg.language === 'py' ? 'python' : (seg.language || 'javascript')
             return (
               <div key={idx} style={{ margin: '16px 0' }}>

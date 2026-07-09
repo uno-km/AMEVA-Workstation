@@ -304,30 +304,10 @@ export function useEditorDragDrop(
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const handleInsertYoutube = ...` 형태로 안전 캐싱 후 가공 기동.
        */
+    // (1) 유튜브 삽입 이벤트 핸들러
     const handleInsertYoutube = (e: Event) => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `customEvent`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const customEvent = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       const customEvent = e as CustomEvent
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `videoId`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const videoId = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       const videoId = customEvent.detail?.videoId
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `videoId`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (videoId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
       if (videoId) {
         editor.insertBlocks([{
           type: 'youtube',
@@ -335,12 +315,42 @@ export function useEditorDragDrop(
         }], editor.getTextCursorPosition().block, 'after')
       }
     }
+
+    // (2) [FIX-MAP-INSERT-001] 지도 삽입 이벤트 핸들러
+    // - 사이드바 지도 탭(GoogleMapsView)에서 발송되는 app:insert-map 이벤트를 가로채어,
+    //   현재 커서 위치 바로 아래에 신규 MapBlock을 생성/인서트한다.
+    // - 전달받은 lat, lng, zoom, locationName, destination, legend, memo 속성을 완벽히 병합 전달한다.
+    const handleInsertMap = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const { lat, lng, destLat, destLng, zoom, locationName, destination, legend, memo, routeType } = customEvent.detail || {}
+      if (lat != null && lng != null) {
+        editor.insertBlocks([{
+          type: 'map',
+          props: {
+            lat: String(lat),
+            lng: String(lng),
+            destLat: destLat != null ? String(destLat) : '',
+            destLng: destLng != null ? String(destLng) : '',
+            zoom: String(zoom || '14'),
+            locationName: locationName || '지정된 위치',
+            destination: destination || '',
+            legend: legend || '',
+            memo: memo || '',
+            routeType: routeType || 'none'
+          }
+        } as any], editor.getTextCursorPosition().block, 'after')
+      }
+    }
     
     // 리스너 등록
     window.addEventListener('app:insert-youtube', handleInsertYoutube)
+    window.addEventListener('app:insert-map', handleInsertMap)
     
     // CONTRACT: 리스너 누수 제거 클린업 이행
-    return () => window.removeEventListener('app:insert-youtube', handleInsertYoutube)
+    return () => {
+      window.removeEventListener('app:insert-youtube', handleInsertYoutube)
+      window.removeEventListener('app:insert-map', handleInsertMap)
+    }
   }, [editor, editorMode])
 
   return { onDropCapture }

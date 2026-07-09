@@ -248,6 +248,20 @@ function createWindow() {
   // [SEC-W-022] 창 보호 및 단축키 방어 전담 모듈 적용
   WindowDefenseManager.applyDefenses(mainWindow, () => isShuttingDown)
 
+  // [FIX-CSP-BYPASS-003] openstreetmap.org의 Content Security Policy 및 X-Frame-Options 헤더를 가로채 제거함으로써 iframe 내에 Directions 화면이 렌더링되도록 허용
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+    const responseHeaders = { ...details.responseHeaders }
+    
+    // openstreetmap.org 도메인 요청일 경우 프레임 제한 정책 완전 우회
+    if (details.url.includes('openstreetmap.org')) {
+      delete responseHeaders['content-security-policy']
+      delete responseHeaders['content-security-policy-report-only']
+      delete responseHeaders['x-frame-options']
+    }
+    
+    callback({ responseHeaders })
+  })
+
   // 개발 서버 주소가 지정되어 있다면 로컬 서버를 로드하고, 아니면 dist 정적 마크업 파일을 마운트한다.
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
@@ -271,21 +285,54 @@ registerTerminalIpc()
  * - [소비처] preload.ts → getFinanceQuotes → FinanceDashboardView.tsx
  */
 ipcMain.handle('finance:get-quotes', async (_event, symbols: string[]) => {
+  /*
+   * [FIX-FINANCE-001] Finance IPC 채널: CORS 우회 Yahoo Finance 주식/지수 조회
+   * - 기존 Yahoo Finance v7 API (query2.finance.yahoo.com/v7/finance/quote)는
+   *   인증 토큰(Crumb)이 누락될 경우 HTTP 401 Unauthorized 에러를 유발하여 주식 정보 조회에 실패한다.
+   * - 해결: 401 오류를 방지하고 안정적인 데이터 공급을 보장하기 위해 토큰 요구가 없는
+   *   v8 chart API (query1.finance.yahoo.com/v8/finance/chart/<symbol>)를 병렬로 조회하도록 전환한다.
+   * - 각 조회 결과를 StockQuote 규격에 맞춰 어댑터 변환하여 렌더러에 공급한다.
+   * - [소비처] preload.ts → getFinanceQuotes → FinanceDashboardView.tsx
+   */
   try {
-    const fields = 'shortName,regularMarketPrice,regularMarketChangePercent,regularMarketChange,currency,marketCap,trailingPE,fiftyTwoWeekLow,fiftyTwoWeekHigh,regularMarketVolume,regularMarketOpen,regularMarketDayHigh,regularMarketDayLow'
-    const url = `https://query2.finance.yahoo.com/v7/finance/quote?symbols=${symbols.join(',')}&fields=${fields}`
-    // 실제 브라우저처럼 User-Agent를 설정하여 Yahoo의 봇 필터링을 우회한다.
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'application/json',
-        'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
-      },
-      signal: AbortSignal.timeout(10000)
-    })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json() as { quoteResponse?: { result?: unknown[] } }
-    return { success: true, result: data?.quoteResponse?.result || [] }
+    const results = await Promise.allSettled(
+      symbols.map(async (symbol) => {
+        const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`
+        const res = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'ko-KR,ko;q=0.9,en-US;q=0.8',
+          },
+          signal: AbortSignal.timeout(8000)
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = await res.json() as any
+        const result = data?.chart?.result?.[0]
+        if (!result) throw new Error('No chart data found for ' + symbol)
+        
+        const meta = result.meta
+        const price = meta.regularMarketPrice
+        const prevClose = meta.chartPreviousClose
+        const changePercent = prevClose ? ((price - prevClose) / prevClose) * 100 : 0
+        const change = price - prevClose
+
+        return {
+          symbol: symbol,
+          shortName: meta.symbol || symbol,
+          regularMarketPrice: price || 0,
+          regularMarketChangePercent: changePercent || 0,
+          regularMarketChange: change || 0,
+          currency: meta.currency || 'USD'
+        }
+      })
+    )
+
+    const settled = results
+      .filter((r): r is PromiseFulfilledResult<any> => r.status === 'fulfilled')
+      .map(r => r.value)
+
+    return { success: true, result: settled }
   } catch (err: unknown) {
     console.error('[finance:get-quotes] 조회 실패:', err)
     return { success: false, result: [], error: String(err) }

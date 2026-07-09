@@ -76,6 +76,26 @@ export function convertJupyterToCodeBlocks(blocks: any[]): any[] {
       copy.props = {
         language: 'ameva-drawing'
       }
+    } else if (copy.type === 'map') {
+      // [FIX-MAP-SERIALIZATION-001] map 커스텀 블록을 ameva-map 언어를 사용하는 가짜 코드 블록으로 패킹 직렬화
+      copy.type = 'codeBlock'
+      const mapData = JSON.stringify({
+        lat: copy.props?.lat || '37.5665',
+        lng: copy.props?.lng || '126.9780',
+        destLat: copy.props?.destLat || '',
+        destLng: copy.props?.destLng || '',
+        zoom: copy.props?.zoom || '14',
+        locationName: copy.props?.locationName || '서울시',
+        destination: copy.props?.destination || '',
+        legend: copy.props?.legend || '',
+        memo: copy.props?.memo || '',
+        routeType: copy.props?.routeType || 'none',
+        routingEngine: copy.props?.routingEngine || 'osrm'
+      })
+      copy.content = [{ type: 'text', text: mapData, styles: {} }]
+      copy.props = {
+        language: 'ameva-map'
+      }
     } else if (copy.children) {
       copy.children = convertJupyterToCodeBlocks(copy.children)
     }
@@ -168,7 +188,7 @@ export function cleanCodeBlocks(blocks: any[]) {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const supportedLangs = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing']
+  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing', 'ameva-map']
   blocks.forEach(block => {
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -290,6 +310,32 @@ export function cleanCodeBlocks(blocks: any[]) {
         block.type = 'drawing'
         block.props = {
           data: finalCode
+        }
+        block.content = undefined
+        return
+      }
+      
+      // [FIX-MAP-DESERIALIZATION-002] ameva-map 코드 블록을 감지하면 원래의 map 커스텀 블록으로 복구 역직렬화
+      if (lang === 'ameva-map') {
+        block.type = 'map'
+        try {
+          const parsed = JSON.parse(finalCode)
+          block.props = {
+            lat: parsed.lat || '37.5665',
+            lng: parsed.lng || '126.9780',
+            destLat: parsed.destLat || '',
+            destLng: parsed.destLng || '',
+            zoom: parsed.zoom || '14',
+            locationName: parsed.locationName || '서울시',
+            destination: parsed.destination || '',
+            legend: parsed.legend || '',
+            memo: parsed.memo || '',
+            routeType: parsed.routeType || 'none',
+            routingEngine: parsed.routingEngine || 'osrm'
+          }
+        } catch (err) {
+          console.error('[cleanCodeBlocks] Failed to parse ameva-map json:', err)
+          block.props = { lat: '37.5665', lng: '126.9780', zoom: '14', locationName: '서울시' }
         }
         block.content = undefined
         return

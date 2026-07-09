@@ -17,7 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapPin, Search } from 'lucide-react'
 import { FinanceDashboardView } from './FinanceDashboardView'
 
@@ -27,121 +27,391 @@ import { FinanceDashboardView } from './FinanceDashboardView'
 // ─────────────────────────────────────────────────────────────
 function GoogleMapsView() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [mapQuery, setMapQuery] = useState('Seoul, Korea')
-  const [iframeSrc, setIframeSrc] = useState(
-    `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU3Ko&q=Seoul,Korea&language=ko&zoom=12`
-  )
+  const [mapQuery, setMapQuery] = useState('서울시')
+  const [destinationQuery, setDestinationQuery] = useState('')
+  const [legendText, setLegendText] = useState('')
+  const [memoText, setMemoText] = useState('')
+  
+  const [lat, setLat] = useState(37.5665)
+  const [lng, setLng] = useState(126.9780)
+  const [destLat, setDestLat] = useState<number | null>(null)
+  const [destLng, setDestLng] = useState<number | null>(null)
+  const [zoom, setZoom] = useState(14)
+  const [isRouteMode, setIsRouteMode] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleSearch`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleSearch = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!searchQuery.trim()`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!searchQuery.trim())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (!searchQuery.trim()) return
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `query`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const query = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const query = encodeURIComponent(searchQuery.trim())
-    setMapQuery(searchQuery.trim())
-    // Google Maps embed API — 공개 프리뷰용 API 키 사용
-    setIframeSrc(
-      `https://www.google.com/maps/embed/v1/search?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU3Ko&q=${query}&language=ko`
-    )
+  // [NEW-FIELDS] 가는방법 및 알고리즘 상태 신설
+  const [routeType, setRouteType] = useState<'car' | 'bicycle' | 'foot'>('car')
+  const [routingEngine, setRoutingEngine] = useState<'osrm' | 'graphhopper' | 'valhalla'>('osrm')
+
+  // Nominatim Geo-coding API 호출 헬퍼
+  const fetchCoordinates = async (queryStr: string): Promise<{ lat: number; lng: number; name: string } | null> => {
+    try {
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(queryStr.trim())}&format=json&limit=1`
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AMEVAOS/1.0'
+        }
+      })
+      if (!res.ok) throw new Error(`HTTP Error ${res.status}`)
+      const data = await res.json() as Array<{ lat: string; lon: string; display_name?: string }>
+      if (data && data.length > 0) {
+        return {
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          name: queryStr.trim()
+        }
+      }
+      return null
+    } catch (e) {
+      console.error('[GoogleMapsView] fetchCoordinates failed for:', queryStr, e)
+      return null
+    }
   }
 
-  // API 키 없이 사용하는 fallback: /search?q= URL 방식
-  const fallbackSrc = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}&output=embed&hl=ko`
+  // 1. 출발지 독립 검색 트리거
+  const handleSearchStart = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!searchQuery.trim()) return
+    setIsLoading(true)
+    setErrorMsg(null)
+    try {
+      const coords = await fetchCoordinates(searchQuery)
+      if (coords) {
+        setLat(coords.lat)
+        setLng(coords.lng)
+        setMapQuery(coords.name)
+        
+        // [FIX-ROUTE-PAN-001] 경로 탐색 모드인데 이미 목적지 주소창이 입력되어 있다면 목적지 검색도 바로 연달아 실행
+        if (isRouteMode && destinationQuery.trim()) {
+          const destCoords = await fetchCoordinates(destinationQuery)
+          if (destCoords) {
+            setDestLat(destCoords.lat)
+            setDestLng(destCoords.lng)
+            setLegendText(coords.name + ' ➔ ' + destCoords.name + ' 경로')
+          }
+        } else {
+          // 단일 핀 이동인 경우 목적지 핀 제거하여 단일 뷰어로 복원
+          setDestLat(null)
+          setDestLng(null)
+        }
+      } else {
+        setErrorMsg('출발지를 찾을 수 없습니다.')
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  // 2. 목적지 독립 검색 트리거
+  const handleSearchEnd = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
+    if (!destinationQuery.trim()) return
+    setIsLoading(true)
+    setErrorMsg(null)
+    try {
+      const coords = await fetchCoordinates(destinationQuery)
+      if (coords) {
+        setDestLat(coords.lat)
+        setDestLng(coords.lng)
+        
+        // [FIX-ROUTE-PAN-002] 만약 출발지 주소창도 입력되어 있다면 출발지 좌표도 다시 갱신 혹은 기존값 기반으로 경로 바로 셋팅
+        if (searchQuery.trim()) {
+          const startCoords = await fetchCoordinates(searchQuery)
+          if (startCoords) {
+            setLat(startCoords.lat)
+            setLng(startCoords.lng)
+            setMapQuery(startCoords.name)
+            setLegendText(startCoords.name + ' ➔ ' + coords.name + ' 경로')
+          } else {
+            setLegendText(mapQuery + ' ➔ ' + coords.name + ' 경로')
+          }
+        } else {
+          setLegendText('➔ ' + coords.name + ' 경로')
+        }
+      } else {
+        setErrorMsg('목적지(도착지)를 찾을 수 없습니다.')
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+
+
+  // [FIX-MAP-BBOX-002] 지도 영역 bbox 및 iframe 소스 빌드
+  // - 출발지와 목적지가 모두 획득되었고 경로 모드인 경우, OSRM/GraphHopper/Valhalla와 연동하여 오픈스트리트맵 Directions 길안내 뷰어로 임베딩한다.
+    // [FIX-MAP-BBOX-002] 지도 영역 bbox 및 iframe 소스 빌드
+  // - SAMEORIGIN 차단 회피를 위해 directions 대신 export/embed.html 주소를 기본 사용하며, route 매개변수로 결합 렌더링을 지시한다.
+  const mapSrc = useMemo(() => {
+    if (isRouteMode && destLat !== null && destLng !== null) {
+      let engineParam = 'fossgis_osrm_car'
+      if (routingEngine === 'osrm') {
+        engineParam = routeType === 'car' ? 'fossgis_osrm_car' : routeType === 'bicycle' ? 'fossgis_osrm_bike' : 'fossgis_osrm_foot'
+      } else if (routingEngine === 'graphhopper') {
+        engineParam = routeType === 'car' ? 'graphhopper_car' : routeType === 'bicycle' ? 'graphhopper_bicycle' : 'graphhopper_foot'
+      } else if (routingEngine === 'valhalla') {
+        engineParam = routeType === 'car' ? 'valhalla_car' : routeType === 'bicycle' ? 'valhalla_bicycle' : 'valhalla_foot'
+      }
+      return 'https://www.openstreetmap.org/directions?engine=' + engineParam + '&route=' + lat + ',' + lng + ';' + destLat + ',' + destLng
+    } else {
+      const delta = Math.max(0.001, 0.5 / Math.pow(2, zoom - 10))
+      const bbox = (lng - delta) + ',' + (lat - delta) + ',' + (lng + delta) + ',' + (lat + delta)
+      return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat},${lng}`
+    }
+  }, [lat, lng, destLat, destLng, zoom, isRouteMode, routeType, routingEngine])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-main)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-main)', overflowY: 'auto' }}>
       {/* 검색 헤더 */}
-      <div style={{ padding: '12px', borderBottom: '1px solid var(--border-muted)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <MapPin size={14} color="#34d399" />
-          <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-main)' }}>구글 지도</span>
+      <div style={{ padding: '12px', borderBottom: '1px solid var(--border-muted)', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <MapPin size={14} color="#34d399" />
+            <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-main)' }}>구글 지도 (OpenStreetMap 기반)</span>
+          </div>
+          
+          {/* 경로 탐색 모드 전환 체크박스 */}
+          <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', color: 'var(--text-muted)', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={isRouteMode}
+              onChange={e => {
+                setIsRouteMode(e.target.checked);
+                setErrorMsg(null);
+                if (!e.target.checked) {
+                  setDestLat(null);
+                  setDestLng(null);
+                }
+              }}
+              style={{ cursor: 'pointer' }}
+            />
+            <span>경로 탐색 모드</span>
+          </label>
         </div>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '6px' }}>
+        
+        {/* 출발지 / 중심점 검색 폼 */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleSearchStart()
+                }
+              }}
+              placeholder={isRouteMode ? "출발지 주소 또는 건물명..." : "장소 또는 주소 검색..."}
+              style={{
+                flex: 1, padding: '6px 10px', borderRadius: '6px',
+                background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                color: 'var(--text-main)', fontSize: '11px', outline: 'none'
+              }}
+            />
+            <button
+              onClick={() => handleSearchStart()}
+              disabled={isLoading}
+              style={{
+                padding: '6px 10px', borderRadius: '6px',
+                background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)',
+                color: '#34d399', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                fontSize: '11px', opacity: isLoading ? 0.6 : 1
+              }}
+            >
+              <Search size={12} /> {isRouteMode ? '출발지 설정' : '검색'}
+            </button>
+          </div>
+
+          {/* 경로 탐색 모드일 때 추가 입력 폼 */}
+          {isRouteMode && (
+            <>
+              {/* 도착지(목적지) 검색창 */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  value={destinationQuery}
+                  onChange={e => setDestinationQuery(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleSearchEnd()
+                    }
+                  }}
+                  placeholder="도착지(목적지) 주소 또는 건물명..."
+                  style={{
+                    flex: 1, padding: '6px 10px', borderRadius: '6px',
+                    background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                    color: 'var(--text-main)', fontSize: '11px', outline: 'none'
+                  }}
+                />
+                <button
+                  onClick={() => handleSearchEnd()}
+                  disabled={isLoading}
+                  style={{
+                    padding: '6px 10px', borderRadius: '6px',
+                    background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.3)',
+                    color: '#38bdf8', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
+                    fontSize: '11px', fontWeight: 'bold', opacity: isLoading ? 0.6 : 1
+                  }}
+                >
+                  <Search size={12} /> 목적지 설정
+                </button>
+              </div>
+
+              {/* 가는 방법 및 길찾기 알고리즘 설정 */}
+              <div style={{ display: 'flex', gap: '6px' }}>
+                {/* 가는 방법 선택 */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>가는 방법</span>
+                  <select
+                    value={routeType}
+                    onChange={e => setRouteType(e.target.value as any)}
+                    style={{
+                      padding: '5px', borderRadius: '6px', fontSize: '10.5px',
+                      background: '#16161a', border: '1px solid var(--border-muted)', color: 'var(--text-main)'
+                    }}
+                  >
+                    <option value="car">차량 (Car)</option>
+                    <option value="bicycle">자전거 (Bicycle)</option>
+                    <option value="foot">도보 (Pedestrian)</option>
+                  </select>
+                </div>
+
+                {/* 길찾기 알고리즘 선택 */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '9px', color: 'var(--text-muted)' }}>길찾기 알고리즘</span>
+                  <select
+                    value={routingEngine}
+                    onChange={e => setRoutingEngine(e.target.value as any)}
+                    style={{
+                      padding: '5px', borderRadius: '6px', fontSize: '10.5px',
+                      background: '#16161a', border: '1px solid var(--border-muted)', color: 'var(--text-main)'
+                    }}
+                  >
+                    <option value="osrm">OSM 고속 경로엔진 (OSRM)</option>
+                    <option value="graphhopper">정밀 대체경로 (GraphHopper)</option>
+                    <option value="valhalla">다기능 경로엔진 (Valhalla)</option>
+                  </select>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 범례 및 메모 입력 창 */}
+        <div style={{ display: 'flex', gap: '6px' }}>
           <input
             type="text"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="장소 또는 주소 검색..."
+            value={legendText}
+            onChange={e => setLegendText(e.target.value)}
+            placeholder="지도 범례 (예: 도보 약 15분)"
             style={{
               flex: 1, padding: '6px 10px', borderRadius: '6px',
               background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
               color: 'var(--text-main)', fontSize: '11px', outline: 'none'
             }}
           />
-          <button
-            type="submit"
+          <input
+            type="text"
+            value={memoText}
+            onChange={e => setMemoText(e.target.value)}
+            placeholder="사용자 주석/메모"
             style={{
-              padding: '6px 10px', borderRadius: '6px',
-              background: 'rgba(52,211,153,0.15)', border: '1px solid rgba(52,211,153,0.3)',
-              color: '#34d399', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px',
-              fontSize: '11px'
+              flex: 1, padding: '6px 10px', borderRadius: '6px',
+              background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+              color: 'var(--text-main)', fontSize: '11px', outline: 'none'
             }}
-          >
-            <Search size={12} /> 검색
-          </button>
-        </form>
+          />
+        </div>
+
+        {/* 줌 확대율 제어 슬라이더 (경로 검색이 아닌 경우에만 줌 제어 활성화) */}
+        {(!isRouteMode || destLat === null) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '2px 4px' }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>확대율: {zoom}x</span>
+            <input
+              type="range"
+              min="10"
+              max="18"
+              value={zoom}
+              onChange={e => setZoom(parseInt(e.target.value, 10))}
+              style={{ flex: 1, accentColor: 'var(--primary)', cursor: 'pointer', height: '4px' }}
+            />
+          </div>
+        )}
+
+        {errorMsg && (
+          <span style={{ fontSize: '10px', color: '#ef4444', marginTop: '2px' }}>⚠️ {errorMsg}</span>
+        )}
       </div>
 
       {/* 지도 iframe */}
-      <div style={{ flex: 1, position: 'relative' }}>
-        <iframe
-          src={fallbackSrc}
-          style={{ width: '100%', height: '100%', border: 'none' }}
-          title="Google Maps"
-          referrerPolicy="no-referrer-when-downgrade"
-          loading="lazy"
-        />
+      <div style={{ height: '350px', position: 'relative', background: '#16161a', flexShrink: 0 }}>
+        {isLoading ? (
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
+            위치 정보 조회 중...
+          </div>
+        ) : (
+          <iframe
+            src={mapSrc}
+            style={{ width: '100%', height: '100%', border: 'none', filter: 'invert(0.9) hue-rotate(180deg)' }}
+            title="Google Maps OpenStreetMap View"
+            referrerPolicy="no-referrer-when-downgrade"
+            loading="lazy"
+          />
+        )}
       </div>
 
       {/* 에디터 삽입 버튼 */}
-      <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border-muted)', display: 'flex', gap: '6px', alignItems: 'center' }}>
+      <div style={{ padding: '12px', borderTop: '1px solid var(--border-muted)', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
         <button
           onClick={() => {
-            // linkPreview 형태로 현재 지도 위치를 에디터에 삽입
-            const mapsUrl = `https://maps.google.com/maps?q=${encodeURIComponent(mapQuery)}`
-            window.dispatchEvent(new CustomEvent('app:insert-link', {
-              detail: { url: mapsUrl, title: `📍 ${mapQuery}`, description: '구글 지도 위치', thumbnail: '' }
+            window.dispatchEvent(new CustomEvent('app:insert-map', {
+              detail: {
+                lat,
+                lng,
+                destLat: isRouteMode ? destLat : null,
+                destLng: isRouteMode ? destLng : null,
+                zoom,
+                locationName: mapQuery,
+                destination: isRouteMode ? destinationQuery : '',
+                legend: legendText,
+                memo: memoText,
+                routeType: isRouteMode ? routeType : 'none',
+                routingEngine: isRouteMode ? routingEngine : 'osrm'
+              }
             }))
           }}
           style={{
-            padding: '5px 10px', borderRadius: '5px', fontSize: '10px',
+            width: '100%', padding: '8px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold',
             background: 'rgba(139,92,246,0.15)', border: '1px solid rgba(139,92,246,0.3)',
-            color: 'var(--primary)', cursor: 'pointer'
+            color: 'var(--primary)', cursor: 'pointer', textAlign: 'center', transition: 'background 0.2s'
           }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(139,92,246,0.25)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(139,92,246,0.15)'}
         >
-          📄 본문에 지도 링크 삽입
+          📄 본문에 지도 블록 삽입
         </button>
-        <span style={{ fontSize: '9.5px', color: 'var(--text-muted)' }}>{mapQuery}</span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', fontSize: '10px', color: 'var(--text-muted)' }}>
+          <div>출발지: {mapQuery}</div>
+          {isRouteMode && destinationQuery && <div>도착지: {destinationQuery}</div>}
+          {isRouteMode && <div>수단: {routeType === 'car' ? '차량' : routeType === 'bicycle' ? '자전거' : '도보'} ({routingEngine.toUpperCase()})</div>}
+          {legendText && <div>범례: {legendText}</div>}
+          {memoText && <div>메모: {memoText}</div>}
+        </div>
       </div>
     </div>
   )
 }
 
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `AIPluginViews`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `AIPluginViews(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
 export function AIPluginViews({ activeTab }: { activeTab: string }) {
       /*
        * [RUN-TIME STATE / INVARIANT]
