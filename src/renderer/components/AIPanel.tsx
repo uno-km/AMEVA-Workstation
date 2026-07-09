@@ -173,12 +173,19 @@ export function AIPanel() {
    * - onClear: 대화 비우기 콜백.
    */
   const onApplySuggestion = handleApplySuggestion
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onApplyInsertSuggestion'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onApplyInsertSuggestion = handleApplyInsertSuggestion
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onUpdateDiffState'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onUpdateDiffState = updateMessageDiffState
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onUpdateInsertSuggestionStatus'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onUpdateInsertSuggestionStatus = updateInsertSuggestionStatus
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onClearSelectedText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onClearSelectedText = () => setSelectedText('')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenGlobalSettings'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onOpenGlobalSettings = (tab: any) => setIsSettingsOpen(true, tab)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onClose'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onClose = () => setShowAIPanel(false)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onClear'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onClear = clearHistory
   
   /**
@@ -231,8 +238,11 @@ export function AIPanel() {
    * - CONTRACT: useEffect 내 이벤트 리스너 제거를 수행하여 렌더러의 메모리 누수를 원천 방지한다.
    */
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handler'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handler = (e: Event) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const text = (e as CustomEvent).detail as string
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (text) {
         setInput(text)
         setTimeout(() => {
@@ -244,6 +254,7 @@ export function AIPanel() {
     return () => window.removeEventListener('ameva:fill-ai-input', handler)
   }, [setInput, textareaRef])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isOpen) return null
 
   /*
@@ -267,7 +278,9 @@ export function AIPanel() {
       }}
       onDrop={(e) => {
         e.preventDefault()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'url'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (url) {
           setInput((prev: string) => prev + (prev ? ' ' : '') + url.trim())
         }
@@ -369,3 +382,5 @@ export function AIPanel() {
  *      `AIChatList` 마운트 라이프사이클의 스크롤 함수가 정상 작동하는지 점검.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

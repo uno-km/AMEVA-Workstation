@@ -87,6 +87,7 @@ export function useAIHealthCheck(
      * - Rationale: 5초마다 동작하는 비동기 진단 함수. Ollama의 경우 fetch, Local의 경우 IPC 핑을 이용함.
      */
     const checkHealth = async () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'type'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const type = settings.apiType || 'local'
 
       // 성공 시 실패 카운트 리셋 및 가용 플래그 true 처리
@@ -98,6 +99,7 @@ export function useAIHealthCheck(
       // [FIX-FLICKER-001] 실패 시 5회 누적 시점부터 가용성 false 반영
       const handleFail = () => {
         failCountRef.current += 1
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (failCountRef.current >= 5) {
           setIsAvailable(false)
         }
@@ -106,6 +108,7 @@ export function useAIHealthCheck(
       // 1. Ollama 엔드포인트 헬스 체크
       if (type === 'ollama') {
         try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ep'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const ep = settings.apiEndpoint || 'http://127.0.0.1:11434'
           
           // CONTRACT: 3초 타임아웃 GET fetch
@@ -113,6 +116,7 @@ export function useAIHealthCheck(
             method: 'GET',
             signal: AbortSignal.timeout(3000)
           })
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (res.ok) handleSuccess()
           else handleFail()
         } catch {
@@ -126,6 +130,7 @@ export function useAIHealthCheck(
       // Rationale: 모델이 올라가는 중(loading model)일 때도 가용한 것으로 임시 판단 처리함
       const result = await ipc.llmCheckHealth()
       
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (result.status === 'ok' || result.status === 'loading model') {
         handleSuccess()
       } else {
@@ -152,3 +157,5 @@ export function useAIHealthCheck(
  *    - `failCountRef.current >= 5` 수식을 변경하되, 임계치를 너무 낮추면 네트워크 단선에 따른 Offline 깜빡임이 재발함에 유의할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

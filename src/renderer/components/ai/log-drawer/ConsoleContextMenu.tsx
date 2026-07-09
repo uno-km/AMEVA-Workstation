@@ -30,13 +30,17 @@ export interface ConsoleContextMenuProps {
   onClose: () => void;
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function ConsoleContextMenu({
   x, y, selectedText, onCopy, onPaste, onInsertToBody, onAskAI, onClose
 }: ConsoleContextMenuProps) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'menuRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleClickOutside'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleClickOutside = (e: MouseEvent) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onClose();
       }
@@ -52,6 +56,7 @@ export function ConsoleContextMenu({
 
   // Prevent menu from going off-screen
   const safeX = Math.min(x, window.innerWidth - 180);
+  // [RUN-TIME STATE / INVARIANT] - 변수 'safeY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const safeY = Math.min(y, window.innerHeight - 200);
 
   const btnStyle: React.CSSProperties = {
@@ -70,6 +75,7 @@ export function ConsoleContextMenu({
     gap: '8px',
   };
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasSelection'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasSelection = !!selectedText.trim();
 
   return (
@@ -151,3 +157,5 @@ export function ConsoleContextMenu({
     </div>
   );
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

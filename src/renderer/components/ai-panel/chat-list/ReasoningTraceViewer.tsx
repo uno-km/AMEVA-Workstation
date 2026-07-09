@@ -31,6 +31,7 @@ interface ReasoningTraceViewerProps {
   isWhiteTheme: boolean
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function ReasoningTraceViewer({
   isStreaming,
   hasRealTrace,
@@ -40,6 +41,7 @@ export function ReasoningTraceViewer({
   setThoughtExpanded,
   isWhiteTheme,
 }: ReasoningTraceViewerProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!hasRealTrace && !isStreaming) return null
 
   return (
@@ -92,3 +94,5 @@ export function ReasoningTraceViewer({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

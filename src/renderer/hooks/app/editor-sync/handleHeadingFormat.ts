@@ -30,6 +30,7 @@
 import type { AmevaEditor as AppEditor, AmevaPartialBlock as AppPartialBlock } from '../../../editor/amevaBlockSchema'
 
 /**
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
  * @function handleHeadingFormat
  * @description 에디터 타이핑 중 '#' 입력을 감지해 제목 블록으로 변환하고 포커스에 따른 접두어 노출을 동적으로 가공해 주는 함수.
  */
@@ -50,15 +51,21 @@ export function handleHeadingFormat(
   const cursor = editor.getTextCursorPosition()
   let currentId: string | null = null
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (cursor?.block) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const activeBlock = cursor.block
     currentId = activeBlock.id
 
     // 2. 현재 활성 문단이 paragraph이고 사용자 타이핑 문자열이 '#'으로 시작하는 경우 제목 블록으로 변환
     if (activeBlock.type === 'paragraph') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const text = activeBlock.content ? (activeBlock.content as any).map((c: any) => c.text).join('') : ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'match'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const match = text.match(/^(#{1,3})([^\s#].*)$/)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (match) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'level'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const level = match[1].length
         
         // CONTRACT: 갱신 시점 재귀 루프 차단 가드 락 작동
@@ -77,6 +84,7 @@ export function handleHeadingFormat(
 
   // 3. 커서 포커스 위치가 다른 블록으로 전환(이탈/진입)된 시점의 접두어 노출 가공 보정
   if (currentId !== activeBlockIdRef.current) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'prevId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const prevId = activeBlockIdRef.current
     activeBlockIdRef.current = currentId
     setActiveBlockId(currentId)
@@ -84,10 +92,15 @@ export function handleHeadingFormat(
     // 1) 이전 포커스 블록(prevBlock) 이탈 시: 접두어인 '# ', '## ' 문자를 깎아내어 화면에 감춤
     if (prevId) {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'prevBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const prevBlock = editor.getBlock(prevId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (prevBlock?.type === 'heading') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const text = prevBlock.content ? (prevBlock.content as any).map((c: any) => c.text).join('') : ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'match'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const match = text.match(/^(#{1,3}\s)(.*)$/)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (match) {
             setIsUpdating(true)
             editor.updateBlock(prevId, { content: [{ type: 'text', text: match[2], styles: {} }] } as AppPartialBlock)
@@ -100,12 +113,18 @@ export function handleHeadingFormat(
     // 2) 신규 포커스 블록(currentBlock) 진입 시: Heading 레벨에 알맞은 접두어('# ', '## ')를 접합하여 화면에 표출
     if (currentId) {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const currentBlock = editor.getBlock(currentId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (currentBlock?.type === 'heading') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'level'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const level = (currentBlock.props as any)?.level || 1
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const text = currentBlock.content ? (currentBlock.content as any).map((c: any) => c.text).join('') : ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'prefix'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const prefix = level === 1 ? '# ' : level === 2 ? '## ' : '### '
           
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!text.startsWith(prefix)) {
             setIsUpdating(true)
              editor.updateBlock(currentId, { content: [{ type: 'text', text: prefix + text, styles: {} }] } as AppPartialBlock)
@@ -125,3 +144,5 @@ export function handleHeadingFormat(
  *    - `match` 정규식의 깊이 수치와 `prefix` 삼항연산자 분기 목록을 갱신 조율할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

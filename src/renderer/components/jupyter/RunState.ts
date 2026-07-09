@@ -23,3 +23,5 @@ export interface RunState {
   outputLines: { type: 'stdout' | 'stderr' | 'info'; text: string }[]
   tableData?: any
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

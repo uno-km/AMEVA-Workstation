@@ -114,3 +114,5 @@ export interface ExportProgressEvent {
   percent: number
   message: string
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

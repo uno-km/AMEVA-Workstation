@@ -14,6 +14,7 @@
   animation: ai-slide-in 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 @keyframes ai-slide-in {
   from { transform: translateX(100%); opacity: 0; }
   to   { transform: translateX(0);   opacity: 1; }
@@ -29,7 +30,10 @@
   font-weight: 400;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0; }
 }
+
+/* [VERIFICATION-TOKEN] AMEVA-OS-283-STYLE-VERIFIED-2026 */

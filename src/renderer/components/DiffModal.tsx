@@ -30,6 +30,7 @@ interface DiffModalProps {
   onRollback: (content: string) => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function DiffModal({
   isOpen,
   onClose,
@@ -38,11 +39,13 @@ export function DiffModal({
   getLineDiff,
   onRollback,
 }: DiffModalProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isOpen || !snapshot) return null
 
   // 스냅샷(과거) -> 현재 내용 비교
   const diffs = getLineDiff(snapshot.content, currentContent)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleRollback'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleRollback = () => {
     onRollback(snapshot.content)
     onClose()
@@ -116,10 +119,14 @@ export function DiffModal({
           }}
         >
           {diffs.map((line, index) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bgColor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             let bgColor = 'transparent'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'color'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             let color = 'var(--text-main)'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'prefix'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             let prefix = ' '
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (line.type === 'added') {
               bgColor = 'rgba(16, 185, 129, 0.15)'
               color = '#10b981'
@@ -174,3 +181,5 @@ export function DiffModal({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

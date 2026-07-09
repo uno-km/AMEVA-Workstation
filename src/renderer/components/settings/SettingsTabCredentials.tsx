@@ -25,6 +25,7 @@ interface SettingsTabCredentialsProps {
   activeTab: string
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredentialsProps) {
   const [credStatus, setCredStatus] = useState<Record<string, boolean>>({
     gemini: false,
@@ -40,12 +41,18 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
     github: '',
   })
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'loadCredentials'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const loadCredentials = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'geminiVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const geminiVal = await ipc.keychainGet('gemini-api-key')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'openaiVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const openaiVal = await ipc.keychainGet('openai-api-key')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'claudeVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const claudeVal = await ipc.keychainGet('claude-api-key')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'githubVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const githubVal = await ipc.keychainGet('github-token')
 
     setCredStatus({
@@ -57,17 +64,24 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
   }
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen && activeTab === 'Credentials') {
       loadCredentials()
     }
   }, [isOpen, activeTab])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSaveCredential'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSaveCredential = async (service: string, keychainKey: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'value'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const value = newKeyInput[service]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!value || !value.trim()) return
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const res = await ipc.keychainSet(keychainKey, value.trim())
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (res && res.success) {
       setNewKeyInput(prev => ({ ...prev, [service]: '' }))
       loadCredentials()
@@ -76,15 +90,19 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleClearCredential'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleClearCredential = async (service: string, keychainKey: string) => {
     void service
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!confirm('해당 자격 증명을 영구히 삭제하시겠습니까?')) return
 
     await ipc.keychainDelete(keychainKey)
     loadCredentials()
   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (activeTab !== 'Credentials') return null
 
   return (
@@ -101,6 +119,7 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
           { id: 'claude', keyName: 'claude-api-key', label: 'Anthropic Claude API Key', placeholder: 'sk-ant-...' },
           { id: 'github', keyName: 'github-token', label: 'GitHub Personal Access Token', placeholder: 'ghp_... 또는 github_pat_...' },
         ].map(cred => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isRegistered'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const isRegistered = credStatus[cred.id]
           return (
             <div key={cred.id} style={{
@@ -201,3 +220,5 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
     </>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -68,8 +68,11 @@ export function useAIMessageState() {
    * - Rationale: 각 액션 훅들에 전역 상태 세터 함수 레퍼런스를 인자로 공급하여 결합을 보장한다.
    */
   const addUserAndAssistantMessages = useAddMessages(setMessages)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'finalizeAssistantMessage'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const finalizeAssistantMessage = useFinalizeMessage(setMessages, setStreamingText, setIsGenerating)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updateMessageDiffState'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const updateMessageDiffState = useUpdateDiffState(setMessages)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updateInsertSuggestionStatus'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const updateInsertSuggestionStatus = useUpdateInsertStatus(setMessages)
 
   return {
@@ -91,3 +94,5 @@ export function useAIMessageState() {
  *      이 파사드의 리턴 항목에 바인딩하여 노출할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

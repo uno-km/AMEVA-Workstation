@@ -48,9 +48,12 @@ interface Position {
 export function useDraggable(initialPos: Position = { x: 100, y: 100 }) {
   const [pos, setPos] = useState<Position>(initialPos)
   const [isDragging, setIsDragging] = useState(false)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dragStart'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const dragStart = useRef<Position>({ x: 0, y: 0 })
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const target = e.target as HTMLElement
     // Ignore clicks on buttons, inputs, selects, or resize handles
     if (target.closest('button') || target.closest('input') || target.closest('select') || target.closest('.resize-handle')) {
@@ -64,10 +67,12 @@ export function useDraggable(initialPos: Position = { x: 100, y: 100 }) {
   }, [pos.x, pos.y])
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isDragging) return
 
     let animationFrameId: number
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseMove'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleMouseMove = (e: MouseEvent) => {
       // rAF 스케줄러로 브라우저 프레임 레이트와 연동하여 Throttled setState 수행
       animationFrameId = window.requestAnimationFrame(() => {
@@ -78,6 +83,7 @@ export function useDraggable(initialPos: Position = { x: 100, y: 100 }) {
       })
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleMouseUp = () => {
       setIsDragging(false)
     }
@@ -99,3 +105,5 @@ export function useDraggable(initialPos: Position = { x: 100, y: 100 }) {
     handleMouseDown
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

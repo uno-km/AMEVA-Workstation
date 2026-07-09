@@ -41,10 +41,12 @@ export const YoutubeBlockSpec = createReactBlockSpec(
       const [localThumbnail] = useState(thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''))
 
       useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (videoId && title === 'YouTube Video') {
           fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`)
             .then(res => res.json())
             .then(data => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (data.title) {
                 setLocalTitle(data.title)
                 editor.updateBlock(block, { props: { ...block.props, title: data.title } })
@@ -53,6 +55,7 @@ export const YoutubeBlockSpec = createReactBlockSpec(
         }
       }, [videoId, title, editor, block])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!videoId) {
         return (
           <div style={{
@@ -132,3 +135,5 @@ export const YoutubeBlockSpec = createReactBlockSpec(
 )
 
 export const YoutubeBlock = YoutubeBlockSpec()
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

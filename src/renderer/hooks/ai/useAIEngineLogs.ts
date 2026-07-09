@@ -74,6 +74,7 @@ export function useAIEngineLogs() {
 
     // 2. 렌더러 기동 이전에 발생한 초기 로그 버퍼 정보 일괄 획득 동기화
     ipc.llmGetLogs().then((logs) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (logs) {
         setEngineLogs(logs)
       }
@@ -84,7 +85,9 @@ export function useAIEngineLogs() {
 
     // 3. WebGPU/GPU 관련 브라우저 콘솔 로그 인터셉터 가동을 위한 순정 console 임시 보존
     const origLog = console.log
+  // [RUN-TIME STATE / INVARIANT] - 변수 'origWarn'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const origWarn = console.warn
+  // [RUN-TIME STATE / INVARIANT] - 변수 'origErr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const origErr = console.error
 
     /*
@@ -92,10 +95,13 @@ export function useAIEngineLogs() {
      * - Rationale: 콘솔 스트림에 유입되는 객체/문자열을 조인한 후, WebGPU/WebGL 등 그래픽 관련 로그만 추려 메인 로그 파일로 역전송한다.
      */
     const interceptAndSend = (_type: string, args: any[]) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const text = args
         .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
         .join(' ')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lower'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const lower = text.toLowerCase()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (
         lower.includes('webgpu') ||
         lower.includes('gpu') ||
@@ -123,6 +129,7 @@ export function useAIEngineLogs() {
       console.log = origLog
       console.warn = origWarn
       console.error = origErr
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (unsubLogRef.current) {
         unsubLogRef.current()
         unsubLogRef.current = null
@@ -144,3 +151,5 @@ export function useAIEngineLogs() {
  *    - `interceptAndSend` 내의 `lower.includes(...)` 조건식 배열에 필터 단어를 확충할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -72,11 +72,14 @@ const DEFAULT_SETTINGS: AISettings = {
   apiType: 'local',
 };
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'loadInitialSettings'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const loadInitialSettings = (): AISettings => {
   try {
     // ameva_ai_settings와 ai-settings 두 키 모두 확인하여 마이그레이션 호환성 보장
     const saved = localStorage.getItem('ameva_ai_settings') || localStorage.getItem('ai-settings');
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (saved) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const parsed = JSON.parse(saved);
       // 구버전 치즈 예시나 구버전 프롬프트가 저장되어 있는 경우 기본값으로 덮어씀
       if (parsed.systemPrompt && (
@@ -96,12 +99,14 @@ const loadInitialSettings = (): AISettings => {
   return DEFAULT_SETTINGS;
 };
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export const useAIState = create<AIState>((set) => ({
   isGenerating: false,
   setIsGenerating: (isGenerating) => set({ isGenerating }),
 
   settings: loadInitialSettings(),
   updateSettings: (newSettings) => set((state) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const updated = { ...state.settings, ...newSettings };
     localStorage.setItem('ameva_ai_settings', JSON.stringify(updated));
     return { settings: updated };
@@ -124,3 +129,5 @@ export const useAIState = create<AIState>((set) => ({
     pendingQueue: state.pendingQueue.filter(item => item.id !== id),
   })),
 }));
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

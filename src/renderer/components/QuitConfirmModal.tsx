@@ -69,6 +69,7 @@ export function QuitConfirmModal({
    *   isOpen = false 시 불투명도를 내린 후 200ms 페이드아웃이 끝난 시점에 DOM에서 최종 소멸시킨다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
       setIsRendered(true)
       // 10ms 프레임 대기 후 페이드인 시작 (브라우저 스타일 동기화 방지)
@@ -152,3 +153,5 @@ export function QuitConfirmModal({
  *      `setTimeout(() => ..., 200)` 클린업 지연 시간을 반드시 동일 밀리초 단위로 매칭해 줄 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

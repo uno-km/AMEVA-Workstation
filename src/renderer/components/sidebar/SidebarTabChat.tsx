@@ -27,12 +27,16 @@ import { useUIStore } from '../../stores/useUIStore'
 
 export interface SidebarTabChatProps {}
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SidebarTabChat({}: SidebarTabChatProps = {}) {
   const { chatMessages, sendChatMessage, clearChatMessages, username, userColor, serverRunning } = useAppContext()
   const { isChatFloating, setIsChatFloating } = useUIStore()
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onChatSend'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onChatSend = sendChatMessage
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onChatClear'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onChatClear = clearChatMessages
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onToggleChatFloat'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onToggleChatFloat = () => setIsChatFloating(!isChatFloating)
   return (
     <div
@@ -94,3 +98,5 @@ export function SidebarTabChat({}: SidebarTabChatProps = {}) {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

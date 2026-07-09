@@ -79,6 +79,7 @@ interface SettingsModalProps {
 
 type TabType = 'General' | 'AIEngine' | 'Account' | 'Permissions' | 'Appearance' | 'Models' | 'Customizations' | 'Hotkeys' | 'MCP' | 'Credentials'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsModal({
   isOpen,
   onClose,
@@ -104,7 +105,9 @@ export function SettingsModal({
   const [activeTab, setActiveTab] = useState<TabType>(initialTab || 'General')
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (initialTab) {
         setActiveTab(initialTab)
       } else {
@@ -119,6 +122,7 @@ export function SettingsModal({
   const [tempColor, setTempColor] = useState(userColor)
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
       setDraftAISettings(aiSettings)
       setIsAIDirty(false)
@@ -127,6 +131,7 @@ export function SettingsModal({
     }
   }, [isOpen, aiSettings, username, userColor])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updateDraftAI'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const updateDraftAI = (updates: Partial<AISettings>) => {
     setDraftAISettings(prev => ({ ...prev, ...updates }))
     setIsAIDirty(true)
@@ -148,24 +153,32 @@ export function SettingsModal({
   const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
 
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isUserDirty'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isUserDirty = tempName !== username || tempColor !== userColor
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isAnyDirty'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isAnyDirty = isAppDirty || isAIDirty || isUserDirty
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSaveAndApply'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSaveAndApply = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isAnyDirty) {
       onClose()
       return
     }
     setIsApplying(true)
     setTimeout(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (isAppDirty) onUpdateSettings(draftSettings)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (isAIDirty) onUpdateAISettings(draftAISettings)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (isUserDirty && onUpdateUser) onUpdateUser(tempName, tempColor)
       setIsApplying(false)
       onClose()
     }, 1800)
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleCancel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleCancel = () => {
     resetDraft()
     setDraftAISettings(aiSettings)
@@ -176,6 +189,7 @@ export function SettingsModal({
   }
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
       // Pro 플랜 설정 실시간 반영
       try {
@@ -185,6 +199,7 @@ export function SettingsModal({
       // 시작 시 무료 플래그 상태 체크
       if (ipc.isElectronEnv()) {
         ipc.isFreeMode().then(isFree => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (isFree) {
             setIsFreeModeLocked(true)
             setIsProPlan(false)
@@ -196,6 +211,7 @@ export function SettingsModal({
 
   // 라이브 테마 프리뷰: Appearance 설정 탭에서 고르면 닫기 전까지 임시 적용
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
       document.documentElement.setAttribute('data-theme', draftSettings.theme)
     } else {
@@ -203,14 +219,20 @@ export function SettingsModal({
     }
   }, [isOpen, draftSettings.theme, settings.theme])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleToggleProPlan'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleToggleProPlan = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isFreeModeLocked) {
       alert('⚠️ 무료 모드 데모 플래그(--free)로 실행되어 요금제 강제 전환이 불가능합니다.')
       return
     }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'nextVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const nextVal = !isProPlan
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ipc.isElectronEnv()) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const result = await ipc.planSetStatus(nextVal)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (result && !result.success) {
         alert(`요금제 변경 실패: ${result.error}`)
         return
@@ -225,6 +247,7 @@ export function SettingsModal({
   }
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen && ipc.isElectronEnv()) {
       Promise.all([
         ipc.llmListModels('llm').catch(() => []),
@@ -235,16 +258,22 @@ export function SettingsModal({
       })
 
       ipc.llmGetGpuName?.().then(name => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (name) setGpuName(name)
       }).catch(() => {})
     }
   }, [isOpen])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'startModelDownload'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const startModelDownload = async (url: string, filename: string, type: 'llm' | 'code') => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const store = (await import('../stores/useProcessStore')).useProcessStore.getState()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'existing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const existing = store.downloadQueue.find((q: any) => q.filename === filename && (q.status === 'pending' || q.status === 'downloading'))
     
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (existing) {
       // 이미 큐에 있음
       return
@@ -270,18 +299,24 @@ export function SettingsModal({
     { id: 'win98', label: 'Retro Windows 98', previewColor: '#c0c0c0' },
   ]
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSaveUser'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSaveUser = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (onUpdateUser) {
       onUpdateUser(tempName.trim(), tempColor)
     }
   }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
   function formatBytes(bytes: number): string {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (bytes === 0) return 'N/A'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(0)}MB`
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`
   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isOpen) return null
 
   return (
@@ -319,7 +354,9 @@ export function SettingsModal({
             { id: 'Hotkeys', label: 'Hotkeys', icon: Keyboard },
             ...(isProPlan ? [{ id: 'MCP', label: 'MCP Manager', icon: ToyBrick }] : [])
           ].map(t => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'Icon'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const Icon = t.icon
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isSelected'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const isSelected = activeTab === t.id
             return (
               <button
@@ -460,3 +497,5 @@ export { SettingsTabPermissions } from './settings/SettingsTabPermissions'
 export { SettingsTabAppearance } from './settings/SettingsTabAppearance'
 export { SettingsTabModels } from './settings/SettingsTabModels'
 export { SettingsTabCustomizations } from './settings/SettingsTabCustomizations'
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

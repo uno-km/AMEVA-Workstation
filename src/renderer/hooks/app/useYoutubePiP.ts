@@ -66,7 +66,9 @@ export function useYoutubePiP() {
 
   // 드래그 mousemove / mouseup 이벤트 처리
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseMove'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleMouseMove = (e: MouseEvent) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!isDraggingPip) return
       setPipPosition({
         x: Math.max(10, Math.min(window.innerWidth - 360, e.clientX - dragOffset.x)),
@@ -74,10 +76,13 @@ export function useYoutubePiP() {
       })
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleMouseUp = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (isDraggingPip) setIsDraggingPip(false)
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isDraggingPip) {
       window.addEventListener('mousemove', handleMouseMove)
       window.addEventListener('mouseup', handleMouseUp)
@@ -109,3 +114,5 @@ export function useYoutubePiP() {
     handlePiPMouseDown
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

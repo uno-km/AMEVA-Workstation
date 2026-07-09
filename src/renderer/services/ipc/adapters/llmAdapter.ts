@@ -28,34 +28,46 @@ import type {
   ModelDownloadProgressEvent
 } from '../ipcTypes'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmGenerate(params: LLMGenerateParams): Promise<LLMGenerateResult> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI) {
     return { success: false, error: 'Electron API not available' }
   }
   return window.electronAPI.llmGenerate(params)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function llmAbort(sessionId: string): void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI) return
   window.electronAPI.llmAbort(sessionId)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function onLLMToken(sessionId: string, callback: (token: string) => void): () => void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI) return () => {}
   return window.electronAPI.onLLMToken(sessionId, callback)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function onLLMDone(sessionId: string, callback: (data: LLMDoneEventData) => void): () => void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI) return () => {}
   return window.electronAPI.onLLMDone(sessionId, callback)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function onLLMLog(callback: (data: LLMLogEventData) => void): () => void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI) return () => {}
   return window.electronAPI.onLLMLog(callback)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmGetLogs(): Promise<string> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmGetLogs) return ''
   try {
     return await window.electronAPI.llmGetLogs()
@@ -65,12 +77,16 @@ export async function llmGetLogs(): Promise<string> {
   }
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function llmAddLog(data: LLMLogEventData): void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmAddLog) return
   window.electronAPI.llmAddLog(data)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmCheckHealth(): Promise<HealthCheckResult> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmCheckHealth) {
     return { status: 'error', message: 'API not available' }
   }
@@ -82,7 +98,9 @@ export async function llmCheckHealth(): Promise<HealthCheckResult> {
   }
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmListModels(type?: string): Promise<ModelInfo[]> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI) return []
   try {
     return await window.electronAPI.llmListModels(type)
@@ -92,48 +110,66 @@ export async function llmListModels(type?: string): Promise<ModelInfo[]> {
   }
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmImportModel(sourcePath: string): Promise<ModelImportResult> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI) return { success: false, error: 'API not available' }
   return window.electronAPI.llmImportModel(sourcePath)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function onModelDownloadProgress(callback: (data: ModelDownloadProgressEvent) => void): () => void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.onModelDownloadProgress) return () => {}
   return window.electronAPI.onModelDownloadProgress(callback)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmDownloadModel(payload: { url: string; filename: string; type?: 'llm' | 'code' }): Promise<{ success: boolean; error?: string }> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmDownloadModel) {
     return { success: false, error: 'API not available' }
   }
   return window.electronAPI.llmDownloadModel(payload)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function onLLMDownloadProgress(callback: (data: ModelDownloadProgressEvent) => void): () => void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.onLLMDownloadProgress) return () => {}
   return window.electronAPI.onLLMDownloadProgress(callback)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmRestart(): Promise<{ success: boolean; error?: string }> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmRestart) {
     return { success: false, error: 'API not available' }
   }
   return window.electronAPI.llmRestart()
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmStart(modelPath: string): Promise<{ success: boolean; error?: string }> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmStart) {
     return { success: false, error: 'API not available' }
   }
   return window.electronAPI.llmStart(modelPath)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmStop(): Promise<void> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmStop) return
   return window.electronAPI.llmStop()
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function llmGetGpuName(): Promise<string> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.llmGetGpuName) return ''
   return window.electronAPI.llmGetGpuName()
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

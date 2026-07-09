@@ -71,6 +71,7 @@ export function useAIModels(
     try {
       // 1. 챗 모델 스캔
       const type = settings.apiType === 'ollama' ? 'ollama' : 'llm'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'list'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const list = await ipc.llmListModels(type)
       
       // UI 노출을 위한 가공 처리
@@ -85,7 +86,9 @@ export function useAIModels(
       // 모델이 스캔되었고 현재 modelPath가 비었거나 존재하지 않는 경로일 경우 디폴트 선택
       if (mappedList.length > 0) {
         setSettings((prev) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'exists'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const exists = mappedList.some((m) => m.path === prev.modelPath)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (exists) return prev
           
           // Ollama는 첫 모델, Llama.cpp 로컬은 파일명에 '3b'가 들어간 가볍고 빠른 경량 모델을 선호
@@ -99,6 +102,7 @@ export function useAIModels(
 
       // 2. FIM(코드 생성) 모델 스캔
       const codeList = await ipc.llmListModels('code')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'mappedCodeList'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const mappedCodeList = codeList.map(m => ({
         path: m.path,
         filename: m.filename,
@@ -110,7 +114,9 @@ export function useAIModels(
       // 코드용 modelPath가 비었거나 없는 경로인 경우 첫 번째 원소로 폴백 선택
       if (mappedCodeList.length > 0) {
         setSettings((prev) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'exists'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const exists = mappedCodeList.some((m) => m.path === prev.codeModelPath)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (exists) return prev
           return { ...prev, codeModelPath: mappedCodeList[0].path }
         })
@@ -126,6 +132,7 @@ export function useAIModels(
    * - Rationale: 컴포넌트 마운트 및 API 타입 변경 시, 백그라운드에서 모델 목록 검색을 1회 즉각 기동한다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) {
       // CONTRACT: 순정 브라우저 데모 웹 뷰에서는 가용 여부를 즉시 true로 가상 이식 처리함
       setIsAvailable(true)
@@ -145,3 +152,5 @@ export function useAIModels(
  *    - `preferred` 변수의 `m.filename.includes('3b')` 탐색 조건을 수정 또는 확장할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

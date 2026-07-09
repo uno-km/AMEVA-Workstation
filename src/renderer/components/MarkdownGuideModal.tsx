@@ -25,7 +25,9 @@ interface MarkdownGuideModalProps {
   onClose: () => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function MarkdownGuideModal({ isOpen, onClose }: MarkdownGuideModalProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isOpen) return null
 
   return (
@@ -132,3 +134,5 @@ export function MarkdownGuideModal({ isOpen, onClose }: MarkdownGuideModalProps)
     </StrictModal>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

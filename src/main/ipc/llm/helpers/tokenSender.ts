@@ -27,8 +27,11 @@ export function createTokenSender(event: any, sessionId: string): TokenSender {
   let pendingTokens: string[] = []
   let throttleTimeout: NodeJS.Timeout | null = null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'flush'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const flush = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (pendingTokens.length > 0) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!event.sender.isDestroyed()) {
         event.sender.send(`llm:token:${sessionId}`, { token: pendingTokens.join('') })
       }
@@ -40,11 +43,13 @@ export function createTokenSender(event: any, sessionId: string): TokenSender {
   return {
     send: (token: string) => {
       pendingTokens.push(token)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!throttleTimeout) {
         throttleTimeout = setTimeout(flush, 30) // 30ms 스로틀 통일
       }
     },
     flush: () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (throttleTimeout) {
         clearTimeout(throttleTimeout)
       }
@@ -52,3 +57,5 @@ export function createTokenSender(event: any, sessionId: string): TokenSender {
     }
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

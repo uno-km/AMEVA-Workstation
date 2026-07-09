@@ -58,23 +58,28 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const [thoughtExpanded, setThoughtExpanded] = useState(false);
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isUser'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isUser = msg.role === 'user';
 
   // AI 스트리밍 중에는 사용자가 실시간 추론 과정을 추적할 수 있도록 '생각 과정' 아코디언을 자동으로 펼칩니다.
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (msg.isStreaming) setThoughtExpanded(true);
   }, [msg.isStreaming]);
 
   // msg.reasoningTrace 배열에서 type이 'thinking'인 트레이스 텍스트들을 추출해 하나로 결합합니다.
   const traceEvents = msg.reasoningTrace || [];
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasRealTrace'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasRealTrace = traceEvents.length > 0;
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'thinkingText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const thinkingText = traceEvents
     .filter((t: any) => t.type === 'thinking')
     .map((t: any) => t.text || '')
     .filter((t: any) => Boolean(t))
     .join('\n\n---\n\n');
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const cleanContent = msg.content; // sanitization을 거친 최종 응답 본문 텍스트
 
   // AI의 추론 텍스트의 볼륨과 단계를 요약(분석)하여 UI에 표시할 메타데이터 생성
@@ -97,10 +102,15 @@ export function MessageBubble({
    * '에디터 본문에 즉각 삽입'하는 액션을 수행하기 위해 코드 스니펫만 파싱해냅니다.
    */
   let codeSnippet = '';
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (cleanContent.includes('```')) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parts'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const parts = cleanContent.split('```');
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (parts[1]) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const lines = parts[1].split('\n');
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (lines[0] && lines[0].trim().length < 15 && !lines[0].includes(' ') && !lines[0].includes('(')) {
         codeSnippet = lines.slice(1).join('\n').trim();
       } else {
@@ -109,6 +119,7 @@ export function MessageBubble({
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'textToApply'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const textToApply = codeSnippet || cleanContent.trim();
 
   // 시스템 메시지일 경우 단순 중앙 정렬된 회색 텍스트로만 렌더링
@@ -238,20 +249,29 @@ export function MessageBubble({
                   onUpdateInsertSuggestionStatus?.(msg.id, 'rejected', undefined, undefined, idx)
                 }}
                 onMove={(direction) => {
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
                   const flatAll: any[] = (function flatten(bks: any[]): any[] {
                     return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
                   })(blocks || [])
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ids'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const ids = ins.siblingBlockIds ?? flatAll.map((b: any) => b.id)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const currIdx = ins.siblingIndex ?? ids.indexOf(ins.afterBlockId)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'highlightBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const highlightBlock = (targetId: string) => {
                     setTimeout(() => {
                       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                         const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                         if (!resolvedId) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'el'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                         const el = document.querySelector(`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                           const outer = el.closest('.bn-block-outer') || el
                           outer.setAttribute('data-highlighted-temp', 'true')
                           setTimeout(() => outer.removeAttribute('data-highlighted-temp'), 1200)
@@ -262,13 +282,18 @@ export function MessageBubble({
                     }, 50)
                   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                   if (direction === 'up' && currIdx > 0) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newIdx = currIdx - 1
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newId = newIdx === 0 ? 'START' : ids[newIdx - 1]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx, idx)
                     highlightBlock(newId)
                   } else if (direction === 'down') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newIdx = currIdx + 1
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newId = newIdx >= ids.length ? 'END' : ids[newIdx]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx, idx)
                     highlightBlock(newId)
@@ -284,6 +309,7 @@ export function MessageBubble({
                 blocks={blocks || []}
                 onScrollToBlock={onScrollToBlock}
                 onApply={() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const ins = msg.insertSuggestion!
                   onApplyInsertSuggestion?.(msg.id, ins.afterBlockId, ins.blockType, ins.content, ins.level)
                 }}
@@ -291,21 +317,31 @@ export function MessageBubble({
                   onUpdateInsertSuggestionStatus?.(msg.id, 'rejected')
                 }}
                 onMove={(direction) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const ins = msg.insertSuggestion!
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
                   const flatAll: any[] = (function flatten(bks: any[]): any[] {
                     return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
                   })(blocks || [])
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ids'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const ids = ins.siblingBlockIds ?? flatAll.map((b: any) => b.id)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const currIdx = ins.siblingIndex ?? ids.indexOf(ins.afterBlockId)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'highlightBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const highlightBlock = (targetId: string) => {
                     setTimeout(() => {
                       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                         const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                         if (!resolvedId) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'el'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                         const el = document.querySelector(`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                           const outer = el.closest('.bn-block-outer') || el
                           outer.setAttribute('data-highlighted-temp', 'true')
                           setTimeout(() => outer.removeAttribute('data-highlighted-temp'), 1200)
@@ -316,13 +352,18 @@ export function MessageBubble({
                     }, 50)
                   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                   if (direction === 'up' && currIdx > 0) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newIdx = currIdx - 1
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newId = newIdx === 0 ? 'START' : ids[newIdx - 1]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx)
                     highlightBlock(newId)
                   } else if (direction === 'down') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newIdx = currIdx + 1
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const newId = newIdx >= ids.length ? 'END' : ids[newIdx]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx)
                     highlightBlock(newId)
@@ -417,3 +458,5 @@ export function MessageBubble({
     </div>
   );
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

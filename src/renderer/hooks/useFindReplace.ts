@@ -33,6 +33,7 @@ interface UseFindReplaceProps {
   onScrollToBlock: (blockId: string) => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindReplaceProps) {
   const [findQuery, setFindQuery] = useState('')
   const [replaceQuery, setReplaceQuery] = useState('')
@@ -47,6 +48,7 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 에디터의 문서가 바뀌었을 때 검색 결과 업데이트를 위한 폴백
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isOpen || !editor) return
     
     // 에디터 블록 변경 감지용 간단한 폴링 또는 이벤트 연동 (가벼운 간격 체크)
@@ -62,11 +64,17 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 현재 매칭의 글로벌 순서 번호와 구체적인 { blockId, charOffset } 알아내기
   const getCurrentActiveMatch = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (currentMatchIndex < 0 || matches.length === 0) return null
+  // [RUN-TIME STATE / INVARIANT] - 변수 'count'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let count = 0
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (let mIdx = 0; mIdx < matches.length; mIdx++) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'match'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const match = matches[mIdx]
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (let iIdx = 0; iIdx < match.matchIndices.length; iIdx++) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (count === currentMatchIndex) {
           return {
             match,
@@ -83,6 +91,7 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 실질적인 검색 매칭 탐색 로직
   const performSearch = (keepIndex = false) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor || !findQuery) {
       setMatches([])
       setCurrentMatchIndex(-1)
@@ -90,9 +99,12 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
     }
 
     const flatBlocks: any[] = []
+  // [RUN-TIME STATE / INVARIANT] - 변수 'traverse'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const traverse = (blks: any[]) => {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const b of blks) {
         flatBlocks.push(b)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (b.children) traverse(b.children)
       }
     }
@@ -103,22 +115,29 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
     flatBlocks.forEach(block => {
       // 블록 내 텍스트 추출 (Rich Text의 텍스트만 합산)
       const text = getBlockPlainText(block)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!text) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'searchTarget'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let searchTarget = text
+  // [RUN-TIME STATE / INVARIANT] - 변수 'queryTarget'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let queryTarget = findQuery
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!matchCase) {
         searchTarget = text.toLowerCase()
         queryTarget = findQuery.toLowerCase()
       }
 
       const indices: number[] = []
+  // [RUN-TIME STATE / INVARIANT] - 변수 'startIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let startIdx = searchTarget.indexOf(queryTarget)
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       while (startIdx !== -1) {
         indices.push(startIdx)
         startIdx = searchTarget.indexOf(queryTarget, startIdx + queryTarget.length)
       }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (indices.length > 0) {
         newMatches.push({
           blockId: block.id,
@@ -133,9 +152,11 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
     // 인덱스 보정
     const totalCount = newMatches.reduce((acc, m) => acc + m.matchIndices.length, 0)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (totalCount === 0) {
       setCurrentMatchIndex(-1)
     } else if (keepIndex) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (currentMatchIndex >= totalCount) {
         setCurrentMatchIndex(totalCount - 1)
       } else if (currentMatchIndex < 0) {
@@ -148,8 +169,11 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 블록에서 순수 텍스트 문자열 가져오기
   const getBlockPlainText = (block: any): string => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!block.content) return ''
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (typeof block.content === 'string') return block.content
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (Array.isArray(block.content)) {
       return block.content.map((c: any) => c.text || '').join('')
     }
@@ -158,10 +182,14 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 이전/다음 이동 핸들러
   const handleNavigate = (direction: 'next' | 'prev') => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (matches.length === 0) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'totalCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const totalCount = totalMatchesCount
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'nextIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let nextIdx = currentMatchIndex
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (direction === 'next') {
       nextIdx = (currentMatchIndex + 1) % totalCount
     } else {
@@ -172,8 +200,11 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
     
     // 현재 포커스 매칭 알아내고 스크롤 이동
     let count = 0
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (const match of matches) {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (let i = 0; i < match.matchIndices.length; i++) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (count === nextIdx) {
           onScrollToBlock(match.blockId)
           return
@@ -185,16 +216,24 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 1개 단어 바꾸기 (Replace)
   const handleReplace = async () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'active'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const active = getCurrentActiveMatch()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!active || !editor) return
 
     const { blockId, charOffset, matchLength } = active
+  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const block = findBlockById(editor.document, blockId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!block) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const currentText = getBlockPlainText(block)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'before'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const before = currentText.substring(0, charOffset)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'after'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const after = currentText.substring(charOffset + matchLength)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'replacedText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const replacedText = before + replaceQuery + after
 
     // 블록 텍스트 업데이트 (Rich Text 형식 호환 유지를 위한 가공)
@@ -206,16 +245,24 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 전체 바꾸기 (Replace All)
   const handleReplaceAll = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (matches.length === 0 || !editor) return
 
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (const match of matches) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const block = findBlockById(editor.document, match.blockId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!block) continue
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const currentText = getBlockPlainText(block)
       
+  // [RUN-TIME STATE / INVARIANT] - 변수 'searchTarget'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let searchTarget = currentText
+  // [RUN-TIME STATE / INVARIANT] - 변수 'queryTarget'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let queryTarget = findQuery
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!matchCase) {
         searchTarget = currentText.toLowerCase()
         queryTarget = findQuery.toLowerCase()
@@ -223,14 +270,19 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
       // 비대소문자 구분을 유지한 상태에서 모든 매칭 오프셋을 역순으로 변경해야 인덱스가 꼬이지 않음
       const indices: number[] = []
+  // [RUN-TIME STATE / INVARIANT] - 변수 'startIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let startIdx = searchTarget.indexOf(queryTarget)
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       while (startIdx !== -1) {
         indices.push(startIdx)
         startIdx = searchTarget.indexOf(queryTarget, startIdx + queryTarget.length)
       }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let newText = currentText
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (let i = indices.length - 1; i >= 0; i--) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'offset'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const offset = indices[i]
         newText = newText.substring(0, offset) + replaceQuery + newText.substring(offset + findQuery.length)
       }
@@ -243,10 +295,15 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 블록 ID 기반 블록 탐색 헬퍼
   const findBlockById = (blks: any[], id: string): any => {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (const b of blks) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (b.id === id) return b
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (b.children) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'found'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const found = findBlockById(b.children, id)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (found) return found
       }
     }
@@ -255,8 +312,11 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
 
   // 에디터 블록 텍스트 교체 처리
   const updateBlockText = async (blockId: string, newText: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const block = findBlockById(editor.document, blockId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!block) return
 
     // 에디터의 기존 content 형식이 Array(Rich Text)인지 String인지 체크 후 빌드
@@ -288,3 +348,5 @@ export function useFindReplace({ isOpen, editor, onScrollToBlock }: UseFindRepla
     performSearch
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

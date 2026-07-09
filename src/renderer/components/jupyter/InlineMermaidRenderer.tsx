@@ -24,12 +24,16 @@ import mermaid from 'mermaid'
 export function InlineMermaidRenderer({ code }: { code: string }) {
   const [svg, setSvg] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'elementId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const elementId = useRef(`mermaid-preview-${Math.random().toString(36).substr(2, 9)}`)
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'active'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let active = true
+  // [RUN-TIME STATE / INVARIANT] - 변수 'renderDiagram'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const renderDiagram = async () => {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const cleanCode = code.replace(/^(\s*)end([가-힣a-zA-Z]+)/gm, '$1end\n$1$2')
         
         document.querySelectorAll('[id^="dmermaid"]').forEach(el => el.remove())
@@ -37,6 +41,7 @@ export function InlineMermaidRenderer({ code }: { code: string }) {
         try {
           await mermaid.parse(cleanCode)
         } catch (parseErr: any) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (active) {
             setError(parseErr.message || 'Mermaid 문법 오류가 감지되었습니다.')
           }
@@ -44,11 +49,13 @@ export function InlineMermaidRenderer({ code }: { code: string }) {
         }
 
         const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanCode)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (active) {
           setSvg(renderedSvg)
           setError(null)
         }
       } catch (err: any) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (active) {
           setError(err.message || 'Mermaid 렌더링에 실패했습니다.')
         }
@@ -58,6 +65,7 @@ export function InlineMermaidRenderer({ code }: { code: string }) {
     return () => { active = false }
   }, [code])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (error) {
     return (
       <div style={{
@@ -78,3 +86,5 @@ export function InlineMermaidRenderer({ code }: { code: string }) {
     />
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

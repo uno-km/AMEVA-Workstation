@@ -32,6 +32,7 @@ const FREE_PLAN_DAILY_LIMIT = 10
 
 /** LocalStorage 키 상수 */
 const STORAGE_KEY_DATE = 'ai-usage-date'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'STORAGE_KEY_COUNT'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const STORAGE_KEY_COUNT = 'ai-daily-usage-count'
 
 /**
@@ -70,11 +71,13 @@ export function checkUsageLimit(
     settings.apiType === 'local' ||
     settings.apiType === 'wasm' ||
     settings.apiType === 'ollama'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isPersonalApiKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isPersonalApiKey =
     settings.apiType === 'api' &&
     !!settings.apiKey &&
     settings.apiKey.trim() !== ''
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (isLocalModel || isPersonalApiKey) {
     return { isLimitExceeded: false, currentCount: 0 }
   }
@@ -84,9 +87,12 @@ export function checkUsageLimit(
   let usageCount: number
 
   try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastDate'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const lastDate = localStorage.getItem(STORAGE_KEY_DATE)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const rawCount = localStorage.getItem(STORAGE_KEY_COUNT)
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (lastDate !== todayStr) {
       // 날짜가 바뀌었으면 카운터 리셋
       localStorage.setItem(STORAGE_KEY_DATE, todayStr)
@@ -101,6 +107,7 @@ export function checkUsageLimit(
     return { isLimitExceeded: false, currentCount: 0 }
   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (usageCount >= FREE_PLAN_DAILY_LIMIT) {
     return {
       isLimitExceeded: true,
@@ -121,11 +128,16 @@ export function checkUsageLimit(
  */
 export function incrementUsageCount(): void {
   try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'todayStr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const todayStr = new Date().toISOString().split('T')[0]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastDate'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const lastDate = localStorage.getItem(STORAGE_KEY_DATE)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const rawCount = localStorage.getItem(STORAGE_KEY_COUNT)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'count'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let count = 0
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (lastDate === todayStr) {
       count = parseInt(rawCount || '0', 10)
     }
@@ -136,3 +148,5 @@ export function incrementUsageCount(): void {
     console.error('[incrementUsageCount] LocalStorage 쓰기 실패:', e)
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

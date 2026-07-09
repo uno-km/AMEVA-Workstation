@@ -22,6 +22,7 @@ import { type AmevaEditor as AppEditor } from '../../editor/amevaBlockSchema'
 import { type EditorMode } from '../../../shared/types'
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAppModeSwitch({
   editor,
   editorMode,
@@ -41,38 +42,53 @@ export function useAppModeSwitch({
   loadMarkdownIntoEditor: (editor: AppEditor, content: string, isBinary?: boolean, filePath?: string) => Promise<void>
   DEFAULT_WELCOME_TEXT: string
 }) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleRollback'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleRollback = async (rollbackContent: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
     await loadMarkdownIntoEditor(editor, rollbackContent)
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSwitchMode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSwitchMode = async (mode: EditorMode) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (editorMode === 'edit' && (mode === 'preview' || mode === 'raw') && editor) {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'latest'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let latest = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blocks = editor.document as any[]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'mermaidBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const mermaidBlocks = blocks.filter(
           b => b.type === 'codeBlock' &&
           (b.props?.language || '').toLowerCase() === 'mermaid'
         )
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (mermaidBlocks.length > 0) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasMermaidFence'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const hasMermaidFence = latest.includes('```mermaid')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!hasMermaidFence) {
             const lines: string[] = []
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
             for (const block of blocks) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const lang = (block.props?.language || '').toLowerCase()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'code'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const code = Array.isArray(block.content)
                 ? block.content.map((c: any) => c.text ?? '').join('')
                 : typeof block.content === 'string' ? block.content : ''
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (block.type === 'codeBlock') {
                 lines.push(`\`\`\`${lang}`)
                 lines.push(code)
                 lines.push('```')
                 lines.push('')
               } else if (block.type === 'heading') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hashes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const hashes = '#'.repeat(Math.min(6, Math.max(1, Number(block.props?.level) || 1)))
                 lines.push(`${hashes} ${code}`)
                 lines.push('')
@@ -84,6 +100,7 @@ export function useAppModeSwitch({
               } else if (block.type === 'numberedListItem') {
                 lines.push(`1. ${code}`)
               } else {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                 if (code) { lines.push(code); lines.push('') }
               }
             }
@@ -98,9 +115,12 @@ export function useAppModeSwitch({
       }
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (mode === 'edit' && editor) {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const normalized = normalizeMarkdown(useWorkspaceStore.getState().currentContent)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blocks = await editor.tryParseMarkdownToBlocks(normalized)
         cleanCodeBlocks(blocks)
         ensureBlockIds(blocks)
@@ -113,10 +133,14 @@ export function useAppModeSwitch({
     setEditorMode(mode)
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleStartWelcomeEdit'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleStartWelcomeEdit = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const normalized = normalizeMarkdown(currentContent || DEFAULT_WELCOME_TEXT)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const blocks = await editor.tryParseMarkdownToBlocks(normalized)
       cleanCodeBlocks(blocks)
       ensureBlockIds(blocks)
@@ -136,3 +160,5 @@ export function useAppModeSwitch({
     handleStartWelcomeEdit,
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

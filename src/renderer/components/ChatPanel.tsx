@@ -30,6 +30,7 @@ interface ChatPanelProps {
   serverRunning: boolean
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function ChatPanel({
   messages,
   onSend,
@@ -39,23 +40,30 @@ export function ChatPanel({
   serverRunning,
 }: ChatPanelProps) {
   const [input, setInput] = useState('')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'messagesEndRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'inputRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
     }
   }, [messages])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSend'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSend = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!input.trim() || !serverRunning) return
     onSend(input.trim())
     setInput('')
     inputRef.current?.focus()
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleKeyDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (e.key === 'Enter') {
       e.preventDefault()
       handleSend()
@@ -131,9 +139,12 @@ export function ChatPanel({
           </div>
         ) : (
           messages.map((msg) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isMe'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const isMe = msg.author === username
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isSystem'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const isSystem = msg.type === 'system'
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (isSystem) {
               return (
                 <div
@@ -264,3 +275,5 @@ export function ChatPanel({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

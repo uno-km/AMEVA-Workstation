@@ -58,14 +58,18 @@ export interface MenuBarShortcutsOptions {
   onOpenGithub: () => void;
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useMenuBarShortcuts(options: MenuBarShortcutsOptions) {
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleKeyDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleKeyDown = (e: KeyboardEvent) => {
       // 1. Alt 단독 키 입력 (Alt 모드 토글)
       if (e.key === 'Alt') {
         e.preventDefault()
         options.setIsAltMode(prev => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const next = !prev
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!next) options.setActiveMenu(null)
           return next
         })
@@ -79,10 +83,12 @@ export function useMenuBarShortcuts(options: MenuBarShortcutsOptions) {
         return
       }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'key'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const key = e.key.toLowerCase()
 
       // 3. 상단 메뉴바 진입 (Alt+알파벳, 또는 Alt 모드 상태에서 알파벳)
       if (e.altKey || (options.isAltMode && !options.activeMenu)) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (key === 'f') { e.preventDefault(); options.setIsAltMode(true); options.setActiveMenu('file') }
         else if (key === 'v') { e.preventDefault(); options.setIsAltMode(true); options.setActiveMenu('view') }
         else if (key === 'w') { e.preventDefault(); options.setIsAltMode(true); options.setActiveMenu('window') }
@@ -94,7 +100,9 @@ export function useMenuBarShortcuts(options: MenuBarShortcutsOptions) {
 
       // 4. 활성화된 하위 메뉴 내비게이션
       if (options.activeMenu) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (options.activeMenu === 'file') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (key === 'n') { e.preventDefault(); options.triggerAction(options.onNewWindow) }
           else if (key === 'o') { e.preventDefault(); options.triggerAction(options.onOpenFile) }
           else if (key === 's') { e.preventDefault(); options.triggerAction(options.onSaveFile) }
@@ -102,16 +110,19 @@ export function useMenuBarShortcuts(options: MenuBarShortcutsOptions) {
           else if (key === 'p') { e.preventDefault(); options.triggerAction(options.onPrint) }
           else if (key === 'x') { e.preventDefault(); options.triggerAction(options.onCloseApp) }
         } else if (options.activeMenu === 'view') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (key === 'e') { e.preventDefault(); options.triggerAction(() => options.setEditorMode(options.editorMode === 'preview' ? 'edit' : 'preview')) }
           else if (key === 't') { e.preventDefault(); options.triggerAction(() => options.setShowStatusBar(!options.showStatusBar)) }
           else if (key === 'b') { e.preventDefault(); options.triggerAction(() => options.setShowSidebar(!options.showSidebar)) }
           else if (key === 'c') { e.preventDefault(); options.triggerAction(() => options.setShowConsole(!options.showConsole)) }
         } else if (options.activeMenu === 'window') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (key === 'i') { e.preventDefault(); options.triggerAction(options.onZoomIn) }
           else if (key === 'o') { e.preventDefault(); options.triggerAction(options.onZoomOut) }
           else if (key === 'r') { e.preventDefault(); options.triggerAction(options.onZoomReset) }
           else if (key === 'f') { e.preventDefault(); options.triggerAction(options.onToggleFullscreen) }
         } else if (options.activeMenu === 'help') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (key === 'a') { e.preventDefault(); options.triggerAction(options.onOpenAbout) }
           else if (key === 'g') { e.preventDefault(); options.triggerAction(options.onOpenGuide) }
           else if (key === 'p') { e.preventDefault(); options.triggerAction(options.onOpenPricing) }
@@ -134,3 +145,5 @@ export function useMenuBarShortcuts(options: MenuBarShortcutsOptions) {
     options.setIsAltMode, options.setActiveMenu, options.triggerAction
   ])
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

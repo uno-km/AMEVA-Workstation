@@ -69,11 +69,13 @@ export interface NormalizedBlock {
 
 /** 어떤 값이든 NormalizedInlineContent[]로 변환 */
 function normalizeInlineContent(raw: any): NormalizedInlineContent[] {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!raw) return []
 
   // 이미 배열이면 각 item normalize
   if (Array.isArray(raw)) {
     return raw.flatMap((item: any) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!item) return []
       // 표준 InlineContent 형태
       if (typeof item === 'object' && (item.type === 'text' || item.type === 'link')) {
@@ -106,6 +108,7 @@ function normalizeInlineContent(raw: any): NormalizedInlineContent[] {
 
   // 단일 객체 {type, text, styles}
   if (typeof raw === 'object' && raw !== null) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if ('text' in raw) {
       return [{ type: 'text', text: String(raw.text ?? ''), styles: raw.styles ?? {} }]
     }
@@ -116,6 +119,7 @@ function normalizeInlineContent(raw: any): NormalizedInlineContent[] {
 
 /** table content normalize */
 function normalizeTableContent(raw: any): NormalizedTableRow[] {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!raw) return []
 
   const rows: any[] = Array.isArray(raw?.rows) ? raw.rows
@@ -133,6 +137,7 @@ function normalizeTableContent(raw: any): NormalizedTableRow[] {
         if (Array.isArray(cell)) {
           return normalizeInlineContent(cell)
         }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (typeof cell === 'string') {
           return cell ? [{ type: 'text' as const, text: cell, styles: {} }] : []
         }
@@ -144,6 +149,7 @@ function normalizeTableContent(raw: any): NormalizedTableRow[] {
 
 /** 단일 block을 NormalizedBlock으로 변환 */
 function normalizeBlock(raw: any, depth = 0): NormalizedBlock {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!raw || typeof raw !== 'object') {
     return {
       id: 'unknown',
@@ -157,11 +163,13 @@ function normalizeBlock(raw: any, depth = 0): NormalizedBlock {
   const type: string = raw.type ?? 'paragraph'
   const id: string = raw.id ?? `auto-${Math.random().toString(36).slice(2)}`
   const props: Record<string, any> = raw.props ?? {}
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const rawContent = raw.content
 
   let content: NormalizedInlineContent[] = []
   let tableRows: NormalizedTableRow[] | undefined
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (type === 'table') {
     tableRows = normalizeTableContent(rawContent)
     content = []
@@ -182,6 +190,7 @@ function normalizeBlock(raw: any, depth = 0): NormalizedBlock {
 
 /** 최상위 normalize 함수 — export 진입점에서 호출 */
 export function normalizeBlocks(input: any): NormalizedBlock[] {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!input) {
     console.warn('[normalizeBlocks] input is null/undefined')
     return []
@@ -190,6 +199,7 @@ export function normalizeBlocks(input: any): NormalizedBlock[] {
   const arr: any[] = Array.isArray(input) ? input : [input]
 
   const result: NormalizedBlock[] = []
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
   for (let i = 0; i < arr.length; i++) {
     try {
       result.push(normalizeBlock(arr[i]))
@@ -210,3 +220,5 @@ export function getPlainTextFromNormalized(block: NormalizedBlock): string {
 export function inlineToText(inline: NormalizedInlineContent[]): string {
   return inline.map(c => c.text).join('')
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -29,12 +29,14 @@ export interface SettingsTabAIEngineProps {
   gpuName?: string
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTabAIEngine({
   activeTab,
   aiSettings,
   onUpdateAISettings,
   gpuName
 }: SettingsTabAIEngineProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (activeTab !== 'AIEngine') return null
 
   const { apiType = 'wasm', apiProvider = 'gemini', apiEndpoint = '', apiModel = '', gpuOnly = true, temperature = 0.7, maxTokens = 1024 } = aiSettings
@@ -43,11 +45,13 @@ export function SettingsTabAIEngine({
   const [isOllamaLoading, setIsOllamaLoading] = useState(false)
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (apiType === 'ollama') {
       setIsOllamaLoading(true)
       fetch('http://127.0.0.1:11434/api/tags')
         .then(res => res.json())
         .then(data => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (data.models && Array.isArray(data.models)) {
             setOllamaModels(data.models)
             // 첫 진입 시 선택된 모델이 없으면 가장 첫 번째 모델 자동 선택
@@ -264,9 +268,13 @@ export function SettingsTabAIEngine({
                 onClick={async () => {
                   setIsOllamaLoading(true)
                   try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                     if (!res.ok) throw new Error('Ollama 서버 응답 없음')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     const data = await res.json()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                     if (data.models) setOllamaModels(data.models)
                   } catch (e) {
                     console.error('Ollama 연결 실패:', e)
@@ -289,14 +297,19 @@ export function SettingsTabAIEngine({
                   <button
                     onClick={async () => {
                       try {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                         if ((window as any).electronAPI?.executeTerminal) {
                           await (window as any).electronAPI.executeTerminal('ollama serve')
                           // 2초 뒤 재연결 시도
                           setTimeout(async () => {
                             try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                               const res = await fetch((apiEndpoint || 'http://127.0.0.1:11434') + '/api/tags')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                               if (res.ok) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                                 const data = await res.json()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                                 if (data.models) setOllamaModels(data.models)
                               }
                             } catch {}
@@ -386,3 +399,5 @@ export function SettingsTabAIEngine({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

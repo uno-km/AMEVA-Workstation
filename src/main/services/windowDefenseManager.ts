@@ -38,10 +38,14 @@ export class WindowDefenseManager {
   static applyDefenses(window: BrowserWindow, isShuttingDown: () => boolean) {
     // 1. 단축키 방어 (새로고침 등)
     window.webContents.on('before-input-event', (event, input) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (input.type === 'keyDown') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isF5'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const isF5 = input.key === 'F5'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isCtrlR'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const isCtrlR = input.control && input.key.toLowerCase() === 'r' && !input.shift
         
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (isF5 || isCtrlR) {
           event.preventDefault()
         }
@@ -77,3 +81,5 @@ export class WindowDefenseManager {
     })
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

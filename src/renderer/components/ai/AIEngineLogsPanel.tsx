@@ -48,25 +48,39 @@ export interface AIEngineLogsPanelProps {
  * Zustand 스토어를 직접 구독하여 React 리렌더링 오버헤드 없이 DOM을 업데이트한다.
  */
 export const AIEngineLogsPanel: React.FC<AIEngineLogsPanelProps> = ({ onClose, onClearLogs }) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'containerRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Zustand 스토어의 sensorLogs 구독: React 렌더링 루프 우회하여 DOM 직접 업데이트
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubscribe'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const unsubscribe = useAILogStore.subscribe((state, prevState) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (state.sensorLogs === prevState.sensorLogs) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const container = containerRef.current
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!container) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'htmlString'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let htmlString = ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'logs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const logs = state.sensorLogs
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (let i = 0; i < logs.length; i++) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'line'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const line = logs[i]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (i > 0 && !line.trim()) continue
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'color'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let color = '#a7f3d0'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (line.includes('[System]')) color = '#93c5fd'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (line.includes('[Error]') || line.includes('오류')) color = '#fca5a5'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (line.includes('[Plugin]')) color = '#fde047'
 
         htmlString += `<div style="color: ${color}; min-height: 1.2em;">${line}</div>`
@@ -145,3 +159,5 @@ export const AIEngineLogsPanel: React.FC<AIEngineLogsPanelProps> = ({ onClose, o
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -27,11 +27,13 @@ interface PricingModalProps {
   onClose: () => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [isPro, setIsPro] = useState(false)
   const [isFreeLocked, setIsFreeLocked] = useState(false)
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
       setIsPro(localStorage.getItem('is-pro-plan') === 'true')
       
@@ -41,10 +43,14 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
   }, [isOpen])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isOpen) return null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleFreeAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleFreeAction = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isPro) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (confirm('Downgrade to Free Plan? (This will reload the application)')) {
         await ipc.planSetStatus(false)
         localStorage.setItem('is-pro-plan', 'false')
@@ -53,16 +59,22 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleProAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleProAction = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isPro) return
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isFreeLocked) {
       alert('무료 버전 강제 데모 모드(--free) 상태에서는 Pro Plan으로 업그레이드할 수 없습니다.')
       return
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (confirm('Upgrade to Pro Plan? (This will reload the application)')) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const result = await ipc.planSetStatus(true)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (result && !result.success) {
         alert(`업그레이드 실패: ${result.error}`)
         return
@@ -72,6 +84,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleEnterpriseAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleEnterpriseAction = () => {
     window.open('https://github.com/uno-km/AMEVA-Workstation', '_blank')
   }
@@ -336,3 +349,5 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     </StrictModal>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

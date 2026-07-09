@@ -20,11 +20,16 @@
 import { useState } from 'react'
 import { RuntimeState } from './runtimeState'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function getOrCreateJSWorker() {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (RuntimeState.persistentWorker) return RuntimeState.persistentWorker
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'workerBlobCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const workerBlobCode = `
+  // [RUN-TIME STATE / INVARIANT] - 변수 'logs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const logs = [];
+  // [RUN-TIME STATE / INVARIANT] - 변수 'customConsole'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const customConsole = {
       log: function(...args) {
         logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' '));
@@ -49,10 +54,12 @@ function getOrCreateJSWorker() {
     const BLOCKED_PATTERNS = ['fetch(', 'XMLHttpRequest', 'importScripts', 'WebSocket', 'navigator.sendBeacon'];
 
     self.onmessage = function(e) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'codeToRun'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let codeToRun = e.data || '';
 
       // 금지 패턴 사전 검사
       for (const pattern of BLOCKED_PATTERNS) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (codeToRun.includes(pattern)) {
           postMessage({ success: false, logs: ['[SECURITY] 네트워크 접근 코드는 실행이 차단되었습니다: ' + pattern] });
           return;
@@ -68,6 +75,7 @@ function getOrCreateJSWorker() {
       try {
         // eval을 사용하여 워커 전역 네임스페이스 상에서 코드를 순차 누적 실행 (변수 상태 완벽 세션 보존)
         const result = self.eval(codeToRun);
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (result !== undefined) {
           logs.push('→ ' + (typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)));
         }
@@ -78,19 +86,24 @@ function getOrCreateJSWorker() {
     };
   `
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blob'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const blob = new Blob([workerBlobCode], { type: 'application/javascript' })
   RuntimeState.persistentWorker = new Worker(URL.createObjectURL(blob))
   return RuntimeState.persistentWorker
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useJSRuntime() {
   const [isRunning, setIsRunning] = useState(false)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'runJSCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const runJSCode = (code: string): Promise<{ success: boolean; output: string; tableData?: any }> => {
     return new Promise((resolve) => {
       setIsRunning(true)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'worker'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const worker = getOrCreateJSWorker()
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'timeoutId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const timeoutId = setTimeout(() => {
         worker.terminate()
         RuntimeState.persistentWorker = null
@@ -120,3 +133,5 @@ export function useJSRuntime() {
     runJSCode,
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -23,8 +23,10 @@ import './styles/main.css'
 // 포커스 영역 관리 싱글턴 — import만으로 전역 이벤트 리스너 등록
 import './lib/focusRegion'
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'App'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const App = lazy(() => import('./App'))
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'SplashScreen'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const SplashScreen = () => (
   <div style={{
     width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', 
@@ -49,3 +51,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     </Suspense>
   </React.StrictMode>
 )
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

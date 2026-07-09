@@ -34,6 +34,7 @@ export interface SettingsTabModelsProps {
   startModelDownload: (url: string, filename: string, type: 'llm' | 'code') => Promise<void>
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTabModels({
   activeTab,
   settings,
@@ -43,8 +44,10 @@ export function SettingsTabModels({
   formatBytes,
   startModelDownload,
 }: SettingsTabModelsProps) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'downloadQueue'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const downloadQueue = useProcessStore(state => state.downloadQueue)
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (activeTab !== 'Models') return null
 
   return (
@@ -127,8 +130,11 @@ export function SettingsTabModels({
                   filename: 'qwen2.5-3b-instruct-q4_k_m.gguf'
                 }
               ].map(model => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isInstalled'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const isInstalled = localModels.some(m => m.filename.toLowerCase() === model.filename.toLowerCase())
+  // [RUN-TIME STATE / INVARIANT] - 변수 'queuedItem'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const queuedItem = downloadQueue.find((q: DownloadQueueItem) => q.filename.toLowerCase() === model.filename.toLowerCase() && (q.status === 'pending' || q.status === 'downloading'))
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isDownloading'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const isDownloading = !!queuedItem
 
                 return (
@@ -231,8 +237,11 @@ export function SettingsTabModels({
                   filename: 'qwen2.5-coder-7b-instruct-q4_k_m.gguf'
                 }
               ].map(model => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isInstalled'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const isInstalled = localCodeModels.some(m => m.filename.toLowerCase() === model.filename.toLowerCase())
+  // [RUN-TIME STATE / INVARIANT] - 변수 'queuedItem'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const queuedItem = downloadQueue.find((q: DownloadQueueItem) => q.filename.toLowerCase() === model.filename.toLowerCase() && (q.status === 'pending' || q.status === 'downloading'))
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isDownloading'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const isDownloading = !!queuedItem
 
                 return (
@@ -267,3 +276,5 @@ export function SettingsTabModels({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

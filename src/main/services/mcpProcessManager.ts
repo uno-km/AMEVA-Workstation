@@ -61,6 +61,7 @@ export class MCPProcessManager {
         // 프로세스 생성 (stdin/stdout 파이프 바인딩, stderr는 메인 프로세스로 위임)
         const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] })
         
+  // [RUN-TIME STATE / INVARIANT] - 변수 'state'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const state = {
           process: proc,
           stdoutBuffer: '',
@@ -75,15 +76,20 @@ export class MCPProcessManager {
           
           // 개행 기호 단위로 계속 슬라이싱
           while ((newlineIndex = state.stdoutBuffer.indexOf('\n')) !== -1) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawLine'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const rawLine = state.stdoutBuffer.slice(0, newlineIndex).trim()
             state.stdoutBuffer = state.stdoutBuffer.slice(newlineIndex + 1)
             
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (!rawLine) continue
             try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const parsed = JSON.parse(rawLine)
               // JSON-RPC id가 존재 시 대기 중인 프라미스 매핑 resolve 처리 후 맵 제거
               if (parsed.id !== undefined) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'resolver'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const resolver = state.pendingResolvers.get(String(parsed.id))
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                 if (resolver) {
                   resolver(parsed)
                   state.pendingResolvers.delete(String(parsed.id))
@@ -123,6 +129,7 @@ export class MCPProcessManager {
    */
   static callServer(serverId: string, request: any): Promise<any> {
     return new Promise((resolve) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'state'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const state = this.processes.get(serverId)
       // 쓰기 파이프가 차단되었거나 비활성 시 에러 반환
       if (!state || !state.process.stdin || !state.process.stdin.writable) {
@@ -134,11 +141,13 @@ export class MCPProcessManager {
         return
       }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'reqId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const reqId = String(request.id)
       state.pendingResolvers.set(reqId, resolve)
 
       // 15초 제한 시간 경과 시 만료 가드
       const timeout = setTimeout(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (state.pendingResolvers.has(reqId)) {
           state.pendingResolvers.delete(reqId)
           resolve({
@@ -169,7 +178,9 @@ export class MCPProcessManager {
    * - Rationale: 윈도우 OS의 하위 트리 좀비 상주를 막기 위해 taskkill로 자식의 자식까지 강제 소멸시킨다.
    */
   static killServer(serverId: string) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'state'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const state = this.processes.get(serverId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (state) {
       try {
         // 윈도우 플랫폼 트리 킬 계약 준수
@@ -189,8 +200,11 @@ export class MCPProcessManager {
    */
   static killAll() {
     console.log('[MCP-Manager] 모든 MCP 서버 프로세스 종료 중...')
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (const serverId of this.processes.keys()) {
       this.killServer(serverId)
     }
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

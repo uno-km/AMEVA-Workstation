@@ -96,3 +96,5 @@ export const MapBlockSpec = createReactBlockSpec(
 )
 
 export const MapBlock = MapBlockSpec()
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

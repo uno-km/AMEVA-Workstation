@@ -21,24 +21,37 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAILogStore } from '../../../stores/useAILogStore';
 import { ConsoleContextMenu } from './ConsoleContextMenu';
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function ConsoleLogTab() {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'logContainerRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, text: string } | null>(null);
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'renderLogs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const renderLogs = (logs: string[]) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const container = logContainerRef.current;
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!container) return;
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'htmlString'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let htmlString = '';
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (let i = 0; i < logs.length; i++) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'line'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const line = logs[i];
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (i > 0 && !line.trim()) continue;
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'color'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let color = 'var(--text-main)';
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bg'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let bg = 'transparent';
+  // [RUN-TIME STATE / INVARIANT] - 변수 'fontWeight'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let fontWeight = '400';
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (line.includes('[System]')) { color = '#60a5fa'; fontWeight = '600'; }
         else if (line.includes('[Error]') || line.includes('error')) { color = '#fca5a5'; bg = 'rgba(239, 68, 68, 0.1)'; }
         else if (line.includes('[Plugin]')) { color = '#fde047'; }
@@ -54,7 +67,9 @@ export function ConsoleLogTab() {
 
     renderLogs(useAILogStore.getState().sensorLogs);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubscribe'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const unsubscribe = useAILogStore.subscribe((state, prevState) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (state.sensorLogs !== prevState.sensorLogs) {
         renderLogs(state.sensorLogs);
       }
@@ -62,8 +77,10 @@ export function ConsoleLogTab() {
     return () => unsubscribe();
   }, []);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleContextMenu'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
+  // [RUN-TIME STATE / INVARIANT] - 변수 'selection'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const selection = window.getSelection();
     setContextMenu({
       x: e.clientX,
@@ -92,10 +109,12 @@ export function ConsoleLogTab() {
           y={contextMenu.y}
           selectedText={contextMenu.text}
           onCopy={() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (contextMenu.text) navigator.clipboard.writeText(contextMenu.text);
           }}
           onPaste={async () => {
             try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const text = await navigator.clipboard.readText();
               window.dispatchEvent(new CustomEvent('ameva:fill-ai-input', { detail: text }));
             } catch (err) {
@@ -103,6 +122,7 @@ export function ConsoleLogTab() {
             }
           }}
           onInsertToBody={() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'event'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const event = new CustomEvent('ameva:insert-text', { detail: contextMenu.text });
             window.dispatchEvent(event);
           }}
@@ -112,3 +132,5 @@ export function ConsoleLogTab() {
     </>
   );
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

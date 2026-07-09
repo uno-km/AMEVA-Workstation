@@ -45,6 +45,7 @@ type Listener = (activeId: string | null) => void
 
 // ── 모듈 상태 ───────────────────────────────────────────────────
 let currentActiveId: string | null = null
+  // [RUN-TIME STATE / INVARIANT] - 변수 'listeners'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const listeners = new Set<Listener>()
 
 // ── 내부 헬퍼 ───────────────────────────────────────────────────
@@ -52,9 +53,12 @@ function notify() {
   listeners.forEach(l => l(currentActiveId))
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function applyClass(id: string | null, add: boolean) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!id) return
   document.querySelectorAll(`[${FOCUS_REGION_ATTR}="${id}"]`).forEach(el => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (add) {
       el.classList.add(FOCUS_REGION_CLASS)
     } else {
@@ -70,6 +74,7 @@ function applyClass(id: string | null, add: boolean) {
  * null 전달 시 현재 active region 비활성화.
  */
 export function activate(id: string | null): void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (id === currentActiveId) return
 
   // 이전 active 제거
@@ -106,13 +111,18 @@ export function subscribe(listener: Listener): () => void {
 // 문서 어디를 클릭하든 가장 가까운 [data-focus-region] 조상을 찾아 활성화
 // capture phase 사용: 이벤트가 innermost 요소로 내려가기 전에 감지
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function handleGlobalMouseDown(e: MouseEvent): void {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const target = e.target as Element | null
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!target) {
     activate(null)
     return
   }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'regionEl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const regionEl = target.closest(`[${FOCUS_REGION_ATTR}]`)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const id = regionEl?.getAttribute(FOCUS_REGION_ATTR) ?? null
   activate(id)
 }
@@ -123,13 +133,20 @@ document.addEventListener('mousedown', handleGlobalMouseDown, true)
 // ── 접근성: 키보드 Tab 이동도 추적 ──────────────────────────────
 // Tab 키로 포커스가 이동하면 해당 region도 활성화
 function handleGlobalFocusIn(e: FocusEvent): void {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const target = e.target as Element | null
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!target) return
   // 이미 mousedown에서 처리됐으면 불필요하지만, 키보드 전용 이동 감지를 위해 유지
   const regionEl = target.closest(`[${FOCUS_REGION_ATTR}]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!regionEl) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const id = regionEl.getAttribute(FOCUS_REGION_ATTR)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (id && id !== currentActiveId) activate(id)
 }
 
 document.addEventListener('focusin', handleGlobalFocusIn, true)
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

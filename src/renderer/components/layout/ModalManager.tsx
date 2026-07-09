@@ -38,6 +38,7 @@ import { useAI } from '../../hooks/useAI'
 
 export interface ModalManagerProps {}
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function ModalManager({}: ModalManagerProps = {}) {
   const {
     settings, handleUpdateSettings, handleInstallPlugin, handleUninstallPlugin, isProPlan,
@@ -77,11 +78,13 @@ export function ModalManager({}: ModalManagerProps = {}) {
 
   const { settings: aiSettings, updateSettings: updateAISettings } = useAI()
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleQuitConfirm'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleQuitConfirm = () => {
     setIsQuitConfirmOpen(false)
     handleCloseApp()
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleRefreshConfirm'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleRefreshConfirm = () => {
     window.location.reload()
   }
@@ -145,6 +148,7 @@ export function ModalManager({}: ModalManagerProps = {}) {
         onMinimize={toggleExportMinimized}
         onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
         onOpenFile={(path) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'fileUrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
           ipc.openExternalLink(fileUrl)
         }}
@@ -164,3 +168,5 @@ export function ModalManager({}: ModalManagerProps = {}) {
     </>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

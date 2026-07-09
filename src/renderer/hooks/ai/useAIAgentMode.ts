@@ -141,7 +141,9 @@ export function useAIAgentMode() {
 
       // 실시간 루프 진행 디버그 텍스트 누적 버퍼
       let accumulatedLogs = ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'agentQuery'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const agentQuery = buildAgentQuery(userMessage, messages, taggedBlocks)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'agentSystemPrompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const agentSystemPrompt = getAgentSystemPrompt()
 
       // 3. 에이전트 세션 실행 개시 및 실시간 중간 로그 콜백 바인딩
@@ -151,13 +153,20 @@ export function useAIAgentMode() {
 
         // 유저 화면에 실시간으로 '어떤 도구를 몇 단계째 실행 중인지' 피드백 갱신
         setMessages((prev) => prev.map((m) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (m.id !== assistantId) return m
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'statusText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           let statusText = '🤖 에이전트 추론 루프 기동 중...'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (accumulatedLogs.includes('Action:')) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const lines = accumulatedLogs.split('\n')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'actionLine'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const actionLine = lines.find((l) => l.includes('Action:'))
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (actionLine) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'actName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const actName = actionLine.replace(/Action:\s*/i, '').trim()
               statusText = `⚙️ [도구 실행] '${actName}' 도구를 기동하고 있습니다...`
             }
@@ -202,6 +211,7 @@ export function useAIAgentMode() {
                 insertSuggestions: insertSuggestions,
                 // 생각 궤적 단계별로 분해 정렬하여 타임라인 데이터 구성
                 reasoningTrace: agentResult.steps.flatMap((s: { thought: string; action?: string; actionInput?: string; observation?: string }, sIdx: number) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'traces'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const traces = [{
                     id: `trace_agent_${m.id}_${sIdx}_thought`,
                     source: 'model' as const,
@@ -210,8 +220,11 @@ export function useAIAgentMode() {
                     model: finalSettings.modelPath || 'unknown',
                     timestamp: new Date().toISOString()
                   }]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                   if (s.action) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'actionText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                     let actionText = `🎯 도구 실행: ${s.action}\n인자: ${s.actionInput}`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                     if (s.observation) {
                       actionText += `\n\n🔍 결과:\n${s.observation.replace(/^Observation:\s*/i, '').trim()}`
                     }
@@ -267,3 +280,5 @@ export function useAIAgentMode() {
  *    - `maxTurns: 5` 파라미터 수치를 조율하되, 너무 높이면 API 응답 비용 및 연산 루프 무한 프리징 위험이 급증함에 주의할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

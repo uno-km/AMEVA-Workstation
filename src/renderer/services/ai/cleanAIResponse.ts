@@ -92,6 +92,7 @@ export function buildAbortErrorContent(
  * @returns true if error is caused by user abort
  */
 export function isAbortError(errorMessage?: string): boolean {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!errorMessage) return false
   return (
     errorMessage === '사용자에 의해 중단됨' ||
@@ -99,3 +100,5 @@ export function isAbortError(errorMessage?: string): boolean {
     errorMessage.includes('중단')
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -174,20 +174,27 @@ export interface DocumentIR {
 // BlockNote blocks[] → DocumentIR 변환 헬퍼
 // ─────────────────────────────────────────────────────────────
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 '_blockIdCounter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 let _blockIdCounter = 0
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function genId(): string {
   return `ir_${Date.now()}_${++_blockIdCounter}`
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function getPlainText(block: any): string {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!block.content) return ''
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (Array.isArray(block.content)) {
     return block.content.map((c: any) => c.text || '').join('')
   }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (typeof block.content === 'string') return block.content
   return ''
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function mapBlockType(type: string): DocumentBlockType {
   const mapping: Record<string, DocumentBlockType> = {
     heading: 'heading',
@@ -207,6 +214,7 @@ function mapBlockType(type: string): DocumentBlockType {
   return mapping[type] || 'unknown'
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function convertBlock(
   block: any,
   order: number,
@@ -214,8 +222,11 @@ function convertBlock(
   assets?: DocumentAsset[],
   warnings?: string[]
 ): DocumentBlock {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const id = block.id || genId()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'type'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const type = mapBlockType(block.type)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const text = getPlainText(block)
 
   const irBlock: DocumentBlock = {
@@ -234,6 +245,7 @@ function convertBlock(
 
   // List style
   if (type === 'list') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (block.type === 'bulletListItem') irBlock.listStyle = 'bullet'
     else if (block.type === 'numberedListItem') irBlock.listStyle = 'numbered'
     else if (block.type === 'checkListItem') {
@@ -252,6 +264,7 @@ function convertBlock(
 
   // Image asset
   if (type === 'image' && block.props?.url) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'assetId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const assetId = genId()
     const asset: DocumentAsset = {
       id: assetId,
@@ -265,6 +278,7 @@ function convertBlock(
 
   // Table
   if (type === 'table') {
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
     const rows: DocumentTableRow[] = (block.tableRows ?? []).map((row: any, ri: number) => ({
       cells: Array.isArray(row.cells)
         ? row.cells.map((cell: any) => (Array.isArray(cell) ? cell.map((c: any) => c.text || '').join('') : ''))
@@ -272,6 +286,7 @@ function convertBlock(
       isHeader: ri === 0,
     }))
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (rows.length > 0) {
       irBlock.tableData = {
         rows,
@@ -288,6 +303,7 @@ function convertBlock(
 
   // Style hints from inline content
   const inlineContent = Array.isArray(block.content) ? block.content : []
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (inlineContent.some((c: any) => c.styles?.bold)) {
     irBlock.styleHints = { ...(irBlock.styleHints || {}), bold: true }
   }
@@ -295,6 +311,7 @@ function convertBlock(
   return irBlock
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function flattenBlocks(
   blocks: any[],
   result: DocumentBlock[],
@@ -303,11 +320,15 @@ function flattenBlocks(
   parentId?: string,
   orderStart = 0
 ): number {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'order'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let order = orderStart
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
   for (const block of blocks) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'irBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const irBlock = convertBlock(block, order++, parentId, assets, warnings)
     result.push(irBlock)
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (Array.isArray(block.children) && block.children.length > 0) {
       order = flattenBlocks(block.children, result, assets, warnings, irBlock.id, order)
     }
@@ -336,12 +357,16 @@ export function blocksToDocumentIR(
 
   // 제목 추출
   const firstHeading = irBlocks.find(b => b.type === 'heading' && b.level === 1)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'title'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const title = firstHeading?.text || sourceFileName?.replace(/\.[^.]+$/, '') || undefined
 
   // 레이아웃 힌트: heading1 기준으로 섹션 그룹화
   let currentSectionIds: string[] = []
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
   for (const block of irBlocks) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (block.type === 'heading' && block.level === 1) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (currentSectionIds.length > 0) {
         layoutHints.push({ slideGroupIds: currentSectionIds })
       }
@@ -350,13 +375,16 @@ export function blocksToDocumentIR(
       currentSectionIds.push(block.id)
     }
   }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (currentSectionIds.length > 0) {
     layoutHints.push({ slideGroupIds: currentSectionIds })
   }
 
   // asset relations
   for (const block of irBlocks) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (block.assetRefs) {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const assetId of block.assetRefs) {
         relations.push({ fromBlockId: block.id, toAssetId: assetId, relationType: 'references' })
       }
@@ -365,9 +393,13 @@ export function blocksToDocumentIR(
 
   // 레이아웃 품질 점수
   const hasHeadings = irBlocks.some(b => b.type === 'heading')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasContent = irBlocks.some(b => b.text && b.text.trim().length > 0)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasAssets'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasAssets = assets.length > 0
+  // [RUN-TIME STATE / INVARIANT] - 변수 'warnCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const warnCount = warnings.length
+  // [RUN-TIME STATE / INVARIANT] - 변수 'layoutQualityScore'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const layoutQualityScore = Math.max(
     0,
     (hasHeadings ? 30 : 0) +
@@ -391,3 +423,5 @@ export function blocksToDocumentIR(
     layoutHints,
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

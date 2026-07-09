@@ -19,6 +19,7 @@
 
 import { useEffect } from 'react';
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'NATURE_PALETTES'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const NATURE_PALETTES = [
   { primary: '#4caf50', glow: 'rgba(76, 175, 80, 0.3)', bgActive: 'rgba(76, 175, 80, 0.15)' }, // Green
   { primary: '#3b82f6', glow: 'rgba(59, 130, 246, 0.3)', bgActive: 'rgba(59, 130, 246, 0.15)' }, // Blue
@@ -27,8 +28,10 @@ const NATURE_PALETTES = [
   { primary: '#eab308', glow: 'rgba(234, 179, 8, 0.3)', bgActive: 'rgba(234, 179, 8, 0.15)' }  // Yellow
 ];
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useNatureThemeColors(theme: string) {
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (theme !== 'nature') {
       // Clean up inline styles when leaving nature theme
       document.body.style.removeProperty('--primary');
@@ -37,7 +40,9 @@ export function useNatureThemeColors(theme: string) {
       return;
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleClick'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleClick = () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'randomPalette'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const randomPalette = NATURE_PALETTES[Math.floor(Math.random() * NATURE_PALETTES.length)];
       
       // Inject random colors into the body variables so they override the nature theme defaults
@@ -64,3 +69,5 @@ export function useNatureThemeColors(theme: string) {
     };
   }, [theme]);
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

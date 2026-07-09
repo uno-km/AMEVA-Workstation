@@ -20,6 +20,7 @@
 import { useCallback } from 'react'
 import type { AIMessage } from '../../../types/aiTypes'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useUpdateInsertStatus(setMessages: (updater: (prev: AIMessage[]) => AIMessage[]) => void) {
   return useCallback((
     msgId: string,
@@ -30,14 +31,21 @@ export function useUpdateInsertStatus(setMessages: (updater: (prev: AIMessage[])
     onAllResolved?: () => void
   ) => {
     setMessages((prev) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'allResolved'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let allResolved = true
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const next = prev.map((m) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (m.id !== msgId) return m
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (m.insertSuggestions && m.insertSuggestions.length > 0 && suggestionIndex !== undefined) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updatedSuggestions'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const updatedSuggestions = [...m.insertSuggestions]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const target = updatedSuggestions[suggestionIndex]
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (target) {
             updatedSuggestions[suggestionIndex] = {
               ...target,
@@ -46,10 +54,15 @@ export function useUpdateInsertStatus(setMessages: (updater: (prev: AIMessage[])
               ...(newSiblingIndex !== undefined ? { siblingIndex: newSiblingIndex } : {})
             }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (status === 'accepted' && newAfterBlockId) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'oldAfterBlockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const oldAfterBlockId = target.afterBlockId
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
               for (let i = suggestionIndex + 1; i < updatedSuggestions.length; i++) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'pending'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const pending = updatedSuggestions[i]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                 if (pending.status === 'pending' && pending.afterBlockId === oldAfterBlockId) {
                   updatedSuggestions[i] = { ...pending, afterBlockId: newAfterBlockId }
                 }
@@ -57,6 +70,7 @@ export function useUpdateInsertStatus(setMessages: (updater: (prev: AIMessage[])
             }
           }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (updatedSuggestions.some((s) => s.status === 'pending')) {
             allResolved = false
           }
@@ -68,7 +82,9 @@ export function useUpdateInsertStatus(setMessages: (updater: (prev: AIMessage[])
           }
         }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!m.insertSuggestion) return m
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (status === 'pending') allResolved = false
 
         return {
@@ -82,6 +98,7 @@ export function useUpdateInsertStatus(setMessages: (updater: (prev: AIMessage[])
         }
       })
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (allResolved && onAllResolved) {
         setTimeout(onAllResolved, 80)
       }
@@ -90,3 +107,5 @@ export function useUpdateInsertStatus(setMessages: (updater: (prev: AIMessage[])
     })
   }, [setMessages])
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

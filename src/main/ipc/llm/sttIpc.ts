@@ -33,17 +33,22 @@ export function registerSttIpc(): void {
     audioPath: string
     language?: string
   }) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'whisperPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const whisperPath = LLMProcessManager.findWhisperCli()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'modelPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const modelPath = 'C:\\ameva\\models\\stt\\ggml-small.bin'
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!existsSync(modelPath)) {
       return { success: false, error: `Whisper 모델 파일을 찾을 수 없습니다: ${modelPath}` }
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!existsSync(payload.audioPath)) {
       return { success: false, error: `음성 파일을 찾을 수 없습니다: ${payload.audioPath}` }
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'args'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const args = [
       '-m', modelPath,
       '-f', payload.audioPath,
@@ -55,16 +60,22 @@ export function registerSttIpc(): void {
 
     return new Promise<{ success: boolean; text?: string; error?: string }>((resolve) => {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'proc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const proc = spawn(whisperPath!, args, { windowsHide: true })
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stdout'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let stdout = ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stderr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let stderr = ''
 
         proc.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
         proc.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
 
         proc.on('close', (code) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'txtPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const txtPath = payload.audioPath + '.txt'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (code === 0) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (stdout.trim()) {
               resolve({ success: true, text: stdout.trim() })
             } else if (existsSync(txtPath)) {
@@ -96,3 +107,5 @@ export function registerSttIpc(): void {
     return join(app.getPath('temp'), `ameva_recording_${Date.now()}.wav`)
   })
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

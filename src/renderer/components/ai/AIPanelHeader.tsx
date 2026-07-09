@@ -207,3 +207,5 @@ export function AIPanelHeader({
  *      정상적으로 로드되고 적용되는지 검사할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

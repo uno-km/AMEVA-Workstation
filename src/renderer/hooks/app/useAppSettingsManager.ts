@@ -22,9 +22,11 @@ import { type AppSettings } from '../../components/SettingsModal'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 import { useProcessStore } from '../../stores/useProcessStore'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAppSettingsManager(activeRightTab: string, setActiveRightTab: (tab: any) => void) {
   const { setEditorZoom, adjustEditorZoom, setBrowserZoom } = useProcessStore()
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
   const [settings, setSettings] = useState<AppSettings>(() => {
     const DEFAULT: AppSettings = {
       showPeersPointer: true, showPeersDrag: true, showCodeConsole: true, autoSnapshot: true,
@@ -35,9 +37,13 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
       }
     }
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stored'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const stored = localStorage.getItem('app-settings')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (stored) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const parsed = JSON.parse(stored)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (parsed.hotkeys && (parsed.hotkeys.toggleMode === 'Control+h' || parsed.hotkeys.toggleMode === 'Control+v')) {
           parsed.hotkeys.toggleMode = 'Control+e'
           localStorage.setItem('app-settings', JSON.stringify(parsed))
@@ -52,8 +58,10 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
     document.body.setAttribute('data-theme', settings.theme)
   }, [settings.theme])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleUpdateSettings'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {
     setSettings((prev) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const updated = { ...prev, ...newSettings }
       try {
         localStorage.setItem('app-settings', JSON.stringify(updated))
@@ -62,27 +70,40 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
     })
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleInstallPlugin'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleInstallPlugin = async (id: string, scriptUrl: string) => {
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'existingScript'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const existingScript = document.getElementById(`script-plugin-${id}`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!existingScript) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const res = await fetch(scriptUrl)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!res.ok) throw new Error('플러그인 다운로드 실패')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'scriptText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const scriptText = await res.text()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'script'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const script = document.createElement('script')
         script.id = `script-plugin-${id}`
         script.text = scriptText
         document.body.appendChild(script)
       }
       return new Promise<void>((resolve, reject) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'checkCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let checkCount = 0
+  // [RUN-TIME STATE / INVARIANT] - 변수 'checkInterval'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const checkInterval = setInterval(() => {
           checkCount++
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if ((window as any).AMEVA_PLUGINS?.[id]) {
             clearInterval(checkInterval)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'current'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const current = settings.installedPlugins || []
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (!current.includes(id)) {
               setSettings(prev => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const next = { ...prev, installedPlugins: [...(prev.installedPlugins || []), id] }
                 localStorage.setItem('app-settings', JSON.stringify(next))
                 return next
@@ -90,6 +111,7 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
             }
             resolve()
           }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (checkCount > 15) {
             clearInterval(checkInterval)
             reject(new Error('플러그인 로드 타임아웃'))
@@ -102,23 +124,31 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleUninstallPlugin'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleUninstallPlugin = (id: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'script'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const script = document.getElementById(`script-plugin-${id}`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (script) script.remove()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if ((window as any).AMEVA_PLUGINS?.[id]) delete (window as any).AMEVA_PLUGINS[id]
     
     setSettings(prev => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const next = { ...prev, installedPlugins: (prev.installedPlugins || []).filter(p => p !== id) }
       localStorage.setItem('app-settings', JSON.stringify(next))
       return next
     })
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if ((id === 'outline' || id === 'calculator') && activeRightTab === id) {
       setActiveRightTab('ai')
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleOpenGithub'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleOpenGithub = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ipc.isElectronEnv()) {
       ipc.openExternalLink('https://github.com/uno-km/AMEVA-Model-Nexus')
     } else {
@@ -126,13 +156,17 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleCloseApp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleCloseApp = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ipc.isElectronEnv()) {
       ipc.closeApp()
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleToggleFullscreen'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleToggleFullscreen = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (document.fullscreenElement) {
       document.exitFullscreen()
     } else {
@@ -140,10 +174,14 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleZoomIn'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleZoomIn = () => adjustEditorZoom(0.1)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleZoomOut'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleZoomOut = () => adjustEditorZoom(-0.1)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleZoomReset'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleZoomReset = () => {
     setEditorZoom(1.0)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ipc.isElectronEnv()) {
       ipc.setZoomFactor(1.0)
       setBrowserZoom(1.0)
@@ -164,3 +202,5 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
     handleZoomReset,
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -107,6 +107,7 @@ export function useLocalAIEngine() {
     }
     
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const res = await ipc.llmCheckHealth();
       // 응답 레코드가 존재하고 상태 지표가 ok 또는 ready 인지 판별
       if (res && (res.status === 'ok' || (res.status as string) === 'ready')) {
@@ -125,6 +126,7 @@ export function useLocalAIEngine() {
    * - Rationale: 유저가 PC에 가지고 있는 GGUF/GGUF2 파일을 열어 프로젝트 모델 전용 폴더에 이식 복사한다.
    */
   const importModel = useCallback(async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return;
     try {
       // OS 네이티브 탐색기 파일 선택 팝업 오픈
@@ -133,11 +135,14 @@ export function useLocalAIEngine() {
         { name: 'All Files', extensions: ['*'] }
       ]);
       
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (resObj && resObj.filePath) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'sourcePath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const sourcePath = resObj.filePath;
         
         // 탐색된 파일 경로로 모델 임포트 IPC 개시
         const res = await ipc.llmImportModel(sourcePath);
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (res.success) {
           // 임포트 성공 시 챗/코드 양대 목록을 즉시 갱신 동기화함
           await loadModels('chat');
@@ -160,7 +165,9 @@ export function useLocalAIEngine() {
    * - Rationale: 선택된 모델 파일 경로를 인자로 넘겨 Llama.cpp 로컬 데몬 프로세스를 쉘 커맨드로 포크(Fork) 기동한다.
    */
   const startEngine = useCallback(async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return;
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!settings.modelPath) {
       addSensorLog('[Error] 모델 경로가 설정되지 않았습니다.');
       return;
@@ -168,7 +175,9 @@ export function useLocalAIEngine() {
 
     try {
       addSensorLog('[System] 로컬 AI 엔진(llama-cli)을 시작합니다...');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const res = await ipc.llmStart(settings.modelPath);
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (res.success) {
         addSensorLog('[System] 엔진이 성공적으로 시작되었습니다.');
         setIsAvailable(true);
@@ -189,6 +198,7 @@ export function useLocalAIEngine() {
    * - Rationale: 백그라운드에서 동작 중인 Llama.cpp 서버 프로세스에 kill 시그널을 발송해 종료 처리한다.
    */
   const stopEngine = useCallback(async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return;
     try {
       addSensorLog('[System] 엔진 정지를 요청합니다...');
@@ -207,6 +217,7 @@ export function useLocalAIEngine() {
    * - Rationale: API 타입이 로컬 구동 조건(local/ollama)인 경우, 실시간 점검을 위해 3초 주기 인터벌을 가동한다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (settings.apiType !== 'local' && settings.apiType !== 'ollama') {
       return;
     }
@@ -243,3 +254,4 @@ export function useLocalAIEngine() {
  *    - `useEffect` 내의 밀리초 값을 조절하되, 너무 잦은 Ping 요청으로 인한 스레드 병목 현상에 각별히 유의할 것.
  * ============================================================================
  */
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

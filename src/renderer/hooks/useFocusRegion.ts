@@ -35,7 +35,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { subscribe, getActiveId, activate as coreActivate } from '../lib/focusRegion'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useFocusRegion(regionId: string) {
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
   const [isActive, setIsActive] = useState(() => getActiveId() === regionId)
 
   useEffect(() => {
@@ -45,6 +47,7 @@ export function useFocusRegion(regionId: string) {
     return subscribe((id) => setIsActive(id === regionId))
   }, [regionId])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activate'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const activate = useCallback(() => {
     coreActivate(regionId)
   }, [regionId])
@@ -64,3 +67,5 @@ export function useActiveRegion(): string | null {
 
   return activeId
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

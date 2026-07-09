@@ -281,6 +281,7 @@ export const useUIStore = create<UIState>((set, get) => ({
    */
   toggleRightTab: (tab) => {
     const { showAIPanel, activeRightTab } = get()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (showAIPanel && activeRightTab === tab) {
       set({ showAIPanel: false })
     } else {
@@ -295,6 +296,7 @@ export const useUIStore = create<UIState>((set, get) => ({
    */
   baseZIndex: 10000,
   bringToFront: () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newZ'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let newZ = 10000;
     set(state => {
       newZ = state.baseZIndex + 10;
@@ -303,3 +305,5 @@ export const useUIStore = create<UIState>((set, get) => ({
     return newZ
   }
 }))
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

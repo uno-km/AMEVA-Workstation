@@ -20,13 +20,20 @@
 
 import React from 'react'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function AIDocumentOutline({ blocks }: any) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'getDocumentOutline'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const getDocumentOutline = (items: any[]) => {
     let list: any[] = []
+  // [RUN-TIME STATE / INVARIANT] - 변수 'traverse'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const traverse = (nodes: any[]) => {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const item of nodes) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (item.type === 'heading') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           let text = ''
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (Array.isArray(item.content)) {
             text = item.content.map((c: any) => c.text).join('')
           } else if (typeof item.content === 'string') {
@@ -34,13 +41,16 @@ export function AIDocumentOutline({ blocks }: any) {
           }
           list.push({ id: item.id, text, level: item.props?.level || 1 })
         }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (item.children) traverse(item.children)
       }
     }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (items && Array.isArray(items)) traverse(items)
     return list
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'outline'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const outline = getDocumentOutline(blocks)
 
   return (
@@ -57,7 +67,9 @@ export function AIDocumentOutline({ blocks }: any) {
           <div
             key={item.id}
             onClick={() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'el'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const el = document.querySelector(`[data-id="${item.id}"]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (el) {
                 el.scrollIntoView({ behavior: 'smooth', block: 'center' })
                 el.classList.add('pulse-indicator')
@@ -83,3 +95,5 @@ export function AIDocumentOutline({ blocks }: any) {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

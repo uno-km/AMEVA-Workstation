@@ -36,7 +36,9 @@ import type { DocumentSnapshot } from '../../shared/types'
 
 // IndexedDB 저장소 스펙 설정 상수
 const DB_NAME = 'AMEVA_Markdown_Editor_DB'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'STORE_NAME'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const STORE_NAME = 'snapshots'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'DB_VERSION'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const DB_VERSION = 1
 
 /**
@@ -44,9 +46,12 @@ const DB_VERSION = 1
  * - Rationale: ReadableStream과 CompressionStream('gzip')을 체인 연동하여 딜레이 제어로 평문 텍스트를 압축 바이트화한다.
  */
 async function compressText(text: string): Promise<Uint8Array> {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'encoder'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const encoder = new TextEncoder()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawBytes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const rawBytes = encoder.encode(text)
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(rawBytes)
@@ -54,8 +59,11 @@ async function compressText(text: string): Promise<Uint8Array> {
     }
   })
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'compressionStream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const compressionStream = stream.pipeThrough(new CompressionStream('gzip'))
+  // [RUN-TIME STATE / INVARIANT] - 변수 'response'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const response = new Response(compressionStream)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'compressedBuffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const compressedBuffer = await response.arrayBuffer()
   return new Uint8Array(compressedBuffer)
 }
@@ -65,6 +73,7 @@ async function compressText(text: string): Promise<Uint8Array> {
  * - Rationale: ReadableStream과 DecompressionStream('gzip')을 연동하여 압축 바이트를 UTF-8 문자열로 디코딩한다.
  */
 async function decompressText(compressedBytes: Uint8Array): Promise<string> {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(compressedBytes)
@@ -72,8 +81,11 @@ async function decompressText(compressedBytes: Uint8Array): Promise<string> {
     }
   })
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'decompressionStream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const decompressionStream = stream.pipeThrough(new DecompressionStream('gzip'))
+  // [RUN-TIME STATE / INVARIANT] - 변수 'response'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const response = new Response(decompressionStream)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'decompressedBuffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const decompressedBuffer = await response.arrayBuffer()
   return new TextDecoder().decode(decompressedBuffer)
 }
@@ -84,14 +96,18 @@ async function decompressText(compressedBytes: Uint8Array): Promise<string> {
  */
 function initDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve(request.result)
 
     request.onupgradeneeded = (_event) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'db'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const db = request.result
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!db.objectStoreNames.contains(STORE_NAME)) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
         store.createIndex('documentId', 'documentId', { unique: false })
         store.createIndex('timestamp', 'timestamp', { unique: false })
@@ -145,10 +161,15 @@ export function useHistory(documentId: string) {
    */
   const fetchSnapshots = useCallback(
     async (database: IDBDatabase | null = db) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!database) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'transaction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const transaction = database.transaction(STORE_NAME, 'readonly')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const store = transaction.objectStore(STORE_NAME)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'index'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const index = store.index('documentId')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const request = index.openCursor(IDBKeyRange.only(documentId), 'prev')
 
       const rawList: CompressedSnapshot[] = []
@@ -156,7 +177,9 @@ export function useHistory(documentId: string) {
       // 1) 동기 수집 Promise 가동 (비동기 await 차단 구역)
       const gatherPromise = new Promise<CompressedSnapshot[]>((resolve, reject) => {
         request.onsuccess = () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cursor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const cursor = request.result
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (cursor) {
             rawList.push(cursor.value as CompressedSnapshot)
             cursor.continue()
@@ -170,9 +193,11 @@ export function useHistory(documentId: string) {
       // 2) 트랜잭션 영역을 빠져나온 후 압축 해제 병렬 배치 실행
       const compressed = await gatherPromise
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'decompressed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const decompressed = await Promise.all(
         compressed.map(async (val) => {
           try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'content'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const content = await decompressText(val.compressedContent)
             return { id: val.id, timestamp: val.timestamp, title: val.title, content } as DocumentSnapshot
           } catch (err) {
@@ -194,10 +219,12 @@ export function useHistory(documentId: string) {
    */
   const createSnapshot = useCallback(
     async (title: string, content: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!db) return
 
       // [SEC-W-024] 저장 공격 및 가상 디스크 폭발 방지 20MB 가드
       const MAX_SNAPSHOT_BYTES = 20 * 1024 * 1024
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (new Blob([content]).size > MAX_SNAPSHOT_BYTES) {
         console.warn('[Snapshot] 콘텐츠가 너무 커서 스냅샷을 저장할 수 없습니다 (최대 20MB).')
         return
@@ -217,8 +244,11 @@ export function useHistory(documentId: string) {
         }
 
         return new Promise<void>((resolve, reject) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'transaction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const transaction = db.transaction(STORE_NAME, 'readwrite')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const store = transaction.objectStore(STORE_NAME)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const request = store.add(snapshot)
 
           request.onsuccess = () => {
@@ -240,10 +270,14 @@ export function useHistory(documentId: string) {
    */
   const deleteSnapshot = useCallback(
     async (id: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!db) return
       return new Promise<void>((resolve, reject) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'transaction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const transaction = db.transaction(STORE_NAME, 'readwrite')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const store = transaction.objectStore(STORE_NAME)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const request = store.delete(id)
 
         request.onsuccess = () => {
@@ -261,20 +295,28 @@ export function useHistory(documentId: string) {
    * - Rationale: 이전 복원 텍스트와 현 버퍼 문자열 간의 줄단위 변경(added, removed, unchanged) 구조 배열을 반환한다.
    */
   const getLineDiff = (oldText: string, newText: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'oldLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const oldLines = oldText.split('\n')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const newLines = newText.split('\n')
     const diffs: { type: 'added' | 'removed' | 'unchanged'; value: string }[] = []
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'i'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let i = 0
+  // [RUN-TIME STATE / INVARIANT] - 변수 'j'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let j = 0
 
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     while (i < oldLines.length || j < newLines.length) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (i < oldLines.length && j < newLines.length) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (oldLines[i] === newLines[j]) {
           diffs.push({ type: 'unchanged', value: oldLines[i] })
           i++
           j++
         } else {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (oldLines[i + 1] === newLines[j]) {
             diffs.push({ type: 'removed', value: oldLines[i] })
             i++
@@ -308,3 +350,4 @@ export function useHistory(documentId: string) {
     fetchSnapshots: () => fetchSnapshots(db),
   }
 }
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

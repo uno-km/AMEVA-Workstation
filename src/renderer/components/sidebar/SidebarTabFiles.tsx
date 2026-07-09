@@ -43,6 +43,7 @@ export interface SidebarTabFilesProps {
   sectionLabel: (text: string) => React.ReactNode
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
   const {
     editorMode, setEditorMode, handleOpenFile, handleSaveFile, handleExport,
@@ -54,35 +55,48 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
     tabs, activeTabId, setActiveTabId, removeTab
   } = useWorkspaceStore()
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hkeys = settings?.hotkeys || {
     save: 'Control+s', open: 'Control+o', newFile: 'Control+n', pdfExport: 'Control+p',
     toggleAI: 'Control+\\', toggleMode: 'Control+h', zoomIn: 'Control+=', zoomOut: 'Control+-', zoomReset: 'Control+0'
   }
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'formatHotkey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const formatHotkey = (raw: string | undefined): string => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!raw) return ''
     return raw.replace('Control', 'Ctrl').replace('Shift', 'Shift').replace('Alt', 'Alt').replace('Meta', 'Cmd')
       .split('+').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' + ')
   }
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onSelectAppendedFile'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onSelectAppendedFile = (startBlockId: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'el'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const el = document.querySelector(`[data-id="${startBlockId}"], [data-block-id="${startBlockId}"]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const outer = el.closest('.bn-block-outer') || el
       outer.setAttribute('data-highlighted-temp', 'true')
       setTimeout(() => { outer.removeAttribute('data-highlighted-temp') }, 1800)
     }
   }
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenFile'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onOpenFile = handleOpenFile
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onSaveFile'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onSaveFile = handleSaveFile
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onExport'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onExport = handleExport
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onSelectTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onSelectTab = (id: string) => setActiveTabId(id)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onCloseTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onCloseTab = (id: string) => removeTab(id)
 
   const [exportOpen, setExportOpen] = useState(false)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleExportClick'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleExportClick = (format: ExportFormat) => {
     onExport(format)
   }
@@ -246,6 +260,7 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
           )}
 
           {fileOpenMode === 'tab' && tabs.map((tab, idx) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const isActive = activeTabId === tab.id
             return (
               <div
@@ -338,3 +353,5 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

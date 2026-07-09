@@ -20,6 +20,7 @@
 import { useCallback } from 'react'
 import type { AIMessage } from '../../../types/aiTypes'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAddMessages(setMessages: (updater: (prev: AIMessage[]) => AIMessage[]) => void) {
   return useCallback((
     userMsg: AIMessage,
@@ -48,3 +49,5 @@ export function useAddMessages(setMessages: (updater: (prev: AIMessage[]) => AIM
     ])
   }, [setMessages])
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

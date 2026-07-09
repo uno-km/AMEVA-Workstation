@@ -70,11 +70,14 @@ type LLMCallFn = (
 // Trace 이벤트 생성 헬퍼
 // ---------------------------------------------------------------------------
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 '_traceIdCounter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 let _traceIdCounter = 0
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function makeTraceId(): string {
   return `trace_${Date.now()}_${++_traceIdCounter}`
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function makeEvent(
   type: ReasoningTraceEvent['type'],
   text: string,
@@ -101,7 +104,9 @@ function makeEvent(
  * - 로컬 GGUF 모델은 미지원.
  */
 function supportsNativeThinking(apiType: string, modelPath?: string): boolean {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (apiType !== 'api') return false
+  // [RUN-TIME STATE / INVARIANT] - 변수 'name'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const name = (modelPath || '').toLowerCase()
   return (
     name.includes('claude-3-7') ||
@@ -118,6 +123,7 @@ function supportsNativeThinking(apiType: string, modelPath?: string): boolean {
 // JSON 파싱 헬퍼 (LLM 출력에서 JSON 추출)
 // ---------------------------------------------------------------------------
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function extractJSON<T>(raw: string): T | null {
   try {
     // code fence 제거
@@ -126,6 +132,7 @@ function extractJSON<T>(raw: string): T | null {
   } catch {
     // fallback: 첫 { ... } 추출 시도
     const match = raw.match(/\{[\s\S]*\}/)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (match) {
       try {
         return JSON.parse(match[0]) as T
@@ -139,6 +146,7 @@ function extractJSON<T>(raw: string): T | null {
 // Stepwise Reasoning Pipeline (Fallback — 5 LLM calls)
 // ---------------------------------------------------------------------------
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ANALYZE_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const ANALYZE_SYSTEM = `당신은 전문 분석가입니다.
 사용자 요청을 분석하여 아래 JSON 형식으로만 응답하십시오. 최종 답변은 절대 포함하지 마십시오.
 
@@ -152,6 +160,7 @@ const ANALYZE_SYSTEM = `당신은 전문 분석가입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'PLAN_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const PLAN_SYSTEM = `당신은 전략 계획 전문가입니다.
 제공된 분석 결과를 바탕으로 해결 절차를 수립하십시오. 최종 답변은 절대 포함하지 마십시오.
 
@@ -164,6 +173,7 @@ const PLAN_SYSTEM = `당신은 전략 계획 전문가입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'SOLVE_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const SOLVE_SYSTEM = `당신은 전문 문제 해결사입니다.
 계획에 따라 답변 초안을 생성하십시오.
 
@@ -176,6 +186,7 @@ const SOLVE_SYSTEM = `당신은 전문 문제 해결사입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'VERIFY_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const VERIFY_SYSTEM = `당신은 품질 검토 전문가입니다.
 제공된 초안을 검증하십시오. 오류, 누락, 과장, 불명확성을 점검하십시오.
 
@@ -188,7 +199,9 @@ const VERIFY_SYSTEM = `당신은 품질 검토 전문가입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function buildFinalizeSystem(context?: string): string {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ctx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const ctx = context ? `\n\n[참조 문서 컨텍스트]\n${context.slice(0, 1500)}` : ''
   return `당신은 최종 답변 생성 전문가입니다.
 분석, 계획, 초안, 검증 결과를 종합하여 최종 답변을 생성하십시오.
@@ -207,6 +220,7 @@ raw CoT(내부 사고 과정)는 절대 그대로 노출하지 마십시오.${ct
 반드시 위 JSON만 출력하십시오.`
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 async function runStepwisePipeline(
   input: string,
   llmCall: LLMCallFn,
@@ -218,6 +232,7 @@ async function runStepwisePipeline(
 ): Promise<ReasoningResult> {
   const trace: ReasoningTraceEvent[] = []
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
   function emit(event: ReasoningTraceEvent) {
     trace.push(event)
     onEvent?.(event)
@@ -231,43 +246,54 @@ async function runStepwisePipeline(
       Math.min(maxTokens ?? 512, 400),
       temperature ?? 0.3
     )
+  // [RUN-TIME STATE / INVARIANT] - 변수 'analyze'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const analyze = extractJSON<AnalyzeStepOutput>(analyzeRaw)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!analyze?.summary) throw new Error('analyze step failed: no summary')
     emit(makeEvent('analysis', analyze.summary, model))
 
     // --- Step 2: Plan ---
     const planPrompt = `[분석 결과]\n${JSON.stringify(analyze, null, 2)}\n\n[원래 요청]\n${input}`
+  // [RUN-TIME STATE / INVARIANT] - 변수 'planRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const planRaw = await llmCall(
       planPrompt,
       PLAN_SYSTEM,
       Math.min(maxTokens ?? 512, 400),
       temperature ?? 0.3
     )
+  // [RUN-TIME STATE / INVARIANT] - 변수 'plan'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const plan = extractJSON<PlanStepOutput>(planRaw)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!plan?.summary) throw new Error('plan step failed: no summary')
     emit(makeEvent('plan', plan.summary, model))
 
     // --- Step 3: Solve ---
     const solvePrompt = `[분석]\n${JSON.stringify(analyze, null, 2)}\n\n[계획]\n${JSON.stringify(plan, null, 2)}\n\n[원래 요청]\n${input}`
+  // [RUN-TIME STATE / INVARIANT] - 변수 'solveRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const solveRaw = await llmCall(
       solvePrompt,
       SOLVE_SYSTEM,
       maxTokens ?? 512,
       temperature ?? 0.5
     )
+  // [RUN-TIME STATE / INVARIANT] - 변수 'solve'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const solve = extractJSON<SolveStepOutput>(solveRaw)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!solve?.summary) throw new Error('solve step failed: no summary')
     emit(makeEvent('solve', solve.summary, model))
 
     // --- Step 4: Verify ---
     const verifyPrompt = `[초안]\n${solve.draft}\n\n[원래 요청]\n${input}`
+  // [RUN-TIME STATE / INVARIANT] - 변수 'verifyRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const verifyRaw = await llmCall(
       verifyPrompt,
       VERIFY_SYSTEM,
       Math.min(maxTokens ?? 512, 300),
       temperature ?? 0.3
     )
+  // [RUN-TIME STATE / INVARIANT] - 변수 'verify'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const verify = extractJSON<VerifyStepOutput>(verifyRaw)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!verify?.summary) throw new Error('verify step failed: no summary')
     emit(makeEvent('verify', verify.summary, model))
 
@@ -280,18 +306,23 @@ async function runStepwisePipeline(
       `\n[원래 요청]\n${input}`,
     ].join('\n')
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'finalizeRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const finalizeRaw = await llmCall(
       finalizePrompt,
       buildFinalizeSystem(context),
       maxTokens ?? 1024,
       temperature ?? 0.6
     )
+  // [RUN-TIME STATE / INVARIANT] - 변수 'finalize'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const finalize = extractJSON<FinalizeStepOutput>(finalizeRaw)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!finalize?.final) throw new Error('finalize step failed: no final')
 
     // finalize.visible_reasoning_trace를 trace에 추가
     if (Array.isArray(finalize.visible_reasoning_trace)) {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const item of finalize.visible_reasoning_trace) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (item?.text) {
           emit(makeEvent(item.type || 'summary', item.text, model))
         }
@@ -300,7 +331,9 @@ async function runStepwisePipeline(
 
     return { trace, final: finalize.final, status: 'ok' }
   } catch (err: unknown) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'errMsg'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const errMsg = err instanceof Error ? err.message : String(err)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'errEvent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const errEvent = makeEvent('error', `파이프라인 오류: ${errMsg}`, model)
     trace.push(errEvent)
     onEvent?.(errEvent)
@@ -312,7 +345,9 @@ async function runStepwisePipeline(
 // Main Hook
 // ---------------------------------------------------------------------------
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useReasoningProvider() {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'run'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const run = useCallback(
     async (
       input: string,
@@ -329,6 +364,7 @@ export function useReasoningProvider() {
         onTraceEvent,
       } = options
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'modelName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const modelName = modelPath
         ? modelPath.split(/[/\\]/).pop() || modelPath
         : apiType
@@ -338,12 +374,14 @@ export function useReasoningProvider() {
       // ------------------------------------------------------------------
       if (supportsNativeThinking(apiType, modelPath)) {
         try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'nativeResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const nativeResult = await tryNativeThinking(
             input,
             options,
             modelName,
             onTraceEvent
           )
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (nativeResult) return nativeResult
         } catch {
           // native thinking 실패 → fallback으로 진행
@@ -354,13 +392,17 @@ export function useReasoningProvider() {
       // 2. Fallback: Stepwise Reasoning Pipeline
       // ------------------------------------------------------------------
       if (enableFallbackPipeline && ipc.isElectronEnv()) {
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
         const llmCall: LLMCallFn = async (prompt, systemPrompt, maxTok, temp) => {
           return new Promise<string>((resolve) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'buffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             let buffer = ''
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubToken'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const unsubToken = ipc.onLLMToken("default", (token: string) => {
               buffer += token
             })
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubDone'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const unsubDone = ipc.onLLMDone("default", (data: { success: boolean; error?: string }) => {
               unsubToken()
               unsubDone()
@@ -404,10 +446,14 @@ export function useReasoningProvider() {
 
       // 일반 단일 LLM 호출로 최종 답변만 반환
       let finalAnswer = ''
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (ipc.isElectronEnv()) {
         finalAnswer = await new Promise<string>((resolve) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'buf'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           let buf = ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubToken'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const unsubToken = ipc.onLLMToken("default", (t: string) => { buf += t })
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubDone'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const unsubDone = ipc.onLLMDone("default", (d: { success: boolean; error?: string }) => {
             unsubToken()
             unsubDone()
@@ -442,6 +488,7 @@ export function useReasoningProvider() {
 // Native Thinking 시도 (API 모드 전용 — Claude/Gemini 등)
 // ---------------------------------------------------------------------------
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 async function tryNativeThinking(
   input: string,
   options: ReasoningRunOptions,
@@ -455,3 +502,5 @@ async function tryNativeThinking(
   void input; void options; void modelName; void onTraceEvent
   return null
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

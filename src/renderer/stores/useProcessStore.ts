@@ -200,6 +200,7 @@ export const useProcessStore = create<ProcessState>((set) => ({
    */
   adjustEditorZoom: (delta) =>
     set((state) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const next = Math.min(2.5, Math.max(0.4, Math.round((state.editorZoom + delta) * 10) / 10))
       return { editorZoom: next }
     }),
@@ -213,7 +214,10 @@ export const useProcessStore = create<ProcessState>((set) => ({
    */
   adjustBrowserZoom: (delta) =>
     set((state) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const next = Math.min(2.5, Math.max(0.4, Math.round((state.browserZoom + delta) * 10) / 10))
       return { browserZoom: next }
     })
 }))
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

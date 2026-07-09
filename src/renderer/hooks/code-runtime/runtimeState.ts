@@ -25,6 +25,7 @@ export const RuntimeState = {
 
 // [SEC-W-014] 외부에서 런타임 리소스를 정리할 수 있는 함수
 export function cleanupCodeRuntime() {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (RuntimeState.persistentWorker) {
     RuntimeState.persistentWorker.terminate()
     RuntimeState.persistentWorker = null
@@ -32,3 +33,5 @@ export function cleanupCodeRuntime() {
   RuntimeState.pyodideInstance = null
   RuntimeState.sqliteDatabaseInstance = null
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

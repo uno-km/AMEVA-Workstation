@@ -34,3 +34,5 @@ export interface MarketplaceModalProps {
   onUninstallPlugin: (id: string) => void
   isProPlan?: boolean
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

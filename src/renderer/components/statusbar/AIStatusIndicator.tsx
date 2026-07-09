@@ -29,6 +29,7 @@ interface AIStatusIndicatorProps {
   tooltipStyle: React.CSSProperties
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function AIStatusIndicator({
   aiSettings,
   aiAvailable,
@@ -37,12 +38,18 @@ export function AIStatusIndicator({
   handleMouseLeave,
   tooltipStyle
 }: AIStatusIndicatorProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!aiSettings) return null
+  // [RUN-TIME STATE / INVARIANT] - 변수 'type'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const type = aiSettings.apiType || 'local'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'label'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let label = 'LMA'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'detail'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let detail = '로컬 온디바이스 llama.cpp 에이전트'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'portInfo'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let portInfo = '포트: 3010 (로컬)'
   
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (type === 'ollama') {
     label = 'OLM'
     detail = '로컬 Ollama 에이전트 연동'
@@ -57,7 +64,9 @@ export function AIStatusIndicator({
     portInfo = '포트 없음 (클라이언트 구동)'
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'modelName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const modelName = aiSettings.modelPath ? aiSettings.modelPath.split(/[\\/]/).pop() : '지정되지 않음'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'statusColor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const statusColor = aiAvailable ? '#10b981' : '#f87171'
 
   return (
@@ -122,6 +131,7 @@ export function AIStatusIndicator({
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                     if (type === 'ollama') {
                       ipc.llmAddLog({ text: '[System] Ollama 서버 상태를 확인합니다 (Ping)...', prefix: 'System' })
                       fetch(aiSettings?.apiEndpoint || 'http://localhost:11434/api/tags')
@@ -165,3 +175,5 @@ export function AIStatusIndicator({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

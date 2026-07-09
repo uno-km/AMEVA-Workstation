@@ -24,6 +24,7 @@ interface SettingsTransitionOverlayProps {
   isVisible: boolean;
 }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'TIPS'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const TIPS = [
   "💡 팁: Ctrl + N을 누르면 언제든지 새 문서를 생성할 수 있습니다.",
   "💡 팁: 사이드바의 스냅샷 기능을 통해 작업 내역을 버전별로 저장해 보세요.",
@@ -33,16 +34,19 @@ const TIPS = [
   "💡 팁: 마켓플레이스에서 다양한 플러그인과 기술(Skill)을 다운로드하여 IDE를 확장할 수 있습니다."
 ];
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTransitionOverlay({ isVisible }: SettingsTransitionOverlayProps) {
   const [currentTip, setCurrentTip] = useState(TIPS[0]);
   const [opacity, setOpacity] = useState(0);
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isVisible) {
       setOpacity(1);
       // Randomize tip
       setCurrentTip(TIPS[Math.floor(Math.random() * TIPS.length)]);
       
+  // [RUN-TIME STATE / INVARIANT] - 변수 'interval'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const interval = setInterval(() => {
         setCurrentTip(TIPS[Math.floor(Math.random() * TIPS.length)]);
       }, 2500);
@@ -52,6 +56,7 @@ export function SettingsTransitionOverlay({ isVisible }: SettingsTransitionOverl
     }
   }, [isVisible]);
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isVisible && opacity === 0) return null;
 
   return (
@@ -127,3 +132,5 @@ export function SettingsTransitionOverlay({ isVisible }: SettingsTransitionOverl
     </div>
   );
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

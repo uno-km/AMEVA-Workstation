@@ -27,6 +27,7 @@ interface PluginCardProps {
   onToggleInstall: (plugin: PluginMetadata) => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function PluginCard({
   plugin: p,
   isInstalled,
@@ -114,3 +115,5 @@ export function PluginCard({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

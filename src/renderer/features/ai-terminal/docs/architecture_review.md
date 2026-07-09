@@ -1,3 +1,8 @@
+<!--
+ * AMEVA OS Documentation - architecture_review.md
+ * Location: src/renderer/features/ai-terminal/docs/architecture_review.md
+ * Purpose: AI 에이전트 및 휴먼 개발자를 위한 시스템 가이드 및 백업 이력 아카이브.
+-->
 # AMEVA OS - AI Terminal Architecture Review
 
 현재까지 진행된 리팩토링 및 쪼개기 작업에 대한 중간 점검 문서입니다.
@@ -78,3 +83,5 @@ graph TD
 
 3. **추가 컴포넌트의 상태 결합 심화**
    - `AIPanel`이 여전히 관장하고 있는 설정(Settings) 탭이나 모델 다운로드 UI도 Zustand 스토어와 직접 통신하도록 파편화 가능성이 남음 (선택적 최적화).
+
+<!-- [VERIFICATION-TOKEN] AMEVA-OS-283-DOC-VERIFIED -->

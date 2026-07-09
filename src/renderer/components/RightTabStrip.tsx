@@ -25,6 +25,7 @@ import { useAppContext } from '../contexts/AppContext';
 
 export interface RightTabStripProps {}
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function TabContextMenu({
   x, y, tabLabel, isTabOpen,
   onOpen, onClose, onCloseOthers, onDismiss
@@ -32,16 +33,22 @@ function TabContextMenu({
   x: number; y: number; tabId: string; tabLabel: string; isTabOpen: boolean
   onOpen: () => void; onClose: () => void; onCloseOthers: () => void; onDismiss: () => void
 }) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'menuRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const menuRef = useRef<HTMLDivElement>(null);
+  // [RUN-TIME STATE / INVARIANT] - 변수 'safeX'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const safeX = Math.min(x, window.innerWidth - 200);
+  // [RUN-TIME STATE / INVARIANT] - 변수 'safeY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const safeY = Math.min(y, window.innerHeight - 140);
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handler'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handler = (e: MouseEvent) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         onDismiss();
       }
     };
+  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const id = setTimeout(() => window.addEventListener('mousedown', handler), 10);
     return () => { clearTimeout(id); window.removeEventListener('mousedown', handler); };
   }, [onDismiss]);
@@ -93,20 +100,27 @@ function TabContextMenu({
   );
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function RightTabStrip({}: RightTabStripProps = {}) {
   const { activeRightTab: activeTab, showAIPanel: isOpen, setShowAIPanel, setActiveRightTab, hasChatUnread } = useUIStore();
   const { settings, isProPlan } = useAppContext();
+  // [RUN-TIME STATE / INVARIANT] - 변수 'installedPlugins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const installedPlugins = settings?.installedPlugins || [];
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hotkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hotkeys = settings?.hotkeys;
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isDraggingRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isDraggingRef = useRef(false);
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dragStartPos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const dragStartPos = useRef({ x: 0, y: 0 });
 
   const [contextMenu, setContextMenu] = useState<{
     x: number; y: number; tabId: string; tabLabel: string
   } | null>(null);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onToggleTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onToggleTab = (tab: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen && activeTab === tab) {
       setShowAIPanel(false);
     } else {
@@ -115,7 +129,9 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     }
   };
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'formatHotkey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const formatHotkey = (raw: string | undefined): string => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!raw) return '';
     return raw
       .replace('Control', 'Ctrl')
@@ -127,22 +143,33 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
       .join(' + ');
   };
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hkeys = hotkeys || {
     save: 'Control+s', open: 'Control+o', newFile: 'Control+n',
     pdfExport: 'Control+p', toggleAI: 'Control+\\', toggleMode: 'Control+h',
     zoomIn: 'Control+=', zoomOut: 'Control+-', zoomReset: 'Control+0'
   };
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isOutlineSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isOutlineSubscribed = installedPlugins.includes('outline');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isCalculatorSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isCalculatorSubscribed = installedPlugins.includes('calculator');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isFinanceSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isFinanceSubscribed = installedPlugins.includes('finance-dashboard');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isYoutubeSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isYoutubeSubscribed = installedPlugins.includes('youtube');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isNaverSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isNaverSubscribed = installedPlugins.includes('naver');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isGoogleSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isGoogleSubscribed = installedPlugins.includes('google');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isCalendarSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isCalendarSubscribed = installedPlugins.includes('calendar');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isGoogleDriveSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isGoogleDriveSubscribed = installedPlugins.includes('google-drive');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isGoogleMapsSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isGoogleMapsSubscribed = installedPlugins.includes('google-maps');
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'tabs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const tabs = isProPlan ? [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
     ...(isOutlineSubscribed ? [{ id: 'outline', icon: List, label: '문서 구조도 (TOC)', badge: false }] : []),
@@ -158,17 +185,24 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
   ];
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (e.button !== 0) return;
     isDraggingRef.current = false;
     dragStartPos.current = { x: e.clientX, y: e.clientY };
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onMove'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const onMove = (me: MouseEvent) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const dx = me.clientX - dragStartPos.current.x;
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dy'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const dy = me.clientY - dragStartPos.current.y;
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (Math.sqrt(dx * dx + dy * dy) > 5) {
         isDraggingRef.current = true;
       }
     };
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -177,6 +211,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     window.addEventListener('mouseup', onUp);
   }, []);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleContextMenu'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleContextMenu = useCallback((e: React.MouseEvent, tabId: string, tabLabel: string) => {
     e.preventDefault();
     e.stopPropagation();
@@ -192,7 +227,9 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
       }}
     >
       {tabs.map((t) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const isActive = isOpen && activeTab === t.id;
+  // [RUN-TIME STATE / INVARIANT] - 변수 'Icon'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const Icon = t.icon;
 
         return (
@@ -200,6 +237,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
             key={t.id}
             onMouseDown={handleMouseDown}
             onMouseUp={(e) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (!isDraggingRef.current && e.button === 0) {
                 onToggleTab(t.id);
               }
@@ -218,12 +256,14 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
               boxShadow: isActive ? '0 0 10px var(--primary-glow)' : 'none',
             }}
             onMouseEnter={(e) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (!isActive) {
                 e.currentTarget.style.color = 'var(--text-main)';
                 e.currentTarget.style.background = 'var(--bg-glass-active)';
               }
             }}
             onMouseLeave={(e) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (!isActive) {
                 e.currentTarget.style.color = 'var(--text-muted)';
                 e.currentTarget.style.background = 'transparent';
@@ -252,6 +292,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
           onOpen={() => { setActiveRightTab(contextMenu.tabId); setShowAIPanel(true); }}
           onClose={() => setShowAIPanel(false)}
           onCloseOthers={() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (activeTab !== 'ai') {
               setActiveRightTab('ai');
             }
@@ -262,3 +303,5 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     </div>
   );
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

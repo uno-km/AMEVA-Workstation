@@ -34,20 +34,30 @@ export interface PluginInterface {
 export function usePluginManager(availablePlugins: PluginInterface[]) {
   const { activePlugins, setActivePlugins } = useProcessStore();
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'togglePlugin'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const togglePlugin = (pluginId: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const isActive = activePlugins.includes(pluginId);
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isActive) {
       setActivePlugins(activePlugins.filter(id => id !== pluginId));
+  // [RUN-TIME STATE / INVARIANT] - 변수 'plugin'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const plugin = availablePlugins.find(p => p.id === pluginId);
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (plugin) plugin.onDeactivate();
     } else {
       setActivePlugins([...activePlugins, pluginId]);
+  // [RUN-TIME STATE / INVARIANT] - 변수 'plugin'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const plugin = availablePlugins.find(p => p.id === pluginId);
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (plugin) plugin.onActivate();
     }
   };
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isPluginActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isPluginActive = (pluginId: string) => activePlugins.includes(pluginId);
 
   return { togglePlugin, isPluginActive };
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

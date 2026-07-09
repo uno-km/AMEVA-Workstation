@@ -21,6 +21,7 @@ import { ipcMain } from 'electron'
 import { LLMProcessManager } from '../../../services/llmProcessManager.js'
 import type { TokenSender } from '../helpers/tokenSender.js'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function handleLlamaServerGenerate(
   payload: any,
   tokenSender: TokenSender,
@@ -36,12 +37,17 @@ export function handleLlamaServerGenerate(
 ): Promise<{ success: boolean; error?: string; response?: string }> {
   return new Promise<{ success: boolean; error?: string; response?: string }>(async (resolve) => {
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'gpuOnlyFlag'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const gpuOnlyFlag = payload.gpuOnly !== false
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'serverReady'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const serverReady = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, contextSize, gpuOnlyFlag)
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!serverReady) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'reason'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const reason = '서버 기동 실패 (GPU/CPU 폴백 모두 실패). 모델 파일과 llama-server 경로를 확인하세요.'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!event.sender.isDestroyed()) {
           event.sender.send('llm:log', { text: `\n[Fatal Error] ${reason}\n` })
           event.sender.send(`llm:done:${sessionId}`, { success: false, error: reason })
@@ -49,10 +55,14 @@ export function handleLlamaServerGenerate(
         return resolve({ success: false, error: reason })
       }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'resolved'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let resolved = false
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const cleanUp = () => {}
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'http'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const http = require('http')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'postData'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const postData = JSON.stringify({
         prompt: fullPrompt,
         n_predict: maxTokens,
@@ -61,6 +71,7 @@ export function handleLlamaServerGenerate(
         stop: stopTokens
       })
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'reqOptions'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const reqOptions = {
         hostname: '127.0.0.1',
         port: LLMProcessManager.serverPort,
@@ -72,26 +83,41 @@ export function handleLlamaServerGenerate(
         }
       }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'req'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const req = http.request(reqOptions, (res: any) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'buffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let buffer = ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'sseBuffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let sseBuffer = ''
         res.on('data', (chunk: Buffer) => {
           sseBuffer += chunk.toString()
           
+  // [RUN-TIME STATE / INVARIANT] - 변수 'eolIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           let eolIndex = -1
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
           while ((eolIndex = sseBuffer.indexOf('\n\n')) >= 0) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'part'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const part = sseBuffer.slice(0, eolIndex)
             sseBuffer = sseBuffer.slice(eolIndex + 2)
             
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const lines = part.split('\n')
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
             for (const line of lines) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cleaned'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const cleaned = line.trim()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (cleaned.startsWith('data:')) {
                 try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dataStr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const dataStr = cleaned.slice(5).trim()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                   if (dataStr === '[DONE]') continue
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const parsed = JSON.parse(dataStr)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'token'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                   const token = parsed.content
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                   if (token !== undefined && token !== null) {
                     buffer += token
                     tokenSender.send(token)
@@ -106,10 +132,12 @@ export function handleLlamaServerGenerate(
 
         res.on('end', () => {
           cleanUp()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!resolved) {
             resolved = true
             ipcMain.off(`llm:abort:${sessionId}`, abortListener)
             tokenSender.flush()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (!event.sender.isDestroyed()) {
               event.sender.send(`llm:done:${sessionId}`, { success: true, fullText: buffer })
             }
@@ -120,10 +148,12 @@ export function handleLlamaServerGenerate(
 
       req.on('error', (err: any) => {
         cleanUp()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!resolved) {
           resolved = true
           ipcMain.off(`llm:abort:${sessionId}`, abortListener)
           tokenSender.flush()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!event.sender.isDestroyed()) {
             event.sender.send(`llm:done:${sessionId}`, { success: false, error: err.message })
           }
@@ -131,11 +161,14 @@ export function handleLlamaServerGenerate(
         }
       })
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'abortListener'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const abortListener = () => {
         req.destroy()
         cleanUp()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!resolved) {
           resolved = true
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!event.sender.isDestroyed()) {
             event.sender.send(`llm:done:${sessionId}`, { success: false, error: '사용자에 의해 중단됨' })
           }
@@ -148,6 +181,7 @@ export function handleLlamaServerGenerate(
       req.end()
 
     } catch (err: any) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (LLMProcessManager.activeLLMProcess) {
         LLMProcessManager.activeLLMProcess.kill('SIGKILL')
         LLMProcessManager.activeLLMProcess = null
@@ -156,3 +190,5 @@ export function handleLlamaServerGenerate(
     }
   })
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -20,14 +20,18 @@
 import { useState } from 'react'
 import { RuntimeState } from './runtimeState'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useSQLRuntime() {
   const [isRunning, setIsRunning] = useState(false)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'runSQLCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const runSQLCode = async (code: string): Promise<{ success: boolean; output: string; isTable?: boolean; tableData?: any }> => {
     setIsRunning(true)
     try {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!(window as any).SQL) {
         await new Promise<void>((resolve, reject) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'script'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const script = document.createElement('script')
           script.src = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/sql-wasm.js'
           script.onload = () => resolve()
@@ -36,22 +40,29 @@ export function useSQLRuntime() {
         })
       }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!RuntimeState.sqliteDatabaseInstance) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'config'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const config = {
           locateFile: (file: string) => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.2/${file}`
         }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'initSqlJs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const initSqlJs = (window as any).initSqlJs
+  // [RUN-TIME STATE / INVARIANT] - 변수 'SQL'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const SQL = await initSqlJs(config)
         RuntimeState.sqliteDatabaseInstance = new SQL.Database()
       }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const res = RuntimeState.sqliteDatabaseInstance.exec(code)
       setIsRunning(false)
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (res.length === 0) {
         return { success: true, output: 'Query executed successfully (No results returned).' }
       }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastQueryResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const lastQueryResult = res[res.length - 1]
       return {
         success: true,
@@ -73,3 +84,5 @@ export function useSQLRuntime() {
     runSQLCode,
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

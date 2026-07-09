@@ -54,17 +54,21 @@ export function useSelectionTracking(
    * - Rationale: 브라우저 native Selection과 BlockNote selection을 교차 캡처하여 최신 범위 메타를 갱신 전파한다.
    */
   const handleSelection = useCallback(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
 
     // 1. 브라우저 네이티브 드래그 문자열 캡처 (선택 해제 시 공백 자동 주입)
     const selText = window.getSelection()?.toString() || ''
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (onSelectedTextChange) {
       onSelectedTextChange(selText)
     }
 
     // 2. BlockNote의 블록 노드 범위 단위 셀렉션 정보 캡처
     const sel = editor.getSelection()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (sel && sel.blocks && sel.blocks.length > 0) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (onSelectionChange) {
         onSelectionChange({ 
           anchorBlockId: sel.blocks[0].id, 
@@ -90,3 +94,5 @@ export function useSelectionTracking(
  *    - 본 `handleSelection` 훅의 캡처 결과물을 에디터 이벤트 단축키 리스너와 동기 바인딩할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

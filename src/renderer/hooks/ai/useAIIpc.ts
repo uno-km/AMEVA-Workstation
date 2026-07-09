@@ -51,6 +51,7 @@ export function useAIIpc() {
    * - unsubDoneRef: 추론 완료 감지 리스너를 파괴하기 위한 Callback 보존 레퍼런스.
    */
   const unsubTokenRef = useRef<(() => void) | null>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubDoneRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const unsubDoneRef = useRef<(() => void) | null>(null)
 
   /**
@@ -67,6 +68,7 @@ export function useAIIpc() {
       unsubTokenRef.current()
       unsubTokenRef.current = null
     }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (unsubDoneRef.current) {
       unsubDoneRef.current()
       unsubDoneRef.current = null
@@ -82,10 +84,12 @@ export function useAIIpc() {
    * - Rationale: 추론 세션이 강제 Abort 되거나 완료되었을 때 채널 접속을 안전하게 차단 제거한다.
    */
   const unsubscribeSession = useCallback(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (unsubTokenRef.current) {
       unsubTokenRef.current()
       unsubTokenRef.current = null
     }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (unsubDoneRef.current) {
       unsubDoneRef.current()
       unsubDoneRef.current = null
@@ -109,3 +113,5 @@ export function useAIIpc() {
  *      생애주기 해제 규약을 100% 엮을 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

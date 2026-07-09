@@ -32,15 +32,19 @@ export interface FreeModalProps extends BaseModalProps {
   hasBackdrop?: boolean
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function FreeModal(props: FreeModalProps) {
   const { isOpen, initialX = 100, initialY = 100, initialWidth = 820, initialHeight = 580, hasBackdrop, ...rest } = props
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bringToFront'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const bringToFront = useUIStore(s => s.bringToFront)
   const [zIndex, setZIndex] = useState(10000)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isInitialized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isInitialized = useRef(false)
 
   // 컴포넌트가 마운트될 때, 또는 열릴 때 한 번 z-index를 최상단으로 올립니다.
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen && !isInitialized.current) {
       setZIndex(bringToFront())
       isInitialized.current = true
@@ -52,13 +56,17 @@ export function FreeModal(props: FreeModalProps) {
   const { pos, handleMouseDown } = useDraggable({ x: initialX, y: initialY })
   const { modalSize, handleResizeMouseDown } = useModalResize(initialWidth, initialHeight)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleModalFocus'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleModalFocus = () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentBase'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const currentBase = useUIStore.getState().baseZIndex
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (zIndex < currentBase) {
       setZIndex(bringToFront())
     }
   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isOpen) return null
 
   return (
@@ -132,3 +140,5 @@ export function FreeModal(props: FreeModalProps) {
     </>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

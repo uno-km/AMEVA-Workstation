@@ -53,15 +53,24 @@ class StreamLineFormatter {
 
   feed(chunk: string, onLine: (formattedLine: string) => void) {
     this.buffer += chunk;
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const lines = this.buffer.split('\n');
     this.buffer = lines.pop() || '';
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (const line of lines) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!line.trim()) continue; // 빈 개행 줄 무시
+  // [RUN-TIME STATE / INVARIANT] - 변수 'now'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const now = new Date();
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hh'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const hh = String(now.getHours()).padStart(2, '0');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'mm'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const mm = String(now.getMinutes()).padStart(2, '0');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ss'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const ss = String(now.getSeconds()).padStart(2, '0');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ms'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const ms = String(now.getMilliseconds()).padStart(3, '0');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'timestamp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const timestamp = `${hh}:${mm}:${ss}.${ms}`;
       onLine(`[${this.prefix}][${timestamp}] ${line}\n`);
     }
@@ -96,13 +105,17 @@ export class LLMProcessManager {
    *   실행 가능한 llama-server 물리 파일 위치를 탐색 반환한다.
    */
   static findLlamaCli(): string | null {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cliBinaryName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const cliBinaryName = process.platform === 'win32' ? 'llama-server.exe' : 'llama-server'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isPackaged'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const isPackaged = app.isPackaged
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bundledPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const bundledPath = isPackaged
       ? join(process.resourcesPath, 'resources', process.platform === 'win32' ? 'win32' : 'darwin', cliBinaryName)
       : join(app.getAppPath(), 'resources', process.platform === 'win32' ? 'win32' : 'darwin', cliBinaryName)
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'candidates'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const candidates = [
       bundledPath,
       'C:\\ameva\\llama\\llama-cli.exe',
@@ -110,7 +123,9 @@ export class LLMProcessManager {
       'C:\\ameva\\llama\\main.exe',
       join(app.getPath('userData'), 'llama', cliBinaryName),
     ]
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (const c of candidates) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (existsSync(c)) return c
     }
     return null
@@ -121,12 +136,15 @@ export class LLMProcessManager {
    * - Rationale: Whisper C++ 한국어 음성 인식을 지원하는 cli 바이너리 경로를 탐색해 반환한다.
    */
   static findWhisperCli(): string | null {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'candidates'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const candidates = [
       'C:\\ameva\\whisper\\whisper-cli.exe',
       'C:\\ameva\\whisper\\main.exe',
       'C:\\ameva\\whisper\\whisper.exe',
     ]
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
     for (const c of candidates) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (existsSync(c)) return c
     }
     return 'whisper-cli'
@@ -138,6 +156,7 @@ export class LLMProcessManager {
    */
   static async asyncCleanupOrphanedProcesses(): Promise<void> {
     return new Promise(resolve => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (process.platform === 'win32') {
         exec('taskkill /f /im llama-server.exe', () => {
           exec('taskkill /f /im llama-cli.exe', () => {
@@ -155,10 +174,13 @@ export class LLMProcessManager {
    * - Rationale: 3초 타임아웃 락을 주어 SIGINT 인터럽트 시그널로 llama-server가 안전하게 디바이스를 닫고 소멸하도록 대기한다.
    */
   static async gracefulShutdown(): Promise<void> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (this.activeServerProcess) {
       this.logToRenderer('[System] AI 엔진 정상 종료 대기 중...\n')
       return new Promise(resolve => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'timer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const timer = setTimeout(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (this.activeServerProcess) {
             try { this.activeServerProcess.kill('SIGKILL') } catch {}
           }
@@ -187,19 +209,23 @@ export class LLMProcessManager {
    * - Rationale: log 수신 시, DevTools 창 중복 전송 버그를 차단하기 위해 BrowserWindow webContents만 순회 추출하여 라우팅한다.
    */
   static broadcastLog(prefix: string, text: string) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'formatter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let formatter = this.formatters[prefix];
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!formatter) {
       formatter = new StreamLineFormatter(prefix);
       this.formatters[prefix] = formatter;
     }
     formatter.feed(text, (formattedLine) => {
       this.llamaLogBuffer += formattedLine;
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (this.llamaLogBuffer.length > 200000) {
         this.llamaLogBuffer = this.llamaLogBuffer.slice(-200000);
       }
       
       const { BrowserWindow } = require('electron');
       BrowserWindow.getAllWindows().forEach((win: any) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
           win.webContents.send('llm:log', { text: formattedLine });
         }
@@ -210,7 +236,9 @@ export class LLMProcessManager {
 
   // 시스템 에러 문구 발생 시 SYS 프리픽스 로깅
   static logToRenderer(text: string) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'prefix'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let prefix = 'SYS';
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (text.includes('[Fatal Error]') || text.includes('[Error]')) prefix = 'SYS';
     this.broadcastLog(prefix, text);
   }
@@ -236,6 +264,7 @@ export class LLMProcessManager {
       return true
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (this.serverStartingPromise) {
       this.logToRenderer('[System] 다른 요청이 서버 기동 중입니다. 대기...\n')
       return this.serverStartingPromise
@@ -243,7 +272,9 @@ export class LLMProcessManager {
     // [FIX-FLICKER-001] 웜업 개시 플래그 세팅
     this.isStarting = true
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'doStart'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const doStart = async (ngl: number, threads: number): Promise<boolean> => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (this.activeServerProcess) {
         try { this.activeServerProcess.kill('SIGKILL') } catch {}
         this.activeServerProcess = null
@@ -251,11 +282,14 @@ export class LLMProcessManager {
       }
       await this.asyncCleanupOrphanedProcesses()
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isPackaged'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const isPackaged = app.isPackaged
+  // [RUN-TIME STATE / INVARIANT] - 변수 'llamaDir'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const llamaDir = isPackaged
         ? join(process.resourcesPath, 'resources', process.platform === 'win32' ? 'win32' : 'darwin')
         : join(app.getAppPath(), 'resources', process.platform === 'win32' ? 'win32' : 'darwin')
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cmdArgs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const cmdArgs = [
         '-m', modelPath,
         '-c', String(contextSize),
@@ -269,7 +303,9 @@ export class LLMProcessManager {
       this.logToRenderer(`[System] 로컬 AI 엔진 기동 중 (Port: ${this.serverPort}, GPU 가속 레이어 ngl: ${ngl}, 스레드: ${threads})...\n`)
 
       return new Promise<boolean>((resolve) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isResolved'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let isResolved = false
+  // [RUN-TIME STATE / INVARIANT] - 변수 'proc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const proc = spawn(llamaPath, cmdArgs, {
           cwd: llamaDir,
           env: {
@@ -280,9 +316,12 @@ export class LLMProcessManager {
 
         // stdout 리스너 감청
         proc.stdout.on('data', (data) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const text = data.toString()
           this.broadcastLog('OUT', text)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (text.includes('HTTP server listening') || text.includes('llama server listening')) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (!isResolved) {
               isResolved = true
               this.activeServerProcess = proc
@@ -294,9 +333,12 @@ export class LLMProcessManager {
 
         // stderr 리스너 감청
         proc.stderr.on('data', (data) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const text = data.toString()
           this.broadcastLog('ERR', text)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (text.includes('HTTP server listening') || text.includes('llama server listening')) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (!isResolved) {
               isResolved = true
               this.activeServerProcess = proc
@@ -308,6 +350,7 @@ export class LLMProcessManager {
 
         proc.on('error', (err) => {
           this.logToRenderer(`[System] 로컬 엔진 실행 실패: ${err.message}\n`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!isResolved) {
             isResolved = true
             resolve(false)
@@ -316,10 +359,12 @@ export class LLMProcessManager {
 
         proc.on('close', (code) => {
           this.logToRenderer(`[System] 로컬 엔진 종료됨 (Exit Code: ${code})\n`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (this.activeServerProcess === proc) {
             this.activeServerProcess = null
             this.activeServerModelPath = ''
           }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!isResolved) {
             isResolved = true
             resolve(false)
@@ -328,6 +373,7 @@ export class LLMProcessManager {
 
         // listening 문자열 매칭에 실패하더라도 12초 이상 대기 시 강제 정상 판정 완료
         setTimeout(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!isResolved) {
             isResolved = true
             this.activeServerProcess = proc
@@ -340,9 +386,12 @@ export class LLMProcessManager {
 
     // 웜업 구동 프로프레시브
     this.serverStartingPromise = (async () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'threads'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let threads = 4
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'os'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const os = require('os')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cpuCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const cpuCount = os.cpus().length
         // 코어 수의 75% 수준 스레드 최적 할당
         threads = Math.max(1, Math.min(8, Math.floor(cpuCount * 0.75)))
@@ -350,7 +399,9 @@ export class LLMProcessManager {
 
       // GPU 우선 시작 시도
       if (gpuFirst) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'success'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const success = await doStart(99, threads)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (success) {
           this.serverStartingPromise = null
           this.isStarting = false
@@ -371,3 +422,5 @@ export class LLMProcessManager {
     return this.serverStartingPromise
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

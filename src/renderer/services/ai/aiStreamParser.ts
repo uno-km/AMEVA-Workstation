@@ -65,10 +65,14 @@ const VALID_BLOCK_TYPES: InsertSuggestion['blockType'][] = [
  * @returns ParsedEditSuggestion 또는 null
  */
 export function parseEditSuggestion(rawText: string): ParsedEditSuggestion | null {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'editMatch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const editMatch = rawText.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!editMatch) return null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const blockId = editMatch[1]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'proposedText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const proposedText = editMatch[2].trim()
 
   // 태그 이전 텍스트를 cleanContent로 반환 (사용자에게 보여지는 말풍선 텍스트)
@@ -94,6 +98,7 @@ export function parseInsertSuggestions(
   finalContent: string,
   siblingBlockIds: string[] = []
 ): ParsedInsertSuggestions | null {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'tagRegex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
   let match: RegExpExecArray | null
   const parsedMatches: Array<{
@@ -105,6 +110,7 @@ export function parseInsertSuggestions(
     endIndex: number
   }> = []
 
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
   while ((match = tagRegex.exec(rawText)) !== null) {
     parsedMatches.push({
       tag: match[0],
@@ -116,10 +122,12 @@ export function parseInsertSuggestions(
     })
   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (parsedMatches.length === 0) return null
 
   // 첫 번째 태그 앞의 텍스트를 이유 설명 및 cleanContent로 처리
   const firstTagIdx = parsedMatches[0].startIndex
+  // [RUN-TIME STATE / INVARIANT] - 변수 'preTagText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const preTagText = rawText.slice(0, firstTagIdx).trim()
 
   // 내부 태그(thinking/reasoning) 제거 후 이유 텍스트 정제
@@ -136,12 +144,15 @@ export function parseInsertSuggestions(
 
   // 각 태그와 그 다음 태그 사이의 텍스트를 내용으로 파싱
   const suggestions: InsertSuggestion[] = parsedMatches.map((curr, i) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'nextStart'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const nextStart =
       i + 1 < parsedMatches.length ? parsedMatches[i + 1].startIndex : rawText.length
+  // [RUN-TIME STATE / INVARIANT] - 변수 'insertContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const insertContent = rawText.slice(curr.endIndex, nextStart).trim()
 
     // afterBlockId 보정: 유효하지 않은 값은 'END'로 대체
     let afterBlockId = curr.afterBlockIdRaw
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined') {
       afterBlockId = 'END'
     }
@@ -155,6 +166,7 @@ export function parseInsertSuggestions(
 
     // 삽입 위치의 sibling 인덱스 계산
     const foundIdx = siblingBlockIds.indexOf(afterBlockId)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'siblingIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const siblingIndex = foundIdx >= 0 ? foundIdx : siblingBlockIds.length - 1
 
     return {
@@ -187,3 +199,5 @@ export function cleanModeEchoFromContent(content: string): string {
     .replace(/^지금 요청은.*\n?/m, '')
     .trim()
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

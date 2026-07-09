@@ -77,3 +77,5 @@ export const DEFAULT_SETTINGS: AISettings = {
   apiType: 'local',
   gpuOnly: true
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

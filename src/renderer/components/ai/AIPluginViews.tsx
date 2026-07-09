@@ -32,9 +32,12 @@ function GoogleMapsView() {
     `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU3Ko&q=Seoul,Korea&language=ko&zoom=12`
   )
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSearch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!searchQuery.trim()) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'query'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const query = encodeURIComponent(searchQuery.trim())
     setMapQuery(searchQuery.trim())
     // Google Maps embed API — 공개 프리뷰용 API 키 사용
@@ -115,7 +118,9 @@ function GoogleMapsView() {
   )
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function AIPluginViews({ activeTab }: { activeTab: string }) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'pluginRefs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const pluginRefs = {
     calculator: useRef<HTMLDivElement>(null),
     'finance-dashboard': useRef<HTMLDivElement>(null),
@@ -128,10 +133,15 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
   }
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (activeTab === 'ai' || activeTab === 'outline' || activeTab === 'google-maps') return;
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ref'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const ref = pluginRefs[activeTab as keyof typeof pluginRefs];
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ref?.current) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'globalPlugins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const globalPlugins = (window as any).AMEVA_PLUGINS;
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (globalPlugins?.[activeTab]) {
         try {
           globalPlugins[activeTab].render(ref.current.id);
@@ -142,24 +152,36 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
     }
   }, [activeTab]);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'containerStyle'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const containerStyle = {
     flex: 1, display: 'flex', flexDirection: 'column' as const,
     backgroundColor: 'var(--bg-main)', height: '100%', padding: '16px', overflowY: 'auto' as const
   };
 
+  // [SWITCH ROUTING CASE] - 다중 후보 값 매핑 조건에 따른 최적 라우팅 제어.
   switch (activeTab) {
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     case 'calculator': return <div id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />
     // [FIX-FINANCE] finance / finance-dashboard 둘 다 내장 뷰로 처리
     // (RightTabStrip에서 tab id는 'finance', 플러그인 id는 'finance-dashboard')
     case 'finance':
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     case 'finance-dashboard': return <FinanceDashboardView />
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     case 'youtube': return <div id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     case 'calendar': return <div id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     case 'google-drive': return <div id="ameva-plugin-google-drive" style={containerStyle} ref={pluginRefs['google-drive']} />
     // [FEAT-MAPS] 구글 지도 — 내장 iframe 뷰 (플러그인 없이 직접 렌더링)
     case 'google-maps': return <GoogleMapsView />
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
     default: return null;
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

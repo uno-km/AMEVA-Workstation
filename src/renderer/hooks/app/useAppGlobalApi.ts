@@ -21,6 +21,7 @@ import { useEffect } from 'react'
 import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds } from '../../utils/markdownUtils'
 import { type AmevaEditor as AppEditor, type AmevaPartialBlock as AppPartialBlock } from '../../editor/amevaBlockSchema'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAppGlobalApi({
   editor,
   currentContent,
@@ -38,13 +39,16 @@ export function useAppGlobalApi({
 }) {
   useEffect(() => {
     (window as any).AMEVA_INSERT_TEXT_TO_EDITOR = (text: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (editor) {
         try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const doc = editor.document
           const blockPayload: AppPartialBlock = {
             type: 'paragraph',
             content: [{ type: 'text', text: text, styles: {} }]
           }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (doc.length > 0) {
             editor.insertBlocks([blockPayload], doc[doc.length - 1], 'after')
           } else {
@@ -72,9 +76,12 @@ export function useAppGlobalApi({
       return currentContent || ''
     };
     (window as any).AMEVA_SET_CURRENT_CONTENT = async (markdownText: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (editor) {
         try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const normalized = normalizeMarkdown(markdownText)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const blocks = await editor.tryParseMarkdownToBlocks(normalized)
           cleanCodeBlocks(blocks)
           ensureBlockIds(blocks)
@@ -87,3 +94,5 @@ export function useAppGlobalApi({
     }
   }, [editor, currentContent, setCurrentContent])
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

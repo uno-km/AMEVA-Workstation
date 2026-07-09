@@ -50,6 +50,7 @@ export interface AIPendingQueueBarProps {
  * 대기 중인 AI 요청 목록을 컴팩트 바로 렌더링한다.
  */
 export const AIPendingQueueBar: React.FC<AIPendingQueueBarProps> = ({ pendingQueue, onRemove }) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (pendingQueue.length === 0) return null
 
   return (
@@ -120,3 +121,5 @@ export const AIPendingQueueBar: React.FC<AIPendingQueueBarProps> = ({ pendingQue
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

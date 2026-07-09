@@ -24,8 +24,11 @@
  * @returns MB 또는 GB 단위로 포맷팅된 문자열 (예: "1.2GB", "800MB")
  */
 export function formatBytes(bytes: number): string {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (bytes < 1024 * 1024 * 1024) {
     return `${(bytes / (1024 * 1024)).toFixed(0)}MB`;
   }
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)}GB`;
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

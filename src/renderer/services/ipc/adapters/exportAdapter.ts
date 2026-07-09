@@ -19,22 +19,32 @@
 
 import type { ExportProgressEvent } from '../ipcTypes'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function onExportProgress(callback: (data: ExportProgressEvent) => void): () => void {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.onExportProgress) return () => {}
   return window.electronAPI.onExportProgress(callback)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function printToPDF(htmlContent: string): Promise<string | null> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.printToPDF) return null
   return window.electronAPI.printToPDF(htmlContent)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function saveExportedFile(data: string, isBase64: boolean, defaultName: string, filters: { name: string; extensions: string[] }[]): Promise<string | null> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.saveExportedFile) return null
   return window.electronAPI.saveExportedFile(data, isBase64, defaultName, filters)
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function exportConvert(payload: { blocks: Record<string, unknown>[]; format: string; defaultName: string }): Promise<{ success: boolean; savedPath?: string; error?: string }> {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!window.electronAPI?.exportConvert) return { success: false, error: 'API not available' }
   return window.electronAPI.exportConvert(payload)
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

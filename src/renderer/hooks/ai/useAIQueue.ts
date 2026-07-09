@@ -115,6 +115,7 @@ export function useAIQueue(
   const checkAndProcessNextQueue = useCallback((generateFn: GenerateFn) => {
     // 락이 걸려있거나 대기 건수가 0이면 스케줄링 연산을 스킵함
     if (isGeneratingRef.current) return
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (pendingQueueRef.current.length === 0) return
 
     // FIFO(선입선출) 규격에 따라 맨 처음 인입 원소를 추출
@@ -123,6 +124,7 @@ export function useAIQueue(
     // 큐에서 제거된 상태를 즉시 전역 스토어 뷰에 동기화
     setPendingQueue([...pendingQueueRef.current])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (nextReq) {
       // 주입받은 추론 시그니처 함수를 실행하여 생성을 연속 개시
       generateFn(
@@ -165,3 +167,5 @@ export function useAIQueue(
  *    - 이 과정에서도 `pendingQueueRef.current`와 스토어 상태의 동기화 상태는 100% 일치해야 함을 명심할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

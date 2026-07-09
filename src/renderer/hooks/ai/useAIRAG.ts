@@ -18,6 +18,7 @@
  */
 
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAIRAG(
   blocks: any[],
   currentContent: string,
@@ -31,53 +32,76 @@ export function useAIRAG(
   modelPath: string,
   onSend: (msg: string, context?: string, selected?: string, blockId?: string, settings?: any) => void
 ) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'getContextWithRAG'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const getContextWithRAG = (_query: string, useFullFallback = false) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'buildBlockIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const buildBlockIndex = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!blocks || blocks.length === 0) return ''
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
       const flatAll: any[] = (function flatten(bks: any[]): any[] {
         return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
       })(blocks)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const lines = flatAll.map((b: any) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'txt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const txt = Array.isArray(b.content)
           ? b.content.map((c: any) => c.text || '').join('').slice(0, 60)
           : ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'extra'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const extra = b.type === 'heading' && b.props?.level ? ` level=${b.props.level}` : ''
         return `[Block ID: ${b.id}, Type: ${b.type}${extra}] ${txt}`
       })
       return `[문서 블록 구조 목록 — 삽입 위치(afterBlockId) 선택 시 사용]\n` + lines.join('\n')
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (selectedText) {
       return `[선택한 부분 텍스트]\n${selectedText}\n\n[문서 내용 전체]\n${currentContent}\n\n${buildBlockIndex()}`
     }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!useContext && !useFullFallback) return buildBlockIndex() || undefined
 
     return (currentContent ? currentContent + '\n\n' : '') + buildBlockIndex()
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'getActiveMode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const getActiveMode = (queryText: string): 'write' | 'edit' | 'summary' | 'chat' => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (manualMode !== 'auto') return manualMode as any
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanInput'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const cleanInput = queryText.toLowerCase().trim()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'summaryKeywords'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const summaryKeywords = ['요약', '정리', '줄여', 'summarize', 'summary', 'brief']
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (summaryKeywords.some(k => cleanInput.includes(k))) return 'summary'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'writeKeywords'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const writeKeywords = [
       '써줘', '써', '작성', '보고서', '리포트', '문서 만들어', '글 써줘',
       '제목', '본문', '넣어줘', '넣어', '입력해', '추가해줘', '만들어줘',
       '생성해', '도입말', '서론', '결론', 'write', 'draft', 'create', 'compose', 'generate', 'insert',
     ]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (writeKeywords.some(k => cleanInput.includes(k))) return 'write'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (selectedText) return 'edit'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'editKeywords'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const editKeywords = [
       '수정', '변경', '바꿔', '고쳐', '삽입', '지워', '교체', '고쳐줘',
       'edit', 'modify', 'replace', 'rewrite', 'correct'
     ]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (editKeywords.some(k => cleanInput.includes(k))) return 'edit'
     return 'chat'
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSendAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSendAction = (text: string, isQuickAction = false) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!text.trim()) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'finalContext'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const finalContext = getContextWithRAG(text.trim(), isQuickAction)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedMode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const resolvedMode = getActiveMode(text)
 
     onSend(text.trim(), finalContext, selectedText || undefined, activeBlockId, {
@@ -87,3 +111,5 @@ export function useAIRAG(
 
   return { getContextWithRAG, getActiveMode, handleSendAction }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

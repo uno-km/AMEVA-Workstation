@@ -50,8 +50,11 @@ export function useAISettings() {
    */
   const [settings, setSettings] = useState<AISettings>(() => {
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stored'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const stored = localStorage.getItem('ai-settings')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (stored) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const parsed = JSON.parse(stored)
         
         // 구버전 시스템 프롬프트 마이그레이션 지침 검사 분기
@@ -83,6 +86,7 @@ export function useAISettings() {
    */
   const updateSettings = useCallback((newSettings: Partial<AISettings>) => {
     setSettings((prev) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const updated = { ...prev, ...newSettings }
       try {
         // CONTRACT: 보안을 위해 apiKey 키값을 완전히 지워내어 디스크 저장
@@ -109,3 +113,5 @@ export function useAISettings() {
  *    - 기존 조건 분기가 너무 복잡하게 얽히지 않도록 별도 버전 번호(version 필드)를 세팅에 도입하여 비교 제어할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

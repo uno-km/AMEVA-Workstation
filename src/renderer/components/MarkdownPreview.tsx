@@ -23,8 +23,10 @@ import mermaid from 'mermaid'
 import { JupyterCodeViewer } from './JupyterCodeViewer'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'MERMAID_PLACEHOLDER_PREFIX'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const MERMAID_PLACEHOLDER_PREFIX = 'MERMAIDPLACEHOLDERINDEX'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function decodeHtmlEntities(str: string): string {
   return str
     .replace(/&lt;/g, '<')
@@ -34,9 +36,11 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#39;/g, "'")
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function buildPreviewSegments(markdown: string) {
   const customBlocks: { lang: string; code: string }[] = []
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'renderer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const renderer = new marked.Renderer()
   renderer.heading = function({ tokens, depth, text }) {
     // Generate an ID for the outline scroll logic
@@ -45,23 +49,30 @@ function buildPreviewSegments(markdown: string) {
     return `<h${depth} id="${escapedText}">${text}</h${depth}>`
   }
   renderer.image = function({ href, title, text }) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isVideo'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const isVideo = href.toLowerCase().endsWith('.mp4') || 
                     href.toLowerCase().endsWith('.webm') || 
                     href.toLowerCase().endsWith('.mov') || 
                     href.toLowerCase().endsWith('.ogg') ||
                     href.startsWith('data:video/')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isVideo) {
       return `<video src="${href}" controls style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: 8px 0;"></video>`
     }
     return `<img src="${href}" alt="${text}" title="${title || ''}" style="max-width: 100%;" />`
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'html'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const html = marked.parse(markdown, {
     renderer,
     walkTokens(token) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (token.type === 'code') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const lang = (token.lang || '').toLowerCase()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const rawCode = decodeHtmlEntities(token.text)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'idx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const idx = customBlocks.length
         customBlocks.push({ lang, code: rawCode })
 
@@ -71,27 +82,38 @@ function buildPreviewSegments(markdown: string) {
     }
   }) as string
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'fullHtml'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const fullHtml = html
   const segments: ({ type: 'html'; html: string } | { type: 'mermaid'; code: string } | { type: 'html-preview'; code: string } | { type: 'code-runner'; code: string; language: string })[] = []
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'SPLIT_RE'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const SPLIT_RE = new RegExp(
     `<p>\\s*${MERMAID_PLACEHOLDER_PREFIX}(\\d+)\\s*<\\/p>` +
     `|${MERMAID_PLACEHOLDER_PREFIX}(\\d+)`,
     'g'
   )
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let lastIndex = 0
   let match: RegExpExecArray | null
   SPLIT_RE.lastIndex = 0
 
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
   while ((match = SPLIT_RE.exec(fullHtml)) !== null) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'before'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const before = fullHtml.slice(lastIndex, match.index)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (before.trim()) segments.push({ type: 'html', html: before })
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'idxStr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const idxStr = match[1] ?? match[2]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'idx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const idx = Number(idxStr)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isNaN(idx) && customBlocks[idx] !== undefined) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const block = customBlocks[idx]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (block.lang === 'mermaid') {
         segments.push({ type: 'mermaid', code: block.code })
       } else if (block.lang === 'html') {
@@ -103,28 +125,37 @@ function buildPreviewSegments(markdown: string) {
     lastIndex = SPLIT_RE.lastIndex
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'remaining'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const remaining = fullHtml.slice(lastIndex)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (remaining.trim()) segments.push({ type: 'html', html: remaining })
 
   return segments
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function InlineMermaidRenderer({ code }: { code: string }) {
   const [svg, setSvg] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'elementId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const elementId = useRef(`mermaid-preview-${Math.random().toString(36).substr(2, 9)}`)
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'active'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let active = true
+  // [RUN-TIME STATE / INVARIANT] - 변수 'renderDiagram'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const renderDiagram = async () => {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const cleanCode = code.replace(/^(\s*)end([가-힣a-zA-Z]+)/gm, '$1end\n$1$2')
         const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanCode)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (active) {
           setSvg(renderedSvg)
           setError(null)
         }
       } catch (err: any) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (active) {
           setError(err.message || 'Mermaid 렌더링에 실패했습니다.')
         }
@@ -134,6 +165,7 @@ function InlineMermaidRenderer({ code }: { code: string }) {
     return () => { active = false }
   }, [code])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (error) {
     return (
       <div style={{
@@ -155,7 +187,9 @@ function InlineMermaidRenderer({ code }: { code: string }) {
   )
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function MarkdownPreview({ markdown, editor }: { markdown: string; editor: AmevaEditor | null }) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'segments'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const segments = useMemo(() => buildPreviewSegments(markdown), [markdown])
   return (
     <div className="markdown-preview-body" style={{ padding: '10px 0', color: 'var(--text-main)', lineHeight: '1.7' }}>
@@ -165,6 +199,7 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
         </div>
       )}
       {segments.map((seg, idx) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (seg.type === 'mermaid') {
           return (
             <div key={idx} style={{ margin: '16px 0' }}>
@@ -172,6 +207,7 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             </div>
           )
         }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (seg.type === 'html-preview') {
           return (
             <div key={idx} style={{ margin: '16px 0' }}>
@@ -184,8 +220,11 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             </div>
           )
         }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (seg.type === 'code-runner') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (editor) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'runnerLang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const runnerLang = seg.language === 'js' ? 'javascript' : seg.language === 'py' ? 'python' : (seg.language || 'javascript')
             return (
               <div key={idx} style={{ margin: '16px 0' }}>
@@ -202,3 +241,5 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

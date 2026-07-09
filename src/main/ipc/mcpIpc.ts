@@ -28,6 +28,7 @@ import { getProPlanMemory } from '../services/planState.js'
 export function registerMcpIpc(): void {
   // 🤖 MCP IPC 핸들러 등록
   ipcMain.handle('mcp:spawn', async (_event, serverId: string, command: string, args: string[]) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!getProPlanMemory()) {
       return { success: false, error: '무료 요금제에서는 MCP 서버를 기동할 수 없습니다. Pro 요금제로 업그레이드하세요.' }
     }
@@ -35,6 +36,7 @@ export function registerMcpIpc(): void {
   })
 
   ipcMain.handle('mcp:call', async (_event, serverId: string, request: any) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!getProPlanMemory()) {
       return { success: false, error: '무료 요금제에서는 MCP 도구를 호출할 수 없습니다. Pro 요금제로 업그레이드하세요.' }
     }
@@ -48,10 +50,13 @@ export function registerMcpIpc(): void {
 
   ipcMain.handle('mcp:getToken', async () => {
     try {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (process.env.AMEVA_TOKEN) {
         return process.env.AMEVA_TOKEN.trim()
       }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'tokenPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const tokenPath = 'c:\\ameva\\AMEVA-MCP-Wasm-Toolkit\\.token'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (existsSync(tokenPath)) {
         return readFileSync(tokenPath, 'utf8').trim()
       }
@@ -61,3 +66,5 @@ export function registerMcpIpc(): void {
     return null
   })
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

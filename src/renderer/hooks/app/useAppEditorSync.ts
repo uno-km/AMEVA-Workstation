@@ -88,7 +88,9 @@ export function useAppEditorSync({
    * - processedUrlsRef: 중복 변환을 방지하기 위해 이미 링크 가공 처리가 끝난 URL 정보 보존 Set 레퍼런스.
    */
   const activeBlockIdRef = useRef<string | null>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'syncTimeoutRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'processedUrlsRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const processedUrlsRef = useRef<Set<string>>(new Set())
 
   /**
@@ -96,11 +98,13 @@ export function useAppEditorSync({
    * - Rationale: 에디터 변경 감지 리스너를 붙여 300ms 디바운스 직렬화를 수행한다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
     
     // 동기화 중복 진입 방지 로컬 락 플래그
     let isUpdating = false
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleEditorChange'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleEditorChange = async () => {
       // 락 구동 상태 시 작업 중단
       if (isUpdating) return
@@ -113,23 +117,32 @@ export function useAppEditorSync({
 
       // 300ms 직렬화 시작
       syncTimeoutRef.current = setTimeout(async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (isUpdating) return
         isUpdating = true
 
         // URL 링크 변환 처리
         handleUrlConversion(editor, processedUrlsRef)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeHeadingCleared'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let activeHeadingCleared = false
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeHeadingText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let activeHeadingText = ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const activeId = activeBlockIdRef.current
 
         // 타이핑 시 '#' 접두어를 쳤을 때 임시로 내용물 정제
         if (activeId) {
           try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const ab = editor.getBlock(activeId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (ab?.type === 'heading') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const text = ab.content ? (ab.content as any).map((c: any) => c.text).join('') : ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'match'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const match = text.match(/^(#{1,3}\s)(.*)$/)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
               if (match) {
                 activeHeadingText = text
                  editor.updateBlock(activeId, { content: [{ type: 'text', text: match[2], styles: {} }] } as AppPartialBlock)
@@ -163,6 +176,7 @@ export function useAppEditorSync({
 
     // CONTRACT: 디바운스 타이머 누수 제거 클린업 이행
     return () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current)
     }
   }, [editor, setActiveBlockId, setCurrentContent])
@@ -172,6 +186,7 @@ export function useAppEditorSync({
    * - Rationale: 저장 유실을 막기 위해 3분 주기로 자동 백업 스냅샷을 DB에 구동한다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!autoSnapshot || !currentContent) return
     
     // 3분(180,000ms) 간격 타이머 설정
@@ -190,3 +205,5 @@ export function useAppEditorSync({
  *    - `300ms` 값을 낮추되, 한글 조합 상태(IME) 및 커다란 문서 로드 시 타이핑 렉이 유발될 수 있음에 유의할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

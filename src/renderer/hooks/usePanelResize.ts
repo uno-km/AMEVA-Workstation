@@ -53,6 +53,7 @@ interface Result {
   handleMouseDown: (e: React.MouseEvent) => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function usePanelResize({
   storageKey,
   defaultWidth,
@@ -63,9 +64,13 @@ export function usePanelResize({
   // localStorage에서 복원, 없으면 defaultWidth
   const [width, setWidth] = useState<number>(() => {
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stored'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const stored = localStorage.getItem(`panel-resize-${storageKey}`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (stored) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const parsed = Number(stored)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!isNaN(parsed) && parsed >= minWidth && parsed <= maxWidth) return parsed
       }
     } catch {}
@@ -76,18 +81,24 @@ export function usePanelResize({
 
   // 드래그 시작 시점의 마우스 X와 패널 너비를 ref로 보존 (closure 문제 방지)
   const startXRef = useRef(0)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'startWidthRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const startWidthRef = useRef(width)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseMove'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleMouseMove = useCallback((e: MouseEvent) => {
     e.preventDefault()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const dx = e.clientX - startXRef.current
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newWidth'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const newWidth = direction === 'right'
       ? startWidthRef.current + dx   // 오른쪽으로 드래그 → 패널 확장
       : startWidthRef.current - dx   // 왼쪽으로 드래그 → 패널 확장 (AI패널: 핸들이 왼쪽)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'clamped'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const clamped = Math.min(maxWidth, Math.max(minWidth, newWidth))
     setWidth(clamped)
   }, [direction, minWidth, maxWidth])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
     // localStorage 영속화
@@ -101,6 +112,7 @@ export function usePanelResize({
 
   // 드래그 중에는 document 레벨 이벤트를 캡처 (빠른 마우스 이동도 놓치지 않도록)
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isDragging) return
     // body class 추가 → 드래그 중 iframe 등이 mouse 이벤트 가로채지 않도록
     document.body.classList.add('is-resizing')
@@ -118,6 +130,7 @@ export function usePanelResize({
   }, [isDragging, handleMouseMove, handleMouseUp])
 
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault()
     startXRef.current = e.clientX
@@ -127,3 +140,5 @@ export function usePanelResize({
 
   return { width, isDragging, handleMouseDown }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

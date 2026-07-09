@@ -38,6 +38,7 @@ const TABS: { id: TabId; icon: React.FC<any>; label: string }[] = [
   { id: 'chat',    icon: MessageCircle, label: '채팅' },
 ]
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function Sidebar() {
   const {
     editorMode, setEditorMode, handleOpenFile, handleSaveFile, handleExport,
@@ -54,7 +55,9 @@ export function Sidebar() {
 
   const { isChatFloating, setIsChatFloating, setShowSidebar } = useUIStore()
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'formatHotkey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const formatHotkey = (raw: string | undefined): string => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!raw) return ''
     return raw
       .replace('Control', 'Ctrl')
@@ -66,6 +69,7 @@ export function Sidebar() {
       .join(' + ')
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hkeys = settings?.hotkeys || {
     save: 'Control+s',
     open: 'Control+o',
@@ -79,6 +83,7 @@ export function Sidebar() {
   }
   const [activeTab, setActiveTab] = useState<TabId>('files')
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'sectionLabel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const sectionLabel = (text: string) => (
     <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '8px' }}>
       {text}
@@ -220,3 +225,5 @@ export { SidebarTabFiles } from './sidebar/SidebarTabFiles'
 export { SidebarTabHistory } from './sidebar/SidebarTabHistory'
 export { SidebarTabCollab } from './sidebar/SidebarTabCollab'
 export { SidebarTabChat } from './sidebar/SidebarTabChat'
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

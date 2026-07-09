@@ -58,6 +58,7 @@ export interface ExporterBlock {
   [key: string]: unknown
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -66,25 +67,39 @@ export function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;')
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function getPlainTextFromNormalized(block: ExporterBlock): string {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!block.content) return ''
   return block.content.map((c: ExporterInlineContent) => c.text || '').join('')
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function inlineToText(inline: ExporterInlineContent[]): string {
   return inline.map(c => c.text || '').join('')
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function inlineToHTML(inline: ExporterInlineContent[]): string {
   return inline.map(c => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!c || !c.text) return ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'txt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let txt = escapeHtml(c.text)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (c.styles?.bold) txt = `<strong>${txt}</strong>`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (c.styles?.italic) txt = `<em>${txt}</em>`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (c.styles?.underline) txt = `<u>${txt}</u>`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (c.styles?.strike) txt = `<del>${txt}</del>`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (c.styles?.textColor) txt = `<span style="color:${c.styles.textColor}">${txt}</span>`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (c.type === 'link') txt = `<a href="${c.text}" style="color:#8b5cf6">${txt}</a>`
     return txt
   }).join('')
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

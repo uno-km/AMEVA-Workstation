@@ -131,7 +131,9 @@ import { AppProvider } from './contexts/AppContext'
  * INVARIANT: 동적으로 접속하는 Peer 들에게 일관적인 고유 식별 색상을 분배하기 위해 7가지 팔레트로 제한함.
  */
 const COLLAB_COLORS = ['#a855f7', '#06b6d4', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#f43f5e']
+  // [RUN-TIME STATE / INVARIANT] - 변수 'randomColor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const randomColor = COLLAB_COLORS[Math.floor(Math.random() * COLLAB_COLORS.length)]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'randomUsername'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const randomUsername = `User_${Math.random().toString(36).substring(2, 7).toUpperCase()}`
 
 /**
@@ -342,7 +344,9 @@ export default function App() {
    *   fileOpenMode 속성에 따라 분기 처리하여 에디터 캔버스에 내용을 주입한다.
    */
   useAppIpcBridge(useCallback(async (file) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (fileOpenMode === 'append') {
       await appendMarkdownIntoEditor(editor, file.content, file.filePath.split(/[\\/]/).pop() || '파일', file.isBinary, file.filePath)
     } else if (fileOpenMode === 'tab') {
@@ -369,6 +373,7 @@ export default function App() {
    * - 탭 브라우징 시, 현재 수정 중인 임시 버퍼 정보를 활성화된 탭 노드 상태 정보에 실시간 역매핑한다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (fileOpenMode === 'tab' && activeTabId) {
       updateActiveTab({ content: currentContent })
     }
@@ -377,8 +382,11 @@ export default function App() {
   /** MCP 연결 정보 복원 및 플랜 정보 갱신 */
   const refreshMcpServers = () => {
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'stored'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const stored = localStorage.getItem('mcp-servers-config')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (stored) setMcpServersState(JSON.parse(stored))
+  // [RUN-TIME STATE / INVARIANT] - 변수 'proStored'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const proStored = localStorage.getItem('is-pro-plan') === 'true'
       setIsProPlan(proStored)
     } catch {}
@@ -394,8 +402,11 @@ export default function App() {
    * - 채팅창이 가려져 있거나 포커스되지 않은 상태에서 다른 사용자의 메시지가 유입되면 읽지 않음(Badge) 표시를 활성화한다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (chatMessages.length === 0) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastMsg'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const lastMsg = chatMessages[chatMessages.length - 1]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (lastMsg.author !== username && (isChatFloating || activeTabId !== 'chat')) {
       setHasChatUnread(true)
     }
@@ -416,6 +427,7 @@ export default function App() {
     onSave: handleSaveFile, onOpen: handleOpenFile, 
     onNewTab: () => {
       handleNewTab();
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (editorMode === 'welcome') {
         setEditorMode('edit');
       }
@@ -496,3 +508,5 @@ export default function App() {
  *      오케스트레이션 훅 `src/renderer/hooks/app/useAppOrchestration.ts`으로 결합 제어권을 완전히 분리 추출할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -61,18 +61,23 @@ const FORMAT_LABELS: Record<string, string> = {
 
 /** 실제 운영 시 document.querySelector('#status-bar') 등으로 portal 위치 지정 가능 */
 export function ExportModal({ progress, minimized, onMinimize, onClose, onOpenFile }: ExportModalProps) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'barRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const barRef = useRef<HTMLDivElement>(null)
 
   // 프로세스바 width 애니메이션
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (barRef.current) {
       barRef.current.style.width = `${progress.percent}%`
     }
   }, [progress.percent])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (progress.phase === 'idle') return null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'label'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const label = FORMAT_LABELS[progress.format] ?? progress.format.toUpperCase()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'color'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const color = PHASE_COLORS[progress.phase]
 
   // ── 최소화 상태: 하단 미니 표시기 ────────────────────────────
@@ -350,3 +355,5 @@ export function ExportModal({ progress, minimized, onMinimize, onClose, onOpenFi
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

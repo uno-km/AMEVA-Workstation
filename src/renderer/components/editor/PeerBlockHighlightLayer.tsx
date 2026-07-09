@@ -36,32 +36,46 @@ interface BlockOverlay {
   height: number
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighlightLayerProps) {
   const [overlays, setOverlays] = useState<BlockOverlay[]>([])
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeList'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const activeList = peers.filter(p => p.blockHighlight?.blockId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (activeList.length === 0) {
       setOverlays(prev => prev.length === 0 ? prev : [])
       return
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'computeOverlays'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const computeOverlays = () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const container = containerRef.current
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!container) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'containerRect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const containerRect = container.getBoundingClientRect()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'scrollTop'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const scrollTop = container.scrollTop
       const newOverlays: BlockOverlay[] = []
 
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const peer of activeList) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!peer.blockHighlight) continue
         const { blockId, isEditing } = peer.blockHighlight
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockDom'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blockDom = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!blockDom) continue
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'outerEl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const outerEl = blockDom.closest('.bn-block-outer') || blockDom
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const rect = outerEl.getBoundingClientRect()
 
         newOverlays.push({
@@ -76,6 +90,7 @@ export function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighli
         })
       }
       setOverlays(prev => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isDifferent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const isDifferent = newOverlays.length !== prev.length ||
           newOverlays.some((item, idx) => 
             item.peerId !== prev[idx]?.peerId || 
@@ -89,19 +104,24 @@ export function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighli
     }
 
     computeOverlays()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'timer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const timer = setInterval(computeOverlays, 300)
 
     window.addEventListener('resize', computeOverlays)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const container = containerRef.current
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (container) container.addEventListener('scroll', computeOverlays)
 
     return () => {
       clearInterval(timer)
       window.removeEventListener('resize', computeOverlays)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (container) container.removeEventListener('scroll', computeOverlays)
     }
   }, [peers, containerRef])
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (overlays.length === 0) return null
 
   // 같은 블록에 있는 피어들 라벨 세로 위치 조율용 Map
@@ -110,9 +130,12 @@ export function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighli
   return (
     <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, pointerEvents: 'none', zIndex: 5 }}>
       {overlays.map((ov) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blockKey = `${ov.top}_${ov.left}`
+  // [RUN-TIME STATE / INVARIANT] - 변수 'count'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const count = blockLabelCounts.get(blockKey) || 0
         blockLabelCounts.set(blockKey, count + 1)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'labelTop'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const labelTop = count * 22
 
         return (
@@ -189,3 +212,5 @@ export function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighli
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

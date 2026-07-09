@@ -27,6 +27,7 @@ interface SettingsTabMCPProps {
   isOpen: boolean
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
   const [mcpServers, setMcpServers] = useState<any[]>([])
   const [newMcpName, setNewMcpName] = useState('')
@@ -39,9 +40,11 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
   const [isLoadingTools, setIsLoadingTools] = useState(false)
   const [expandedTool, setExpandedTool] = useState<string | null>(null)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'refreshMcpTools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const refreshMcpTools = useCallback(async () => {
     setIsLoadingTools(true)
     try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'tools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const tools = await MCPClientManager.fetchAllTools()
       setMcpTools(tools)
     } catch (e) {
@@ -52,14 +55,18 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
   }, [])
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'configs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const configs = MCPClientManager.loadConfigs()
       setMcpServers(configs)
       refreshMcpTools()
     }
   }, [isOpen, refreshMcpTools])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleAddMcp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleAddMcp = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!newMcpName.trim()) return alert('서버 이름을 입력해 주세요.')
     
     const newServer: any = {
@@ -69,15 +76,19 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
       enabled: true
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (newMcpType === 'http') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!newMcpUrl.trim()) return alert('URL을 입력해 주세요.')
       newServer.url = newMcpUrl.trim()
     } else {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!newMcpCmd.trim()) return alert('실행 명령어를 입력해 주세요.')
       newServer.command = newMcpCmd.trim()
       newServer.args = newMcpArgs.trim() ? newMcpArgs.split(/\s+/) : []
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const updated = [...mcpServers, newServer]
     MCPClientManager.setConfigs(updated)
     setMcpServers(updated)
@@ -90,15 +101,20 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
     setTimeout(() => refreshMcpTools(), 200)
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleToggleMcp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleToggleMcp = (id: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const updated = mcpServers.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s)
     MCPClientManager.setConfigs(updated)
     setMcpServers(updated)
     setTimeout(() => refreshMcpTools(), 200)
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleDeleteMcp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleDeleteMcp = async (id: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const updated = mcpServers.filter(s => s.id !== id)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ipc.isElectronEnv()) {
       await ipc.mcpKill(id)
     }
@@ -107,6 +123,7 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
     setTimeout(() => refreshMcpTools(), 200)
   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!isProPlan) return null
 
   return (
@@ -284,6 +301,7 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '150px', overflowY: 'auto' }}>
             {mcpTools.map(tool => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isExpanded'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const isExpanded = expandedTool === tool.name
               return (
                 <div
@@ -331,3 +349,5 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
     </>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

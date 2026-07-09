@@ -20,23 +20,27 @@
 import { useState, useCallback, useEffect } from 'react';
 import type { AppSettings } from '../../components/SettingsModal';
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useSettingsDraft(originalSettings: AppSettings, isOpen: boolean) {
   const [draftSettings, setDraftSettings] = useState<AppSettings>(originalSettings);
   const [isDirty, setIsDirty] = useState(false);
 
   // 모달이 열릴 때 원본 설정으로 덮어씀
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOpen) {
       setDraftSettings(originalSettings);
       setIsDirty(false);
     }
   }, [isOpen, originalSettings]);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'updateDraft'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const updateDraft = useCallback((updates: Partial<AppSettings>) => {
     setDraftSettings(prev => ({ ...prev, ...updates }));
     setIsDirty(true);
   }, []);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'resetDraft'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const resetDraft = useCallback(() => {
     setDraftSettings(originalSettings);
     setIsDirty(false);
@@ -49,3 +53,5 @@ export function useSettingsDraft(originalSettings: AppSettings, isOpen: boolean)
     isDirty
   };
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

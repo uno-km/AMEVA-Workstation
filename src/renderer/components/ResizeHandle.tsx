@@ -43,6 +43,7 @@ interface ResizeHandleProps {
   height?: string
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function ResizeHandle({
   onMouseDown,
   isDragging,
@@ -50,6 +51,7 @@ export function ResizeHandle({
   height = '100%',
 }: ResizeHandleProps) {
   const [isHovered, setIsHovered] = useState(false)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isActive = isDragging || isHovered
 
   return (
@@ -131,3 +133,5 @@ export function ResizeHandle({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

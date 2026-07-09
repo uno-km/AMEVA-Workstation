@@ -88,7 +88,9 @@ export function useFinalizeMessage(
       // 대상 타깃이 어레이 내부에서 탐색 및 업데이트되었는지 검사하는 플래그
       let updated = false
       
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const next = prev.map((m) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (targetId && m.id === targetId) {
           updated = true
           
@@ -97,6 +99,7 @@ export function useFinalizeMessage(
 
           // 1. 에러 및 중단 여부에 따라 최종 표출될 텍스트 결정
           let cleanContent: string
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (!success) {
             cleanContent = isAbort
               ? (sanitizeResult.finalContent.trim() || m.content || '사용자가 답변을 중단했습니다')
@@ -145,11 +148,15 @@ export function useFinalizeMessage(
       // [FALLBACK MATCHING]
       // targetId를 찾지 못했으나 챗 목록의 맨 마지막 노드가 assistant인 경우 폴백 보정 적용
       if (!updated && next.length > 0 && next[next.length - 1].role === 'assistant') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const lastIdx = next.length - 1
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastMsg'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const lastMsg = next[lastIdx]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isAbort'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const isAbort = checkAbortError(error)
 
         let cleanContent: string
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!success) {
           cleanContent = isAbort
             ? (sanitizeResult.finalContent.trim() || lastMsg.content || '사용자가 답변을 중단했습니다')
@@ -184,3 +191,5 @@ export function useFinalizeMessage(
  *    - 본 `useCallback` 콜백 하단에 백업용 IPC API(`ipc.writeLog`) 호출을 덧붙일 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

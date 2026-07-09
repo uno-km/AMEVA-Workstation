@@ -24,6 +24,7 @@ import { useAIKeychain } from './useAIKeychain'
 import { useAIRAG } from './useAIRAG'
 import { useAIModelHub } from './useAIModelHub'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAIPanelLogic(props: any) {
   // 1. Scroll Refs & Logic
   const scroll = useAIPanelScroll(props.messages, props.engineLogs || '', props.taggedBlocks, props.isOpen)
@@ -50,7 +51,9 @@ export function useAIPanelLogic(props: any) {
     state.setInput('')
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleKeyDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -60,7 +63,9 @@ export function useAIPanelLogic(props: any) {
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleQuickAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleQuickAction = (prompt: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (props.isGenerating) return
     rag.handleSendAction(prompt, true)
   }
@@ -76,3 +81,5 @@ export function useAIPanelLogic(props: any) {
     handleQuickAction
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

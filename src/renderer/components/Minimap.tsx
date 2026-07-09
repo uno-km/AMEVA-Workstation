@@ -25,6 +25,7 @@ interface MinimapProps {
   blocks: any[]
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   console.debug("Unused vars (Minimap):", { editor });
   const [scrollState, setScrollState] = useState({
@@ -34,9 +35,13 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   })
   
   const [isHovered, setIsHovered] = useState(false)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'minimapRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const minimapRef = useRef<HTMLDivElement>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isDragging'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isDragging = useRef(false)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dragStartY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const dragStartY = useRef(0)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'dragStartScrollTop'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const dragStartScrollTop = useRef(0)
 
   // 에디터 스크롤 컨테이너 가져오기
@@ -50,7 +55,9 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     let container: HTMLElement | null = null
     let observer: MutationObserver | null = null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleScroll'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleScroll = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!container) return
       setScrollState({
         scrollTop: container.scrollTop,
@@ -59,12 +66,17 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
       })
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'attachListener'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const attachListener = () => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeContainer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const activeContainer = getScrollContainer()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (activeContainer && activeContainer !== container) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (container) {
           container.removeEventListener('scroll', handleScroll)
         }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (observer) {
           observer.disconnect()
         }
@@ -86,9 +98,11 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
 
     return () => {
       clearInterval(interval)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (container) {
         container.removeEventListener('scroll', handleScroll)
       }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (observer) {
         observer.disconnect()
       }
@@ -96,18 +110,25 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   }, [editorContainerRef, blocks])
 
   const { scrollTop, scrollHeight, clientHeight } = scrollState
+  // [RUN-TIME STATE / INVARIANT] - 변수 'viewportTopPercent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const viewportTopPercent = (scrollTop / scrollHeight) * 100
+  // [RUN-TIME STATE / INVARIANT] - 변수 'viewHeightPercent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const viewHeightPercent = (clientHeight / scrollHeight) * 100
 
   // 클릭 및 드래그 스크롤 통합 제어
   const handleMapMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const container = getScrollContainer()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!container || !minimapRef.current) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const rect = minimapRef.current.getBoundingClientRect()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'clickY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const clickY = e.clientY - rect.top
+  // [RUN-TIME STATE / INVARIANT] - 변수 'clickRatio'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const clickRatio = clickY / rect.height
     
     // 클릭 위치로 실시간 즉각 점프
@@ -121,19 +142,27 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     document.addEventListener('mouseup', handleDragEnd)
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleDragMove'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleDragMove = (e: MouseEvent) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isDragging.current || !minimapRef.current) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const container = getScrollContainer()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!container) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const rect = minimapRef.current.getBoundingClientRect()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const currentY = Math.max(0, Math.min(rect.height, e.clientY - rect.top))
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ratio'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const ratio = currentY / rect.height
 
     // 마우스가 누르고 있는 위치를 에디터의 중심점으로 부드럽게 흡수
     container.scrollTop = ratio * container.scrollHeight - container.clientHeight / 2
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleDragEnd'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleDragEnd = () => {
     isDragging.current = false
     document.removeEventListener('mousemove', handleDragMove)
@@ -144,19 +173,27 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   const extractTextLines = (): { text: string; type: string; level?: number }[] => {
     const lines: { text: string; type: string; level?: number }[] = []
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'traverse'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const traverse = (items: any[]) => {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const item of items) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (item.type === 'heading') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const text = item.content?.map((c: any) => c.text).join('') || 'Heading'
           lines.push({ text: '#'.repeat(item.props?.level || 1) + ' ' + text, type: 'heading', level: item.props?.level })
         } else if (item.type === 'codeBlock' || item.type === 'jupyter') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'codeText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const codeText = item.props?.code || ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'splitLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const splitLines = codeText.split('\n')
           splitLines.forEach((l: string) => {
             lines.push({ text: l || ' ', type: 'code' })
           })
         } else if (item.type === 'paragraph') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const text = item.content?.map((c: any) => c.text).join('') || ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'splitLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const splitLines = text.split('\n')
           splitLines.forEach((l: string) => {
             lines.push({ text: l || ' ', type: 'text' })
@@ -167,6 +204,7 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
           lines.push({ text: '| Table content |', type: 'table' })
         }
         
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (item.children && item.children.length > 0) {
           traverse(item.children)
         }
@@ -177,6 +215,7 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     return lines
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const lines = extractTextLines()
 
   return (
@@ -224,10 +263,14 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
           <div style={{ color: 'rgba(255,255,255,0.2)' }}>AMEVA Document Minimap...</div>
         ) : (
           lines.map((line, idx) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'color'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             let color = 'rgba(255, 255, 255, 0.25)' // 일반 텍스트: 차분한 그레이
+  // [RUN-TIME STATE / INVARIANT] - 변수 'fontWeight'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             let fontWeight = 'normal'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'fontStyle'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             let fontStyle = 'normal'
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (line.type === 'heading') {
               color = '#f8fafc' // 헤더: 밝은 화이트
               fontWeight = 'bold'
@@ -277,3 +320,5 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

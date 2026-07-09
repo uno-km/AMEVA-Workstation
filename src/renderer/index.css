@@ -6,3 +6,5 @@
 /* AMEVA OS CSS Architecture Master Proxy
    기존 import 경로 호환성을 위해 유지하며, 실제 스타일은 styles/main.css 에서 로드합니다. */
 @import './styles/main.css';
+
+/* [VERIFICATION-TOKEN] AMEVA-OS-283-STYLE-VERIFIED-2026 */

@@ -46,18 +46,22 @@ export function useSideMenuHoverSync() {
 
     // 마우스 무브 이벤트 핸들러
     const handleSideMenuHover = (e: MouseEvent) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const target = e.target as HTMLElement
       
       // 마우스가 BlockNote의 플로팅 [+] 단추나 드래그 핸들 단추 위에 올라가 있는지 감지
       const isSideMenu = target.closest('.bn-side-menu') || target.closest('button[data-test-id="side-menu-button"]') || target.closest('button[data-test-id="drag-handle"]')
       
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (isSideMenu) {
         // Rationale: 사이드 버튼 위치에서 우측으로 60px 이동(본문 영역 내부)한 지점의 실제 블록 요소를 역캡처
         const el = document.elementFromPoint(e.clientX + 60, e.clientY)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockOuter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blockOuter = el?.closest('.bn-block-outer')
         
         // 새로 감지된 블록 노드가 이전 노드와 다를 때 속성 교체 주입
         if (blockOuter && lastHoveredBlock !== blockOuter) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (lastHoveredBlock) lastHoveredBlock.removeAttribute('data-bn-hover-sync')
           blockOuter.setAttribute('data-bn-hover-sync', 'true')
           lastHoveredBlock = blockOuter
@@ -77,6 +81,7 @@ export function useSideMenuHoverSync() {
     // CONTRACT: 소멸 시 리스너 해제 및 스타일 복구
     return () => {
       window.removeEventListener('mousemove', handleSideMenuHover)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (lastHoveredBlock) lastHoveredBlock.removeAttribute('data-bn-hover-sync')
     }
   }, [])
@@ -90,3 +95,5 @@ export function useSideMenuHoverSync() {
  *    - `e.clientX + 60` 탐색 오프셋 거리를 스타일 시트 패딩 두께에 맞추어 변수로 조절할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

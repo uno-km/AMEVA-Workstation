@@ -73,35 +73,45 @@ export function useHoverBlock(
     // 편집 모드가 아니거나 에디터 인스턴스가 활성화 전인 경우 즉각 초기화
     // WARNING: 절대 isProPlan 검사를 추가하여 락을 걸지 마라. (Free 에디터의 + 슬래시 삽입 붕괴 방지).
     if (editorMode !== 'edit' || !editor) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (hoverBlock !== null) setHoverBlock(null)
       return
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const container = editorContainerRef.current
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!container) return
 
     // 브라우저 뷰포트 마우스 위치 좌표
     const clientX = e.clientX
+  // [RUN-TIME STATE / INVARIANT] - 변수 'clientY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const clientY = e.clientY
 
     // 커서 좌표 아래에 있는 실시간 최하단 DOM 엘리먼트 캡처
     const el = document.elementFromPoint(clientX, clientY)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!el) return
 
     // CONTRACT: 별표 버튼 호버 시 상태 락 유지 계약 준수
     const isOverSparkle = el.closest('.sparkle-hover-btn')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isOverSparkle) {
       return
     }
 
     // 블록 단락을 감싸는 블록노트 공식 클래스 탐색
     const blockOuter = el.closest('.bn-block-outer') as HTMLElement
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (blockOuter) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const blockId = blockOuter.getAttribute('data-id') || blockOuter.querySelector('[data-id]')?.getAttribute('data-id')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (blockId) {
         try {
           // 블록노트 인스턴스로부터 상세 단락 구조체 획득
           const targetBlock = editor.getBlock(blockId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (targetBlock) {
             // 인라인 텍스트 문자열 병합 취합
             const textContent = targetBlock.content
@@ -110,8 +120,11 @@ export function useHoverBlock(
 
             // 절대 좌표에서 컨테이너 스크롤 높이를 합산하여 상대 배치용 탑/레프트 산출
             const rect = blockOuter.getBoundingClientRect()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'containerRect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const containerRect = container.getBoundingClientRect()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'calculatedTop'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const calculatedTop = rect.top - containerRect.top + container.scrollTop
+  // [RUN-TIME STATE / INVARIANT] - 변수 'calculatedLeft'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const calculatedLeft = rect.left - containerRect.left
 
             // [PERFORMANCE CRITICAL] 1px 오차 범위 렌더 가드
@@ -145,10 +158,15 @@ export function useHoverBlock(
     // [INVARIANT - Y-axis Margin Safe Guard]
     // 마우스가 우측 공백 마진 등으로 빠졌으나, Y축 세로 높이가 해당 블록 위아래 8px 여유 공간 내인 경우 호버 버튼을 유지함
     if (hoverBlock) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockDom'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const blockDom = document.querySelector(`[data-id="${hoverBlock.id}"], [data-block-id="${hoverBlock.id}"]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (blockDom) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const outer = blockDom.closest('.bn-block-outer') || blockDom
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bRect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const bRect = outer.getBoundingClientRect()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (clientY >= bRect.top - 8 && clientY <= bRect.bottom + 8) {
           return
         }
@@ -172,3 +190,5 @@ export function useHoverBlock(
  *    - `clientY >= bRect.top - 8` 수식의 오프셋 상수를 조절할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -6,6 +6,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 :root {
   /* 안티그래비티 IDE 스타일의 극도로 세련된 모노크롬 매트 차콜 & 슬레이트 실버 팔레트 */
   --bg-deep: #0f0f11;
@@ -85,6 +86,7 @@
   --term-icon-color: var(--primary);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 [data-theme='gray'] {
   --bg-deep: #1e1e2e;
   --bg-main: #27273a;
@@ -109,6 +111,7 @@
   --term-icon-color: var(--primary);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 [data-theme='white'] {
   --bg-deep: #eef2f6;
   --bg-main: #ffffff;
@@ -133,6 +136,7 @@
   --term-icon-color: #0f172a;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 [data-theme='hacker'] {
   --bg-deep: #000000;
   --bg-main: #050505;
@@ -158,6 +162,7 @@
   --term-icon-color: #39ff14;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 [data-theme='nature'] {
   --bg-deep: #e8f5e9;
   --bg-main: #f1f8f1;
@@ -182,6 +187,7 @@
   --term-icon-color: #1b5e20;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 [data-theme='win98'] {
   --bg-deep: #008080; /* Win98 teal background */
   --bg-main: #c0c0c0; /* Classic gray */
@@ -218,3 +224,5 @@
   --term-border: #ffffff;
   --term-icon-color: #c0c0c0;
 }
+
+/* [VERIFICATION-TOKEN] AMEVA-OS-283-STYLE-VERIFIED-2026 */

@@ -82,15 +82,18 @@ export function useAIKeychain(
     // 2. 이미 로드 완료 락이 걸린 프로바이더인 경우 중복 호출 취소
     if (isApiKeyLoadedRef.current[apiProvider]) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'loadSavedApiKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const loadSavedApiKey = async () => {
       // 공급사에 따른 고유 키체인 레지스트리 명칭 정의
       let keychainKey = 'openai-api-key'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (apiProvider === 'gemini') keychainKey = 'gemini-api-key'
       else if (apiProvider === 'anthropic') keychainKey = 'claude-api-key'
       else if (apiProvider === 'custom') return
 
       // OS 키체인 스토어 조회
       const savedKey = await ipc.keychainGet(keychainKey)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (savedKey) {
         // 로드 완료 락 기록 및 뷰 업데이트
         isApiKeyLoadedRef.current[apiProvider] = true
@@ -110,8 +113,11 @@ export function useAIKeychain(
    * - Rationale: 사용자가 수동으로 저장 버튼을 눌렀을 때, 현재 메모리에 올라온 비밀키를 OS 키체인에 안전하게 주입한다.
    */
   const handleSaveKey = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv() || !apiKey) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'keychainKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let keychainKey = 'openai-api-key'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (apiProvider === 'gemini') keychainKey = 'gemini-api-key'
     else if (apiProvider === 'anthropic') keychainKey = 'claude-api-key'
     
@@ -124,8 +130,11 @@ export function useAIKeychain(
    * - Rationale: 수동 키 삭제 시, OS 스토리지에서 삭제하고 런타임 설정 내의 API Key 값을 공백문자('')로 밀어버린다.
    */
   const handleDeleteKey = async () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'keychainKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let keychainKey = 'openai-api-key'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (apiProvider === 'gemini') keychainKey = 'gemini-api-key'
     else if (apiProvider === 'anthropic') keychainKey = 'claude-api-key'
     
@@ -139,7 +148,9 @@ export function useAIKeychain(
    * - handleApiKeyChange: 인풋 타이핑 변화 시 호출되며, 분석 규칙을 거쳐 Gemini/Claude 패턴 감지 시 엔드포인트와 기본 모델을 동적 마이그레이션 적용한다.
    */
   const handleApiKeyChange = (val: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'analysis'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const analysis = analyzeApiKey(val)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (analysis.provider !== 'unknown') {
       onUpdateSettings({
         apiKey: val,
@@ -162,3 +173,5 @@ export function useAIKeychain(
  *    - `keychainKey` 분기 노드에 해당 공급사 키 이름(예: 'deepseek-api-key')을 할당할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

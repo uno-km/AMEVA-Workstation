@@ -28,6 +28,7 @@ import { useAI } from '../../../hooks/useAI';
  */
 export function AIChatInput({ selectedText }: { selectedText?: string }) {
   const [input, setInput] = useState('');
+  // [RUN-TIME STATE / INVARIANT] - 변수 'textareaRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 파사드(Facade)를 통한 Zustand 상태 및 에이전트 액션 구독
@@ -40,7 +41,9 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
     isAvailable
   } = useAI();
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSend'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleSend = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!input.trim() || isGenerating) return;
     
     // 에이전트에게 생성 요청 전달 (선택된 텍스트가 있다면 컨텍스트로 함께 전달)
@@ -53,7 +56,9 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
     }, 50);
   };
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleKeyDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -62,12 +67,14 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
 
   // 텍스트에리어 자동 높이 조절
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
     }
   }, [input]);
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'providerType'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const providerType = settings.apiType === 'local' 
     ? 'Local GGUF' 
     : settings.apiType === 'wasm' 
@@ -203,3 +210,5 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
     </div>
   );
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

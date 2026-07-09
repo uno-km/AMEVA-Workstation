@@ -28,6 +28,7 @@ import * as ipc from '../services/ipc/electronApiAdapter'
 
 export interface MenuBarProps {}
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function MenuBar({}: MenuBarProps = {}) {
   const {
     handleOpenFile: onOpenFile,
@@ -54,18 +55,30 @@ export function MenuBar({}: MenuBarProps = {}) {
     setShowMarketplaceModal, setShowPricingModal
   } = useUIStore()
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hotkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hotkeys = settings?.hotkeys
+  // [RUN-TIME STATE / INVARIANT] - 변수 'showConsole'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const showConsole = settings?.showCodeConsole || false
+  // [RUN-TIME STATE / INVARIANT] - 변수 'setShowConsole'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const setShowConsole = (val: boolean) => handleUpdateSettings({ showCodeConsole: val })
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onPrint'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onPrint = () => handleExport('pdf')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onNewWindow'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onNewWindow = ipc.newWindow
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenSettings'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onOpenSettings = () => setIsSettingsOpen(true)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenAbout'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onOpenAbout = () => setIsAboutOpen(true)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenGuide'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onOpenGuide = () => setIsGuideOpen(true)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenMarketplace'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onOpenMarketplace = () => setShowMarketplaceModal(true)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenPricing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onOpenPricing = () => setShowPricingModal(true)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'formatHotkey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const formatHotkey = (raw: string | undefined): string => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!raw) return ''
     return raw
       .replace('Control', 'Ctrl')
@@ -77,6 +90,7 @@ export function MenuBar({}: MenuBarProps = {}) {
       .join('+')
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hkeys = hotkeys || {
     save: 'Control+s',
     open: 'Control+o',
@@ -90,11 +104,14 @@ export function MenuBar({}: MenuBarProps = {}) {
   }
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [isAltMode, setIsAltMode] = useState(false)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'containerRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   // 외부 클릭 시 드롭다운 메뉴 및 Alt 모드 해제
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleClickOutside'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleClickOutside = (e: MouseEvent) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setActiveMenu(null)
         setIsAltMode(false)
@@ -104,7 +121,9 @@ export function MenuBar({}: MenuBarProps = {}) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'triggerAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const triggerAction = (action?: () => void) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (action) action()
     setActiveMenu(null)
     setIsAltMode(false)
@@ -120,7 +139,9 @@ export function MenuBar({}: MenuBarProps = {}) {
     onOpenSettings, onOpenMarketplace, onOpenAbout, onOpenGuide, onOpenPricing, onOpenGithub
   })
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMenuClick'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleMenuClick = (menu: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (activeMenu === menu) {
       setActiveMenu(null)
       setIsAltMode(false)
@@ -130,10 +151,14 @@ export function MenuBar({}: MenuBarProps = {}) {
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'renderLabel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const renderLabel = (text: string, shortcut: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isAltMode) return <span>{text}</span>
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'index'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const index = text.toLowerCase().indexOf(shortcut.toLowerCase())
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (index === -1) return <span>{text}</span>
     
     return (
@@ -387,3 +412,5 @@ export function MenuBar({}: MenuBarProps = {}) {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

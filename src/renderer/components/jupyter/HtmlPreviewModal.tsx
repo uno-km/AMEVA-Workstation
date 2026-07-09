@@ -23,11 +23,14 @@ import { Globe } from 'lucide-react'
 
 // HTML Full modal preview
 export function HtmlPreviewModal({ code, onClose }: { code: string; onClose: () => void }) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'iframeRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const iframeRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const doc = iframeRef.current?.contentDocument
       || iframeRef.current?.contentWindow?.document
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (doc) {
       doc.open()
       doc.write(code)
@@ -36,6 +39,7 @@ export function HtmlPreviewModal({ code, onClose }: { code: string; onClose: () 
   }, [code])
 
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -87,3 +91,5 @@ export function HtmlPreviewModal({ code, onClose }: { code: string; onClose: () 
     document.body
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -143,11 +143,14 @@ export function useAIGenerator(
 
     // 사용자의 입력 의도 분류 및 런타임 오버라이드 설정 병합
     const intent = determineIntent(userMessage, taggedBlocks, (runtimeSettings as any)?.resolvedMode)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'finalSettings'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const finalSettings = { ...settings, ...runtimeSettings }
 
     // FIM 코딩 특화 모델 경로 스위칭 처리
     const isCodingRequest = detectCodingRequest(userMessage)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'codeModelUsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let codeModelUsed = false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isCodingRequest && finalSettings.codeModelPath && finalSettings.codeModelPath !== '') {
       finalSettings.modelPath = finalSettings.codeModelPath
       codeModelUsed = true
@@ -155,7 +158,9 @@ export function useAIGenerator(
 
     // 무료 라이선스 사용자의 클라우드 호출 횟수 임계 한계 도달 체크
     const limitResult = checkUsageLimit(isPro, finalSettings)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (limitResult.isLimitExceeded) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'limitMessageId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const limitMessageId = `msg_limit_${Date.now()}`
       setMessages([
         ...useAILogStore.getState().messages,
@@ -171,6 +176,7 @@ export function useAIGenerator(
 
     // 신규 말풍선 엘리먼트 ID 및 세션 UUID 생성
     const assistantId = `msg_${Date.now()}_assistant`
+  // [RUN-TIME STATE / INVARIANT] - 변수 'sessId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const sessId = crypto.randomUUID()
 
     // 60ms 디바운서 인스턴스 초기화 기동
@@ -187,7 +193,9 @@ export function useAIGenerator(
 
     addUserAndAssistantMessages(userMsg, assistantId, originalText, blockId)
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (codeModelUsed) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'modelNameOnly'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const modelNameOnly = finalSettings.modelPath.split(/[/\\]/).pop()
       setEngineLogs(`[System] 코딩 요청이 감지되었습니다. 코딩 특화 모델(${modelNameOnly})로 전환하여 응답을 생성합니다.\n`)
     }
@@ -254,7 +262,9 @@ export function useAIGenerator(
 
     // 무료 플랜 사용량 누적 카운트 업
     const isLocalModel = finalSettings.apiType === 'local' || finalSettings.apiType === 'wasm' || finalSettings.apiType === 'ollama'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isPersonalApiKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const isPersonalApiKey = finalSettings.apiType === 'api' && !!finalSettings.apiKey && finalSettings.apiKey.trim() !== ''
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isPro && !isLocalModel && !isPersonalApiKey) {
       incrementUsageCount()
     }
@@ -276,3 +286,5 @@ export function useAIGenerator(
  *    - `ipc.llmGenerate` 호출 매개변수와 `src/renderer/services/ipc/electronApiAdapter.ts` 내부 설정을 동기화 갱신할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

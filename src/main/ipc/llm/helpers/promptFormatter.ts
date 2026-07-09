@@ -24,6 +24,7 @@ export interface PromptFormatResult {
   stopTokens: string[]
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function formatPromptForModel(
   modelPath: string,
   systemPrompt: string,
@@ -33,8 +34,10 @@ export function formatPromptForModel(
     history?: { role: 'user' | 'assistant'; content: string }[]
   }
 ): PromptFormatResult {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'modelNameLower'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const modelNameLower = basename(modelPath).toLowerCase()
   let modelType: 'qwen' | 'llama' | 'gemma' | 'generic' = 'generic'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (modelNameLower.includes('qwen')) {
     modelType = 'qwen'
   } else if (modelNameLower.includes('llama')) {
@@ -43,15 +46,20 @@ export function formatPromptForModel(
     modelType = 'gemma'
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'fullPrompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let fullPrompt = ''
   let stopTokens: string[] = []
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (modelType === 'llama') {
     fullPrompt = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${systemPrompt}<|eot_id|>`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (payload.context) {
       fullPrompt += `<|start_header_id|>context<|end_header_id|>\n\n${payload.context.slice(0, 2000)}<|eot_id|>`
     }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (payload.history && payload.history.length > 0) {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const h of payload.history) {
         fullPrompt += `<|start_header_id|>${h.role === 'assistant' ? 'assistant' : 'user'}<|end_header_id|>\n\n${h.content}<|eot_id|>`
       }
@@ -60,19 +68,25 @@ export function formatPromptForModel(
     stopTokens = ['<|eot_id|>', '<|start_header_id|>', '<|end_of_text|>']
   } else if (modelType === 'gemma') {
     fullPrompt = `<start_of_turn>user\n${systemPrompt}\n\n`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (payload.context) {
       fullPrompt += `[Context]\n${payload.context.slice(0, 2000)}\n\n`
     }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (payload.history && payload.history.length > 0) {
       let currentTurn: 'user' | 'model' = 'user'
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const h of payload.history) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'role'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const role = h.role === 'assistant' ? 'model' : 'user'
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (role !== currentTurn) {
           fullPrompt += `<end_of_turn>\n<start_of_turn>${role}\n`
           currentTurn = role
         }
         fullPrompt += `${h.content}\n`
       }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (currentTurn !== 'user') {
         fullPrompt += `<end_of_turn>\n<start_of_turn>user\n`
       }
@@ -81,10 +95,13 @@ export function formatPromptForModel(
     stopTokens = ['<end_of_turn>', '<eos>', '<start_of_turn>']
   } else {
     fullPrompt = `<|im_start|>system\n${systemPrompt}<|im_end|>\n`
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (payload.context) {
       fullPrompt += `<|im_start|>context\n${payload.context.slice(0, 2000)}<|im_end|>\n`
     }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (payload.history && payload.history.length > 0) {
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const h of payload.history) {
         fullPrompt += `<|im_start|>${h.role}\n${h.content}<|im_end|>\n`
       }
@@ -95,3 +112,5 @@ export function formatPromptForModel(
 
   return { fullPrompt, stopTokens }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

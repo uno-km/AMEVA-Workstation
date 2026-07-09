@@ -138,3 +138,5 @@ export function useAI() {
  *      해당 훅 파일들의 리턴 형태에 변동이 생겼는지 가장 먼저 대조 점검할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

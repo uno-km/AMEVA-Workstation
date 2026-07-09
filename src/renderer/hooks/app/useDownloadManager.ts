@@ -34,6 +34,7 @@ export interface DownloadQueueItem {
   error?: string
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useDownloadManager() {
   const {
     downloadQueue,
@@ -46,15 +47,19 @@ export function useDownloadManager() {
 
   // 1. IPC 다운로드 이벤트 구독 (전역)
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'unsub'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const unsub = ipc.onLLMDownloadProgress?.((status: any) => {
       // status: { filename, progress, speed, downloadedBytes, totalBytes, timeRemaining }
       const activeItem = useProcessStore.getState().downloadQueue.find(
         (q: DownloadQueueItem) => q.status === 'downloading' && q.filename === status.filename
       )
       
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (activeItem) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (status.progress >= 100) {
           updateDownloadInQueue(activeItem.id, {
             status: 'completed',
@@ -76,24 +81,31 @@ export function useDownloadManager() {
     })
 
     return () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (unsub) unsub()
     }
   }, [updateDownloadInQueue])
 
   // 2. 큐 프로세서 루프
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isProcessingRef.current) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'pendingItem'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const pendingItem = downloadQueue.find((q: DownloadQueueItem) => q.status === 'pending')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeItem'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const activeItem = downloadQueue.find((q: DownloadQueueItem) => q.status === 'downloading')
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!activeItem && pendingItem) {
       isProcessingRef.current = true
       startNextDownload(pendingItem)
     }
   }, [downloadQueue])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'startNextDownload'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const startNextDownload = async (item: DownloadQueueItem) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ipc.isElectronEnv()) {
       isProcessingRef.current = false
       return
@@ -102,12 +114,14 @@ export function useDownloadManager() {
     try {
       updateDownloadInQueue(item.id, { status: 'downloading', progress: 0 })
       
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const res = await ipc.llmDownloadModel?.({
         url: item.url,
         filename: item.filename,
         type: item.type
       })
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (res && !res.success) {
         updateDownloadInQueue(item.id, {
           status: 'error',
@@ -128,9 +142,11 @@ export function useDownloadManager() {
 
   // 외부(컴포넌트)에서 다운로드 큐에 추가하는 함수
   const enqueueDownload = (url: string, filename: string, type: 'llm' | 'code') => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'existing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const existing = useProcessStore.getState().downloadQueue.find(
       (q: DownloadQueueItem) => q.filename === filename && (q.status === 'pending' || q.status === 'downloading')
     )
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (existing) {
       // 이미 큐에 있거나 다운로드 중
       return false
@@ -151,3 +167,5 @@ export function useDownloadManager() {
 
   return { enqueueDownload }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

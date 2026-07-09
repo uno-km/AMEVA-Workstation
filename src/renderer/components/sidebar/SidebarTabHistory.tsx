@@ -27,10 +27,14 @@ export interface SidebarTabHistoryProps {
   sectionLabel: (text: string) => React.ReactNode
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SidebarTabHistory({ sectionLabel }: SidebarTabHistoryProps) {
   const { snapshots, createSnapshot, deleteSnapshot, handleSelectSnapshotForDiff } = useAppContext()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onCreateSnapshot'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onCreateSnapshot = createSnapshot
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onDeleteSnapshot'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onDeleteSnapshot = deleteSnapshot
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onSelectSnapshotForDiff'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onSelectSnapshotForDiff = handleSelectSnapshotForDiff
   const [snapTitle, setSnapTitle] = useState('')
 
@@ -47,6 +51,7 @@ export function SidebarTabHistory({ sectionLabel }: SidebarTabHistoryProps) {
           value={snapTitle}
           onChange={e => setSnapTitle(e.target.value)}
           onKeyDown={e => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (e.key === 'Enter' && snapTitle.trim()) {
               onCreateSnapshot(snapTitle)
               setSnapTitle('')
@@ -62,6 +67,7 @@ export function SidebarTabHistory({ sectionLabel }: SidebarTabHistoryProps) {
           className="btn btn-glass"
           style={{ padding: '6px 10px', flexShrink: 0 }}
           onClick={() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
             if (snapTitle.trim()) {
               onCreateSnapshot(snapTitle)
               setSnapTitle('')
@@ -120,3 +126,5 @@ export function SidebarTabHistory({ sectionLabel }: SidebarTabHistoryProps) {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

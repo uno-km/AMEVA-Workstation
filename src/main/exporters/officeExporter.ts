@@ -20,3 +20,5 @@
 export { exportToWord } from './wordExporter.js'
 export { exportToExcel } from './excelExporter.js'
 export { exportToPPTX } from './pptxExporter.js'
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

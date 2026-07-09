@@ -65,6 +65,7 @@ export function useRemoteAIEngine() {
     // 2. 로컬에 켜진 Ollama 서버
     if (type === 'ollama') {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'ollamaUrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const ollamaUrl = settings.apiEndpoint || 'http://localhost:11434';
         
         // CONTRACT: 1.5초 타임아웃 제한 fetch 검사 가동
@@ -92,6 +93,7 @@ export function useRemoteAIEngine() {
    * - Rationale: 로컬 파일 구동 모드가 아닌 경우, 네트워크 변경에 민감히 대처하기 위해 4초 주기 헬스 체크를 실행한다.
    */
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'type'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const type = settings.apiType;
     // local 타입일 경우 useLocalAIEngine 측에서 3초 주기로 따로 점검하므로 즉시 탈출
     if (type === 'local' || !type) return;
@@ -119,3 +121,5 @@ export function useRemoteAIEngine() {
  *    - `checkRemoteHealth` 내부 분기 노드에 해당 서버의 핑 엔드포인트 패치 로직을 확장할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

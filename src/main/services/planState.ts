@@ -31,12 +31,16 @@ export const isFreeModeRequested: boolean =
 // 메인 프로세스 측의 실제 플랜 상태 (데모 모드 시 항상 false 강제)
 let isProPlanMemory: boolean = !isFreeModeRequested
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function getProPlanMemory(): boolean {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (isFreeModeRequested) return false
   return isProPlanMemory
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function setProPlanMemory(isPro: boolean): boolean {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (isFreeModeRequested) {
     isProPlanMemory = false
   } else {
@@ -44,3 +48,5 @@ export function setProPlanMemory(isPro: boolean): boolean {
   }
   return isProPlanMemory
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

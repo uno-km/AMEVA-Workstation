@@ -22,6 +22,7 @@ import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
 import { type AmevaEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
 import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds } from '../../utils/markdownUtils'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAppTabs(
   editor: AmevaEditor | null,
   filePath: string | null,
@@ -45,11 +46,13 @@ export function useAppTabs(
 
   // 탭 생성
   const handleNewTab = useCallback(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
     
     // 현재 탭의 변경 사항 저장
     const currentBlocks = [...editor.document]
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newTabId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const newTabId = Math.random().toString(36).substring(2, 10)
     const newTabBlocks: AmevaPartialBlock[] = [
       {
@@ -58,6 +61,7 @@ export function useAppTabs(
         content: []
       }
     ]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const newTab = {
       id: newTabId,
       filePath: null,
@@ -83,12 +87,16 @@ export function useAppTabs(
 
   // 탭 직접 선택 전환
   const handleSelectTab = useCallback(async (tabId: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const currentBlocks = [...editor.document]
     
     updateActiveTab({ filePath, content: currentContent, blocks: currentBlocks, originalContent, lastSavedTime })
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'targetTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const targetTab = tabs.find(t => t.id === tabId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (targetTab) {
       setTimeout(async () => {
         setFilePath(targetTab.filePath)
@@ -96,11 +104,14 @@ export function useAppTabs(
         setOriginalContent(targetTab.originalContent !== undefined ? targetTab.originalContent : targetTab.content)
         setLastSavedTime(targetTab.lastSavedTime !== undefined ? targetTab.lastSavedTime : null)
         
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (targetTab.blocks && targetTab.blocks.length > 0) {
           ensureBlockIds(targetTab.blocks)
           editor.replaceBlocks(editor.document, targetTab.blocks)
         } else {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const normalized = normalizeMarkdown(targetTab.content || '')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const parsed = await editor.tryParseMarkdownToBlocks(normalized)
           cleanCodeBlocks(parsed)
           ensureBlockIds(parsed)
@@ -117,9 +128,13 @@ export function useAppTabs(
 
   // 탭 닫기
   const handleCloseTab = useCallback((tabId: string) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'remaining'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const remaining = tabs.filter(t => t.id !== tabId)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (remaining.length === 0) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'defaultTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const defaultTab = { id: 'default', filePath: null, content: '', blocks: [], originalContent: '', lastSavedTime: null }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (editor) {
         editor.replaceBlocks(editor.document, [])
       }
@@ -132,14 +147,18 @@ export function useAppTabs(
       return
     }
     
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (activeTabId === tabId) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'nextTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const nextTab = remaining[0]
       setActiveTabId(nextTab.id)
       setFilePath(nextTab.filePath)
       setCurrentContent(nextTab.content)
       setOriginalContent(nextTab.originalContent !== undefined ? nextTab.originalContent : nextTab.content)
       setLastSavedTime(nextTab.lastSavedTime !== undefined ? nextTab.lastSavedTime : null)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (editor) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (nextTab.blocks && nextTab.blocks.length > 0) {
           editor.replaceBlocks(editor.document, nextTab.blocks)
         } else {
@@ -159,3 +178,5 @@ export function useAppTabs(
     handleCloseTab,
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

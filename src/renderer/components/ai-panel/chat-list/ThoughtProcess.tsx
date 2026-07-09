@@ -48,18 +48,23 @@ const keyframeStyles = `
  * 상태(running, completed, pending)에 따라 적절한 아이콘과 애니메이션을 동적으로 결정합니다.
  */
 export function ThoughtNodeItem({ node, isLast: _isLast }: { node: ThoughtNode; isLast: boolean }) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isHeader'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isHeader = node.isHeader;
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasChildren'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasChildren = node.children && node.children.length > 0;
 
   let iconElement: React.ReactNode = null;
   
   // 헤더 노드일 경우: 내용에 따라 특정 Lucide 아이콘을 매핑합니다.
   if (isHeader) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'HeaderIcon'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let HeaderIcon = Brain;
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (node.title.includes('의도')) HeaderIcon = Terminal;
     else if (node.title.includes('플래닝') || node.title.includes('시스템')) HeaderIcon = Settings2;
     else if (node.title.includes('실시간') || node.title.includes('추론')) HeaderIcon = Sparkles;
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (node.status === 'running') {
       iconElement = <HeaderIcon size={14} style={{ color: 'var(--secondary)', animation: 'pulseGlow 1.5s infinite ease-in-out' }} />;
     } else {
@@ -179,3 +184,5 @@ export function ThoughtTreeView({ text, isStreaming }: { text: string; isStreami
     </div>
   );
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

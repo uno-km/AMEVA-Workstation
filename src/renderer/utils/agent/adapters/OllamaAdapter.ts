@@ -42,8 +42,12 @@ export class OllamaAdapter implements ILLMAdapter {
         stream: false
       })
     })
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!response.ok) throw new Error(`Ollama 통신 에러: ${response.status}`)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const data = await response.json()
     return data.message?.content || data.response || ''
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

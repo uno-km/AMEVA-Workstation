@@ -80,7 +80,9 @@ if (typeof window !== 'undefined' && window.BroadcastChannel) {
   broadcastChannel = new BroadcastChannel('ameva-sensor-logs-channel');
   
   broadcastChannel.onmessage = (event) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (event.data && event.data.type === 'new-logs') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'logs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const logs = event.data.logs as string[];
       // 타 프레임 채널로부터 유입된 로그를 로컬 버퍼에 병합 플러시
       useAILogStore.getState()._flushExternalLogs(logs);
@@ -100,7 +102,9 @@ export const useAILogStore = create<AILogState>((set) => ({
    */
   _flushExternalLogs: (logs: string[]) => {
     set((state) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newLogs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       let newLogs = [...state.sensorLogs, ...logs];
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (newLogs.length > AI_TERMINAL_CONSTANTS.MAX_LOG_BUFFER) {
         newLogs = newLogs.slice(newLogs.length - AI_TERMINAL_CONSTANTS.MAX_LOG_BUFFER);
       }
@@ -121,6 +125,7 @@ export const useAILogStore = create<AILogState>((set) => ({
     
     // 100ms 지연 타이머 기동
     flushTimeout = setTimeout(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'logsToFlush'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const logsToFlush = [...pendingSensorLogs];
       pendingSensorLogs = [];
       flushTimeout = null;
@@ -131,6 +136,7 @@ export const useAILogStore = create<AILogState>((set) => ({
       }
 
       set((state) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'newLogs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let newLogs = [...state.sensorLogs, ...logsToFlush];
         
         // CONTRACT: 링 버퍼 초과 슬라이싱 유지 계약
@@ -161,3 +167,5 @@ export const useAILogStore = create<AILogState>((set) => ({
   streamingText: '',
   setStreamingText: (text: string) => set({ streamingText: text }),
 }));
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

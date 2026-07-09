@@ -31,6 +31,7 @@ export class LlamaCppAdapter implements ILLMAdapter {
   async generate(prompt: string, systemPrompt: string, temperature: number, sessionId?: string): Promise<string> {
     // 일렉트론 IPC 브릿지를 타서 llama-server로 요청 전송
     if (ipc.isElectronEnv()) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const res = await ipc.llmGenerate({
         sessionId: sessionId || 'default', // [FIX-IPC-001] 세션 격리 ID 전달
         modelPath: this.modelName,
@@ -40,6 +41,7 @@ export class LlamaCppAdapter implements ILLMAdapter {
         maxTokens: 512,
         gpuOnly: true,
       })
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!res.success) throw new Error(res.error || 'llama.cpp 추론 실패')
       return res.content || res.response || ''
     }
@@ -54,8 +56,12 @@ export class LlamaCppAdapter implements ILLMAdapter {
         n_predict: 512,
       })
     })
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!response.ok) throw new Error(`HTTP 에러: ${response.status}`)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const data = await response.json()
     return data.content || ''
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

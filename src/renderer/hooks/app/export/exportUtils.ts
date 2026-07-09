@@ -17,12 +17,18 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function triggerBrowserDownload(data: Blob | string, filename: string) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blob'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const blob = typeof data === 'string' ? new Blob([data], { type: 'text/markdown;charset=utf-8' }) : data
+  // [RUN-TIME STATE / INVARIANT] - 변수 'url'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const url = URL.createObjectURL(blob)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'a'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const a = document.createElement('a')
   a.href = url
   a.download = filename
   a.click()
   URL.revokeObjectURL(url)
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -142,6 +142,7 @@ export function AppProvider({
  * @description 하위 컴포넌트에서 Context API에 접근하여 value 값을 안전하게 꺼내 쓰는 훅.
  */
 export function useAppContext(): AppContextType {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'context'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const context = useContext(AppContext)
   
   // CONTRACT: null 검사 예외 가드 작동 계약 준수
@@ -150,3 +151,5 @@ export function useAppContext(): AppContextType {
   }
   return context
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

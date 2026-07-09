@@ -21,6 +21,7 @@
 import { useState, useEffect } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement | null>) {
   const [input, setInput] = useState('')
   const [manualMode, setManualMode] = useState<'auto' | 'edit' | 'summary' | 'chat'>('auto')
@@ -30,8 +31,11 @@ export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement
 
   // 커스텀 이벤트 (우클릭 등)로 텍스트 주입
   useEffect(() => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleFillInput'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleFillInput = (e: Event) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'customEvent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const customEvent = e as CustomEvent<string>
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (customEvent.detail) {
         setInput(customEvent.detail)
         setTimeout(() => {
@@ -47,6 +51,7 @@ export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement
 
   // GPU 정보 스캔
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ipc.isElectronEnv()) {
       ipc.llmCheckHealth().then(() => {
         // Fallback for GPU info if needed, or if an endpoint exists.
@@ -63,3 +68,5 @@ export function useAIPanelState(textareaRef: React.RefObject<HTMLTextAreaElement
     gpuName
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

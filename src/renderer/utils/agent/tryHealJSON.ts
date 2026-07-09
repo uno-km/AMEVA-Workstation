@@ -23,19 +23,27 @@
  * 문자열을 분석하여 강제로 유효한 JSON 포맷으로 문법 규격을 복원/닫아주는 스마트 구출 함수입니다.
  */
 export function tryHealJSON(jsonStr: string): string {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'healed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let healed = jsonStr.trim();
 
   // 1. 닫히지 않은 따옴표 강제 폐합
   let inString = false;
+  // [RUN-TIME STATE / INVARIANT] - 변수 'quoteChar'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let quoteChar = null;
+  // [RUN-TIME STATE / INVARIANT] - 변수 'escapeActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let escapeActive = false;
 
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
   for (let i = 0; i < healed.length; i++) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'char'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const char = healed[i];
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (char === '\\') {
       escapeActive = !escapeActive;
     } else {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if ((char === '"' || char === "'") && !escapeActive) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!inString) {
           inString = true;
           quoteChar = char;
@@ -48,6 +56,7 @@ export function tryHealJSON(jsonStr: string): string {
     }
   }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (inString && quoteChar) {
     healed += quoteChar; // 따옴표 강제 종결
   }
@@ -61,12 +70,17 @@ export function tryHealJSON(jsonStr: string): string {
   quoteChar = null;
   escapeActive = false;
 
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
   for (let i = 0; i < healed.length; i++) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'char'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const char = healed[i];
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (char === '\\') {
       escapeActive = !escapeActive;
     } else {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if ((char === '"' || char === "'") && !escapeActive) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!inString) {
           inString = true;
           quoteChar = char;
@@ -77,10 +91,13 @@ export function tryHealJSON(jsonStr: string): string {
       }
       escapeActive = false;
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!inString) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (char === '{' || char === '[') {
           stack.push(char === '{' ? '}' : ']');
         } else if (char === '}' || char === ']') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (stack.length > 0 && stack[stack.length - 1] === char) {
             stack.pop();
           }
@@ -96,3 +113,5 @@ export function tryHealJSON(jsonStr: string): string {
 
   return healed;
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

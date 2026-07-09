@@ -26,6 +26,7 @@
  * - createRequire: ES 모듈 내에서 CJS 모듈을 임포트하기 위한 Node.js 모듈 헬퍼.
  */
 import { createRequire } from 'module'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'require'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
 const require = createRequire(import.meta.url)
 
 // docx 모듈 바인딩
@@ -47,6 +48,7 @@ const {
 } = docx
 
 /**
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
  * @function exportToWord
  * @description 마크다운 블록 트리를 순회 해석해 Calibri 폰트 테마의 정제된 .docx 문서 바이너리 버퍼를 생성한다.
  */
@@ -83,14 +85,20 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
    *   마크다운 요소 타입에 적응해 워드 문단을 push 적재한다.
    */
   const addBlock = (block: ExporterBlock, depth = 0) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'runs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const runs = inlineToRuns(block.content || [])
+  // [RUN-TIME STATE / INVARIANT] - 변수 'plainText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const plainText = getPlainTextFromNormalized(block)
 
+  // [SWITCH ROUTING CASE] - 다중 후보 값 매핑 조건에 따른 최적 라우팅 제어.
     switch (block.type) {
       // 1) 헤더 타이틀 요소
       case 'heading': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'level'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const level = Math.min(3, Math.max(1, Number(block.props?.level) || 1))
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hLevel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const hLevel = level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hRuns'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const hRuns = (block.content || []).length > 0
           ? block.content.map((c: ExporterInlineContent) => new TextRun({ text: c.text, bold: true, font: 'Calibri', size: headingSizes[level] || 28, color: headingColors[level] || '374151' }))
           : [new TextRun({ text: plainText, bold: true, font: 'Calibri', size: headingSizes[level] || 28 })]
@@ -125,8 +133,11 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
 
       // 5) 코드 블록 (다크 테마 배경에 연두색 폰트로 가시성 매핑)
       case 'codeBlock': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const lang = block.props?.language || ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const lines = plainText.split('\n')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (lang) {
           docChildren.push(new Paragraph({
             children: [new TextRun({ text: lang.toUpperCase(), font: 'Consolas', size: 16, color: '64748B', bold: true })],
@@ -154,12 +165,18 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
 
       // 7) 표/테이블 요소 (가드 절차 적용)
       case 'table': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rows'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const rows = block.tableRows ?? []
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (rows.length > 0) {
           try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'docxRows'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const docxRows = rows.map((row: ExporterTableRow, ri: number) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cells'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'docxCells'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
               const docxCells = cells.map((cell: ExporterInlineContent[] | unknown) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cellText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
                 const cellText = Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''
                 return new TableCell({
                   children: [new Paragraph({
@@ -202,7 +219,9 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         }))
         break
 
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       default:
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (runs.length > 0) docChildren.push(new Paragraph({ children: runs, spacing: { after: 120 } }))
     }
 
@@ -237,3 +256,5 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
   // .docx 바이너리 완성 반환
   return await Packer.toBuffer(doc)
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

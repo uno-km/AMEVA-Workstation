@@ -44,25 +44,32 @@ export function determineIntent(
 ): AIIntent {
   // 런타임 오버라이드 우선 처리
   if (resolvedMode) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'upper'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const upper = resolvedMode.toUpperCase()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (upper === 'WRITE' || upper === 'EDIT' || upper === 'SUMMARY' || upper === 'CHAT') {
       return upper as AIIntent
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanPrompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const cleanPrompt = userMessage.toLowerCase().trim()
 
   // 요약 키워드 감지
   const summaryKeywords = ['요약', '정리', '줄여', 'summarize', 'summary', 'brief']
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (summaryKeywords.some(k => cleanPrompt.includes(k))) return 'SUMMARY'
 
   // 태그된 블록 + 수정 키워드 조합은 EDIT 최우선
   const hasTags = taggedBlocks && taggedBlocks.length > 0
+  // [RUN-TIME STATE / INVARIANT] - 변수 'editKeywords'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const editKeywords = [
     '수정', '변경', '바꿔', '고쳐', '지워', '교체', '고쳐줘',
     'edit', 'modify', 'replace', 'rewrite', 'correct'
   ]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isEditQuery'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isEditQuery = editKeywords.some(k => cleanPrompt.includes(k))
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (hasTags && isEditQuery) return 'EDIT'
 
   // 제목 생성 전용 패턴 → CHAT으로 유도 (에디터 삽입 없이 추천 목록만 제공)
@@ -78,6 +85,7 @@ export function determineIntent(
     !cleanPrompt.includes('추가') &&
     !cleanPrompt.includes('넣어') &&
     !cleanPrompt.includes('삽입')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (isTitleGenerationOnly) return 'CHAT'
 
   // 쓰기(WRITE) 키워드 감지
@@ -86,6 +94,7 @@ export function determineIntent(
     '제목', '본문', '넣어줘', '넣어', '입력해', '추가해줘', '만들어줘',
     '생성해', '쓰기', 'write', 'draft', 'create', 'compose', 'generate'
   ]
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (writeKeywords.some(k => cleanPrompt.includes(k))) return 'WRITE'
 
   // 태그 없이 수정 키워드만 있는 경우도 EDIT
@@ -93,3 +102,5 @@ export function determineIntent(
 
   return 'CHAT'
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

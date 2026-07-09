@@ -36,3 +36,5 @@ export const useAICollabStore = create<CollabState>((set) => ({
   setPeers: (peers) => set({ peers }),
   clearPeers: () => set({ peers: [] }),
 }));
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

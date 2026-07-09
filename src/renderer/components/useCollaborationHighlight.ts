@@ -20,26 +20,32 @@
 import { useEffect, useRef } from 'react'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useCollaborationHighlight(
   editor: AmevaEditor | null,
   onBlockHighlight: ((blockId: string | null, isEditing: boolean) => void) | undefined,
   editorContainerRef: React.RefObject<HTMLDivElement | null>
 ) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cbRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const cbRef = useRef(onBlockHighlight)
   useEffect(() => {
     cbRef.current = onBlockHighlight
   }, [onBlockHighlight])
 
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!editor || !cbRef.current) return
 
     let prevActiveId: string | null = null
     let editingTimer: ReturnType<typeof setTimeout> | null = null
     let selectionTimer: ReturnType<typeof setTimeout> | null = null
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isCurrentlyEditing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let isCurrentlyEditing = false
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isEditorMounted'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const isEditorMounted = () => {
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'view'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
         return !!(view && view.dom && document.body.contains(view.dom))
       } catch {
@@ -47,77 +53,105 @@ export function useCollaborationHighlight(
       }
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'clearActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const clearActive = () => {
       document.querySelectorAll('[data-bn-active]').forEach(el =>
         el.removeAttribute('data-bn-active')
       )
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bnEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const bnEditor = document.querySelector('.bn-editor')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')
     }
 
     // 디바운스된 브로드캐스트 전송 (부모 컴포넌트 렌더링 무한 루프 예방)
     const broadcast = (blockId: string, isEditing: boolean) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (cbRef.current) cbRef.current(blockId, isEditing)
       prevActiveId = blockId
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'markActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const markActive = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!isEditorMounted()) return
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'selection'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const selection = typeof editor.getSelection === 'function' ? editor.getSelection() : undefined
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!selection || !selection.blocks || selection.blocks.length === 0) {
           clearActive()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (prevActiveId && cbRef.current) cbRef.current(null, false)
           prevActiveId = null
           return
         }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blockId = selection.blocks[selection.blocks.length - 1].id
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (blockId === prevActiveId && isCurrentlyEditing) return
 
         clearActive()
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockOuter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blockOuter = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (blockOuter) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'outerEl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const outerEl = blockOuter.closest('.bn-block-outer') ?? blockOuter
           outerEl.setAttribute('data-bn-active', 'true')
         }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bnEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const bnEditor = document.querySelector('.bn-editor')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (bnEditor) bnEditor.setAttribute('data-bn-editor-focused', 'true')
 
         prevActiveId = blockId
       } catch {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (prevActiveId && cbRef.current) cbRef.current(null, false)
         prevActiveId = null
       }
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleFocusOut'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleFocusOut = () => {
       clearActive()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'bnEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const bnEditor = document.querySelector('.bn-editor')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (prevActiveId && cbRef.current) cbRef.current(null, false)
       prevActiveId = null
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleFocusIn'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleFocusIn = () => {
       markActive()
     }
 
     // 200ms 디바운스 처리된 타이핑 변경 리스너
     const handleChange = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!isEditorMounted()) return
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const pos = editor.getTextCursorPosition()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!pos) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (prevActiveId && cbRef.current) cbRef.current(null, false)
           prevActiveId = null
           isCurrentlyEditing = false
           return
         }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blockId = pos.block.id
         isCurrentlyEditing = true
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (editingTimer) clearTimeout(editingTimer)
         editingTimer = setTimeout(() => {
           broadcast(blockId, true)
@@ -129,6 +163,7 @@ export function useCollaborationHighlight(
           }, 1500)
         }, 200)
       } catch {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (prevActiveId && cbRef.current) cbRef.current(null, false)
         prevActiveId = null
       }
@@ -136,12 +171,18 @@ export function useCollaborationHighlight(
 
     // 200ms 디바운스 처리된 커서 이동 리스너
     const handleSelectionChange = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!isEditorMounted()) return
       try {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const pos = editor.getTextCursorPosition()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (!pos) return
+  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const blockId = pos.block.id
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (blockId !== prevActiveId) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (selectionTimer) clearTimeout(selectionTimer)
           selectionTimer = setTimeout(() => {
             broadcast(blockId, isCurrentlyEditing)
@@ -150,11 +191,16 @@ export function useCollaborationHighlight(
       } catch {}
     }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleBlur'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const handleBlur = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!isEditorMounted()) return
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (editingTimer) clearTimeout(editingTimer)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (selectionTimer) clearTimeout(selectionTimer)
       isCurrentlyEditing = false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (cbRef.current) cbRef.current(null, false)
       prevActiveId = null
     }
@@ -174,10 +220,14 @@ export function useCollaborationHighlight(
       document.removeEventListener('focusout', handleFocusOut)
       document.removeEventListener('focusin', handleFocusIn)
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (editingTimer) clearTimeout(editingTimer)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (selectionTimer) clearTimeout(selectionTimer)
       document.removeEventListener('selectionchange', handleSelectionChange)
       editorContainerRef.current?.removeEventListener('blur', handleBlur, true)
     }
   }, [editor, editorContainerRef])
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

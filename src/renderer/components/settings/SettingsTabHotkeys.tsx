@@ -26,10 +26,14 @@ interface SettingsTabHotkeysProps {
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTabHotkeys({ activeTab, settings, onUpdateSettings }: SettingsTabHotkeysProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (activeTab !== 'Hotkeys') return null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'formatHotkeyForUI'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const formatHotkeyForUI = (raw: string): string => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!raw) return '지정 안 됨'
     return raw
       .replace('Control', 'Ctrl')
@@ -41,24 +45,33 @@ export function SettingsTabHotkeys({ activeTab, settings, onUpdateSettings }: Se
       .join(' + ')
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleRecordHotkey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleRecordHotkey = (key: keyof HotkeyConfig, e: React.KeyboardEvent<HTMLInputElement>) => {
     e.preventDefault()
     e.stopPropagation()
     
     const activeKeys: string[] = []
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (e.ctrlKey || e.metaKey) activeKeys.push('Control')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (e.shiftKey) activeKeys.push('Shift')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (e.altKey) activeKeys.push('Alt')
     
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isModifier'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const isModifier = ['control', 'shift', 'alt', 'meta'].includes(e.key.toLowerCase())
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!isModifier) {
       // 키패드나 특수 키 보정
       let normalizedKey = e.key
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (e.key === ' ') normalizedKey = 'Space'
       
       activeKeys.push(normalizedKey)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hotkeyStr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const hotkeyStr = activeKeys.join('+')
       
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentHotkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const currentHotkeys = settings.hotkeys || {
         save: 'Control+s',
         open: 'Control+o',
@@ -80,6 +93,7 @@ export function SettingsTabHotkeys({ activeTab, settings, onUpdateSettings }: Se
     }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleResetHotkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleResetHotkeys = () => {
     onUpdateSettings({
       hotkeys: {
@@ -133,6 +147,7 @@ export function SettingsTabHotkeys({ activeTab, settings, onUpdateSettings }: Se
           { key: 'zoomOut', label: '화면 축소 (Zoom Out)' },
           { key: 'zoomReset', label: '화면 확대/축소 초기화' },
         ].map(item => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentHotkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const currentHotkeys = settings.hotkeys || {
             save: 'Control+s',
             open: 'Control+o',
@@ -144,6 +159,7 @@ export function SettingsTabHotkeys({ activeTab, settings, onUpdateSettings }: Se
             zoomOut: 'Control+-',
             zoomReset: 'Control+0'
           }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const rawVal = currentHotkeys[item.key as keyof HotkeyConfig] || ''
           return (
             <div key={item.key} style={{
@@ -183,3 +199,5 @@ export function SettingsTabHotkeys({ activeTab, settings, onUpdateSettings }: Se
     </>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

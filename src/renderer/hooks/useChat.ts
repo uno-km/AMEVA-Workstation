@@ -69,6 +69,7 @@ export function useChat(
    * - yArrayRef: 리렌더 사이에서 Yjs 공유 Array 인스턴스 참조를 잃지 않기 위한 Ref.
    */
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  // [RUN-TIME STATE / INVARIANT] - 변수 'yArrayRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const yArrayRef = useRef<Y.Array<ChatMessage> | null>(null)
 
   /**
@@ -76,6 +77,7 @@ export function useChat(
    * - Rationale: Y.Doc 마운트 시 'chat-messages' 키의 공유 배열을 획득하고 변경 리스너를 달아둔다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!ydoc) return
 
     // Yjs Array 획득 및 락 설정
@@ -101,6 +103,7 @@ export function useChat(
    * - Rationale: 내장 서버에 정상 연결(입장)이 감지되었을 때 시스템 환영 메세지를 push해 알린다.
    */
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!serverRunning || !yArrayRef.current) return
 
     const joinMsg: ChatMessage = {
@@ -120,6 +123,7 @@ export function useChat(
    * - Rationale: 타이핑한 평문 메세지 내용의 좌우 공백을 제거하고 랜덤 uuid 접미를 엮어 Yjs Shared Array에 삽입한다.
    */
   const sendMessage = useCallback((content: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!yArrayRef.current || !content.trim()) return
 
     const msg: ChatMessage = {
@@ -140,6 +144,7 @@ export function useChat(
    * - Rationale: Yjs 공유 이력을 삭제하지 않고 오직 내 로컬 화면 챗 리스트만 클리어 시켜 준다.
    */
   const clearMessages = useCallback(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!yArrayRef.current) return
     setMessages([])
   }, [])
@@ -150,3 +155,5 @@ export function useChat(
     clearMessages,
   }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

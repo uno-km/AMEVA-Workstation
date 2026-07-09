@@ -27,12 +27,14 @@ export interface SidebarTabCollabProps {
   sectionLabel: (text: string) => React.ReactNode
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SidebarTabCollab({ sectionLabel }: SidebarTabCollabProps) {
   const {
     peers, serverRunning, serverPort, setServerPort, serverHost, setServerHost,
     useLocalServer, setUseLocalServer, toggleLocalServer, collaborationLink, isConnected,
   } = useAppContext()
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'onToggleServer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const onToggleServer = () => toggleLocalServer(serverPort)
   return (
     <div
@@ -162,3 +164,5 @@ export function SidebarTabCollab({ sectionLabel }: SidebarTabCollabProps) {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

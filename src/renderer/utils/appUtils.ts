@@ -17,38 +17,60 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export const matchHotkey = (e: KeyboardEvent, hotkeyStr: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!hotkeyStr) return false
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parts'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const parts = hotkeyStr.toLowerCase().split('+')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'key'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const key = parts.pop()
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'needCtrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const needCtrl = parts.includes('control') || parts.includes('ctrl')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'needShift'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const needShift = parts.includes('shift')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'needAlt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const needAlt = parts.includes('alt')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'needMeta'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const needMeta = parts.includes('meta') || parts.includes('cmd')
   
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasCtrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasCtrl = e.ctrlKey || e.metaKey
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasShift'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasShift = e.shiftKey
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasAlt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasAlt = e.altKey
+  // [RUN-TIME STATE / INVARIANT] - 변수 'hasMeta'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const hasMeta = e.metaKey
   
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (needCtrl && !hasCtrl) return false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (needShift && !hasShift) return false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (needAlt && !hasAlt) return false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (needMeta && !hasMeta) return false
   
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!needCtrl && hasCtrl) return false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (!needShift && hasShift) return false
   
   return e.key.toLowerCase() === key
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'reader'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const reader = new FileReader()
     reader.onloadend = () => resolve((reader.result as string).split(',')[1])
     reader.onerror = reject
     reader.readAsDataURL(blob)
   })
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

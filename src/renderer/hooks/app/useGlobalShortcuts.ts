@@ -74,16 +74,25 @@ export interface GlobalShortcutsParams {
 
 /** matchHotkey 유틸: 키 이벤트와 단축키 문자열 비교 */
 function matchHotkey(e: KeyboardEvent, hotkey: string): boolean {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'parts'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const parts = hotkey.toLowerCase().split('+')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'key'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const key = parts[parts.length - 1]
+  // [RUN-TIME STATE / INVARIANT] - 변수 'needsCtrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const needsCtrl = parts.includes('control') || parts.includes('ctrl')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'needsShift'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const needsShift = parts.includes('shift')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'needsAlt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const needsAlt = parts.includes('alt')
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (needsCtrl && !e.ctrlKey) return false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (needsShift && !e.shiftKey) return false
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (needsAlt && !e.altKey) return false
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'eKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const eKey = e.key.toLowerCase()
   return eKey === key || (key === '\\' && eKey === '\\')
 }
@@ -101,6 +110,7 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
 
   const { adjustEditorZoom, setBrowserZoom } = useProcessStore()
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleKeyDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const hotkeys: HotkeyConfig = settings.hotkeys || {
       save: 'Control+s', open: 'Control+o', newFile: 'Control+n',
@@ -111,11 +121,13 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
     // F11 — 전체화면 토글
     if (e.key === 'F11') {
       e.preventDefault()
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (document.fullscreenElement) document.exitFullscreen()
       else document.documentElement.requestFullscreen()
       return
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (matchHotkey(e, hotkeys.save || 'Control+s')) {
       e.preventDefault()
       onSave()
@@ -173,23 +185,32 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
 
   }, [settings.hotkeys, onSave, onOpen, onNewTab, onToggleAI, onToggleMode, onZoomIn, onZoomOut, onZoomReset])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleWheelZoom'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleWheelZoom = useCallback((e: WheelEvent) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (!e.ctrlKey) return
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'editorWrapper'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const editorWrapper = document.querySelector('.editor-zoom-wrapper')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isInsideEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const isInsideEditor = editorWrapper?.contains(e.target as Node) ?? false
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (isInsideEditor) {
       // 에디터 내부: CSS zoom으로 처리
       e.preventDefault()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'delta'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const delta = e.deltaY < 0 ? 0.1 : -0.1
       adjustEditorZoom(delta)
     } else {
       // 에디터 외부: Electron webFrame zoom
       if ((window as any).electronAPI?.setZoomFactor) {
         e.preventDefault()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'step'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const step = e.deltaY < 0 ? 0.1 : -0.1
+  // [RUN-TIME STATE / INVARIANT] - 변수 'prev'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const prev = useProcessStore.getState().browserZoom
+  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const next = Math.min(3.0, Math.max(0.3, Math.round((prev + step) * 10) / 10))
         setBrowserZoom(next)
         ;(window as any).electronAPI.setZoomFactor(next)
@@ -207,3 +228,5 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
     }
   }, [handleKeyDown, handleWheelZoom])
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

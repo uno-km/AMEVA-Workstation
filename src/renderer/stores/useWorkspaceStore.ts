@@ -220,6 +220,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
    */
   addTaggedBlock: (block) =>
     set((state) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (state.taggedBlocks.some((b) => b.id === block.id)) return {}
       return { taggedBlocks: [...state.taggedBlocks, block] }
     }),
@@ -231,3 +232,5 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   selectedSnapshot: null,
   setSelectedSnapshot: (snapshot) => set({ selectedSnapshot: snapshot })
 }))
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

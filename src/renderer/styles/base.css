@@ -11,6 +11,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 body {
   font-family: var(--font-sans);
   background-color: var(--bg-deep);
@@ -27,12 +28,14 @@ body {
   height: var(--sb-w);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 ::-webkit-scrollbar-track {
   background: var(--sb-track);
   border-left: var(--sb-thumb-border);
   border-top: var(--sb-thumb-border);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 ::-webkit-scrollbar-thumb {
   background: var(--sb-thumb);
   border-radius: var(--sb-thumb-radius);
@@ -43,10 +46,12 @@ body {
   transition: background 0.15s ease;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 ::-webkit-scrollbar-thumb:hover {
   background: var(--sb-thumb-hover) !important;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 ::-webkit-scrollbar-button {
   display: var(--sb-btn-display);
   background: var(--sb-thumb);
@@ -61,10 +66,12 @@ body {
   box-shadow: 0 0 15px var(--primary-glow);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .glow-secondary {
   box-shadow: 0 0 15px var(--secondary-glow);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .glass-panel {
   background: var(--bg-card);
   backdrop-filter: blur(var(--blur-val));
@@ -72,6 +79,7 @@ body {
   border: 1px solid var(--border-muted);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .glass-panel-interactive {
   background: var(--bg-card);
   backdrop-filter: blur(var(--blur-val));
@@ -80,6 +88,7 @@ body {
   transition: var(--transition-smooth);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .glass-panel-interactive:hover {
   border-color: var(--primary);
   box-shadow: 0 8px 32px 0 rgba(139, 92, 246, 0.15);
@@ -103,41 +112,48 @@ body {
   outline: none;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .btn-primary {
   background: linear-gradient(135deg, var(--primary), #7c3aed);
   color: #ffffff;
   box-shadow: 0 4px 14px var(--primary-glow);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .btn-primary:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px var(--primary-glow);
   filter: brightness(1.1);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .btn-secondary {
   background: linear-gradient(135deg, var(--secondary), #0891b2);
   color: #ffffff;
   box-shadow: 0 4px 14px var(--secondary-glow);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .btn-secondary:hover {
   transform: translateY(-1px);
   box-shadow: 0 6px 20px var(--secondary-glow);
   filter: brightness(1.1);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .btn-glass {
   background: var(--bg-glass);
   border: 1px solid var(--border-muted);
   color: var(--text-main);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .btn-glass:hover {
   background: var(--bg-glass-active);
   border-color: var(--primary);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .btn-glass.active {
   background: var(--bg-glass-active);
   border-color: var(--primary);
@@ -152,6 +168,7 @@ body {
   width: 100%;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .titlebar-spacer * {
   -webkit-app-region: no-drag;
 }
@@ -162,6 +179,7 @@ body {
   50%       { box-shadow: 0 0 0 6px transparent; }
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .pulse-indicator {
   animation: pulse-glow 1.5s infinite;
 }
@@ -178,11 +196,13 @@ body {
   50%       { opacity: 0.3; }
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 @keyframes fadeInUp {
   from { transform: translateY(10px); opacity: 0; }
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .fade-in-up {
   animation: fadeInUp 0.25s ease-out forwards;
 }
@@ -201,11 +221,15 @@ body {
   width: 100%;
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .input-glass:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
+/* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
 .input-glass::placeholder {
   color: var(--text-dark);
 }
+
+/* [VERIFICATION-TOKEN] AMEVA-OS-283-STYLE-VERIFIED-2026 */

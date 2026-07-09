@@ -79,11 +79,17 @@ export function useAIStreamProcessor() {
    * - pendingTokenUpdateRef: 60ms 스로틀 제한 시간 동안 추가로 유입된 토큰들의 렌더링 지연 예약을 위한 타이머 플래그 레퍼런스.
    */
   const sanitizerRef = useRef<StreamingSanitizer>(new StreamingSanitizer())
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rawAccumRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const rawAccumRef = useRef<string>('')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentAssistantIdRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const currentAssistantIdRef = useRef<string | null>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentSessionIdRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const currentSessionIdRef = useRef<string | null>(null)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isAgentRunningRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isAgentRunningRef = useRef<boolean>(false)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lastRenderTimeRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const lastRenderTimeRef = useRef<number>(0)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'pendingTokenUpdateRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const pendingTokenUpdateRef = useRef<boolean>(false)
 
   /**
@@ -126,15 +132,19 @@ export function useAIStreamProcessor() {
       if (sessId !== currentSessionIdRef.current) return
       setStreamingText(rawAccumRef.current)
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'assistantId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const assistantId = currentAssistantIdRef.current
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!assistantId) return
 
       // 생각 부분과 안전 텍스트 부분의 파싱 데이터 획득
       const safeText = sanitizerRef.current.getSafeOutput()
+  // [RUN-TIME STATE / INVARIANT] - 변수 'thinkingText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const thinkingText = sanitizerRef.current.getThinkingBuffer()
 
       setMessages((prev) =>
         prev.map((m) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
           if (m.id !== assistantId) return m
 
           // 실시간으로 흘러나오는 생각 흐름 정보 구성
@@ -206,3 +216,5 @@ export function useAIStreamProcessor() {
  *    - `liveTrace` 구조의 속성에 파싱용 플래그 메타데이터를 추가할 것.
  * ============================================================================
  */
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

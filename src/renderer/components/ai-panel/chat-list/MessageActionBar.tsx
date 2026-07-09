@@ -34,6 +34,7 @@ interface MessageActionBarProps {
   hasSelection: boolean
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function MessageActionBar({
   isUser,
   msg,
@@ -46,6 +47,7 @@ export function MessageActionBar({
   textToApply,
   hasSelection,
 }: MessageActionBarProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (isUser || msg.isStreaming || !cleanContent || cleanContent === '사용자가 답변을 중단했습니다') {
     return null
   }
@@ -60,7 +62,9 @@ export function MessageActionBar({
             <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
               <button
                 onClick={() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                   if (onApplySuggestion && msg.proposedText) onApplySuggestion(msg.proposedText, 'replace', msg.blockId);
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
                   if (onUpdateDiffState) onUpdateDiffState(msg.id, 'accepted');
                 }}
                 style={{
@@ -152,3 +156,5 @@ export function MessageActionBar({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

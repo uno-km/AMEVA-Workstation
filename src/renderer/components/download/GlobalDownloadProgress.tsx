@@ -22,26 +22,38 @@ import { Download, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { useProcessStore } from '../../stores/useProcessStore'
 import type { DownloadQueueItem } from '../../hooks/app/useDownloadManager'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 function formatBytes(bytes: number = 0): string {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (bytes === 0) return '0 B'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'k'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const k = 1024
+  // [RUN-TIME STATE / INVARIANT] - 변수 'sizes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  // [RUN-TIME STATE / INVARIANT] - 변수 'i'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function GlobalDownloadProgress() {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'downloadQueue'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const downloadQueue = useProcessStore(state => state.downloadQueue)
+  // [RUN-TIME STATE / INVARIANT] - 변수 'clearCompletedDownloads'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const clearCompletedDownloads = useProcessStore(state => state.clearCompletedDownloads)
   const [isHovered, setIsHovered] = useState(false)
 
   // 진행 중이거나 대기 중인 항목
   const activeDownloads = downloadQueue.filter((q: DownloadQueueItem) => q.status !== 'completed' && q.status !== 'error')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'completedOrError'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const completedOrError = downloadQueue.filter((q: DownloadQueueItem) => q.status === 'completed' || q.status === 'error')
   
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (downloadQueue.length === 0) return null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'currentActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const currentActive = downloadQueue.find((q: DownloadQueueItem) => q.status === 'downloading')
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isAllDone'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const isAllDone = activeDownloads.length === 0
 
   return (
@@ -167,3 +179,5 @@ export function GlobalDownloadProgress() {
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

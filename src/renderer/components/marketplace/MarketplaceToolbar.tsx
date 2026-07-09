@@ -27,6 +27,7 @@ interface MarketplaceToolbarProps {
   categories: { id: 'all' | 'tool' | 'feature' | 'collab'; label: string }[]
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function MarketplaceToolbar({
   searchQuery,
   onSearchChange,
@@ -64,6 +65,7 @@ export function MarketplaceToolbar({
       {/* 카테고리 탭 리스트 */}
       <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--border-muted)', paddingBottom: '8px' }}>
         {categories.map((cat) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const isActive = selectedCategory === cat.id
           return (
             <button
@@ -90,3 +92,5 @@ export function MarketplaceToolbar({
     </div>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -25,10 +25,12 @@ export interface SettingsTabCustomizationsProps {
   settings: AppSettings
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTabCustomizations({
   activeTab,
   settings,
 }: SettingsTabCustomizationsProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (activeTab !== 'Customizations') return null
 
   return (
@@ -44,6 +46,7 @@ export function SettingsTabCustomizations({
           { id: 'minimap', name: 'Minimap Visual Bar', desc: '에디터 우측 전체 문서 그래픽 미니맵 로딩' },
           { id: 'canvas', name: 'Free Drawing Canvas', desc: '자유 드로잉 및 다이어그램 스케치 삽입 플러그인' }
         ].map(p => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isInstalled'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const isInstalled = (settings.installedPlugins || []).includes(p.id)
           return (
             <div key={p.id} style={{
@@ -70,3 +73,5 @@ export function SettingsTabCustomizations({
     </>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

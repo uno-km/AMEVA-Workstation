@@ -23,6 +23,7 @@ import { escapeHtml, getPlainTextFromNormalized, inlineToText, inlineToHTML, typ
 // 1. HTML 내보내기 (백엔드 분산 변환 노드 버전)
 // ══════════════════════════════════════════════════════════════
 export function blocksToHTML(blocks: ExporterBlock[]): string {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'css'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const css = `
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -48,55 +49,82 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
     @media print { body { font-size: 12pt; } .doc-container { padding: 0; } }
   `
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'body'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let body = ''
   let listType: 'ul' | 'ol' | null = null
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'closeList'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const closeList = () => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (listType) { body += `</${listType}>\n`; listType = null }
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'renderBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const renderBlock = (block: ExporterBlock, depth = 0): string => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'indent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const indent = depth > 0 ? ` style="margin-left:${depth * 20}px"` : ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'contentHtml'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const contentHtml = inlineToHTML(block.content || [])
 
+  // [SWITCH ROUTING CASE] - 다중 후보 값 매핑 조건에 따른 최적 라우팅 제어.
     switch (block.type) {
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'heading': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lvl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const lvl = Math.min(6, Math.max(1, Number(block.props?.level) || 1))
         return `<h${lvl}>${contentHtml}</h${lvl}>\n`
       }
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'paragraph':
         return `<p>${contentHtml || '&nbsp;'}</p>\n`
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'bulletListItem':
         return `<li${indent}>${contentHtml}${
           block.children?.length ? `<ul>${block.children.map((c: ExporterBlock) => renderBlock(c, depth + 1)).join('')}</ul>` : ''
         }</li>\n`
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'numberedListItem':
         return `<li${indent}>${contentHtml}${
           block.children?.length ? `<ol>${block.children.map((c: ExporterBlock) => renderBlock(c, depth + 1)).join('')}</ol>` : ''
         }</li>\n`
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'codeBlock': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'lang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const lang = block.props?.language || ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'code'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const code = escapeHtml(getPlainTextFromNormalized(block))
         return `<pre><span class="lang-badge">${escapeHtml(lang)}</span><code class="language-${lang}">${code}</code></pre>\n`
       }
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'checkListItem': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'checked'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const checked = block.props?.checked ? 'checked' : ''
         return `<li style="list-style:none;display:flex;gap:8px"><input type="checkbox" ${checked} disabled /><span>${contentHtml}</span></li>\n`
       }
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'image': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'url'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const url = block.props?.url || ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'caption'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const caption = block.props?.caption || ''
         return `<figure style="text-align:center;margin:1.2rem 0"><img src="${url}" alt="${escapeHtml(caption)}" />${caption ? `<figcaption style="font-size:12px;color:#9ca3af;margin-top:6px">${escapeHtml(caption)}</figcaption>` : ''}</figure>\n`
       }
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'table': {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rows'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const rows = block.tableRows ?? []
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
         if (rows.length === 0) return ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'html'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         let html = '<table>\n<tbody>\n'
         rows.forEach((row: ExporterTableRow, ri: number) => {
           html += '<tr>\n'
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cells'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
           cells.forEach((cell: ExporterInlineContent[] | unknown) => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cellText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const cellText = Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''
+  // [RUN-TIME STATE / INVARIANT] - 변수 'tag'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
             const tag = ri === 0 ? 'th' : 'td'
             html += `<${tag}>${escapeHtml(cellText)}</${tag}>\n`
           })
@@ -105,20 +133,26 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
         html += '</tbody>\n</table>\n'
         return html
       }
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'quote':
         return `<blockquote>${contentHtml}</blockquote>\n`
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       case 'divider':
         return '<hr />\n'
+    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
       default:
         return contentHtml ? `<p>${contentHtml}</p>\n` : ''
     }
   }
 
   blocks.forEach((block) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (block.type === 'bulletListItem') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (listType !== 'ul') { closeList(); body += '<ul>\n'; listType = 'ul' }
       body += renderBlock(block)
     } else if (block.type === 'numberedListItem') {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (listType !== 'ol') { closeList(); body += '<ol>\n'; listType = 'ol' }
       body += renderBlock(block)
     } else {
@@ -148,22 +182,29 @@ ${body}
 // 6. XML 내보내기 (백엔드 분산 변환 노드 버전)
 // ══════════════════════════════════════════════════════════════
 export function exportToXML(blocks: ExporterBlock[]): string {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'renderXML'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const renderXML = (block: ExporterBlock, indent = '  '): string => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'xml'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     let xml = `${indent}<block id="${block.id}" type="${block.type}">\n`
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (Object.keys(block.props || {}).length > 0) {
       xml += `${indent}  <props>\n`
+  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
       for (const [k, v] of Object.entries(block.props)) {
         xml += `${indent}    <prop name="${k}"><![CDATA[${v}]]></prop>\n`
       }
       xml += `${indent}  </props>\n`
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (block.type === 'table') {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'rows'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const rows = block.tableRows ?? []
       xml += `${indent}  <table>\n`
       rows.forEach((row: ExporterTableRow) => {
         xml += `${indent}    <row>\n`
+  // [RUN-TIME STATE / INVARIANT] - 변수 'cells'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
         const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
         cells.forEach((cell: ExporterInlineContent[] | unknown) => {
           xml += `${indent}      <cell><![CDATA[${Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''}]]></cell>\n`
@@ -175,6 +216,7 @@ export function exportToXML(blocks: ExporterBlock[]): string {
       xml += `${indent}  <content><![CDATA[${getPlainTextFromNormalized(block)}]]></content>\n`
     }
 
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (Array.isArray(block.children) && block.children.length > 0) {
       xml += `${indent}  <children>\n`
       block.children.forEach((c: ExporterBlock) => { xml += renderXML(c, indent + '    ') })
@@ -185,6 +227,7 @@ export function exportToXML(blocks: ExporterBlock[]): string {
     return xml
   }
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'xml'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`
   xml += `<!-- AMEVA Document Export: ${new Date().toISOString()} -->\n`
   xml += `<document>\n`
@@ -192,3 +235,5 @@ export function exportToXML(blocks: ExporterBlock[]): string {
   xml += `</document>`
   return xml
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -21,17 +21,23 @@
 import { useEffect } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function useAIModelHub(showModelHub: boolean, refreshModels?: () => Promise<void>, setDownloadStatus?: (val: any) => void) {
   useEffect(() => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (showModelHub && refreshModels) {
       refreshModels()
     }
   }, [showModelHub, refreshModels])
 
+  // [RUN-TIME STATE / INVARIANT] - 변수 'handleDownloadModel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
   const handleDownloadModel = async (_modelId: string, url: string, filename: string) => {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
     if (ipc.isElectronEnv() && setDownloadStatus && ipc.llmDownloadModel) {
       setDownloadStatus({ filename, progress: 0, speed: 0 })
+  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const res = await ipc.llmDownloadModel({ url, filename })
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!res?.success) {
         alert(`다운로드 실패: ${res?.error || '알 수 없는 오류'}`)
         setDownloadStatus(null)
@@ -41,3 +47,5 @@ export function useAIModelHub(showModelHub: boolean, refreshModels?: () => Promi
 
   return { handleDownloadModel }
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

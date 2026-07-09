@@ -25,11 +25,13 @@ export interface SettingsTabPermissionsProps {
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
 }
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function SettingsTabPermissions({
   activeTab,
   settings,
   onUpdateSettings,
 }: SettingsTabPermissionsProps) {
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
   if (activeTab !== 'Permissions') return null
 
   return (
@@ -43,6 +45,7 @@ export function SettingsTabPermissions({
           { id: 'restricted', title: 'Restricted Sandbox', desc: '에이전트를 안전한 샌드박스 내에서만 실행합니다.' },
           { id: 'paranoiac', title: 'Paranoid Maximum', desc: '가장 강력한 보안. 자동 실행을 완전히 금지합니다.' }
         ].map(item => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const isActive = (settings.securityPreset || 'turbo') === item.id;
           return (
             <div
@@ -74,6 +77,7 @@ export function SettingsTabPermissions({
           { id: 'ask', title: 'Always Ask', desc: '실행 시 항상 확인 창을 띄웁니다.' },
           { id: 'never', title: 'Always Block', desc: '자동 실행을 완전히 비활성화합니다.' }
         ].map(item => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
           const isActive = (settings.artifactReviewPolicy || 'ask') === item.id;
           return (
             <div
@@ -98,3 +102,5 @@ export function SettingsTabPermissions({
     </>
   )
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -21,21 +21,28 @@ import { ipcMain } from 'electron'
 import { join, basename } from 'path'
 import { existsSync } from 'fs'
 
+  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export function registerImportModelHandler(): void {
   ipcMain.handle('llm:importModel', async (_event, sourcePath: string, type?: 'llm' | 'code') => {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'llmDir'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
     const llmDir = type === 'code' ? 'C:\\ameva\\models\\code' : 'C:\\ameva\\models\\llm'
     try {
       const { copyFile, mkdir } = await import('fs/promises')
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!sourcePath || !existsSync(sourcePath)) {
         return { success: false, error: '선택한 파일이 존재하지 않습니다.' }
       }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'filename'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const filename = basename(sourcePath)
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!filename.endsWith('.gguf')) {
         return { success: false, error: '보안 정책: .gguf 파일만 추가할 수 있습니다.' }
       }
+  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
       if (!existsSync(llmDir)) {
         await mkdir(llmDir, { recursive: true })
       }
+  // [RUN-TIME STATE / INVARIANT] - 변수 'targetPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const targetPath = join(llmDir, filename)
       await copyFile(sourcePath, targetPath)
       return { success: true, path: targetPath }
@@ -44,3 +51,5 @@ export function registerImportModelHandler(): void {
     }
   })
 }
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

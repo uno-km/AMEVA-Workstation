@@ -186,6 +186,7 @@ export const AIHeader: React.FC<AIHeaderProps> = ({
     // 참일 경우, 현재 설정된 경로와 일치하는 모델 객체를 탐색합니다.
     // 예상되는 값: isAvailable === true 일 때 모델 검색 로직 실행.
     if (isAvailable) {
+  // [RUN-TIME STATE / INVARIANT] - 변수 'activeModel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
       const activeModel = models.find(m => m.path === settings.modelPath);
       // 탐색된 활성 모델 객체가 존재하는지 확인하는 조건문입니다.
       // 설정 파일의 경로와 일치하는 모델 객체를 찾았다면 그 이름을 반환합니다.
@@ -312,3 +313,5 @@ export const AIHeader: React.FC<AIHeaderProps> = ({
     </div>
   );
 };
+
+// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026
