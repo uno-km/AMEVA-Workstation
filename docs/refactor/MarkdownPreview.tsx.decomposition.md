@@ -141,7 +141,15 @@
 
 ---
 
-## 7. 최종 통합 및 검증 (2026-07-09)
+## 7. 최종 통합 및 검증 (2026-07-09 최종 확정)
+
 - 깨진 `MarkdownPreview.tsx` 구문을 복구하고, 찢어낸 `InlineMermaidRenderer` 등을 로컬 경로에서 정상적으로 import 하도록 바인딩 완료.
 - 초초고밀도 주석 규칙(Expected Value Flow, Algorithm Branch, Consumers 등) 및 흐름 파싱 로깅 구현 완료.
-- 빌드/타입 체크 검증: 완료.
+- 미사용 import(`useState`, `useEffect`, `useRef`, `mermaid`, `Globe`) 최종 정리 완료 (분리된 InlineMermaidRenderer가 직접 소비).
+- `npx tsc --noEmit` 타입 에러 **0개** 통과 (2회 연속 검증).
+- 서버 이중화 스크립트 완료:
+  - `npm run web` → `vite --mode browser` (포트 5174, 일렉트론 없음)
+  - `npm run market` / `npm run dev:market` → 마켓 서버 단독
+  - `npm run dev` → Vite(5173) + 일렉트론 + 마켓(3초 지연) 통합 실행
+- **Decomposition 상태: COMPLETE (완전 종결)**
+

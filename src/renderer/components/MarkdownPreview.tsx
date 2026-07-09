@@ -17,10 +17,8 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useMemo } from 'react'
 import { marked } from 'marked'
-import mermaid from 'mermaid'
-import { Globe } from 'lucide-react'
 import { JupyterCodeViewer } from './JupyterCodeViewer'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
 
