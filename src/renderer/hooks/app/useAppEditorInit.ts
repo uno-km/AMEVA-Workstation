@@ -1,15 +1,73 @@
+/**
+ * @file useAppEditorInit.ts
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/hooks/app/useAppEditorInit.ts
+ * @role Editor instance lifecycle factory & Welcome document injector Hook
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - BlockNoteEditor 스펙에 맞게 WYSIWYG 에디터 인스턴스(activeEditor)를 실시간 빌드 기동한다.
+ * - 협업 세션 조건(`ydoc`, `provider`, `isActive`) 충족 시, Yjs CRDT XMLFragment 프레임과 캐럿 정보(username, color)를 엮은 협업용 에디터로 자동 맵 구성한다.
+ * - 최초 부팅 시, 예시 데이터가 포함된 화려한 가이드 마크다운(`welcomeMD`) 본문을 로컬 문서 탭 영역에 기본 주입한다.
+ * - 에디터 준비 완료 후 Electron 주 프로세스로 메인 윈도우 팝업 완료 신호(`ipc.appReady()`)를 방출한다.
+ * 
+ * [책임이 아닌 것 - NON-RESPONSIBILITY]
+ * - 에디터 파일 이미지 업로드 시 로컬 VFS 스토리지 복사 (useNativeUploadIntercept가 담당).
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST NOT load welcome template repeatedly: 탭이 이동되거나 리액트 상태가 바뀔 때 웰컴 마크다운이 반복 유입되는 것을 가드하기 위해,
+ *   반드시 `isInitialLoad.current` 레퍼런스를 락 플래그로 활용하여 평생 단 1회만 초기 웰컴 가이드가 들어가도록 통제할 것.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - useEffect: 에디터 팩토리 빌드를 최초 1회 트리거하기 위한 라이프사이클 훅.
+ * - useRef: 웰컴 문서 중복 인젝션을 차단(isInitialLoad)하기 위한 Mutable 참조 훅.
+ */
 import { useEffect, useRef } from 'react'
+
+/* 
+ * [BLOCKNOTE CORE BUILDER]
+ * - BlockNoteEditor: 블록노트 WYSIWYG 에디터를 기동 생성하기 위한 코어 팩토리.
+ */
 import { BlockNoteEditor } from "@blocknote/core"
+
+/* 
+ * [CUSTOM BLOCK SCHEMAS]
+ * - schema: Jupyter 코드블록, Live HTML Sandbox, Drawing 캔버스를 포함한 AMEVA 커스텀 스키마.
+ * - AppEditor: 스키마가 반영된 최종 에디터 타입 시그니처.
+ */
 import { amevaSchema as schema, type AmevaEditor as AppEditor } from '../../editor/amevaBlockSchema'
+
+/* 
+ * [ELECTRON IPC COOPERATION]
+ * - ipc: 윈도우 로드 완료 통보(`appReady`) 채널 어댑터.
+ */
 import * as ipc from '../../services/ipc/electronApiAdapter'
 
+/**
+ * 웰컴 카드 뷰 포화 시 출력할 기본 프론트 페이지 헤더 마크다운 리터럴.
+ */
 const DEFAULT_WELCOME_TEXT = `# 🚀 AMEVA Workstation
 
 (AMEVA-OS WebAssembly Kernel & AI Hub)
 
 이곳에서 문서 작성, 코드 실행, 파일 시스템 탐색을 할 수 있습니다.`;
 
+/**
+ * @hook useAppEditorInit
+ * @description 에디터 빌드 팩토리 및 협업 세션 바인딩, 웰컴 가이드 문서 이식을 총 조율하는 훅.
+ */
 export function useAppEditorInit({
+  /*
+   * [HOOK CONFIG PARAMETERS]
+   * - ydoc: Yjs CRDT 공유 문서 인스턴스.
+   * - provider: WebSocket/WebRTC 동시 편집 채널 제공자.
+   * - isActive: 현재 협업 방 가동 여부 플래그.
+   * - username: 로컬 유저 닉네임.
+   * - userColor: 유저 캐럿 식별 색상.
+   * - setEditor: 에디터 인스턴스 보존용 세터.
+   * - setCurrentContent: 원문 버퍼 갱신용 세터.
+   */
   ydoc,
   provider,
   isActive,
@@ -26,11 +84,24 @@ export function useAppEditorInit({
   setEditor: (editor: AppEditor | null) => void
   setCurrentContent: (content: string) => void
 }) {
+  /*
+   * [INVARIANT - Welcome Load Lock Reference]
+   * - isInitialLoad: 웰컴 마크다운 중복 인젝션을 차단하여 사용자 수정본이 덮어씌워지는 참사를 막기 위한 락 레퍼런스.
+   */
   const isInitialLoad = useRef(true)
 
+  /**
+   * [SIDE EFFECT - Build Editor Instance]
+   * - Rationale: 협업 플래그 활성화 유무에 따라 인스턴스를 다르게 분기 생성하고, 초기 마운트 시 웰컴 문서를 세팅한다.
+   */
   useEffect(() => {
+    /*
+     * [LOCAL VARIABLES]
+     * - activeEditor: 빌드 완료된 에디터 인스턴스 임시 보존 변수.
+     */
     let activeEditor: AppEditor
     
+    // 파일 업로드 요청 시 브라우저 FileReader API를 통해 base64 DataURL로 변환해 리턴하는 이너 헬퍼
     const uploadFileHandler = async (file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
         const reader = new FileReader()
@@ -43,6 +114,7 @@ export function useAppEditorInit({
       })
     }
 
+    // 1. 실시간 Yjs 협업 구동 조건 시, collaboration 프롭스를 포함하여 인스턴스 생성
     if (ydoc && provider && isActive) {
       activeEditor = BlockNoteEditor.create({
         schema,
@@ -53,15 +125,19 @@ export function useAppEditorInit({
         },
         uploadFile: uploadFileHandler,
       })
-    } else {
+    } 
+    // 2. 단독 편집(Offline) 조건 시, 기본 스키마만 엮어 생성
+    else {
       activeEditor = BlockNoteEditor.create({
         schema,
         uploadFile: uploadFileHandler,
       })
     }
 
+    // 전역 상태에 에디터 이식
     setEditor(activeEditor)
 
+    // 3. 최초 부팅 단계인 경우 가이드 웰컴 마크다운(welcomeMD) 주입
     if (isInitialLoad.current && (!isActive || !provider)) {
       isInitialLoad.current = false
       const welcomeMD = `# 🚀 AMEVA Workstation
@@ -154,6 +230,7 @@ graph TD
         ipc.appReady()
       }
     } else {
+      // 웰컴 인젝션을 스킵하더라도, 앱 로딩이 완료되었음을 Electron에 통보
       if (ipc.isElectronEnv()) {
         ipc.appReady()
       }
@@ -162,3 +239,13 @@ graph TD
 
   return { DEFAULT_WELCOME_TEXT }
 }
+
+/**
+ * ============================================================================
+ * FUTURE DEVELOPMENT GUIDE (AI Agent Instruction Layer)
+ * ============================================================================
+ * 1. 기본 웰컴 가이드 마크다운을 개편하거나 변경하고자 할 때:
+ *    - `welcomeMD` 마크다운 템플릿 문자열을 개정할 것.
+ *    - 코드블록 내의 이스케이프 백틱 구문 형식을 해치지 않도록 각별히 유의할 것.
+ * ============================================================================
+ */

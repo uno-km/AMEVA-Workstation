@@ -1,20 +1,114 @@
+/**
+ * @file useAppFileOperations.ts
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/hooks/app/useAppFileOperations.ts
+ * @role File Load, Save & Workspace tab Synchronization Hook
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - 마크다운 파일의 디바이스 저장(`handleSaveFile`, `handleSaveAsFile`) 및 열기 대화상자(`handleOpenFile`)를 구동한다.
+ * - 다중 문서 탭 개설(`openFileInTab`), 단락 뒤 이어 붙여 열기(`appendMarkdownIntoEditor`) 및 새 빈문서(`handleStartNewDocument`) 액션을 처리한다.
+ * - [Performance Tuning - Chunked Parser Load]: 200줄을 초과하는 대용량 문서를 일시에 에디터에 밀어 넣으면,
+ *   화면 렌더러와 텍스트 스트립에 과부하 렉이 발생한다.
+ *   이를 막기 위해 **120줄 단위로 분할 청크 파싱(`firstChunk`, `remainingChunk`)**하고, 
+ *   **350ms 프레임 지연 `setTimeout` 백그라운드 파이프라인**을 가동해 렉 없이 지연 적재 완료한다.
+ * - 아메바 미디어 보존 전용 이진 포맷(.adc), Jupyter Notebook(.ipynb), 표준 Markdown(.md) 간의 직렬화 내보내기를 조율한다.
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST NOT bypass chunked load: 200줄 이상의 대형 파일 로드 시에는 반드시 120줄 선파싱 후, 
+ *   나머지 350ms 프레임 비동기 지연 결합 처리 계약을 유지하여 타이핑/화면 전환 시 렉을 없앨 것.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - useCallback: 파일 트랜잭션 콜백들의 렌더링 무결성을 보장하기 위한 React 코어 API.
+ */
 import { useCallback } from 'react'
+
+/* 
+ * [ELECTRON IPC BRIDGE ADAPTER]
+ * - ipc: OS 파일 다이얼로그(`openFile`, `saveFile`) 및 확인창(`showMessageBox`) 채널 어댑터.
+ */
 import * as ipc from '../../services/ipc/electronApiAdapter'
+
+/* 
+ * [UTILITIES & CONSTANTS]
+ * - normalizeMarkdown: 윈도우 개행문자(CRLF -> LF) 통일 및 빈 문단 보정 유틸.
+ * - cleanCodeBlocks: 에디터 내 코드 블록 스타일 복원 필터.
+ * - ensureBlockIds: Yjs 협업 세션 충돌 방지를 위한 블록 고유 ID 누락 보정기.
+ * - convertJupyterToCodeBlocks: Jupyter 노드를 마크다운 백틱 펜스로 역치환.
+ */
 import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds, convertJupyterToCodeBlocks } from '../../utils/markdownUtils'
+
+/* 
+ * [ZUSTAND STORE]
+ * - useWorkspaceStore: 파일 경로, 현재 버퍼, 탭 리스트 저장소.
+ */
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
-import { type AmevaEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
+
+/* 
+ * [SHARED SCHEMAS & TYPES]
+ * - AppEditor: 블록노트 커스텀 에디터 규격.
+ * - AppPartialBlock: 일부 데이터 업데이트를 위한 블록 스펙.
+ * - EditorMode: 웰컴/편집/미리보기 모드 타입 정의.
+ */
+import type { AmevaEditor as AppEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
 import type { EditorMode } from '../../../shared/types'
+
+/* 
+ * [FILE TRANSLATORS & CONVERTERS]
+ * - parseFileToMarkdown: 이진 파일(pdf, docx, hwpx 등)의 원시 마크다운 변환기.
+ * - convertMarkdownToBinary: 마크다운 텍스트의 이진 오피스 파일 컴파일러.
+ * - triggerBrowserDownload: 웹 환경 다운로드 파일 유도 유틸.
+ * - arrayBufferToBase64: 이진 버퍼의 base64 텍스트 포맷터.
+ * - convertMarkdownToIpynb: 마크다운 평문의 쥬피터 JSON 스펙 변환기.
+ */
 import {
   parseFileToMarkdown,
   convertMarkdownToBinary,
-  triggerBrowserDownload
+  triggerBrowserDownload,
+  arrayBufferToBase64,
+  convertMarkdownToIpynb
 } from '../../utils/fileConverters'
 
+/*
+ * [ADC PACKAGER / SEC-W-024]
+ * - packMarkdownToADC: 미디어가 내장된 adc 패키지 파일 압축 유틸.
+ */
+import { packMarkdownToADC } from '../../utils/adcPackager'
+
+/**
+ * @hook useAppFileOperations
+ * @description 에디터 문서 로딩, 청크 파싱 분할, 저장 분기 및 ADC 미디어 변환 권장을 제어하는 훅.
+ */
 export function useAppFileOperations(
-  editor: AmevaEditor | null,
+  /*
+   * [HOOK CONFIG PARAMETERS]
+   * - editor: BlockNote API 본체.
+   * - setEditorMode: 화면 모드 갱신 세터.
+   * - createSnapshot: 저장 시점 자동 히스토리 백업 콜백.
+   */
+  editor: AppEditor | null,
   setEditorMode: (mode: EditorMode) => void,
   createSnapshot: (name: string, content: string) => void
 ) {
+  /*
+   * [ZUSTAND WORKSPACE SELECTORS]
+   * - filePath: 현재 작업 중인 물리 파일 경로.
+   * - setFilePath: 파일 경로 갱신 세터.
+   * - currentContent: 실시간 마크다운 본문 문자열.
+   * - setCurrentContent: 본문 문자열 갱신 세터.
+   * - originalContent: 저장 시점 비교용 원본 텍스트.
+   * - setOriginalContent: 원본 텍스트 갱신 세터.
+   * - lastSavedTime: 마지막 저장 시간 타임스탬프.
+   * - setLastSavedTime: 저장 시간 갱신 세터.
+   * - fileOpenMode: replace/append/tab 열기 옵션.
+   * - appendedFiles: 한 화면 다중 문서 병합 위치 리스트.
+   * - setAppendedFiles: 병합 리스트 갱신 세터.
+   * - setActiveTabId: 활성 탭 키 지정 세터.
+   * - activeTabId: 현재 활성 탭 키.
+   * - updateActiveTab: 활성 탭 정보 필드 부분 업데이트 콜백.
+   * - addTab: 신규 탭 추가 콜백.
+   */
   const {
     filePath, setFilePath,
     currentContent, setCurrentContent,
@@ -29,22 +123,28 @@ export function useAppFileOperations(
     addTab
   } = useWorkspaceStore()
 
-  // 파일 로딩 핵심 로직
-  const loadMarkdownIntoEditor = useCallback(async (targetEditor: AmevaEditor, rawContent: string, isBinary = false, path = '') => {
+  /**
+   * [CONTRACT - Load Markdown with Chunked Parser / Rationale]
+   * - Rationale: 200줄이 넘는 긴 평문을 동기로 전부 얹으면 UI 프리징이 나므로, 120줄 선 마운트 후 350ms 지연 백그라운드 병합 처리를 수행한다.
+   */
+  const loadMarkdownIntoEditor = useCallback(async (targetEditor: AppEditor, rawContent: string, isBinary = false, path = '') => {
     setEditorMode('edit')
     const markdown = await parseFileToMarkdown(rawContent, path || filePath || '', isBinary)
     const normalized = normalizeMarkdown(markdown)
 
     const lines = normalized.split('\n')
+    // 1) 200줄 초과 대형 마크다운 분할 파싱 분기
     if (lines.length > 200 && !isBinary) {
       const firstChunk = lines.slice(0, 120).join('\n')
       const remainingChunk = lines.slice(120).join('\n')
 
+      // 선두 120줄 파싱 및 에디터 즉시 대체
       const firstBlocks = await targetEditor.tryParseMarkdownToBlocks(firstChunk)
       cleanCodeBlocks(firstBlocks)
       ensureBlockIds(firstBlocks)
       targetEditor.replaceBlocks(targetEditor.document, firstBlocks)
 
+      // 350ms 대기 후 나머지 잔여 청크를 하단에 끼워 넣음
       setTimeout(async () => {
         const remainingBlocks = await targetEditor.tryParseMarkdownToBlocks(remainingChunk)
         cleanCodeBlocks(remainingBlocks)
@@ -53,10 +153,14 @@ export function useAppFileOperations(
         if (doc.length > 0) {
           targetEditor.insertBlocks(remainingBlocks, doc[doc.length - 1], 'after')
         }
+        
+        // 최종 결합 완성본의 마크다운 직렬화 취합
         const derived = await targetEditor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(targetEditor.document))
         setCurrentContent(derived)
       }, 350)
-    } else {
+    } 
+    // 2) 일반 파일 동기 즉시 마운트
+    else {
       const blocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
       cleanCodeBlocks(blocks)
       ensureBlockIds(blocks)
@@ -68,8 +172,11 @@ export function useAppFileOperations(
     setLastSavedTime(null)
   }, [filePath, setEditorMode, setOriginalContent, setCurrentContent, setLastSavedTime])
 
-  // 이어 붙여 열기
-  const appendMarkdownIntoEditor = useCallback(async (targetEditor: AmevaEditor, rawContent: string, fileName: string, isBinary = false, path = '') => {
+  /**
+   * [CONTRACT - Append Markdown into Editor]
+   * - Rationale: 가져온 파일 내용을 현재 편집실 맨 마지막 노드 뒤에 덧붙이고, appendedFiles 목록에 앵커를 추가한다.
+   */
+  const appendMarkdownIntoEditor = useCallback(async (targetEditor: AppEditor, rawContent: string, fileName: string, isBinary = false, path = '') => {
     const markdown = await parseFileToMarkdown(rawContent, path, isBinary)
     const normalized = normalizeMarkdown(markdown)
     const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
@@ -90,10 +197,14 @@ export function useAppFileOperations(
     setCurrentContent(derived)
   }, [appendedFiles, setAppendedFiles, setCurrentContent])
 
-  // 탭으로 새로 열기
-  const openFileInTab = useCallback(async (targetEditor: AmevaEditor, fileContent: string, path: string, isBinary = false) => {
+  /**
+   * [CONTRACT - Open File in New Tab]
+   * - Rationale: 기존 탭의 문서 변경 사항을 Zustand 탭 목록에 역매핑 저장하고, 새로운 고유 ID의 탭 레코드를 구성하여 교체 로드한다.
+   */
+  const openFileInTab = useCallback(async (targetEditor: AppEditor, fileContent: string, path: string, isBinary = false) => {
     const currentBlocks = [...targetEditor.document]
     
+    // 현재 열려있는 구 문서 탭 정보 갱신 저장
     updateActiveTab({ filePath, content: currentContent, blocks: currentBlocks, originalContent, lastSavedTime })
 
     const markdown = await parseFileToMarkdown(fileContent, path, isBinary)
@@ -119,12 +230,16 @@ export function useAppFileOperations(
     setCurrentContent(markdown)
     setLastSavedTime(null)
 
+    // 리액트 라이프사이클 안착 직후 블록 교체 실행
     setTimeout(() => {
       targetEditor.replaceBlocks(targetEditor.document, parsed)
     }, 0)
   }, [activeTabId, filePath, currentContent, originalContent, lastSavedTime, addTab, setActiveTabId, setFilePath, setOriginalContent, setCurrentContent, setLastSavedTime, updateActiveTab])
 
-  // 새 빈 문서 시작
+  /**
+   * [CONTRACT - Start New Document]
+   * - Rationale: 에디터 캔버스를 단일 빈 문단으로 덮어쓰고 파일 메타 상태를 초기화 리셋한다.
+   */
   const handleStartNewDocument = useCallback(() => {
     if (editor) {
       const newBlock: AmevaPartialBlock = {
@@ -141,9 +256,14 @@ export function useAppFileOperations(
     setEditorMode('edit')
   }, [editor, setFilePath, setOriginalContent, setCurrentContent, setLastSavedTime, setEditorMode])
 
-  // 파일 열기 대화상자 트리거
+  /**
+   * [CONTRACT - Open File Dialog Trigger]
+   * - Rationale: 플랫폼 환경(Electron/Browser) 분기에 부합하여 파일 다이얼로그를 트리거하고 선택 모드(replace/append/tab)에 맞추어 인서트한다.
+   */
   const handleOpenFile = useCallback(async () => {
     if (!editor) return
+    
+    // 1. 데스크톱 앱 내장 일렉트론 다이얼로그 활용
     if (ipc.isElectronEnv()) {
       const file = await ipc.openFile()
       if (file) {
@@ -156,7 +276,9 @@ export function useAppFileOperations(
           await loadMarkdownIntoEditor(editor, file.content, file.isBinary, file.filePath)
         }
       }
-    } else {
+    } 
+    // 2. 크롬 웹 브라우저 가상 파일 인풋 활용
+    else {
       const input = document.createElement('input')
       input.type = 'file'
       input.accept = '.md,.markdown,.txt,.docx,.hwpx,.pdf,.xlsx,.ipynb'
@@ -169,6 +291,7 @@ export function useAppFileOperations(
             const ext = file.name.split('.').pop()?.toLowerCase() || ''
             const isBinaryFile = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
             
+            // 바이너리 오피스 문서인 경우 ArrayBuffer를 base64로 감싸서 처리
             if (isBinaryFile) {
               const binReader = new FileReader()
               binReader.onload = async (binEvt) => {
@@ -202,7 +325,11 @@ export function useAppFileOperations(
     }
   }, [editor, fileOpenMode, loadMarkdownIntoEditor, appendMarkdownIntoEditor, openFileInTab, setFilePath])
 
-  // 파일 저장
+  /**
+   * [CONTRACT - File Save Manager / Rationale]
+   * - Rationale: 문서 내 동영상/오디오 대용량 리소스가 발견되면 보안 및 최적화 차원(.adc 패키징)의 전용 포맷 변환을 권장 팝업하고,
+   *   아니오 시 일반 마크다운/ipynb/오피스 이진 포맷 파일로 안전하게 컴파일 플러싱한다.
+   */
   const handleSaveFile = useCallback(async () => {
     if (!editor) return
     const path = filePath || 'document.md'
@@ -212,6 +339,7 @@ export function useAppFileOperations(
     const markdown = await editor.blocksToMarkdownLossy(rawBlocks)
     const hasMedia = markdown.includes('data:video/') || markdown.includes('data:audio/')
     
+    // 1) 동영상/오디오 포함 시 아메바 .adc 패키징 강제/권장 팝업 조건 노드
     if (hasMedia && ['md', 'markdown', 'txt'].includes(ext)) {
       if (ipc.isElectronEnv()) {
         const boxRes = await ipc.showMessageBox({
@@ -222,6 +350,7 @@ export function useAppFileOperations(
           message: '문서에 대용량 미디어 파일(동영상/오디오)이 감지되었습니다.\n미디어 공유가 완벽하게 지원되고 용량이 절감되는 아메바 문서 포맷(.adc)으로 변환하여 저장하시겠습니까?\n\n(아니오를 선택하시면 일반 마크다운 형식으로 저장이 계속 진행됩니다.)',
         })
         
+        // 예 선택 시 adc 패키지 변환 저장
         if (boxRes.response === 0) {
           const saveResult = await ipc.saveFile('', undefined)
           if (saveResult && saveResult.success && saveResult.filePath) {
@@ -259,6 +388,7 @@ export function useAppFileOperations(
       }
     }
     
+    // 2) 일반 포맷 저장 진행
     const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
     
     let contentToSave: string
@@ -285,7 +415,10 @@ export function useAppFileOperations(
     }
   }, [editor, filePath, setFilePath, setOriginalContent, setLastSavedTime, createSnapshot])
 
-  // 다른 이름으로 저장
+  /**
+   * [CONTRACT - Save As File]
+   * - Rationale: 현재 내용을 새로운 다른 이름의 파일 경로로 저장 대화상자를 열어 주입한다.
+   */
   const handleSaveAsFile = useCallback(async () => {
     if (!editor) return
     const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))

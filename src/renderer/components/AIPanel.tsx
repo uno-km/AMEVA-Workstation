@@ -1,7 +1,56 @@
+/**
+ * @file AIPanel.tsx
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/components/AIPanel.tsx
+ * @role Container Component for AI Interaction & Document Outline
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - AI 챗 인터페이스, 빠른 제안(Quick Actions), 문서 아웃라인, 플러그인 뷰의 탭 전환 렌더링을 격리 제어한다.
+ * - `useAIPanelLogic` 비즈니스 컨트롤러에 데이터 및 콜백(logicProps)을 바인딩하여 렌더링과 로직을 분리(ADR)한다.
+ * - 터미널 컴포넌트와 협업 도구에서 발송되는 Custom Event(`ameva:fill-ai-input`)의 수신기 역할을 수행한다.
+ * 
+ * [책임이 아닌 것 - NON-RESPONSIBILITY]
+ * - LLM 추론 로직 직접 처리, VFS 파일 수정, 에디터 변경 처리 (useAI, useAppAISuggestions 훅에 완전히 위임).
+ * - UI 레이아웃의 너비 드래그 제어 (App.tsx 및 AppLayout.tsx가 absolute width를 JS로 강제 조정함).
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST NOT: settings가 화이트 테마인 경우 `isWhiteTheme` 불리언 값을 올바르게 추출해야 하며, CSS variables가 충돌하지 않도록 스타일 분기해야 한다.
+ * - MUST: 터미널 챗 또는 에디터 선택 텍스트 주입 이벤트를 구독 및 해제(`addEventListener`/`removeEventListener`)하여 메모리 누수를 완전히 방지할 것.
+ */
 
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - useEffect: 터미널 선택 텍스트 자동 채우기 Custom Event 구독/해제 바인딩 훅.
+ */
 import { useEffect } from 'react'
+
+/* 
+ * [LUCIDE ICONS]
+ * - FileText: 문서 요약 액션 아이콘.
+ * - Wand2: 문장 개선 액션 아이콘.
+ * - Languages: 번역 액션 아이콘.
+ * - Expand: 문장 확장 액션 아이콘.
+ * - Lightbulb: 개념 설명 액션 아이콘.
+ */
 import { FileText, Wand2, Languages, Expand, Lightbulb } from 'lucide-react'
+
+/* 
+ * [PRESENTATION & LOGIC HOOKS]
+ * - useAIPanelLogic: 입력 폼 조작, 엔터 키 감지 및 챗 스크롤 동기화 전담 비즈니스 컨트롤러.
+ */
 import { useAIPanelLogic } from '../hooks/ai/useAIPanelLogic'
+
+/* 
+ * [SUB-COMPONENTS]
+ * - AIChatList: 에이전트 대화 말풍선 목록 렌더러.
+ * - AIPanelHeader: 엔진 요약 및 액션 버튼(휴지통, 설정) 헤더.
+ * - AIInputBar: 프롬프트 텍스트 인풋 박스 및 전송/중단 버튼.
+ * - AIWelcomeScreen: 대화 이력이 없을 때 노출할 빠른 제안 및 환영 문구 카드.
+ * - AIDownloadProgress: 모델 설치 파일 다운로드 진행 바.
+ * - AIInputContextBar: 챗 문맥 주입 정보(선택영역, 모델선택, 참고블록) 뱃지 스트립.
+ * - AIDocumentOutline: 활성 에디터의 제목 블록 구조 목록.
+ * - AIPluginViews: 동적으로 입점하는 플러그인 뷰포트.
+ */
 import { AIChatList } from './ai-panel/AIChatList'
 import { AIPanelHeader } from './ai/AIPanelHeader'
 import { AIInputBar } from './ai/AIInputBar'
@@ -11,6 +60,30 @@ import { AIInputContextBar } from './ai/AIInputContextBar'
 import { AIDocumentOutline } from './ai/AIDocumentOutline'
 import { AIPluginViews } from './ai/AIPluginViews'
 
+/* 
+ * [ZUSTAND GLOBAL STORES]
+ * - useUIStore: 사이드바 개폐 및 활성 탭 스토어.
+ * - useWorkspaceStore: 드래그 텍스트, 태그 블록 스토어.
+ * - useProcessStore: 모델 다운로드 상태 스토어.
+ */
+import { useUIStore } from '../stores/useUIStore'
+import { useWorkspaceStore } from '../stores/useWorkspaceStore'
+import { useProcessStore } from '../stores/useProcessStore'
+
+/* 
+ * [GLOBAL CONTEXT & INTERACTION HOOKS]
+ * - useAI: AI 오케스트레이션 훅.
+ * - useAppContext: 에디터 테마 정보 동기화 컨텍스트.
+ * - useAppAISuggestions: 에디터 내용 반영 훅.
+ */
+import { useAI } from '../hooks/useAI'
+import { useAppContext } from '../contexts/AppContext'
+import { useAppAISuggestions } from '../hooks/app/useAppAISuggestions'
+
+/**
+ * AI 패널 상단 환영 화면에 바인딩되는 빠른 작업 템플릿 목록.
+ * CONTRACT: 사용자가 문서를 신속하게 보정할 수 있도록 고정된 프롬프트를 AI 에이전트에 발송한다.
+ */
 const QUICK_ACTIONS = [
   { id: 'summarize', icon: FileText, label: '요약', prompt: '이 문서를 세 문장으로 요약해줘.' },
   { id: 'improve', icon: Wand2, label: '개선', prompt: '더 자연스럽고 전문적인 표현으로 다듬어줘.' },
@@ -19,18 +92,45 @@ const QUICK_ACTIONS = [
   { id: 'explain', icon: Lightbulb, label: '설명', prompt: '이 개념을 쉽게 풀어서 설명해줘.' },
 ]
 
-import { useUIStore } from '../stores/useUIStore'
-import { useWorkspaceStore } from '../stores/useWorkspaceStore'
-import { useProcessStore } from '../stores/useProcessStore'
-import { useAI } from '../hooks/useAI'
-import { useAppContext } from '../contexts/AppContext'
-import { useAppAISuggestions } from '../hooks/app/useAppAISuggestions'
-
+/**
+ * @component AIPanel
+ * @description AI 에이전트 인터랙션 사이드 패널.
+ * 챗 인터페이스, 도메인 아웃라인 가이드 및 확장 플러그인 뷰들의 노출 조건 분기를 관장한다.
+ */
 export function AIPanel() {
+  /*
+   * [CONTRACT - UI & Workspace States]
+   * - isOpen: AI 패널 노출 플래그.
+   * - setShowAIPanel: AI 패널 노출 세터.
+   * - activeTab: 현재 AI 패널 내부 활성 탭 (ai/outline/plugins).
+   * - setIsSettingsOpen: 글로벌 설정 모달 가시성 세터.
+   * - showModelHub: 로컬 모델 설치 허브 뷰 토글 플래그.
+   */
   const { showAIPanel: isOpen, setShowAIPanel, activeRightTab: activeTab, setIsSettingsOpen, showModelHub } = useUIStore()
+  
+  /*
+   * [CONTRACT - Workspace Buffer States]
+   * - currentContent: 에디터 전체 마크다운 버퍼.
+   * - selectedText: 드래그 드롭/선택 캡처된 텍스트.
+   * - setSelectedText: 선택 텍스트 갱신 세터.
+   * - activeBlockId: 마우스 포커스된 현재 블록 ID.
+   * - taggedBlocks: 태그 지정된 블록 메타 목록.
+   * - setTaggedBlocks: 태그 지정 블록 세터.
+   */
   const { currentContent, selectedText, setSelectedText, activeBlockId, taggedBlocks, setTaggedBlocks } = useWorkspaceStore()
+  
+  /*
+   * [CONTRACT - Process store values]
+   * - downloadStatus: LLM 다운로드 백분율.
+   * - setDownloadStatus: 다운로드 진행 세터.
+   */
   const { downloadStatus, setDownloadStatus } = useProcessStore()
   
+  /*
+   * [CONTRACT - Orchestrator Hook Binding]
+   * - 로컬 LLM 구동 상태 및 스트리밍 메시지, 모델 임포트 제어부를 불러와 UI 컴포넌트에 공급한다.
+   * - Rationale: 이 훅에서 노출되는 state들은 useAI 내부에서 일관되게 동기화된다.
+   */
   const {
     messages, isGenerating, isAvailable, models, settings,
     generateResponse, abortGeneration, clearHistory, updateSettings,
@@ -38,10 +138,36 @@ export function AIPanel() {
     refreshModels, pendingQueue, removeFromQueue
   } = useAI()
   
+  /*
+   * [CONTRACT - Application Context Binding]
+   * - editor: BlockNote API 참조.
+   * - appSettings: 자연 테마 등 렌더러 설정값.
+   */
   const { editor, settings: appSettings } = useAppContext()
+
+  /*
+   * [INVARIANT - Editor Document Sync]
+   * - blocks: 에디터 내 활성 노드들의 리스트.
+   */
   const blocks = editor?.document || []
   
+  /* 
+   * [ADR - AI Suggestion Apply Binding]
+   * - AI의 EDIT_SUGGESTION 또는 INSERT_SUGGESTION 반영 이벤트를 에디터 API에 직접 위임 전파한다.
+   */
   const { handleApplySuggestion, handleApplyInsertSuggestion } = useAppAISuggestions(editor, updateInsertSuggestionStatus)
+
+  /*
+   * [CONTRACT - Local Action Handlers Mapping]
+   * - onApplySuggestion: 에디터 텍스트 EDIT 덮어쓰기 트리거.
+   * - onApplyInsertSuggestion: 에디터 텍스트 INSERT 추가 트리거.
+   * - onUpdateDiffState: Diff 모달 상태 갱신.
+   * - onUpdateInsertSuggestionStatus: 삽입 결과 갱신.
+   * - onClearSelectedText: 드래그 캡처 영역 초기화.
+   * - onOpenGlobalSettings: 설정 창 탭 강제 열기.
+   * - onClose: AI 패널 가시성 끄기.
+   * - onClear: 대화 비우기 콜백.
+   */
   const onApplySuggestion = handleApplySuggestion
   const onApplyInsertSuggestion = handleApplyInsertSuggestion
   const onUpdateDiffState = updateMessageDiffState
@@ -51,12 +177,20 @@ export function AIPanel() {
   const onClose = () => setShowAIPanel(false)
   const onClear = clearHistory
   
+  /**
+   * [SIDE EFFECT - Send AI Prompt]
+   * - LLM 추론 생성 응답을 촉발하고, 태그 지정된 블록 버퍼를 비운다.
+   * - Rationale: taggedBlocks가 전역에서 계속 남아있어 발생하는 오작동을 방지하고자 전송 직후 즉각 리셋(Invariant)한다.
+   */
   const onSend = (msg: string, ctx?: string, orig?: string, bId?: string, runtimeSettings?: any) => {
     generateResponse(msg, ctx, orig, bId, runtimeSettings, editor, taggedBlocks)
     setTaggedBlocks([])
   }
 
-  // Pack the props for useAIPanelLogic to avoid changing it entirely yet
+  /**
+   * [CONTRACT - useAIPanelLogic Bridge]
+   * - Rationale: 비즈니스 로직과 UI 컴포넌트의 결합도를 차단하기 위한 logicProps 어레이.
+   */
   const logicProps = {
     messages, engineLogs, taggedBlocks, isOpen, settings,
     blocks, currentContent, selectedText, activeBlockId,
@@ -64,21 +198,39 @@ export function AIPanel() {
     onUpdateSettings: updateSettings, setTaggedBlocks
   }
 
+  /*
+   * [LOGIC PROPERTIES INJECTION]
+   * - input: 챗 텍스트 입력값.
+   * - setInput: 인풋 문자열 세터.
+   * - manualMode: AI 에이전트 도구 수동 확인 모드 토글 플래그.
+   * - setManualMode: 수동 모드 변경 세터.
+   * - useContext: 챗 전송 시 문서 맥락 주입 여부.
+   * - setUseContext: 맥락 주입 토글 세터.
+   * - gpuName: 감지된 디바이스 GPU 네임 문자열.
+   * - textareaRef: 인풋 텍스트 에어리어 DOM 포커싱용 참조값.
+   * - messagesContainerRef: 챗 영역 스크롤 제어용 래퍼 DOM 참조값.
+   * - messagesEndRef: 챗 최하단 자동 스크롤 추적 더미 엘리먼트 참조값.
+   * - handleSend: 전송 트리거 핸들러.
+   * - handleKeyDown: 엔터 키 전송 및 시프트 엔터 개행 감지 핸들러.
+   * - handleQuickAction: 요약/번역 등 프롬프트 단축 단추 트리거.
+   */
   const {
     input, setInput, manualMode, setManualMode, useContext, setUseContext, gpuName,
     textareaRef, messagesContainerRef, messagesEndRef,
     handleSend, handleKeyDown, handleQuickAction
   } = useAIPanelLogic(logicProps)
 
-  // [FEAT-4] 터미널 '아이에게 물어보기' 옵션 지원
-  // ConsoleContextMenu에서 스로운 'ameva:fill-ai-input' 이벤트를 수신하여
-  // 선택된 터미널 텍스트를 AI 입력창에 자동 주입한다.
+  /**
+   * [SIDE EFFECT INTENTIONAL - IPC Terminal Text Injector]
+   * - ConsoleContextMenu 등 외부 윈도우 단축 메뉴에서 유입되는 'ameva:fill-ai-input' 이벤트를 감청하여,
+   *   마우스 드래그된 터미널 텍스트를 AI 챗 인풋 창에 강제로 주입 및 포커스를 위치시킨다.
+   * - CONTRACT: useEffect 내 이벤트 리스너 제거를 수행하여 렌더러의 메모리 누수를 원천 방지한다.
+   */
   useEffect(() => {
     const handler = (e: Event) => {
       const text = (e as CustomEvent).detail as string
       if (text) {
         setInput(text)
-        // 포커스를 텍스트에어리얰로 이동
         setTimeout(() => {
           textareaRef?.current?.focus()
         }, 50)
@@ -89,7 +241,17 @@ export function AIPanel() {
   }, [setInput, textareaRef])
 
   if (!isOpen) return null
+
+  /*
+   * [THEME MODE VARIABLE]
+   * - isWhiteTheme: 스킨이 화이트 모드인지 판별.
+   */
   const isWhiteTheme = appSettings?.theme === 'white'
+
+  /*
+   * [ENGINE LABEL DISPLAY]
+   * - displayModelLabel: 화면 최상단에 마킹할 모델 명칭 지표.
+   */
   const displayModelLabel = settings.apiModel || (gpuName ? `GPU: ${gpuName}` : 'auto')
 
   return (
@@ -107,11 +269,11 @@ export function AIPanel() {
         }
       }}
       style={{
-      width: '100%', height: '100%',
-      background: 'var(--bg-main)', borderLeft: '1px solid var(--border-muted)',
-      display: 'flex', flexDirection: 'column', position: 'relative',
-      fontFamily: 'var(--font-sans)', zIndex: 100,
-    }}>
+        width: '100%', height: '100%',
+        background: 'var(--bg-main)', borderLeft: '1px solid var(--border-muted)',
+        display: 'flex', flexDirection: 'column', position: 'relative',
+        fontFamily: 'var(--font-sans)', zIndex: 100,
+      }}>
 
       <AIPanelHeader 
         title={settings.apiType === 'wasm' ? 'Local Edge' : settings.apiType === 'local' ? 'Native Core' : settings.apiType === 'ollama' ? 'Ollama' : 'Cloud API'}
@@ -145,8 +307,6 @@ export function AIPanel() {
             </div>
           )}
 
-
-          
           <AIDownloadProgress 
             downloadStatus={downloadStatus} 
             onCancel={() => {}} 
@@ -187,3 +347,21 @@ export function AIPanel() {
     </div>
   )
 }
+
+/**
+ * ============================================================================
+ * FUTURE DEVELOPMENT GUIDE (AI Agent Instruction Layer)
+ * ============================================================================
+ * 1. 신규 퀵 액션 프롬프트를 추가하거나 동작 양식을 확장할 때:
+ *    - `QUICK_ACTIONS` 상수 배열을 확장하여 지정된 icon, label, prompt 형식을 맞출 것.
+ * 
+ * 2. 아웃라인 외에 새로운 분석 탭(예: 감성 분석, 통계 등)을 추가할 때:
+ *    - `activeTab` 조건 분기에 따라 렌더링되는 컴포넌트를 하단 분기문에 추가할 것.
+ *    - 해당 컴포넌트는 `src/renderer/components/ai/` 내에 모듈화하여 저장할 것.
+ * 
+ * 3. 챗 리스트의 레이아웃이나 버그 발생 시 점검 순서:
+ *    - `AIChatList`의 프롭 구조가 변경되었는지, `isWhiteTheme` 색상 매칭이 잘 깨지는 CSS 클래스가 있는지 확인.
+ *    - `messagesContainerRef` 높이 스크롤이 자동으로 가장 아래로 포커싱되지 않을 때,
+ *      `AIChatList` 마운트 라이프사이클의 스크롤 함수가 정상 작동하는지 점검.
+ * ============================================================================
+ */

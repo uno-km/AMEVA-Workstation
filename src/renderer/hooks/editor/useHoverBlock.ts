@@ -1,43 +1,73 @@
+/**
+ * @file useHoverBlock.ts
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/hooks/editor/useHoverBlock.ts
+ * @role Editor hover block ID & coordinate tracker Hook
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - 에디터 영역 내의 마우스 움직임(`handleEditorMouseMove`)을 감청하여 마우스 포인터 바로 아래에 있는 블록의 ID, 내용(text), 및 상대 뷰포트 좌표(DOMRect)를 추적한다.
+ * - 마우스가 블록을 벗어나 옆 공백으로 이동했을 때의 마우스 Y축 가드 처리를 제공하여 별표(✨) 버튼 및 추가 단추가 흔들리거나 깜빡이는 것을 방지한다.
+ * - 동일 블록 재진입 시 렌더링 최적화를 위한 픽셀 좌표 오차범위(< 1px) 가드 판정을 수행한다.
+ * 
+ * [책임이 아닌 것 - NON-RESPONSIBILITY]
+ * - [중요] 호버 상태 자체는 기본 기능인 '+' 버튼 슬래시 메뉴 등록에 필수적이므로,
+ *   절대로 `isProPlan` 플래그 체크를 이유로 호버 데이터를 강제 `null`화 시키지 마라 (MarkdownEditor 렌더에서만 Pro 조건으로 별표 노출을 제어함).
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST NOT bypass sparkle guard: 별표 버튼 위에 마우스가 안착해 있을 때 호버 상태를 null 처리해 버리면
+ *   별표 버튼이 클릭 감지 직전에 사라져 버리는 터치 버그가 생기므로, `el.closest('.sparkle-hover-btn')` 검출 시 반드시 상태 갱신을 생략할 것.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - useState: 호버된 블록 메타정보({id, rect, text})를 캐시하여 버튼 위치 스타일로 전파하기 위한 리액트 상태 훅.
+ * - useCallback: handleEditorMouseMove 핸들러 재생성을 억제하여 렌더링 폭풍을 차단하기 위한 메모이즈 훅.
+ */
 import { useState, useCallback } from 'react'
+
+/* 
+ * [SHARED SCHEMAS & TYPES]
+ * - AmevaEditor: BlockNote 기반의 커스텀 블록 스키마 바인딩 형식.
+ * - EditorMode: 웰컴/편집/미리보기 모드 타입 정의.
+ */
 import type { AmevaEditor } from '../../editor/amevaBlockSchema'
 import type { EditorMode } from '../../../shared/types'
 
-/*
- * useHoverBlock.ts
- *
- * 에디터 내 블록 위에 마우스를 올렸을 때 해당 블록의 ID와 위치 정보를 추적하는 훅.
- *
- * [중요] hoverBlock 추적 로직과 isProPlan 조건의 분리 원칙
- * ─────────────────────────────────────────────────────────────
- * hoverBlock 상태(블록 ID/위치 파악)는 isProPlan과 무관하게 항상 유지된다.
- * isProPlan 조건으로 제어하는 것은 ✨ 별표 버튼(컨텍스트 태그) 렌더링뿐이다.
- *
- * 이유:
- *   + 버튼의 슬래시 메뉴 삽입은 기본 기능이므로 Free 플랜에서도 동작해야 한다.
- *   hoverBlock이 null이면 + 버튼 클릭 핸들러(MarkdownEditor의 mousedown capture)가
- *   block.id를 찾지 못해 슬래시 명령을 입력할 수 없다.
- *
- * [다음 에이전트 주의사항]
- *   - isProPlan 체크로 hoverBlock을 강제로 null화하지 말 것.
- *   - isProPlan은 MarkdownEditor.tsx의 렌더링 조건에서만 사용한다.
- *   - ✨ 별표 버튼: {hoverBlock && editorMode === 'edit' && isProPlan && (...)}
- *   - + 버튼 슬래시 메뉴: hoverBlock 값만 확인, isProPlan 체크 없음.
+/**
+ * @hook useHoverBlock
+ * @description 에디터에서 마우스가 위치한 특정 블록 노드를 감지하고 크기/위치를 실시간 산출하는 호버 트래커 훅.
  */
 export function useHoverBlock(
+  /*
+   * [HOOK CONFIG PARAMETERS]
+   * - editor: BlockNote API 본체.
+   * - editorMode: welcome/edit/preview/raw 화면 모드.
+   * - editorContainerRef: 에디터 래퍼 DOM 참조.
+   * - onMouseMove: 마우스 이동 연계 콜백.
+   * - isProPlan: 프로 요금제 가입 여부.
+   */
   editor: AmevaEditor | null,
   editorMode: EditorMode,
   editorContainerRef: React.RefObject<HTMLDivElement | null>,
   onMouseMove: (e: React.MouseEvent) => void,
   isProPlan: boolean
 ) {
+  /*
+   * [INVARIANT - Hover Block Record State]
+   * - hoverBlock: 현재 호버된 블록의 메타 데이터.
+   */
   const [hoverBlock, setHoverBlock] = useState<{ id: string; rect: DOMRect; text: string } | null>(null)
 
+  /**
+   * [CONTRACT - Editor Mouse Move Handler]
+   * - Rationale: 마우스 뷰포트 clientX/clientY 위치의 DOM 요소를 추적하여 블록 경계를 획득한다.
+   */
   const handleEditorMouseMove = useCallback((e: React.MouseEvent) => {
-    // 부모 컴포넌트(App.tsx)의 마우스 무브 핸들러 연계 실행
+    // 부모 협업 포인터 동기화를 위한 콜백 리다이렉트 기동
     onMouseMove(e)
 
-    // [수정] 에디트 모드가 아니거나 에디터가 없을 때만 초기화.
-    // isProPlan으로 hoverBlock을 강제 null화하지 않는다. (+ 버튼 슬래시 메뉴 보호)
+    // 편집 모드가 아니거나 에디터 인스턴스가 활성화 전인 경우 즉각 초기화
+    // WARNING: 절대 isProPlan 검사를 추가하여 락을 걸지 마라. (Free 에디터의 + 슬래시 삽입 붕괴 방지).
     if (editorMode !== 'edit' || !editor) {
       if (hoverBlock !== null) setHoverBlock(null)
       return
@@ -46,37 +76,41 @@ export function useHoverBlock(
     const container = editorContainerRef.current
     if (!container) return
 
+    // 브라우저 뷰포트 마우스 위치 좌표
     const clientX = e.clientX
     const clientY = e.clientY
 
-    // 커서 좌표의 요소 구하기
+    // 커서 좌표 아래에 있는 실시간 최하단 DOM 엘리먼트 캡처
     const el = document.elementFromPoint(clientX, clientY)
     if (!el) return
 
-    // ✨ 별표 버튼 위에 있을 때는 호버 상태 락 유지 (버튼 클릭을 위한 유지)
+    // CONTRACT: 별표 버튼 호버 시 상태 락 유지 계약 준수
     const isOverSparkle = el.closest('.sparkle-hover-btn')
     if (isOverSparkle) {
       return
     }
 
+    // 블록 단락을 감싸는 블록노트 공식 클래스 탐색
     const blockOuter = el.closest('.bn-block-outer') as HTMLElement
     if (blockOuter) {
       const blockId = blockOuter.getAttribute('data-id') || blockOuter.querySelector('[data-id]')?.getAttribute('data-id')
       if (blockId) {
         try {
+          // 블록노트 인스턴스로부터 상세 단락 구조체 획득
           const targetBlock = editor.getBlock(blockId)
           if (targetBlock) {
+            // 인라인 텍스트 문자열 병합 취합
             const textContent = targetBlock.content
               ? (targetBlock.content as any).map((c: any) => c.text).join('')
               : ''
 
+            // 절대 좌표에서 컨테이너 스크롤 높이를 합산하여 상대 배치용 탑/레프트 산출
             const rect = blockOuter.getBoundingClientRect()
             const containerRect = container.getBoundingClientRect()
             const calculatedTop = rect.top - containerRect.top + container.scrollTop
             const calculatedLeft = rect.left - containerRect.left
 
-            // 이미 동일한 블록에 동일한 좌표 정보로 세팅되어 있다면 업데이트하지 않음
-            // (렌더링 최적화 및 무한 루프 방지)
+            // [PERFORMANCE CRITICAL] 1px 오차 범위 렌더 가드
             if (
               hoverBlock &&
               hoverBlock.id === blockId &&
@@ -104,7 +138,8 @@ export function useHoverBlock(
       }
     }
 
-    // 마우스가 블록 옆 공백으로 나갔으나 Y축 세로 범위 안이면 버튼 노출 락 유지
+    // [INVARIANT - Y-axis Margin Safe Guard]
+    // 마우스가 우측 공백 마진 등으로 빠졌으나, Y축 세로 높이가 해당 블록 위아래 8px 여유 공간 내인 경우 호버 버튼을 유지함
     if (hoverBlock) {
       const blockDom = document.querySelector(`[data-id="${hoverBlock.id}"], [data-block-id="${hoverBlock.id}"]`)
       if (blockDom) {
@@ -116,6 +151,7 @@ export function useHoverBlock(
       }
     }
 
+    // 영역 이탈 시 상태 해제
     if (hoverBlock !== null) {
       setHoverBlock(null)
     }
@@ -123,3 +159,12 @@ export function useHoverBlock(
 
   return { hoverBlock, setHoverBlock, handleEditorMouseMove }
 }
+
+/**
+ * ============================================================================
+ * FUTURE DEVELOPMENT GUIDE (AI Agent Instruction Layer)
+ * ============================================================================
+ * 1. 호버 상태 감지 범위(현재 8px 마진 가드)를 변경하거나 스무딩하고 싶을 때:
+ *    - `clientY >= bRect.top - 8` 수식의 오프셋 상수를 조절할 것.
+ * ============================================================================
+ */

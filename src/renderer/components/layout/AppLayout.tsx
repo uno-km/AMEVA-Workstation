@@ -1,8 +1,55 @@
+/**
+ * @file AppLayout.tsx
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/components/layout/AppLayout.tsx
+ * @role Root UI Layout & Presentational View Container (Container Component)
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - 전체 어플리케이션의 그리드 레이아웃 구조(MenuBar, Sidebar, MarkdownEditor, AIPanel, RightTabStrip, StatusBar)를 설계 및 배치한다.
+ * - 드래그 앤 드롭을 통한 패널 너비 변경(사이드바, AI 패널)의 동적인 CSS width 스타일 변수를 마운트/패치한다.
+ * - 토스트 메시지 알림바 및 검색 바(FindReplaceBar) 등 플로팅 보조 UI들의 노출 영역을 격리 렌더링한다.
+ * 
+ * [책임이 아닌 것 - NON-RESPONSIBILITY]
+ * - 비즈니스 상태 관리 및 액션 핸들링 (부모 App.tsx 및 Zustand 스토어들이 상태 제어권을 가짐).
+ * - 단축키 매핑이나 로컬 파일 저장 로직 소유 금지 (`MUST NOT possess business logic`).
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST: Presentational Component 성격을 엄격히 보존하기 위해, 이 파일 내에서 직접 API를 쏘거나 Zustand 스토어 세터를 통해 비즈니스 정책을 결정하지 마라.
+ * - MUST NOT bypass transition control: 드래그 중에는 패널 리사이징의 반응 속도 극대화를 위해 `transition: 'none'`을 보장해야 하며,
+ *   유휴 상태로 복귀할 때는 부드러운 애니메이션(`transition: 'width 0.25s cubic-bezier(...)'`)을 유지할 것.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - React: 레이아웃 뷰 렌더링용 핵심 React API.
+ */
 import React from 'react'
+
+/* 
+ * [LUCIDE ICONS]
+ * - PanelLeft: 사이드바 개폐 단추 아이콘.
+ * - Sparkles: 토스트 메시지 알림 효과 아이콘.
+ */
 import { PanelLeft, Sparkles } from 'lucide-react'
+
+/* 
+ * [SUB COMPONENT PARTS]
+ * - Sidebar: 좌측 파일 트리 및 협업 참여실 뷰.
+ * - MarkdownEditor: WYSIWYG 블록노트 마크다운 편집부 뷰.
+ * - StatusBar: 하단 성능 지표 및 환경 수치 표시바.
+ * - MenuBar: 최상단 타이틀바 아래 풀다운 메뉴바.
+ * - AIPanel: 우측 로컬 AI 대화형 비서 패널.
+ * - Minimap: 에디터 단락 헤더 네비게이션 아웃라인 미니맵.
+ * - RightTabStrip: 우측 사이드 툴바 전환 아이콘 목록.
+ * - ResizeHandle: 사이드 패널 마우스 그랩 크기 조절선.
+ * - FloatingChat: 협업 참여자 간 플로팅 메신저 대화방.
+ * - AILogDrawer: 하단 슬라이딩 AI WebGPU 추론 상세 모니터 콘솔.
+ * - FindReplaceBar: 텍스트 찾기/바꾸기 플로팅 툴바.
+ * - FloatingPiPVideo: PIP 화면 띄우기 비디오 오버레이.
+ * - ModalManager: 전역 공용 모달(설정, 정보창 등) 렌더링 라우터.
+ */
 import { Sidebar } from '../Sidebar'
 import { MarkdownEditor } from '../MarkdownEditor'
-
 import { StatusBar } from '../StatusBar'
 import { MenuBar } from '../MenuBar'
 import { AIPanel } from '../AIPanel'
@@ -14,12 +61,23 @@ import { AILogDrawer } from '../ai/AILogDrawer'
 import { FindReplaceBar } from '../FindReplaceBar'
 import { FloatingPiPVideo } from './FloatingPiPVideo'
 import { ModalManager } from './ModalManager'
+
+/* 
+ * [TYPES & STYLES INJECTIONS]
+ * - AppEditor: 블록노트 커스텀 에디터 규격.
+ * - useNatureThemeColors: 다크/네이처 테마별 CSS 테마 변수 실시간 적용기.
+ * - GlobalDownloadProgress: GGUF 파일 원격 설치용 하단 진행바.
+ * - useDownloadManager: 모델 다운로드 큐 정보 감청 매니저.
+ */
 import { type AmevaEditor as AppEditor } from '../../editor/amevaBlockSchema'
 import { useNatureThemeColors } from '../../hooks/app/useNatureThemeColors'
 import { GlobalDownloadProgress } from '../download/GlobalDownloadProgress'
 import { useDownloadManager } from '../../hooks/app/useDownloadManager'
 
-
+/**
+ * @interface AppLayoutProps
+ * @description 부모 Composition Root(App.tsx)로부터 주입받는 레이아웃 조립용 프로퍼티 정의.
+ */
 export interface AppLayoutProps {
   settings: any
   showStatusBar: boolean
@@ -52,9 +110,18 @@ export interface AppLayoutProps {
   findReplaceMode: 'find' | 'replace'
 }
 
+/**
+ * @component AppLayout
+ * @description 워크스테이션 렌더러의 최상위 그리드 레이아웃 구조를 렌더링하는 컨테이너 컴포넌트.
+ */
 export const AppLayout: React.FC<AppLayoutProps> = (props) => {
+  /*
+   * [INVARIANT - UI Sliding Log Drawer State]
+   * - isLogsExpanded: 하단 AI 추론 로그 창의 확장/축소 높이 조절 여부.
+   */
   const [isLogsExpanded, setIsLogsExpanded] = React.useState(false)
 
+  // 주입받은 프롭스 비구조화 해제
   const {
     settings, showStatusBar, showSidebar, setShowSidebar, sidebarWidth, isSidebarReady,
     editor, editorContainerRef, showAIPanel, aiPanelWidth, isAIPanelDragging,
@@ -65,10 +132,10 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
     setShowFindReplace, handleScrollToBlock, findReplaceMode
   } = props
 
-  // 🌿 자연산 테마 반응형 컬러 훅 연결
+  // 테마 변수 실시간 HTML 주입기 가동
   useNatureThemeColors(settings.theme)
 
-  // 📥 글로벌 다운로드 큐 매니저 구동
+  // 원격 다운로드 매니징 감청 기동
   useDownloadManager()
 
   return (
@@ -80,11 +147,20 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
         backgroundColor: 'var(--bg-deep)', overflow: 'hidden',
       }}
     >
+      {/* OS 타이틀 바 영역 확보용 더미 스페이서 */}
       <div className="titlebar-spacer" />
 
+      {/* 최상단 파일/설정 시스템 풀다운 메뉴바 */}
       <MenuBar />
 
+      {/* 사이드바, 에디터 및 우측 AI 패널을 수평으로 나열하는 메인 레이아웃 행 */}
       <div className="main-layout-row">
+        
+        {/* 
+         * [SIDEBAR LEFTPANEL TRIGGER]
+         * - 사이드바가 완전히 닫힌 경우, 화면 좌측 상단에 팝업하여 다시 펼칠 수 있도록 고유 제어 단추를 플로팅 렌더링한다.
+         */
+        }
         {!showSidebar && (
           <button
             onClick={() => setShowSidebar(true)}
@@ -104,6 +180,12 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           </button>
         )}
 
+        {/* 
+         * [RESIZABLE SIDEBAR CONTAINER]
+         * - 드래그 너비에 맞추어 absolute width 스타일이 강제 매핑된다.
+         * - INVARIANT: 사이드바 개폐 시 뚝 끊기는 연출을 배제하기 위해 cubic-bezier 가속 트랜지션을 적용함.
+         */
+        }
         <div
           style={{
             width: showSidebar ? sidebarWidth : 0,
@@ -116,21 +198,29 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
             transition: 'width 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
           }}
         >
-            {isSidebarReady ? (
-              <Sidebar />
-            ) : (
-              <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg-deep)', height: '100%', borderRight: '1px solid var(--border-muted)', userSelect: 'none' }}>
-                <div style={{ height: '24px', background: 'rgba(139,92,246,0.08)', borderRadius: '6px', width: '70%', opacity: 0.5 }} />
-                <div style={{ height: '32px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', opacity: 0.5 }} />
-                <div style={{ flex: 1, background: 'rgba(255,255,255,0.01)', borderRadius: '8px', opacity: 0.3 }} />
-              </div>
-            )}
-            <ResizeHandle
-              onMouseDown={handleSidebarResizeStart}
-              isDragging={isSidebarDragging}
-              placement="right"
-            />
-          </div>
+          {isSidebarReady ? (
+            <Sidebar />
+          ) : (
+            // 로딩 스켈레톤 가이드 (성능 상 visual jump를 없애기 위함)
+            <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg-deep)', height: '100%', borderRight: '1px solid var(--border-muted)', userSelect: 'none' }}>
+              <div style={{ height: '24px', background: 'rgba(139,92,246,0.08)', borderRadius: '6px', width: '70%', opacity: 0.5 }} />
+              <div style={{ height: '32px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', opacity: 0.5 }} />
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.01)', borderRadius: '8px', opacity: 0.3 }} />
+            </div>
+          )}
+          <ResizeHandle
+            onMouseDown={handleSidebarResizeStart}
+            isDragging={isSidebarDragging}
+            placement="right"
+          />
+        </div>
+
+        {/* 
+         * [EDITOR INTERACTION LAYER & ZOOM WRAPPER]
+         * - 윈도우 배율과 별도로 에디터 작업 영역만의 독립적인 화면 Zoom(1.0~2.0) 비율을 인라인 줌 속성으로 강제 주입함.
+         * - WARNING: CSS zoom 속성을 쓰므로 내부 요소 100% 면적 대응을 위해 height를 역수로 계산하여 바인딩함 (`height: ${100/zoom}%`).
+         */
+        }
         <div
           className="editor-zoom-wrapper"
           data-focus-region="editor"
@@ -162,9 +252,13 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           />
         </div>
 
-        {/* [LAYOUT-FIX] ai-panel-wrapper: 리사이즈 가능한 AI 패널 컨테이너.
-             width를 JS(useProcessStore.aiPanelWidth)로만 제어. overflow hidden으로 내부 패널 클리핑.
-             AIPanel 자체는 width: 100% → 부모를 꽉 채움. 충돌 없음. */}
+        {/* 
+         * [RESIZABLE AI PANEL CONTAINER]
+         * - AI 패널의 드래그 조절 너비를 가둔다.
+         * - WARNING: 패널 폭이 0 이하로 떨어질 때 내부 챗 리스트 자식 컴포넌트의 가로 배율 깨짐(visual clipping)을 막기 위해 
+         *   반드시 `overflow: 'hidden'` 제약을 유지할 것.
+         */
+        }
         <div
           className="ai-panel-wrapper"
           data-focus-region="ai-panel"
@@ -195,28 +289,37 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           )}
         </div>
 
-        {/* [LAYOUT-FIX] RightTabStrip: main-layout-row의 직접 자식으로 항상 우측 끝에 고정.
-             AI 패널 열림/닫힘에 무관하게 위치 이동 없음. flexShrink: 0 보장. */}
+        {/* 최우측 툴바 아이콘 스트립 */}
         <RightTabStrip />
 
       </div>
 
+      {/* 하단 시스템 스태터스 바 */}
       {showStatusBar && (
         <StatusBar />
       )}
 
+      {/* PIP 띄우기 비디오 오버레이 */}
       <FloatingPiPVideo />
 
+      {/* 전역 모달 컨트롤 허브 */}
       <ModalManager />
 
+      {/* 협업 플로팅 챗 모달 */}
       {isChatFloating && (
         <FloatingChat />
       )}
 
+      {/* AI 모델 뷰 허브 */}
       {showModelHub && (!showAIPanel || !isAIPanelReady) && (
         <AIPanel />
       )}
 
+      {/* 
+       * [GLOBAL SYSTEM TOAST NOTIFICATION]
+       * - 저장 완료, 플러그인 로드 성공 등 핵심 라이프사이클 이벤트를 뷰 하단에 은은한 Glassmorphism 토스트로 일시 표출한다.
+       */
+      }
       {toastMessage && (
         <div style={{
           position: 'fixed',
@@ -245,6 +348,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
       {/* 하단 글로벌 모델 다운로드 상태창 */}
       <GlobalDownloadProgress />
 
+      {/* 에디터 텍스트 찾기/바꾸기 컨트롤 도구 */}
       <FindReplaceBar
         isOpen={showFindReplace}
         onClose={() => setShowFindReplace(false)}

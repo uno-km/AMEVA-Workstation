@@ -1,11 +1,44 @@
+/**
+ * @file useHistory.ts
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/hooks/useHistory.ts
+ * @role IndexedDB-based Document snapshot auto-backup & diff calculation Hook
+ * 
+ * [설계 의도 - DESIGN INTENT / ADR / PERFORMANCE CRITICAL]
+ * - 브라우저 IndexedDB에 거대한 마크다운 원문 여러 버전을 평문으로 저장하면, 로컬 스토리지 부하와 디스크 IO 병목이 발생한다.
+ * - 이를 극복하기 위해 브라우저 내장 **CompressionStream API(gzip 규격)**를 체인 파이핑하여 C++ 네이티브 레벨의 초고속 압축/압축해제 함수(`compressText`, `decompressText`)를 설계했다.
+ * - [IndexedDB Transaction Inactive Error 가드]: 
+ *   IndexedDB 트랜잭션은 이벤트 루프 마이크로태스크 경계에서 자동으로 닫힌다.
+ *   커서 순회 도중 비동기 `await`를 호출해 버리면 트랜잭션이 중도 파열(TransactionInactiveError)된다.
+ *   이를 막기 위해, 순회 중에는 `await` 없이 **동기 수집(`rawList.push`)만 수행**하고 트랜잭션이 종결된 안전한 시점에 비동기 해제(`Promise.all`)를 일괄 처리한다.
+ * - 보안성 확보: 스냅샷 고유 ID 생성 시 [SEC-W-023] 충돌 없는 암호학적 UUID(`crypto.randomUUID()`)를 발급하고, [SEC-W-024] 저장 공격 방지를 위해 최대 용량 한계를 20MB로 가드한다.
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - IndexedDB 생성(`initDB`) 및 해당 문서의 과거 스냅샷들을 가져와 디컴프레션 복원한다.
+ * - 현 버퍼 내용을 자동/수동 백업 기입하고, 이전 스냅샷과 현 문서 간의 줄 단위 변경 비교(Diff) 행렬을 계산한다.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - useState, useEffect, useCallback: 데이터베이스 연결 락 및 스냅샷 목록 캐시를 보존하기 위한 React API.
+ */
 import { useState, useEffect, useCallback } from 'react'
+
+/* 
+ * [SHARED SCHEMAS & TYPES]
+ * - DocumentSnapshot: 정제 복원된 스냅샷 객체 규격.
+ */
 import type { DocumentSnapshot } from '../../shared/types'
 
+// IndexedDB 저장소 스펙 설정 상수
 const DB_NAME = 'AMEVA_Markdown_Editor_DB'
 const STORE_NAME = 'snapshots'
 const DB_VERSION = 1
 
-// Chromium C++ 네이티브 Deflate/Gzip 엔진 활용 초고속 압축 함수 (딜레이 제로 최적화)
+/**
+ * [CONTRACT - Browser C++ Deflate Compression Stream]
+ * - Rationale: ReadableStream과 CompressionStream('gzip')을 체인 연동하여 딜레이 제어로 평문 텍스트를 압축 바이트화한다.
+ */
 async function compressText(text: string): Promise<Uint8Array> {
   const encoder = new TextEncoder()
   const rawBytes = encoder.encode(text)
@@ -23,7 +56,10 @@ async function compressText(text: string): Promise<Uint8Array> {
   return new Uint8Array(compressedBuffer)
 }
 
-// Chromium C++ 네이티브 Gzip 엔진 활용 초고속 압축해제 함수 (딜레이 제로 최적화)
+/**
+ * [CONTRACT - Browser C++ Decompression Stream]
+ * - Rationale: ReadableStream과 DecompressionStream('gzip')을 연동하여 압축 바이트를 UTF-8 문자열로 디코딩한다.
+ */
 async function decompressText(compressedBytes: Uint8Array): Promise<string> {
   const stream = new ReadableStream({
     start(controller) {
@@ -38,6 +74,10 @@ async function decompressText(compressedBytes: Uint8Array): Promise<string> {
   return new TextDecoder().decode(decompressedBuffer)
 }
 
+/**
+ * [CONTRACT - IndexedDB Initialization Engine]
+ * - Rationale: 비동기 프라미스를 통해 'snapshots' 오브젝트 스토어 및 인덱스(documentId, timestamp) 구조를 빌드한다.
+ */
 function initDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION)
@@ -56,19 +96,35 @@ function initDB(): Promise<IDBDatabase> {
   })
 }
 
-// IndexedDB에 압축되어 들어갈 가공 스냅샷 구조
+/**
+ * CompressedSnapshot 인터페이스 정의.
+ * 디바이스 indexedDB에 실제 이진 파일로 패킹 저장될 포맷 규격.
+ */
 interface CompressedSnapshot {
   id: string
   documentId: string
   timestamp: number
-  compressedContent: Uint8Array // 압축 바이너리
+  compressedContent: Uint8Array
   title: string
 }
 
+/**
+ * @hook useHistory
+ * @description IndexedDB를 통해 마크다운 이력을 무결하게 로드하고, 차이점을 산출하며, 스냅샷 라이프사이클을 통제하는 훅.
+ */
 export function useHistory(documentId: string) {
+  /*
+   * [INVARIANT - Snapshots List State]
+   * - snapshots: 화면 사이드 탭의 백업 이력 목록에 뿌려질 복원된 과거 스냅샷 리스트.
+   * - db: 연결 완료된 IndexedDB Database 인스턴스.
+   */
   const [snapshots, setSnapshots] = useState<DocumentSnapshot[]>([])
   const [db, setDb] = useState<IDBDatabase | null>(null)
 
+  /**
+   * [SIDE EFFECT - Database Connector constructor]
+   * - Rationale: 문서가 변경되어 마운트되었을 때 IndexedDB 커넥션을 열어 로드한다.
+   */
   useEffect(() => {
     initDB()
       .then((database) => {
@@ -78,7 +134,11 @@ export function useHistory(documentId: string) {
       .catch((err) => console.error('IndexedDB init error:', err))
   }, [documentId])
 
-  // 압축된 스냅샷들을 가져와 C++ Decompress 복원 후 렌더러 상태에 적재
+  /**
+   * [CONTRACT - Safe Non-Blocking Snapshot Cursor Fetcher]
+   * - Rationale: indexedDB 트랜잭션 강제 이탈 오류를 막기 위해, 커서 구동부(gatherPromise)에서는 동기로 바이너리를 적재하고, 
+   *   프라미스 종결 밖(await decompressText)에서 압축 해제 작업을 묶어 처리한다.
+   */
   const fetchSnapshots = useCallback(
     async (database: IDBDatabase | null = db) => {
       if (!database) return
@@ -87,27 +147,25 @@ export function useHistory(documentId: string) {
       const index = store.index('documentId')
       const request = index.openCursor(IDBKeyRange.only(documentId), 'prev')
 
-      // ① 커서 순회 중에는 await를 절대 사용하지 않음.
-      //    IDB 트랜잭션은 마이크로태스크 경계에서 자동 닫히므로,
-      //    압축 raw 값을 동기로만 수집하고 트랜잭션 종료 후 일괄 처리한다.
       const rawList: CompressedSnapshot[] = []
 
+      // 1) 동기 수집 Promise 가동 (비동기 await 차단 구역)
       const gatherPromise = new Promise<CompressedSnapshot[]>((resolve, reject) => {
         request.onsuccess = () => {
           const cursor = request.result
           if (cursor) {
-            rawList.push(cursor.value as CompressedSnapshot) // ← 동기, await 없음
-            cursor.continue()                                // ← 즉시 다음 커서로
+            rawList.push(cursor.value as CompressedSnapshot)
+            cursor.continue()
           } else {
-            resolve(rawList)                                 // ← 커서 끝에서 완료
+            resolve(rawList)
           }
         }
         request.onerror = () => reject(request.error)
       })
 
-      const compressed = await gatherPromise // ← 트랜잭션 종료 후
+      // 2) 트랜잭션 영역을 빠져나온 후 압축 해제 병렬 배치 실행
+      const compressed = await gatherPromise
 
-      // ② 트랜잭션 밖에서 비동기 decompress 일괄 실행 (TransactionInactiveError 없음)
       const decompressed = await Promise.all(
         compressed.map(async (val) => {
           try {
@@ -120,17 +178,21 @@ export function useHistory(documentId: string) {
         })
       )
 
+      // 디코딩 에러난 항목 제거 필터링 후 적재
       setSnapshots(decompressed.filter((s): s is DocumentSnapshot => s !== null))
     },
     [db, documentId]
   )
 
-  // C++ Gzip 압축 후 IndexedDB 영구 저장
+  /**
+   * [CONTRACT - Create Compressed Snapshot]
+   * - Rationale: 보안 용량 제약(20MB)을 가드하고, uuid를 생성하여 IndexedDB에 add로 밀어 넣는다.
+   */
   const createSnapshot = useCallback(
     async (title: string, content: string) => {
       if (!db) return
 
-      // [SEC-W-024] 스냅샷 콘텐츠 크기 제한 (20MB)
+      // [SEC-W-024] 저장 공격 및 가상 디스크 폭발 방지 20MB 가드
       const MAX_SNAPSHOT_BYTES = 20 * 1024 * 1024
       if (new Blob([content]).size > MAX_SNAPSHOT_BYTES) {
         console.warn('[Snapshot] 콘텐츠가 너무 커서 스냅샷을 저장할 수 없습니다 (최대 20MB).')
@@ -138,11 +200,11 @@ export function useHistory(documentId: string) {
       }
 
       try {
-        // C++ 네이티브 컴프레션
+        // Gzip 컴프레션
         const compressed = await compressText(content)
 
+        // [SEC-W-023] crypto.randomUUID() 암호 고유 식별자 발급
         const snapshot: CompressedSnapshot = {
-          // [SEC-W-023] crypto.randomUUID()로 충돌 없는 고유 ID 생성
           id: `snap_${crypto.randomUUID()}`,
           documentId,
           timestamp: Date.now(),
@@ -168,6 +230,10 @@ export function useHistory(documentId: string) {
     [db, documentId, fetchSnapshots]
   )
 
+  /**
+   * [CONTRACT - Purge Single Snapshot]
+   * - Rationale: 특정 스냅샷 레코드를 IndexedDB에서 소멸시킨다.
+   */
   const deleteSnapshot = useCallback(
     async (id: string) => {
       if (!db) return
@@ -186,6 +252,10 @@ export function useHistory(documentId: string) {
     [db, fetchSnapshots]
   )
 
+  /**
+   * [CONTRACT - Line-by-Line Difference Calculator]
+   * - Rationale: 이전 복원 텍스트와 현 버퍼 문자열 간의 줄단위 변경(added, removed, unchanged) 구조 배열을 반환한다.
+   */
   const getLineDiff = (oldText: string, newText: string) => {
     const oldLines = oldText.split('\n')
     const newLines = newText.split('\n')
@@ -234,6 +304,3 @@ export function useHistory(documentId: string) {
     fetchSnapshots: () => fetchSnapshots(db),
   }
 }
-
-// @ts-ignore
-console.debug(event);

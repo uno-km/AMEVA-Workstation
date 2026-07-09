@@ -1,40 +1,85 @@
+/**
+ * @file handleUrlConversion.ts
+ * @system AMEVA OS Desktop Workstation - Editor Core
+ * @location src/renderer/hooks/app/editor-sync/handleUrlConversion.ts
+ * @role Editor paragraph URL plain text to Media card converter pipeline handler
+ * 
+ * [설계 의도 - DESIGN INTENT / ADR]
+ * - 문서 작성 중 사용자가 평문 단락에 외부 웹 주소를 붙여넣거나 입력했을 때,
+ *   그것을 링크 텍스트가 아닌 'youtube 동영상 임베드' 혹은 'linkPreview 메타 카드' 블록으로 자동 전환하여 문서 시각성을 높인다.
+ * - 단, 동일 블록에 대해 연속적으로 메타데이터를 재요청하는 브라우저 네트워크 부하를 막기 위해
+ *   **`processedUrlsRef` (블록 ID 해시 셋)**을 도입하여 평생 단 1회만 변환 파이프라인이 기동되도록 통제 차단한다.
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - 텍스트 입력 단락에 단일 URL 문자열이 감지되는지 정규식 검사를 수행한다.
+ * - [FIX-YT-001] 일반/Shorts/Live/임베드 유튜브 주소에서 11자리 비디오 ID를 발라내어 전용 유튜브 블록을 구성한다.
+ * - Electron IPC(`electronAPI.fetchUrlMetadata`) API를 호출하여 OpenGraph 정보를 비동기로 로드하고 카드 블록 속성을 갱신한다.
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST NOT swallow API failures: 메타데이터 Fetch 실패 혹은 VFS/블록 업데이트 에러 발생 시,
+ *   유저가 상태를 직관적으로 파악할 수 있도록 '연결 실패' 안내 메타데이터를 주입하고, `console.error`로 예외 원인을 상세 로깅할 것.
+ */
+
+/* 
+ * [SHARED SCHEMAS]
+ * - AppEditor: 블록노트 커스텀 렌더 에디터 타입.
+ */
 import type { AmevaEditor as AppEditor } from '../../../editor/amevaBlockSchema'
 
+/**
+ * @function handleUrlConversion
+ * @description 에디터 입력 시 URL 문자열 형태를 감지하여 유튜브 미디어 블록 혹은 링크 카드 프리뷰로 자동 격상하는 함수.
+ */
 export function handleUrlConversion(
+  /*
+   * [PARAMETER CONTRACTS]
+   * - editor: BlockNote API 본체.
+   * - processedUrlsRef: 중복 변환 요청을 차단하기 위한 처리 완료 블록 ID 보관 Set 레퍼런스.
+   */
   editor: AppEditor,
   processedUrlsRef: React.MutableRefObject<Set<string>>
 ) {
   try {
+    // 1. 에디터 캔버스의 현재 텍스트 커서 위치 캡처
     const cursor = editor.getTextCursorPosition()
     const activeBlock = cursor?.block
+    
+    // 2. 현재 포커스된 블록이 paragraph이고 단일 텍스트 구조 노드인 경우에만 감지 가동
     if (activeBlock && activeBlock.type === 'paragraph') {
       const contentArr = activeBlock.content as any[]
       if (contentArr && contentArr.length === 1 && contentArr[0].type === 'text') {
         const textVal = contentArr[0].text.trim()
         const urlPattern = /^(https?:\/\/[^\s]+)$/i
+        
+        // 정규식 통과 분기 노드
         if (urlPattern.test(textVal)) {
+          // 중복 처리 캐시 락 검사
           if (!processedUrlsRef.current.has(activeBlock.id)) {
             processedUrlsRef.current.add(activeBlock.id)
 
             const blockId = activeBlock.id
             let videoId = ''
+            
+            // 3. YouTube Shorts, Live, 일반 형태별 11자리 비디오 ID 추출 분기식
             if (textVal.includes('youtube.com/watch?v=')) {
               videoId = textVal.split('watch?v=')[1].split('&')[0]
             } else if (textVal.includes('youtu.be/')) {
               videoId = textVal.split('youtu.be/')[1].split('?')[0]
             } else if (textVal.includes('youtube.com/shorts/')) {
-              // [FIX-YT-001] YouTube Shorts URL 지원
               videoId = textVal.split('/shorts/')[1].split('?')[0]
             } else if (textVal.includes('youtube.com/live/')) {
               videoId = textVal.split('/live/')[1].split('?')[0]
             }
 
+            // 유튜브 비디오 블록으로 다이렉트 자동 변환 적용
             if (videoId) {
               editor.updateBlock(blockId, {
                 type: 'youtube',
                 props: { url: textVal, videoId: videoId }
               })
-            } else {
+            } 
+            // 4. 일반 웹 주소인 경우 linkPreview 메타 카드 변환 파이프라인 구동
+            else {
               editor.updateBlock(blockId, {
                 type: 'linkPreview',
                 props: {
@@ -45,9 +90,11 @@ export function handleUrlConversion(
                 }
               })
 
+              // Electron 주 프로세스의 Node.js 기반 메타 크롤러 연동 시도
               if ((window as any).electronAPI?.fetchUrlMetadata) {
                 (window as any).electronAPI.fetchUrlMetadata(textVal).then((metadata: any) => {
                   try {
+                    // 수집된 OpenGraph 메타 데이터로 프리뷰 카드 완성
                     editor.updateBlock(blockId, {
                       type: 'linkPreview',
                       props: {
@@ -61,6 +108,7 @@ export function handleUrlConversion(
                     console.error('Failed to update LinkPreview block with metadata:', updateErr)
                   }
                 }).catch((fetchErr: any) => {
+                  // CONTRACT: 연결 실패 복원 데이터 주입 보장
                   try {
                     editor.updateBlock(blockId, {
                       type: 'linkPreview',
@@ -83,3 +131,12 @@ export function handleUrlConversion(
     console.error('[URL Auto-Convert Failed]', urlErr)
   }
 }
+
+/**
+ * ============================================================================
+ * FUTURE DEVELOPMENT GUIDE (AI Agent Instruction Layer)
+ * ============================================================================
+ * 1. linkPreview 카드 UI 내의 썸네일 자동 다운로드 및 VFS 내장 캐시 연동 필요 시:
+ *    - `fetchUrlMetadata` 호출 성공 노드에 VFS 로컬 복사 API를 체인 호출할 것.
+ * ============================================================================
+ */

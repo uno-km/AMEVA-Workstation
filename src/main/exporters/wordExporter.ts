@@ -1,20 +1,70 @@
+/**
+ * @file wordExporter.ts
+ * @system AMEVA OS Desktop Workstation - Exporter Engine
+ * @location src/main/exporters/wordExporter.ts
+ * @role Markdown-to-Office Word (.docx) compile exporter
+ * 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 임포트/소비처 A (src/main/exporters/officeExporter.ts): `exportToWord`를 가져가 Excel, PPTX 등과 함께 officeExporter의 통합 인터페이스로 렌더링 노출시킴.
+ * - 임포트/소비처 B (src/renderer/utils/fileConverters.ts): 렌더러가 `.docx` 저장을 결정하여 `convertMarkdownToBinary`를 부를 때 내부적으로 워드 바이너리 버퍼 생성기로 소비함.
+ * - 결합 규격: 본 파일은 Electron Node.js main process의 파일 시스템 쓰기 및 IPC 핸들러 바인딩 시 핵심 가교 역할을 수행함.
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - 정규화된 마크다운 블록 배열(`ExporterBlock[]`)을 순회하며 docx 문서 객체(`Document`)를 구성하고 바이너리 버퍼(`Buffer`)로 출력한다.
+ * - 제목(heading), 단락(paragraph), 목록(bullet/numbered), 소스코드 블록(codeBlock), 테이블(table), 선(divider) 등 각 요소의 서식을 워드 고유 속성으로 매핑한다.
+ * - 다차원 목록을 순회하여 계층적 인덴트 단락 들여쓰기(`depth * 720` Twips) 깊이를 재귀적으로 계산(`addBlock`) 누적한다.
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST: ES 모듈 환경 내에서 CommonJS 패키지인 `docx` 라이브러리를 동적 파싱하기 위해,
+ *   반드시 모듈 require 폴리필(`createRequire(import.meta.url)`) 구조 계약을 유지할 것.
+ * - MUST: 테이블 렌더러 실패 시 문서 전체 출력이 크래시되는 것을 차단하기 위해,
+ *   반드시 테이블 순회 처리부를 `try-catch` 가드로 캡슐화하여 테이블 고장 시 에러 텍스트 표시로 선방 유도할 것.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - createRequire: ES 모듈 내에서 CJS 모듈을 임포트하기 위한 Node.js 모듈 헬퍼.
+ */
 import { createRequire } from 'module'
 const require = createRequire(import.meta.url)
 
+// docx 모듈 바인딩
 const docx = require('docx')
+
+/* 
+ * [EXPORTER INNER HELPERS]
+ * - getPlainTextFromNormalized: 블록 내 평문 추출 유틸.
+ * - inlineToText: 인라인 스타일 제거된 원시 텍스트 결합기.
+ * - ExporterBlock: 정형화된 블록 단위 규격.
+ */
 import { getPlainTextFromNormalized, inlineToText, type ExporterBlock, type ExporterInlineContent, type ExporterTableRow } from './exportersHelper.js'
 
+// docx API 디스트럭처링 추출
 const {
   Document, Packer, Paragraph, TextRun, Table: DocxTable, TableRow, TableCell,
   BorderStyle, HeadingLevel, AlignmentType, WidthType, TableLayoutType,
   ShadingType, convertInchesToTwip
 } = docx
 
+/**
+ * @function exportToWord
+ * @description 마크다운 블록 트리를 순회 해석해 Calibri 폰트 테마의 정제된 .docx 문서 바이너리 버퍼를 생성한다.
+ */
 export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
+  /*
+   * [INVARIANT - Exporter Children Registers]
+   * - docChildren: 최종 워드 단락들이 적재되는 배열 버퍼.
+   * - headingSizes: H1/H2/H3 전용 워드 글자 크기 매핑(2단위).
+   * - headingColors: 헤딩 구분 색상 (Hex 포맷).
+   */
   const docChildren: unknown[] = []
   const headingSizes: Record<number, number> = { 1: 44, 2: 36, 3: 28 }
   const headingColors: Record<number, string> = { 1: '111827', 2: '1f2937', 3: '374151' }
 
+  /**
+   * [CONTRACT - Inline Text Style Parser]
+   * - Rationale: 인라인 볼드, 이탤릭, 밑줄, 취소선, 글자 색상 스타일을 docx.TextRun 속성으로 투영 변환한다.
+   */
   const inlineToRuns = (inline: ExporterInlineContent[]): unknown[] =>
     inline.map(c => new TextRun({
       text: c.text,
@@ -27,17 +77,24 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
       color: c.styles?.textColor?.replace('#', '') || undefined,
     }))
 
+  /**
+   * [CONTRACT - Recursive Block Parser / Rationale]
+   * - Rationale: 하위 자식 노드가 있으면 depth+1로 재귀 파싱하여 들여쓰기 탭 마킹을 누적하고, 
+   *   마크다운 요소 타입에 적응해 워드 문단을 push 적재한다.
+   */
   const addBlock = (block: ExporterBlock, depth = 0) => {
     const runs = inlineToRuns(block.content || [])
     const plainText = getPlainTextFromNormalized(block)
 
     switch (block.type) {
+      // 1) 헤더 타이틀 요소
       case 'heading': {
         const level = Math.min(3, Math.max(1, Number(block.props?.level) || 1))
         const hLevel = level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3
         const hRuns = (block.content || []).length > 0
           ? block.content.map((c: ExporterInlineContent) => new TextRun({ text: c.text, bold: true, font: 'Calibri', size: headingSizes[level] || 28, color: headingColors[level] || '374151' }))
           : [new TextRun({ text: plainText, bold: true, font: 'Calibri', size: headingSizes[level] || 28 })]
+        
         docChildren.push(new Paragraph({
           children: hRuns,
           heading: hLevel,
@@ -47,6 +104,7 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         break
       }
 
+      // 2) 일반 단락 요소 (가로 들여쓰기 인덴트 적용)
       case 'paragraph':
         docChildren.push(new Paragraph({
           children: runs.length > 0 ? runs : [new TextRun({ text: '' })],
@@ -55,14 +113,17 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         }))
         break
 
+      // 3) 글머리 기호 목록
       case 'bulletListItem':
         docChildren.push(new Paragraph({ children: runs, bullet: { level: depth }, spacing: { after: 80 } }))
         break
 
+      // 4) 번호 매기기 목록
       case 'numberedListItem':
         docChildren.push(new Paragraph({ children: runs, numbering: { reference: 'default-numbering', level: depth }, spacing: { after: 80 } }))
         break
 
+      // 5) 코드 블록 (다크 테마 배경에 연두색 폰트로 가시성 매핑)
       case 'codeBlock': {
         const lang = block.props?.language || ''
         const lines = plainText.split('\n')
@@ -83,6 +144,7 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         break
       }
 
+      // 6) 이미지 요소 (경로 텍스트화 대체)
       case 'image':
         docChildren.push(new Paragraph({
           children: [new TextRun({ text: `[이미지: ${block.props?.url || ''}]`, italics: true, color: '9CA3AF', size: 20 })],
@@ -90,6 +152,7 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         }))
         break
 
+      // 7) 표/테이블 요소 (가드 절차 적용)
       case 'table': {
         const rows = block.tableRows ?? []
         if (rows.length > 0) {
@@ -115,6 +178,7 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
               })
               return new TableRow({ children: docxCells })
             })
+            
             docChildren.push(new DocxTable({
               rows: docxRows,
               width: { size: 100, type: WidthType.PERCENTAGE },
@@ -129,6 +193,7 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         break
       }
 
+      // 8) 구분선
       case 'divider':
         docChildren.push(new Paragraph({
           children: [],
@@ -141,17 +206,21 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         if (runs.length > 0) docChildren.push(new Paragraph({ children: runs, spacing: { after: 120 } }))
     }
 
+    // 자식 노드가 더 있을 경우 재귀 깊이 인덴트 기입
     if (Array.isArray(block.children)) {
       block.children.forEach((child: ExporterBlock) => addBlock(child, depth + 1))
     }
   }
 
+  // 본 블록 전체 파싱 시작
   blocks.forEach(b => addBlock(b))
 
+  // 만약 취합 결과가 없다면 내용 없음 가이드 추가
   if (docChildren.length === 0) {
     docChildren.push(new Paragraph({ children: [new TextRun({ text: '(내용 없음)' })] }))
   }
 
+  // 넘버링 스키마 및 용지 여백 설정
   const doc = new Document({
     numbering: {
       config: [{
@@ -161,9 +230,10 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
     },
     sections: [{
       properties: { page: { margin: { top: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1.2), right: convertInchesToTwip(1.2) } } },
-      children: docChildren,
+      children: docChildren as any[],
     }],
   })
 
+  // .docx 바이너리 완성 반환
   return await Packer.toBuffer(doc)
 }

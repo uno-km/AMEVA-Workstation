@@ -1,10 +1,59 @@
+/**
+ * @file StatusBar.tsx
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/components/StatusBar.tsx
+ * @role Bottom Status Bar & Quick Utilities UI Panel
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - 문서 메타데이터(저장 상태, 줄 수, 글자 수, 단어 수)를 실시간 계산하여 표시한다.
+ * - 로컬 AI 모델 다운로드의 진행률(속도, 퍼센트, 진행 바)을 실시간으로 감시 및 시각화한다.
+ * - 시스템 핵심 서브시스템(MCP 서버, Local AI 에이전트, 피어 협업 엔진)의 상태 뱃지를 렌더링하고 상태 툴팁을 제공한다.
+ * - 줄바꿈 해제 및 줌 배율(문서 줌 및 UI 줌 분리) 상태를 유저에게 보여주며 설정 팝업 버튼을 노출한다.
+ * 
+ * [책임이 아닌 것 - NON-RESPONSIBILITY]
+ * - 다운로드의 일시정지/취소 제어, 실제 줌 인/아웃 연산 수행 (useProcessStore 및 useAppSettingsManager에 완전히 위임).
+ * - 단축키 등록 직접 수행 (useGlobalShortcuts가 전담).
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST NOT cause performance degradation: 줄 수, 글자 수 등은 매 입력(`currentContent` 변경)마다 재계산되므로,
+ *   내부에 무거운 동기적 문자열 파싱이나 복잡도 O(N^2) 이상의 알고리즘을 추가하지 말 것.
+ * - MUST: `PeerState` 타입 임포트는 쓰이지 않아 빌드 에러를 유발하므로 다시 들여오지 말 것.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - React, useState, useRef: 호버 툴팁 가이드 및 렌더 가드 제어용 React API.
+ */
 import React, { useState, useRef } from 'react'
+
+/* 
+ * [LUCIDE ICONS]
+ * - Settings: 환경설정 톱니바퀴 아이콘.
+ * - ZoomIn: 줌 배율 돋보기 아이콘.
+ * - WrapText: 가로 스크롤 줄바꿈 상태 아이콘.
+ */
 import { Settings, ZoomIn, WrapText } from 'lucide-react'
+
+/* 
+ * [STATUS SUB INDICATORS]
+ * - AIStatusIndicator: 로컬 AI 활성화 및 포트 상태 진단 뱃지.
+ * - MCPStatusIndicator: 연결된 Model Context Protocol 서버 뱃지.
+ * - DocStatusIndicator: 저장 여부, 수정중(dirty) 유무 뱃지.
+ * - CollabIndicator: 동시 편집실 참여 피어들의 머릿수 뱃지.
+ */
 import { AIStatusIndicator } from './statusbar/AIStatusIndicator'
 import { MCPStatusIndicator } from './statusbar/MCPStatusIndicator'
 import { DocStatusIndicator } from './statusbar/DocStatusIndicator'
 import { CollabIndicator } from './statusbar/CollabIndicator'
 
+/* 
+ * [CONTEXT & STORES]
+ * - useAppContext: 협업 정보, 전역 설정을 구독하는 컨텍스트.
+ * - useUIStore: 환경설정창 개폐 Zustand 스토어.
+ * - useWorkspaceStore: 실시간 문서 버퍼 Zustand 스토어.
+ * - useProcessStore: 모델 다운로드 및 줌 크기 Zustand 스토어.
+ * - useAI: AI 설정 및 가용성 훅.
+ */
 import { useAppContext } from '../contexts/AppContext'
 import { useUIStore } from '../stores/useUIStore'
 import { useWorkspaceStore } from '../stores/useWorkspaceStore'
@@ -13,39 +62,74 @@ import { useAI } from '../hooks/useAI'
 
 export interface StatusBarProps {}
 
+/**
+ * @component StatusBar
+ * @description 작업 어플리케이션 하단에 고정되어 실시간 리소스 통계 및 시스템 진단 상태를 표기하는 컴포넌트.
+ */
 export function StatusBar({}: StatusBarProps = {}) {
+  /*
+   * [HOOK CONFIG CONNECTIONS]
+   * - peers: Yjs 동시 편집 접속 유저 목록.
+   * - serverRunning: 중계 서버 가동 유무.
+   * - handleUpdateSettings: 설정 정보 부분 저장.
+   * - isProPlan: 멤버십 요금제 프로 가입 여부.
+   */
   const { peers, serverRunning, settings, handleUpdateSettings, mcpServers, isProPlan } = useAppContext()
   const { setIsSettingsOpen } = useUIStore()
+  
+  // 줌 크기 및 모델 파일 다운로드 현황 스토어 구독
   const { editorZoom: zoomLevel, browserZoom = 1.0 } = useProcessStore()
   const { filePath, currentContent, lastSavedTime, originalContent } = useWorkspaceStore()
   const { downloadStatus } = useProcessStore()
+  
+  // AI 엔진 가용 가능 플래그 구독
   const { settings: aiSettings, isAvailable: aiAvailable } = useAI()
   
+  // 줄바꿈 옵션 상태 추출
   const wordWrap = settings?.wordWrap || false
   const onToggleWordWrap = () => handleUpdateSettings({ wordWrap: !wordWrap })
+  
+  // 설정 패널 띄우기
   const onOpenSettings = () => setIsSettingsOpen(true)
+  
+  // 변경 사항이 있는데 아직 수동 저장을 안 했는지 여부 (dirty)
   const isDirty = currentContent !== originalContent
-  // 🦾 커스텀 툴팁 상태 관리
+
+  /*
+   * [INVARIANT - Tooltip Timer Management]
+   * - activeTooltip: 현재 마우스가 올라간 뱃지의 식별 툴팁 문자열.
+   * - tooltipTimerRef: 마우스 아웃 시 즉시 사라지지 않고 250ms 여유를 두어 깜빡임을 막는 타이머 락.
+   */
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const tooltipTimerRef = useRef<any>(null)
 
+  // 툴팁 활성화
   const handleMouseEnter = (id: string) => {
     if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current)
     setActiveTooltip(id)
   }
 
+  // 툴팁 해제
   const handleMouseLeave = () => {
     tooltipTimerRef.current = setTimeout(() => {
       setActiveTooltip(null)
     }, 250)
   }
 
-  // 글자 수, 단어 수, 줄 수 계산
+  /*
+   * [PERFORMANCE CRITICAL - Real-time statistics / O(N)]
+   * - charCount: 글자 개수.
+   * - wordCount: 공백 기준 단어 수.
+   * - lineCount: 개행 문자 기준 줄 수.
+   */
   const charCount = currentContent.length
   const wordCount = currentContent.trim() ? currentContent.trim().split(/\s+/).length : 0
   const lineCount = currentContent ? currentContent.split('\n').length : 0
 
-  // 공통 커스텀 툴팁 스타일 (글래스모피즘 + 섀도우)
+  /*
+   * [INVARIANT - Glassmorphism Tooltip Design Tokens]
+   * - Rationale: 타 모달에 가려지지 않는 절대 zIndex 9999 보장.
+   */
   const tooltipStyle: React.CSSProperties = {
     position: 'absolute',
     bottom: '32px',
@@ -57,7 +141,6 @@ export function StatusBar({}: StatusBarProps = {}) {
     padding: '12px 14px',
     zIndex: 9999,
     pointerEvents: 'auto',
-    display: 'flex',
     flexDirection: 'column',
     gap: '6px',
     textAlign: 'left',
@@ -65,7 +148,7 @@ export function StatusBar({}: StatusBarProps = {}) {
     fontFamily: 'var(--font-sans)',
   }
   
-  // zoomLevel은 이제 CSS zoom 배율 (1.0 = 100%, 0.5 = 50%, 2.0 = 200%)
+  // 소수점 줌 수치 백분율 포맷 변환
   const zoomPercent = Math.round(zoomLevel * 100)
 
   return (
@@ -85,7 +168,7 @@ export function StatusBar({}: StatusBarProps = {}) {
         userSelect: 'none',
       }}
     >
-      {/* 1. 파일 상태 정보 */}
+      {/* 1. 좌측: 파일 상태 및 문서 통계 정보 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         <DocStatusIndicator 
           filePath={filePath}
@@ -101,7 +184,7 @@ export function StatusBar({}: StatusBarProps = {}) {
         </span>
       </div>
 
-      {/* 📥 모델 다운로드 실시간 진행률 표시 */}
+      {/* 📥 중앙: 로컬 모델 다운로드 실시간 진행률 및 속도 지표 */}
       {downloadStatus && (
         <div style={{
           display: 'flex',
@@ -126,9 +209,9 @@ export function StatusBar({}: StatusBarProps = {}) {
         </div>
       )}
 
-      {/* 2. 우측 제어 및 단축키 안내 */}
+      {/* 2. 우측: 시스템 상태 진단 뱃지 및 설정 컨트롤 */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-        {/* MCP 서버 상태 뱃지 */}
+        {/* MCP 서버 동작 상태 */}
         <MCPStatusIndicator 
           isProPlan={isProPlan}
           mcpServers={mcpServers || []}
@@ -139,7 +222,7 @@ export function StatusBar({}: StatusBarProps = {}) {
         />
         {isProPlan && mcpServers && mcpServers.length > 0 && <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />}
 
-        {/* AI 에이전트 서버 상태 뱃지 */}
+        {/* AI 엔진 백그라운드 구동 가능 상태 */}
         <AIStatusIndicator 
           aiSettings={aiSettings}
           aiAvailable={aiAvailable}
@@ -150,14 +233,14 @@ export function StatusBar({}: StatusBarProps = {}) {
         />
         {aiSettings && <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />}
 
-        {/* 협업 상태 및 피어 아바타 목록 */}
+        {/* 피어 동시 편집 참여 목록 */}
         {serverRunning && (
           <CollabIndicator peers={peers} />
         )}
 
         {serverRunning && <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />}
 
-        {/* 상하좌우 고정 기능 (줄바꿈 방지 토글) */}
+        {/* 가로 스크롤 강제 줄바꿈 비활성화 단추 */}
         <label
           style={{
             display: 'flex',
@@ -182,7 +265,7 @@ export function StatusBar({}: StatusBarProps = {}) {
 
         <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />
 
-        {/* 줌 배율 — 문서(CSS zoom) + UI(브라우저 zoom) 분리 표시 */}
+        {/* 줌 배율 지표 */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <ZoomIn size={12} />
           <span>
@@ -197,7 +280,7 @@ export function StatusBar({}: StatusBarProps = {}) {
 
         <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />
 
-        {/* 환경 설정 버튼 */}
+        {/* 환경 설정 트리거 버튼 */}
         <button
           onClick={onOpenSettings}
           style={{

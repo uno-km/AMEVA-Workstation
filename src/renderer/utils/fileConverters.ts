@@ -1,3 +1,29 @@
+/**
+ * @file fileConverters.ts
+ * @system AMEVA OS Desktop Workstation - Utilities
+ * @location src/renderer/utils/fileConverters.ts
+ * @role Multipurpose Binary-to-Markdown and Markdown-to-Binary Document converters
+ * 
+ * [설계 의도 - DESIGN INTENT / ADR / FALLBACK]
+ * - 오프라인 상태에서도 DOCX, HWPX, IPYNB, Excel(.xlsx) 파일을 마크다운 평문으로 즉각 상호 변환하고 적재하도록 순수 프런트 자바스크립트 수준의 복원 엔진을 기획했다.
+ * - [HTML-to-PDF Browser Fallback / HIGH-002]:
+ *   일렉트론이 아닌 순수 웹 브라우저 환경에서 PDF 출력을 요청할 시, Node.js 인쇄 채널을 쓸 수 없다.
+ *   이에 대한 Fallback으로 **동적 숨김 `iframe`을 DOM에 추가하여 HTML을 작성하고 `iframe.contentWindow.print()`를 트리거한 후 500ms 지연 소멸**시키는 브라우저 프린트 우회 우회 전략을 구동한다.
+ * - [HWPX/DOCX XML Backup Parser]:
+ *   DOCX Mammoth 라이브러리 로드가 실패 시, HWPX처럼 zip 압축을 풀어 `word/document.xml` 의 `<w:p>`와 `<w:t>` 태그 정규식 매칭 분석법을 백업으로 가동해 내용을 무결하게 건져 올린다.
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - IPYNB 쥬피터 JSON 및 Markdown 셀 간 상호 변환(`convertMarkdownToIpynb`, `parseFileToMarkdown`).
+ * - 이진 파일 디스크 다운로드 유도(`triggerBrowserDownload`), base64 변환(`arrayBufferToBase64`) 및 Mammoth, JSZip, ExcelJS 등 외부 포맷 번역을 통제한다.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & DEPS]
+ * - ipc: Electron PDF 인쇄 IPC 채널.
+ * - packMarkdownToADC, unpackADCToMarkdown: 미디어 통합 adc 파일 패커.
+ * - JSZip: DOCX/HWPX ZIP 압축 아카이브 추출 라이브러리.
+ * - ExcelJS: 엑셀 셀 로드 및 마크다운 테이블 복원 라이브러리.
+ */
 import * as ipc from '../services/ipc/electronApiAdapter'
 import { packMarkdownToADC, unpackADCToMarkdown } from './adcPackager'
 import {
@@ -6,6 +32,10 @@ import {
 import JSZip from 'jszip'
 import ExcelJS from 'exceljs'
 
+/**
+ * [CONTRACT - ArrayBuffer to Base64 String]
+ * - Rationale: 이진 바이트 스트림을 웹브라우저 btoa 규격의 base64 텍스트로 안전하게 변환한다.
+ */
 export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   let binary = ''
   const bytes = new Uint8Array(buffer)
@@ -15,6 +45,10 @@ export function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return window.btoa(binary)
 }
 
+/**
+ * [CONTRACT - Trigger Browser Download Dialog]
+ * - Rationale: 앵커 `a` 태그 엘리먼트를 일시 생성 클릭하여 로컬 파일 다운로드(ObjectURL)를 가동한 뒤 즉시 `revokeObjectURL` 소멸 클린업한다.
+ */
 export function triggerBrowserDownload(data: Blob | string, filename: string) {
   const blob = typeof data === 'string' ? new Blob([data], { type: 'text/plain' }) : data
   const url = URL.createObjectURL(blob)
@@ -27,6 +61,10 @@ export function triggerBrowserDownload(data: Blob | string, filename: string) {
   URL.revokeObjectURL(url)
 }
 
+/**
+ * [CONTRACT - Markdown to Jupyter Notebook Parser]
+ * - Rationale: 마크다운 평문을 순회하여 코드 펜스(```) 구간은 `cell_type: code`로, 이외 일반 본문은 `cell_type: markdown` 셀로 적재 조립하여 IPYNB 포맷 문자열을 반환한다.
+ */
 export function convertMarkdownToIpynb(markdown: string): string {
   const cells: any[] = []
   const lines = markdown.split('\n')
@@ -86,9 +124,15 @@ export function convertMarkdownToIpynb(markdown: string): string {
   return JSON.stringify(notebook, null, 2)
 }
 
+/**
+ * [CONTRACT - Convert Markdown Blocks to Binary Base64]
+ * - Rationale: 타깃 파일 경로의 확장자에 맞춰 docx, xlsx, hwpx, pdf, adc 바이너리를 생성하고 Base64 문자열로 래핑하여 리턴한다.
+ * - [HIGH-002] 브라우저 환경인 경우 숨김 iframe에 HTML을 써서 window.print() Fallback을 가동한다.
+ */
 export async function convertMarkdownToBinary(editorInstance: any, filePath: string): Promise<string> {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   
+  // 에디터 jupyter 실행 블록을 코드블록 서식으로 치환 정규화
   const copyBlocks = (blocks: any[]): any[] => {
     return blocks.map(block => {
       const copy = { ...block }
@@ -106,30 +150,35 @@ export async function convertMarkdownToBinary(editorInstance: any, filePath: str
   }
   const rawBlocks = copyBlocks(editorInstance.document)
   
+  // 1) Word 포맷 변환
   if (ext === 'docx') {
     const blob = await exportToWord(rawBlocks)
     const arrayBuffer = await blob.arrayBuffer()
     return arrayBufferToBase64(arrayBuffer as ArrayBuffer)
   }
   
+  // 2) Excel 포맷 변환
   if (ext === 'xlsx') {
     const uint8 = await exportToExcel(rawBlocks)
     return arrayBufferToBase64(uint8.buffer as ArrayBuffer)
   }
   
+  // 3) HWPX 포맷 변환
   if (ext === 'hwpx') {
     const blob = await exportToHWPX(rawBlocks)
     const arrayBuffer = await blob.arrayBuffer()
     return arrayBufferToBase64(arrayBuffer as ArrayBuffer)
   }
   
+  // 4) PDF 변환 (Electron / Browser Fallback [HIGH-002] 분기)
   if (ext === 'pdf') {
     const html = blocksToHTML(rawBlocks)
     if (ipc.isElectronEnv()) {
       const base64 = await ipc.printToPDF(html)
       return base64 || ''
     }
-    // [HIGH-002] 브라우저 환경: 숨김 iframe + window.print() fallback
+    
+    // [HIGH-002] 브라우저 환경 Fallback 인쇄 절차 기동
     await new Promise<void>((resolve) => {
       const iframe = document.createElement('iframe')
       iframe.style.position = 'fixed'
@@ -159,6 +208,7 @@ export async function convertMarkdownToBinary(editorInstance: any, filePath: str
     return ''
   }
   
+  // 5) 아메바 통합 ADC 변환
   if (ext === 'adc') {
     const markdown = await editorInstance.blocksToMarkdownLossy(rawBlocks)
     const blob = await packMarkdownToADC(markdown)
@@ -169,9 +219,15 @@ export async function convertMarkdownToBinary(editorInstance: any, filePath: str
   return ''
 }
 
+/**
+ * [CONTRACT - Parse Binary / ipynb File to Markdown String]
+ * - Rationale: 가져온 파일 내용이 이진 base64 규격인지 일반 ipynb JSON/텍스트 규격인지 감별하고,
+ *   IPYNB, DOCX(Mammoth + XML backup), ADC, HWPX(section0.xml 파싱), XLSX(ExcelJS sheet 변환) 순서로 텍스트 복원을 수행한다.
+ */
 export async function parseFileToMarkdown(content: string, filePath: string, isBinary: boolean): Promise<string> {
   const ext = filePath.split('.').pop()?.toLowerCase() || ''
   
+  // 일반 텍스트 및 ipynb 파일 처리
   if (!isBinary) {
     if (ext === 'ipynb') {
       try {
@@ -204,6 +260,7 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
     return content
   }
   
+  // base64 이진 파일 디코딩 복원 시도
   let binaryString = ''
   try {
     binaryString = window.atob(content.replace(/\s/g, ''))
@@ -218,6 +275,7 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
   }
   const arrayBuffer = bytes.buffer
   
+  // 1) DOCX Mammoth 디코더 + XML 태그 백업 복원 라우팅
   if (ext === 'docx') {
     try {
       const mammoth = await import('mammoth')
@@ -246,6 +304,7 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
     }
   }
 
+  // 2) ADC 통합 문서 압축 해제
   if (ext === 'adc') {
     try {
       const markdown = await unpackADCToMarkdown(arrayBuffer)
@@ -255,6 +314,7 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
     }
   }
   
+  // 3) HWPX XML 직접 압축해제 파싱 기전
   if (ext === 'hwpx') {
     try {
       const zip = await JSZip.loadAsync(arrayBuffer)
@@ -282,6 +342,7 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
     }
   }
   
+  // 4) ExcelJS 엑셀 마크다운 테이블 리포트 변환
   if (ext === 'xlsx' || ext === 'xls') {
     try {
       const wb = new ExcelJS.Workbook()

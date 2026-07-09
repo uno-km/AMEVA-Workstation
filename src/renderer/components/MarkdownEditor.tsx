@@ -1,14 +1,81 @@
+/**
+ * @file MarkdownEditor.tsx
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/components/MarkdownEditor.tsx
+ * @role Core Markdown Block-Note Editor Presentational View Component
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - BlockNoteView 라이브러리를 바인딩하여 WYSIWYG 마크다운 문서 편집 영역을 렌더링한다.
+ * - 사이드바 및 AI 패널로부터 주입받은 텍스트 및 블록 하이라이트(Peers 드래그 범위, 포인터, taggedBlocks 별표) 지표들을 화면에 투영한다.
+ * - 사용자 입력 도중 단축 기호 트리거('/', '@', '#')에 맞추어 슬래시 명령, 사용자 멘션, 헤더 참조 링크 팝업을 라우팅 실행한다.
+ * - 웰컴 배너, 서치바, 원문 마크다운 에어리어 등 에디터 모드(welcome/edit/preview/raw)별 분기 화면을 제어한다.
+ * 
+ * [책임이 아닌 것 - NON-RESPONSIBILITY]
+ * - Yjs CRDT 데이터 교환 서버 통신 직접 조작 (useCollaboration 훅에 위임).
+ * - AI 제안 수락 시 에디터 API 직접 패치 (useAIResponseHandler 훅에 위임).
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST: 리스너 누수 방지를 위해 '+' 버튼 가로채기 캡처 이벤트(`handleMouseDownCapture`) 등록 시,
+ *   useEffect 클린업 단계에서 반드시 `removeEventListener` 계약을 보존할 것.
+ * - MUST NOT bypass isProPlan: AI 컨텍스트 태깅용 반짝이(✨) 단추는 Pro 전용 기능이므로,
+ *   반드시 `isProPlan === true` 일 때만 렌더링하도록 조건식을 유지할 것.
+ */
+
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - React, useState, useEffect: 상태 바인딩 및 HMR 라이프사이클 구동용 React 코어 API.
+ */
 import React, { useState, useEffect } from 'react'
+
+/* 
+ * [BLOCKNOTE MANTINE WYSIWYG LAYOUT]
+ * - BlockNoteView: 블록노트 에디터 핵심 프레임워크 Mantine 뷰.
+ */
 import { BlockNoteView } from '@blocknote/mantine'
+
+/* 
+ * [BLOCKNOTE REACT CONTROLLERS]
+ * - SuggestionMenuController: 슬래시(/), 멘션(@), 헤더(#) 입력 감지 팝업 컨트롤러.
+ * - SideMenuController: 블록 좌측의 [+] 및 [::] 드래그 그랩 영역 제어기.
+ * - SideMenu: 블록 그랩 포털 사이드 메뉴 컴포넌트.
+ * - RemoveBlockItem: 드래그 메뉴 내 블록 삭제 액션.
+ * - DragHandleMenu: 드래그 핸들 전용 메뉴 래퍼.
+ * - BlockColorsItem: 블록 배경/글자 색상 지정 액션.
+ */
 import { SuggestionMenuController, SideMenuController, SideMenu, RemoveBlockItem, DragHandleMenu, BlockColorsItem } from '@blocknote/react'
+
+/* 
+ * [STYLESHEET]
+ * - style.css: BlockNote Mantine 기본 레이아웃 및 폰트 CSS.
+ */
 import '@blocknote/mantine/style.css'
+
+/* 
+ * [LUCIDE ICONS]
+ * - X: 닫기 아이콘.
+ * - Users: 멘션 시 참여 피어 목록 아이콘.
+ * - FileText: 멘션 시 타 문서 링크 아이콘.
+ * - Sparkles: 헤더 참조 링크 아이콘.
+ */
 import { X, Users, FileText, Sparkles } from 'lucide-react'
+
+/* 
+ * [MERMAID GRAPH ENGINE]
+ * - mermaid: Jupyter 및 마크다운 내부 텍스트 플로우차트/다이어그램 실시간 컴파일러.
+ */
 import mermaid from 'mermaid'
+
+/* 
+ * [SUB-HOOKS FOR SEPARATE LOGICS]
+ * - useBacktickFence: 세번 백틱(```) 입력 시 Jupyter 코드 블록으로 자동 파싱 전환하는 도우미 훅.
+ * - useCollaborationHighlight: Yjs 피어 편집 시 블록 포커스 테두리 깜빡임 연출 훅.
+ * - useNativeUploadIntercept: 이미지 드래그 드롭 업로드 시 로컬 VFS 복사 인터셉트 훅.
+ */
 import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
 import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
-// Mermaid 초기화
+// Mermaid 초기화 시도
 try {
   mermaid.initialize({
     startOnLoad: false,
@@ -19,7 +86,15 @@ try {
   console.error('Failed to initialize mermaid:', e)
 }
 
-// ─── 기능별 이원화 컴포넌트 및 커스텀 훅 임포트 ─────────────────────
+/* 
+ * [COMPONENTS]
+ * - MarkdownPreview: 읽기 전용 최종 HTML 미리보기 컴포넌트.
+ * - PeerBlockHighlightLayer: 타 피어들의 텍스트 드래그 및 마우스 캐럿 위치 투영 오버레이 레이어.
+ * - getCustomSlashMenuItems: 커스텀 입점 플러그인(Jupyter, Drawing 등) 추가용 슬래시 메뉴 리스트 빌더.
+ * - WelcomeBanner: 최초 로딩 환영 카드 뷰.
+ * - RichStyleToolbar: 폰트 및 폰트크기 강제 커스텀 툴바.
+ * - ImageLightbox: 이미지 클릭 시 풀스크린 확대 뷰 모달.
+ */
 import { MarkdownPreview } from './MarkdownPreview'
 import { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
 import { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
@@ -27,6 +102,15 @@ import { WelcomeBanner } from './editor/WelcomeBanner'
 import { RichStyleToolbar } from './editor/RichStyleToolbar'
 import { ImageLightbox } from './ImageLightbox'
 
+/* 
+ * [INTERACTION HOOKS]
+ * - useHoverBlock: 마우스 커서 아래 블록 정보 및 좌표 영역 실시간 추적 훅.
+ * - useSideMenuHoverSync: Mantine 포털 메뉴 호버 전파 보정 훅.
+ * - useEditorDragDrop: 마크다운 파일/URL 외부 드롭 캡처 훅.
+ * - useEditorPaste: 클립보드 이미지 및 코드 원문 가로채기 훅.
+ * - useImageLightbox: 이미지 팝업 제어 훅.
+ * - useSelectionTracking: 선택 영역 문자열 캡처 전파 훅.
+ */
 import { useHoverBlock } from '../hooks/editor/useHoverBlock'
 import { useSideMenuHoverSync } from '../hooks/editor/useSideMenuHoverSync'
 import { useEditorDragDrop } from '../hooks/editor/useEditorDragDrop'
@@ -34,9 +118,18 @@ import { useEditorPaste } from '../hooks/editor/useEditorPaste'
 import { useImageLightbox } from '../hooks/editor/useImageLightbox'
 import { useSelectionTracking } from '../hooks/editor/useSelectionTracking'
 
+/* 
+ * [CONTEXT & STORE]
+ * - useAppContext: 에디터 인스턴스, 설정을 들고 있는 최상위 Context.
+ * - useWorkspaceStore: 탭 관리 및 버퍼 정보 스토어.
+ */
 import { useAppContext } from '../contexts/AppContext'
 import { useWorkspaceStore } from '../stores/useWorkspaceStore'
 
+/**
+ * @interface MarkdownEditorProps
+ * @description 에디터 드래그 및 포인터 이동 콜백 등 외부 레이아웃 바인딩을 위한 Props.
+ */
 export interface MarkdownEditorProps {
   onMouseMove?: (e: React.MouseEvent) => void
   onSelectionChange?: (selection: { anchorBlockId: string; focusBlockId: string } | null) => void
@@ -47,10 +140,21 @@ export interface MarkdownEditorProps {
   setTaggedBlocks?: (blocks: { id: string; text: string }[]) => void
 }
 
-// ─────────────────────────────────────────────────────────────
-// 🏁 MarkdownEditor 메인 컴포넌트
-// ─────────────────────────────────────────────────────────────
+/**
+ * @component MarkdownEditor
+ * @description WYSIWYG 에디터 영역 렌더러 및 사용자 단축 팝업 액션을 통제하는 코어 컴포넌트.
+ */
 export function MarkdownEditor({
+  /*
+   * [PROPERTY MAPPINGS]
+   * - onMouseMove: 마우스 위치 트래킹 전송 핸들러.
+   * - onSelectionChange: 캐럿 범위 변경 감지 핸들러.
+   * - onBlockHighlight: 블록 포커싱 동기화 콜백.
+   * - editorContainerRef: 최상위 DOM 마운트용 참조 레퍼런스.
+   * - onSelectedTextChange: 선택 텍스트 저장 스토어 연계 핸들러.
+   * - taggedBlocks: 지시용 태그 블록 정보 목록.
+   * - setTaggedBlocks: 지시용 태그 블록 갱신 세터.
+   */
   onMouseMove = () => {},
   onSelectionChange = () => {},
   onBlockHighlight = () => {},
@@ -59,27 +163,72 @@ export function MarkdownEditor({
   taggedBlocks = [],
   setTaggedBlocks = () => {},
 }: MarkdownEditorProps) {
+  /*
+   * [CONTEXT VALUES]
+   * - editor: BlockNote API 기동 본체.
+   * - editorMode: welcome/edit/preview/raw 화면 모드 지표.
+   * - peers: 현재 편집실 참여 협업자 레코드.
+   * - settings: 렌더러 일반 세팅 정보.
+   * - isProPlan: 프로 요금제 가입 여부.
+   * - handleOpenFile: 파일 열기 트리거.
+   * - handleStartWelcomeEdit: 웰컴 화면 종료 및 에디터 로드 콜백.
+   * - handleStartNewDocument: 빈 문서 생성 콜백.
+   */
   const { editor, editorMode, peers, settings, isProPlan, handleOpenFile, handleStartWelcomeEdit, handleStartNewDocument } = useAppContext()
+  
+  /*
+   * [ZUSTAND STORE PROPERTIES]
+   * - currentContent: 원문 텍스트 버퍼.
+   * - setCurrentContent: 원문 텍스트 변경 세터.
+   * - tabs: 다중 문서 탭 정보 목록.
+   */
   const { currentContent, setCurrentContent, tabs } = useWorkspaceStore()
   
+  /*
+   * [LOCAL CONFIG VARIABLES]
+   * - wordWrap: 줄바꿈 허용 세팅 여부.
+   * - showCodeRunner: 하단 주피터 콘솔 출력창 노출 여부.
+   * - theme: 화이트/다크 테마 정보.
+   * - installedPlugins: 폰트 강제 변경 등 설치 완료된 플러그인 리스트.
+   */
   const wordWrap = settings?.wordWrap || false
   const showCodeRunner = settings?.showCodeConsole || false
   const theme = settings?.theme || 'dark'
   const installedPlugins = settings?.installedPlugins || []
 
+  // Rationale: console.debug 경고 누락 및 미사용 변수 체크 해결
   console.debug("Unused vars (MarkdownEditor):", { X, showCodeRunner, taggedBlocks });
+
+  /*
+   * [RICH STYLE VARIABLES]
+   * - selectedFont: 사용자가 툴바에서 지정한 커스텀 폰트명.
+   * - selectedSize: 사용자가 툴바에서 지정한 커스텀 크기 px.
+   */
   const [selectedFont, setSelectedFont] = useState('Pretendard')
   const [selectedSize, setSelectedSize] = useState('14px')
 
+  /*
+   * [HOVER CONTROLLER VARIABLES]
+   * - hoverBlock: 현재 마우스가 올라가 있는 블록의 ID, 내용, 좌표(rect) 정보.
+   * - handleEditorMouseMove: 에디터 캔버스 내 마우스 이동 실시간 감지 핸들러.
+   */
   const { hoverBlock, handleEditorMouseMove } = useHoverBlock(
     editor, editorMode, editorContainerRef, onMouseMove, isProPlan
   )
 
-  // 🖱️ 사이드 메뉴(+ ::) 포털 렌더링 시 CSS hover 우회 문제 해결 (JS 기반 호버 동기화)
+  // JS 기반 포털 마운트 호버 동기화 훅 가동
   useSideMenuHoverSync()
 
+  /*
+   * [PLUGIN FLAG]
+   * - hasRichStyling: 리치 폰팅 커스텀 툴바 입점 여부.
+   */
   const hasRichStyling = installedPlugins.includes('rich-styling')
 
+  /**
+   * [SIDE EFFECT - Font Style Injection]
+   * - Rationale: rich-styling 플러그인이 로드되어 있을 때에만 선택된 폰트와 크기를 에디터 에디터 본문 DOM에 강제 인젝션한다.
+   */
   useEffect(() => {
     if (!editorContainerRef.current) return
     const editorDom = editorContainerRef.current.querySelector('.bn-editor') as HTMLElement
@@ -92,21 +241,25 @@ export function MarkdownEditor({
         editorDom.style.fontSize = ''
       }
     }
-  }, [selectedFont, selectedSize, editor, editorMode, hasRichStyling])
+  }, [selectedFont, selectedSize, editor, editorMode, hasRichStyling, editorContainerRef])
 
-  // ─── 3가지 커스텀 기능별 훅 마운트 (코드 파편화 분리 완수) ───
+  // 코드 펜스, 협업 깜빡임 및 파일 드롭 이미지 가로채기 훅 구동
   useBacktickFence(editor)
   useCollaborationHighlight(editor, onBlockHighlight, editorContainerRef)
   useNativeUploadIntercept(editor, editorContainerRef)
 
-  // ➕ SideMenu의 '+' 버튼 클릭 이벤트를 DOM 캡처링 단계에서 가로채어 슬래시 명령(/) 자동 호출
+  /**
+   * [SIDE EFFECT INTENTIONAL - Capture Plus Button Event]
+   * - Rationale: SideMenu의 '+' 단추 클릭 이벤트를 캡처링 단계에서 인터셉트하여,
+   *   해당 위치 뒤에 빈 문단을 파킹하고 슬래시 명령문('/')을 삽입하여 팝업을 신속 트리거한다.
+   * - CONTRACT: 메모리 리스너 누수 방지를 위해 리스너 제거(cleanup) 코드를 유지한다.
+   */
   useEffect(() => {
     const container = editorContainerRef.current
     if (!container) return
 
     const handleMouseDownCapture = (e: MouseEvent) => {
       const target = e.target as HTMLElement
-      // '+' 버튼인지 감지 (드래그 핸들이 아닌 bn-side-menu-btn 클릭)
       const addBtn = target.closest('.bn-side-menu-btn')
       const isDragHandle = target.closest('.bn-drag-handle')
 
@@ -149,14 +302,21 @@ export function MarkdownEditor({
     }
   }, [editor, hoverBlock, editorContainerRef])
 
-  // 드롭 & 페이스트 (URL 렌더링) 처리 훅
+  /*
+   * [DRAG DROP & CLIPBOARD PASTE CAPTURES]
+   * - onDropCapture: 드래그 드롭 이미지/파일 인터셉트.
+   * - onPasteCapture: 클립보드 붙여넣기 인터셉트.
+   */
   const { onDropCapture } = useEditorDragDrop(editor, editorMode)
   const { onPasteCapture } = useEditorPaste(editor, editorMode)
 
-  // 1. 이미지 클릭 라이트박스
+  /*
+   * [LIGHTBOX & SELECTION VARIABLES]
+   * - selectedImg: 확대 팝업된 이미지 파일 URL.
+   * - setSelectedImg: 이미지 확대 팝업 세터.
+   * - handleSelection: 마우스 드래그 선택 시 텍스트 내용 캡처 및 전송.
+   */
   const { selectedImg, setSelectedImg } = useImageLightbox(editorContainerRef)
-
-  // 2. 드래그 셀렉션 트래킹
   const { handleSelection } = useSelectionTracking(editor, onSelectedTextChange, onSelectionChange)
 
   if (!editor) {
@@ -196,10 +356,7 @@ export function MarkdownEditor({
         <PeerBlockHighlightLayer peers={peers} containerRef={editorContainerRef} />
 
         {/* 🤖 컨텍스트 연동 호버 에이전트 별표(✨) 버튼 레이어
-          *
-          * [중요] isProPlan 조건 적용 위치
-          * ✨ 별표 버튼은 Pro 전용 기능(블록 컨텍스트 태깅)이므로 isProPlan=true일 때만 표시.
-          * + 버튼 슬래시 메뉴는 기본 기능이므로 hoverBlock 추적은 항상 유지된다. (useHoverBlock.ts 참고)
+          * [CONTRACT] isProPlan 조건 적용 위치: ✨ 별표 버튼은 Pro 전용 기능(블록 컨텍스트 태깅)이므로 isProPlan=true일 때만 표시.
           */}
         {hoverBlock && editorMode === 'edit' && isProPlan && (
           <button
@@ -207,7 +364,7 @@ export function MarkdownEditor({
             style={{
               position: 'absolute',
               top: hoverBlock.rect.top + (hoverBlock.rect.height - 24) / 2,
-              left: hoverBlock.rect.left + hoverBlock.rect.width + 12, // 본문 우측 마진 구역
+              left: hoverBlock.rect.left + hoverBlock.rect.width + 12,
               width: '24px',
               height: '24px',
               borderRadius: '50%',
@@ -238,6 +395,7 @@ export function MarkdownEditor({
           </button>
         )}
 
+        {/* 협업 참여자 드래그 선택 범위 박스 실시간 투영 */}
         {peers.map((peer) => {
           if (!peer.dragSelection?.rects) return null
           return peer.dragSelection.rects.map((rect, idx) => (
@@ -253,6 +411,7 @@ export function MarkdownEditor({
           ))
         })}
 
+        {/* 협업 참여자 마우스 포인터 실시간 이동 투영 */}
         {peers.map((peer) => {
           if (!peer.pointer) return null
           return (
@@ -281,6 +440,7 @@ export function MarkdownEditor({
           )
         })}
 
+        {/* 에디터 모드 전환 분기 렌더 */}
         {editorMode === 'welcome' ? (
           <WelcomeBanner
             onStartWelcomeEdit={handleStartWelcomeEdit}
@@ -304,6 +464,7 @@ export function MarkdownEditor({
                 />
               )}
             />
+            {/* 1. 슬래시(/) 명령어 단축 팝업 제어 */}
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
@@ -314,6 +475,7 @@ export function MarkdownEditor({
                 )
               }}
             />
+            {/* 2. 골뱅이(@) 참여자 멘션 및 타 문서 링크 단축 팝업 제어 */}
             <SuggestionMenuController
               triggerCharacter="@"
               getItems={async (query) => {
@@ -347,6 +509,7 @@ export function MarkdownEditor({
                 return allItems.filter(item => item.title.toLowerCase().includes(query.toLowerCase()))
               }}
             />
+            {/* 3. 우물정(#) 헤더 참조 링크 단축 팝업 제어 */}
             <SuggestionMenuController
               triggerCharacter="#"
               getItems={async (query) => {
@@ -379,6 +542,7 @@ export function MarkdownEditor({
         ) : editorMode === 'preview' ? (
           <MarkdownPreview markdown={currentContent} editor={editor} />
         ) : (
+          /* RAW 마크다운 원문 텍스트 에어리어 제어 뷰 */
           <div style={{
             width: '100%',
             height: '100%',

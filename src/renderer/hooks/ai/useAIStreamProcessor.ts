@@ -1,23 +1,49 @@
 /**
- * useAIStreamProcessor.ts
- *
- * AI 스트리밍 토큰 처리 전담 훅.
- * StreamingSanitizer 인스턴스와 raw 누적 버퍼를 관리하며,
- * 60ms 렌더링 스로틀링을 통해 화면 깜빡임 없는 실시간 업데이트를 보장한다.
- *
- * [단일 책임]
- * - StreamingSanitizer 인스턴스 생명주기 관리
- * - raw 텍스트 누적 (EDIT_SUGGESTION 파싱용 un-sanitized 버퍼)
- * - 60ms 스로틀링 기반 UI 업데이트 스케줄링
- * - 현재 assistant 메시지 ID 추적
+ * @file useAIStreamProcessor.ts
+ * @system AMEVA OS Desktop Workstation - Client Renderer
+ * @location src/renderer/hooks/ai/useAIStreamProcessor.ts
+ * @role Throttled LLM Streaming Token Buffer & Sanitizer Manager
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - LLM 추론 스트림으로부터 전달받은 원본 토큰들을 정제 가공하는 `StreamingSanitizer` 인스턴스의 전체 생명주기를 주도한다.
+ * - 생각 과정을 나타내는 `<thought>` 추론 태그와 실시간 렌더링용 안전 문자열(safe output)을 추출 관리한다.
+ * - 브라우저 렌더링 렉 및 말더듬 현상(visual jitter)을 방지하기 위해 **60ms 렌더링 디바운싱/스로틀링**을 적용하여 UI 상태를 갱신한다.
+ * 
+ * [책임이 아닌 것 - NON-RESPONSIBILITY]
+ * - Llama.cpp 네이티브 소켓 및 IPC 통신 호출 직접 주도 (useAIIpc 및 electronApiAdapter에서 처리).
+ * - 대기 큐 스케줄러 관리 (useAIQueue에서 단독 수행).
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST NOT: UI 업데이트 스로틀 주기인 `60ms`를 임의로 늘리거나 줄이지 말 것. 늘리면 타이핑 반응 속도가 답답해지고,
+ *   줄이면 React 상태 리렌더링 폭풍으로 인해 CPU 점유율 과부하가 발생함.
+ * - MUST: 생성 세션 ID(`currentSessionIdRef.current`)와 토큰 유입 시의 세션 ID를 매번 대조 검증하여,
+ *   네트워크 지연으로 인해 이전 세션의 잔여 토큰이 현재 대화창에 뒤섞이는 오작동을 완전히 방지할 것.
  */
 
+/* 
+ * [IMPORT SEGMENTATION & CONTRACTS]
+ * - useRef: 렌더 트리를 흔들지 않고 토큰 버퍼 및 이전 렌더 타임스탬프를 유지하기 위한 Mutable 참조 객체 생성 훅.
+ * - useCallback: 콜백이 불필요하게 갱신되어 자식 리렌더링 폭풍을 일으키는 것을 막기 위한 훅.
+ */
 import { useRef, useCallback } from 'react'
+
+/* 
+ * [UTILITIES & STORES]
+ * - StreamingSanitizer: LLM의 추론 생각 태그를 제거하고 실시간 정제 출력을 산출하는 파싱 엔진.
+ * - useAILogStore: 실시간 출력 및 이전 대화 목록 메시지를 영구/임시 보존하는 Zustand 스토어.
+ */
 import { StreamingSanitizer } from '../../utils/responseSanitizer'
 import { useAILogStore } from '../../stores/useAILogStore'
+
+/* 
+ * [SHARED SCHEMAS]
+ * - ReasoningTraceEvent: 실시간으로 발라낸 생각 과정을 AI 추론 생각 트레이스 형태로 형상화한 타입 규격.
+ */
 import type { ReasoningTraceEvent } from '../../../shared/reasoningTypes'
 
-/** 스트리밍 UI 업데이트 함수 시그니처 */
+/** 
+ * 스트리밍 UI 업데이트 함수 시그니처 
+ */
 export interface StreamUpdateFn {
   (params: {
     safeText: string
@@ -27,34 +53,38 @@ export interface StreamUpdateFn {
 }
 
 /**
- * useAIStreamProcessor
- * AI 스트리밍 토큰 처리 및 throttled UI 업데이트를 담당한다.
+ * @hook useAIStreamProcessor
+ * @description 스트리밍 토큰 유입 시 버퍼 누적 및 스로틀 기반 UI 업데이트를 주도하는 훅.
  */
 export function useAIStreamProcessor() {
+  /*
+   * [CONTRACT - Log Store Decoupling Selector]
+   * - setMessages: AI 메시지 노드의 내용을 60ms 간격으로 교체하기 위한 액션 세터.
+   * - setStreamingText: 터미널 디버깅 로그용 원본 텍스트 갱신 세터.
+   */
   const { setMessages, setStreamingText } = useAILogStore()
 
-  // StreamingSanitizer 인스턴스: 세션마다 리셋
+  /*
+   * [CONTRACT - Mutable References Initialization]
+   * - sanitizerRef: 세션 시작 시 새로 기동되는 생각 태그 필터링 객체 레퍼런스.
+   * - rawAccumRef: EDIT 제안서 및 Jupyter 삽입 파싱을 위해 보존하는 원본 누적 문자열 버퍼 레퍼런스.
+   * - currentAssistantIdRef: 현재 실시간 글자가 타이핑되고 있는 Assistant 메시지 말풍선의 고유 ID 레퍼런스.
+   * - currentSessionIdRef: 다른 세션으로부터의 토큰 난입을 가드하는 고유 추론 세션 ID 레퍼런스.
+   * - isAgentRunningRef: AI 도구 실행 루프 동안 임시로 일반 스트림 수신을 무력화하기 위한 플래그 레퍼런스.
+   * - lastRenderTimeRef: 스로틀 구현을 위해 이전 UI 갱신 타임스탬프를 보존하는 밀리초 레퍼런스.
+   * - pendingTokenUpdateRef: 60ms 스로틀 제한 시간 동안 추가로 유입된 토큰들의 렌더링 지연 예약을 위한 타이머 플래그 레퍼런스.
+   */
   const sanitizerRef = useRef<StreamingSanitizer>(new StreamingSanitizer())
-  // Raw 누적 버퍼: sanitize 이전 원본 텍스트 (EDIT_SUGGESTION 파싱에 필요)
   const rawAccumRef = useRef<string>('')
-  // 현재 스트리밍 중인 assistant 메시지 ID
   const currentAssistantIdRef = useRef<string | null>(null)
-  // 현재 활성 세션 ID (타 세션 토큰 무시용)
   const currentSessionIdRef = useRef<string | null>(null)
-  // 에이전트 실행 중 락 (에이전트 모드에서 일반 토큰 리스너 차단)
   const isAgentRunningRef = useRef<boolean>(false)
-
-  // 60ms 렌더링 스로틀링 상태 변수
   const lastRenderTimeRef = useRef<number>(0)
   const pendingTokenUpdateRef = useRef<boolean>(false)
 
   /**
-   * resetSession
-   * 새 생성 세션 시작 시 상태를 초기화한다.
-   * sanitizer, rawAccum, assistantId, sessionId를 리셋한다.
-   *
-   * @param newSessionId - 새 세션 ID
-   * @param newAssistantId - 새 assistant 메시지 ID
+   * [CONTRACT - Reset Session Lifecycle]
+   * - Rationale: 새 대화 전송 시작 시, 기존의 누적 찌꺼기 버퍼와 이전 세션 ID를 완전히 초기화(Invariant)한다.
    */
   const resetSession = useCallback((newSessionId: string, newAssistantId: string) => {
     sanitizerRef.current = new StreamingSanitizer()
@@ -67,31 +97,35 @@ export function useAIStreamProcessor() {
   }, [])
 
   /**
-   * processToken
-   * 수신된 스트리밍 토큰을 처리한다.
-   * raw 버퍼에 누적하고, sanitizer를 통해 처리한 뒤 60ms 스로틀링으로 UI를 업데이트한다.
-   *
-   * @param token - LLM이 방출한 토큰 문자열
-   * @param sessId - 현재 요청의 세션 ID (타 세션 차단용)
+   * [CONTRACT - Token Streaming Processing Stream]
+   * - Rationale: IPC 소켓으로부터 문자열 청크가 조각날 때마다 버퍼에 붙이고, 60ms 주기로 화면 렌더링 스케줄링을 가동한다.
    */
   const processToken = useCallback((token: string, sessId: string) => {
-    // 타 세션 토큰 무시
+    // 1. 타 세션 토큰 유입 가드 필터링
     if (sessId !== currentSessionIdRef.current) return
-    // 에이전트 실행 중 차단
+    // 2. AI 도구 스크립트 가동 중 일반 스트림 덮어쓰기 방지 가드
     if (isAgentRunningRef.current) return
 
+    // 원본 및 정제용 필터 객체에 토큰 청크 추가
     rawAccumRef.current += token
     sanitizerRef.current.appendChunk(token)
 
-    // 60ms 스로틀링: 렌더링 주기 조절
+    // 실시간 렌더링 주기 판정용 밀리초 획득
     const now = Date.now()
+
+    /*
+     * [INVARIANT - UI State Update Callback]
+     * - Rationale: 60ms 스로틀 조건 만족 시, 누적 버퍼의 정제 텍스트와 생각 버퍼 내용을 추출하여 리액트 UI 상태를 변경한다.
+     */
     const updateUI = () => {
+      // 꼬임 방지를 위해 실행 시점에 다시 한번 세션 ID를 교차 검증함
       if (sessId !== currentSessionIdRef.current) return
       setStreamingText(rawAccumRef.current)
 
       const assistantId = currentAssistantIdRef.current
       if (!assistantId) return
 
+      // 생각 부분과 안전 텍스트 부분의 파싱 데이터 획득
       const safeText = sanitizerRef.current.getSafeOutput()
       const thinkingText = sanitizerRef.current.getThinkingBuffer()
 
@@ -99,6 +133,7 @@ export function useAIStreamProcessor() {
         prev.map((m) => {
           if (m.id !== assistantId) return m
 
+          // 실시간으로 흘러나오는 생각 흐름 정보 구성
           const liveTrace: ReasoningTraceEvent[] = thinkingText
             ? [{
                 id: `trace_live_${m.id}`,
@@ -120,10 +155,13 @@ export function useAIStreamProcessor() {
       )
     }
 
+    // 60ms 스로틀 주기가 완료되었을 때 즉시 렌더링
     if (now - lastRenderTimeRef.current > 60) {
       lastRenderTimeRef.current = now
       updateUI()
-    } else if (!pendingTokenUpdateRef.current) {
+    } 
+    // 미완료 상태에서 추가 토큰 유입 시 60ms 지연 렌더링 예약
+    else if (!pendingTokenUpdateRef.current) {
       pendingTokenUpdateRef.current = true
       setTimeout(() => {
         pendingTokenUpdateRef.current = false
@@ -134,11 +172,8 @@ export function useAIStreamProcessor() {
   }, [setMessages, setStreamingText])
 
   /**
-   * finalize
-   * 생성 완료 시 sanitizer를 종료하고 최종 결과를 반환한다.
-   * 이 메서드 호출 후 resetSession을 호출해야 다음 세션을 준비할 수 있다.
-   *
-   * @returns sanitizer 최종 결과 (finalContent, thinkingContent, hadInternalTags)
+   * [CONTRACT - Terminate Session / Rationale]
+   * - 스트리밍 최종 완료 시, StreamingSanitizer 필터링 라이프사이클을 종결하여 최종 생각 로그 및 안전 텍스트 반환.
    */
   const finalize = useCallback(() => {
     return sanitizerRef.current.finalize()
@@ -155,3 +190,15 @@ export function useAIStreamProcessor() {
     finalize
   }
 }
+
+/**
+ * ============================================================================
+ * FUTURE DEVELOPMENT GUIDE (AI Agent Instruction Layer)
+ * ============================================================================
+ * 1. AI 렌더링 스로틀 속도를 조정하고자 하는 경우:
+ *    - 본 파일 내 `60ms` 임계치를 제어하는 하드코딩 수치들을 환경 상수로 치환하여 제어할 것.
+ * 
+ * 2. 생각 흐름 추적기(Reasoning Trace) 렌더링 중 커스텀 마크다운 렌더링을 얹고 싶을 때:
+ *    - `liveTrace` 구조의 속성에 파싱용 플래그 메타데이터를 추가할 것.
+ * ============================================================================
+ */
