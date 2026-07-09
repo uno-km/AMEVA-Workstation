@@ -44,10 +44,10 @@ export default function App() {
   const {
     filePath, setFilePath, currentContent, setCurrentContent, appendContent,
     originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
-    fileOpenMode, setFileOpenMode, updateActiveTab,
-    activeTabId, setActiveTabId,
+    fileOpenMode, updateActiveTab,
+    activeTabId,
     setSelectedText, setActiveBlockId,
-    taggedBlocks, setTaggedBlocks
+    taggedBlocks, setTaggedBlocks, setSelectedSnapshot
   } = useWorkspaceStore()
 
   const { updateInsertSuggestionStatus } = useAI()
@@ -81,7 +81,7 @@ export default function App() {
     showSidebar, setShowSidebar, showStatusBar,
     toastMessage, showFindReplace, setShowFindReplace,
     findReplaceMode, isChatFloating,
-    setIsDiffOpen
+    setIsDiffOpen, setHasChatUnread
   } = useUIStore(useShallow((s) => ({
     showModelHub: s.showModelHub,
     showAIPanel: s.showAIPanel,
@@ -97,7 +97,8 @@ export default function App() {
     setShowFindReplace: s.setShowFindReplace,
     findReplaceMode: s.findReplaceMode,
     isChatFloating: s.isChatFloating,
-    setIsDiffOpen: s.setIsDiffOpen
+    setIsDiffOpen: s.setIsDiffOpen,
+    setHasChatUnread: s.setHasChatUnread
   })))
 
   const {
