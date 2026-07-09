@@ -8,7 +8,7 @@
   - `useAIResponseHandler.ts` 내 `finalize` 함수의 반환 형식을 `SanitizeResult` 타입으로 명확히 연동하여, `useAIStreamProcessor`와의 데이터 교환 정합성을 100% 확보하고 타입 에러를 차단했습니다.
   - `AIPanel` 컴포넌트가 `useAI`로부터 받아오던 AI 테마 에러(`settings.theme` 문제)를 `useAppContext`의 전역 설정 `appSettings`를 직접 활용하는 방식으로 보정하여 비즈니스 논리에 알맞게 해결했습니다.
 - **Zustand 및 Hook 미사용 추출 자원 대규모 정리**:
-  - `App.tsx`에서 20개 이상의 불필요한 스토어 상태/액션 구조 분해 할당을 정리하고, 실제 호출되지 않는 미사용 내부 핸들러(`handleToggleRightTab`, `handleSwitchOpenMode`, `handleSelectAppendedFile`)를 안전하게 제거했습니다.
+  - `App.tsx`에서 20개 이상의 불필요한 스토어 상태/액션 구조 분해 할당을 정리하고, 실제 호출되지 않는 미사용 내부 핸들러(`handleToggleRightTab`, `handleSwitchOpenMode`, `handleSelectAppendedFile`)를 안전하게 제거했습니다. (정리 도중 본문 내 사용되던 `setHasChatUnread` 및 `setSelectedSnapshot` 복구 완료).
   - `StatusBar.tsx`, `AppLayout.tsx`, `RefreshConfirmModal.tsx`, `useAI.ts` 등에서 발생하던 불필요한 React 및 타입 임포트 구문을 완전히 걷어냄으로써 전체 코드베이스의 빌드 청결도를 유지했습니다.
 
 ### 📁 수정된 파일 목록
