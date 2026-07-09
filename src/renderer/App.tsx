@@ -520,7 +520,7 @@ export default function App() {
       peers, serverRunning, serverPort, setServerPort, serverHost, setServerHost,
       useLocalServer, setUseLocalServer, toggleLocalServer, collaborationLink, isConnected,
       username, setUsername, userColor, setUserColor,
-      chatMessages, sendChatMessage, clearMessages: clearChatMessages,
+      chatMessages, sendChatMessage, clearChatMessages,
       mcpServers: mcpServersState,
       refreshMcpServers
     }}>

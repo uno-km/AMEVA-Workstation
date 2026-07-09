@@ -85,7 +85,6 @@ export function StrictModal(props: StrictModalProps) {
         height: '100vh',
         backgroundColor: 'rgba(0, 0, 0, 0.65)',
         backdropFilter: 'blur(12px)',
-        backdropFilter: 'blur(12px)',
         zIndex: 10001,
         display: 'flex',
         alignItems: 'center',

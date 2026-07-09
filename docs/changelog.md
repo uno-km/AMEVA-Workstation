@@ -7,6 +7,11 @@
   - `AIPanelHeader` 컴포넌트의 props 정의(`AIPanelHeaderProps`)에 `isGenerating` 및 `onClearMessages`를 명시적으로 추가하여 타입 호환 문제를 방지했습니다. 
   - `useAIResponseHandler.ts` 내 `finalize` 함수의 반환 형식을 `SanitizeResult` 타입으로 명확히 연동하여, `useAIStreamProcessor`와의 데이터 교환 정합성을 100% 확보하고 타입 에러를 차단했습니다.
   - `AIPanel` 컴포넌트가 `useAI`로부터 받아오던 AI 테마 에러(`settings.theme` 문제)를 `useAppContext`의 전역 설정 `appSettings`를 직접 활용하는 방식으로 보정하여 비즈니스 논리에 알맞게 해결했습니다.
+- **템플릿 리터럴 구문 오류 수정 (useAppEditorInit.ts, useJSRuntime.ts, usePythonRuntime.ts)**:
+  - 템플릿 리터럴 문자열 내부의 예제 코드, WebWorker 및 Pyodide Python 코드 블록 내부에 unescaped backtick(`)을 포함하여 구문 에러를 일으키던 자동 생성 주석 블록들을 일괄 제거했습니다. 이를 통해 템플릿 리터럴이 비정상적으로 닫히는 현상을 해결했으며, `useAppEditorInit` 훅의 반환형이 `void`로 오인되어 `App.tsx`에서 `'DEFAULT_WELCOME_TEXT' does not exist on type 'void'` 오류가 나던 현상을 완벽히 수정했습니다.
+- **StrictModal.tsx 중복 CSS 속성 및 useAppFileOperations.ts 중복 type 키워드 해결**:
+  - `StrictModal.tsx` 내 중복 정의되어 있던 `backdropFilter` 스타일 정의를 1개로 정리했습니다.
+  - `useAppFileOperations.ts` 내 `import type { ..., type ... }`와 같이 중복 선언되어 TS2206 에러를 내던 `type` 지시어를 단일 선언으로 정비했습니다.
 - **Zustand 및 Hook 미사용 추출 자원 대규모 정리**:
   - `App.tsx`에서 20개 이상의 불필요한 스토어 상태/액션 구조 분해 할당을 정리하고, 실제 호출되지 않는 미사용 내부 핸들러(`handleToggleRightTab`, `handleSwitchOpenMode`, `handleSelectAppendedFile`)를 안전하게 제거했습니다. (정리 도중 본문 내 사용되던 `setHasChatUnread` 및 `setSelectedSnapshot` 복구 완료).
   - `StatusBar.tsx`, `AppLayout.tsx`, `RefreshConfirmModal.tsx`, `useAI.ts` 등에서 발생하던 불필요한 React 및 타입 임포트 구문을 완전히 걷어냄으로써 전체 코드베이스의 빌드 청결도를 유지했습니다.
@@ -20,6 +25,11 @@
 - `[MODIFY]` [AppLayout.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/layout/AppLayout.tsx) - 미사용 타입 임포트(EditorMode, DocumentSnapshot) 제거.
 - `[MODIFY]` [StatusBar.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/StatusBar.tsx) - 미사용 타입 임포트(PeerState) 제거.
 - `[MODIFY]` [RefreshConfirmModal.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/RefreshConfirmModal.tsx) - 미사용 React 임포트 제거.
+- `[MODIFY]` [useAppEditorInit.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/app/useAppEditorInit.ts) - welcomeMD 내부 JS 예시 코드 내 자동 생성된 주석 제거.
+- `[MODIFY]` [useJSRuntime.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/code-runtime/useJSRuntime.ts) - WebWorker 코드 문자열 내부의 자동 생성된 주석 제거.
+- `[MODIFY]` [usePythonRuntime.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/code-runtime/usePythonRuntime.ts) - 파이썬 샌드박스 스크립트 문자열 내부의 자동 생성된 주석 제거.
+- `[MODIFY]` [StrictModal.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/ui/modals/StrictModal.tsx) - backdropFilter 중복 선언 제거.
+- `[MODIFY]` [useAppFileOperations.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/app/useAppFileOperations.ts) - import type 내 중복 type 키워드 제거.
 
 ## 2026-07-08 (Zustand Subscription Optimization & Focus Loop Fix)
 

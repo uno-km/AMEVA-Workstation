@@ -106,12 +106,6 @@ export function usePythonRuntime() {
         if (pkgs.length > 0) {
           return `
 import micropip
-      /*
-       * [LOOP CONTROL ITERATION]
-       * - 루프 조건: `for pkg in ${JSON.stringify(pkgs)}:`
-       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
-       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
-       */
 for pkg in ${JSON.stringify(pkgs)}:
     print(f"Collecting {pkg}...")
     try:
@@ -307,13 +301,6 @@ except Exception as e:
               pythonCodeBlock += `
 try:
     target_file = "${escapedArgs}" if "${escapedArgs}" else pipe_in.strip()
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `조건 식`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (조건 식)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if target_file:
         with open(target_file, 'r', encoding='utf-8', errors='ignore') as f:
             pipe_in = f.read()
@@ -358,13 +345,6 @@ except Exception as e:
               pythonCodeBlock += `
 pattern = "${cleanPattern}"
 lines_to_filter = pipe_in.split('\\n')
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `조건 식`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (조건 식)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
 if ${isCaseInsensitive ? 'True' : 'False'}:
     pipe_in = "\\n".join([line for line in lines_to_filter if pattern.lower() in line.lower()])
 else:
@@ -389,13 +369,6 @@ else:
               pythonCodeBlock += `
 lines_wc = pipe_in.split('\\n')
 active_lines = [l for l in lines_wc if l.strip()]
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `조건 식`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (조건 식)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
 if ${isLineCount ? 'True' : 'False'}:
     pipe_in = str(len(active_lines))
 else:

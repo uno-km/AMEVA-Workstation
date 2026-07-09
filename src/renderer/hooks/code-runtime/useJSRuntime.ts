@@ -44,21 +44,7 @@ function getOrCreateJSWorker() {
        * - 예시 코드: `const workerBlobCode = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const workerBlobCode = `
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `logs`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const logs = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const logs = [];
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `customConsole`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const customConsole = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const customConsole = {
       log: function(...args) {
         logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' '));
@@ -83,24 +69,10 @@ function getOrCreateJSWorker() {
     const BLOCKED_PATTERNS = ['fetch(', 'XMLHttpRequest', 'importScripts', 'WebSocket', 'navigator.sendBeacon'];
 
     self.onmessage = function(e) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `codeToRun`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const codeToRun = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       let codeToRun = e.data || '';
 
       // 금지 패턴 사전 검사
       for (const pattern of BLOCKED_PATTERNS) {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `codeToRun.includes(pattern)`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (codeToRun.includes(pattern))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (codeToRun.includes(pattern)) {
           postMessage({ success: false, logs: ['[SECURITY] 네트워크 접근 코드는 실행이 차단되었습니다: ' + pattern] });
           return;
@@ -116,13 +88,6 @@ function getOrCreateJSWorker() {
       try {
         // eval을 사용하여 워커 전역 네임스페이스 상에서 코드를 순차 누적 실행 (변수 상태 완벽 세션 보존)
         const result = self.eval(codeToRun);
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `result !== undefined`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (result !== undefined)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (result !== undefined) {
           logs.push('→ ' + (typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)));
         }

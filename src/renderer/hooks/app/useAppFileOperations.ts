@@ -55,7 +55,7 @@ import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
  * - AppPartialBlock: 일부 데이터 업데이트를 위한 블록 스펙.
  * - EditorMode: 웰컴/편집/미리보기 모드 타입 정의.
  */
-import type { AmevaEditor as AppEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
+import type { AmevaEditor as AppEditor, AmevaPartialBlock } from '../../editor/amevaBlockSchema'
 import type { EditorMode } from '../../../shared/types'
 
 /* 
