@@ -25,7 +25,12 @@ interface SettingsTabCredentialsProps {
   activeTab: string
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `SettingsTabCredentials`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `SettingsTabCredentials(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredentialsProps) {
   const [credStatus, setCredStatus] = useState<Record<string, boolean>>({
     gemini: false,
@@ -41,18 +46,54 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
     github: '',
   })
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'loadCredentials'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `loadCredentials`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const loadCredentials = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const loadCredentials = async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv()) return
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'geminiVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `geminiVal`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const geminiVal = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const geminiVal = await ipc.keychainGet('gemini-api-key')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'openaiVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `openaiVal`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const openaiVal = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const openaiVal = await ipc.keychainGet('openai-api-key')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'claudeVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `claudeVal`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const claudeVal = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const claudeVal = await ipc.keychainGet('claude-api-key')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'githubVal'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `githubVal`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const githubVal = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const githubVal = await ipc.keychainGet('github-token')
 
     setCredStatus({
@@ -64,24 +105,66 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
   }
 
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isOpen && activeTab === 'Credentials'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isOpen && activeTab === 'Credentials')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isOpen && activeTab === 'Credentials') {
       loadCredentials()
     }
   }, [isOpen, activeTab])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSaveCredential'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleSaveCredential`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleSaveCredential = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleSaveCredential = async (service: string, keychainKey: string) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'value'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `value`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const value = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const value = newKeyInput[service]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!value || !value.trim()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!value || !value.trim())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!value || !value.trim()) return
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv()) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const res = await ipc.keychainSet(keychainKey, value.trim())
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `res && res.success`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (res && res.success)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (res && res.success) {
       setNewKeyInput(prev => ({ ...prev, [service]: '' }))
       loadCredentials()
@@ -90,19 +173,43 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
     }
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleClearCredential'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleClearCredential`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleClearCredential = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleClearCredential = async (service: string, keychainKey: string) => {
     void service
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv()) return
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!confirm('해당 자격 증명을 영구히 삭제하시겠습니까?')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!confirm('해당 자격 증명을 영구히 삭제하시겠습니까?'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!confirm('해당 자격 증명을 영구히 삭제하시겠습니까?')) return
 
     await ipc.keychainDelete(keychainKey)
     loadCredentials()
   }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `activeTab !== 'Credentials'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (activeTab !== 'Credentials')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (activeTab !== 'Credentials') return null
 
   return (
@@ -119,7 +226,13 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
           { id: 'claude', keyName: 'claude-api-key', label: 'Anthropic Claude API Key', placeholder: 'sk-ant-...' },
           { id: 'github', keyName: 'github-token', label: 'GitHub Personal Access Token', placeholder: 'ghp_... 또는 github_pat_...' },
         ].map(cred => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isRegistered'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isRegistered`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isRegistered = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const isRegistered = credStatus[cred.id]
           return (
             <div key={cred.id} style={{
@@ -221,4 +334,3 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

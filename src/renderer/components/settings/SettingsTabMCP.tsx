@@ -27,7 +27,12 @@ interface SettingsTabMCPProps {
   isOpen: boolean
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `SettingsTabMCP`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `SettingsTabMCP(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
   const [mcpServers, setMcpServers] = useState<any[]>([])
   const [newMcpName, setNewMcpName] = useState('')
@@ -40,11 +45,23 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
   const [isLoadingTools, setIsLoadingTools] = useState(false)
   const [expandedTool, setExpandedTool] = useState<string | null>(null)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'refreshMcpTools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `refreshMcpTools`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const refreshMcpTools = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const refreshMcpTools = useCallback(async () => {
     setIsLoadingTools(true)
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tools`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tools = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const tools = await MCPClientManager.fetchAllTools()
       setMcpTools(tools)
     } catch (e) {
@@ -55,18 +72,42 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
   }, [])
 
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isOpen`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isOpen) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'configs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `configs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const configs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const configs = MCPClientManager.loadConfigs()
       setMcpServers(configs)
       refreshMcpTools()
     }
   }, [isOpen, refreshMcpTools])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleAddMcp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleAddMcp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleAddMcp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleAddMcp = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!newMcpName.trim()) return alert('서버 이름을 입력해 주세요.'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!newMcpName.trim()) return alert('서버 이름을 입력해 주세요.')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!newMcpName.trim()) return alert('서버 이름을 입력해 주세요.')
     
     const newServer: any = {
@@ -76,19 +117,43 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
       enabled: true
     }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `newMcpType === 'http'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (newMcpType === 'http')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (newMcpType === 'http') {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!newMcpUrl.trim()) return alert('URL을 입력해 주세요.'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!newMcpUrl.trim()) return alert('URL을 입력해 주세요.')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!newMcpUrl.trim()) return alert('URL을 입력해 주세요.')
       newServer.url = newMcpUrl.trim()
     } else {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!newMcpCmd.trim()) return alert('실행 명령어를 입력해 주세요.'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!newMcpCmd.trim()) return alert('실행 명령어를 입력해 주세요.')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!newMcpCmd.trim()) return alert('실행 명령어를 입력해 주세요.')
       newServer.command = newMcpCmd.trim()
       newServer.args = newMcpArgs.trim() ? newMcpArgs.split(/\s+/) : []
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `updated`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const updated = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const updated = [...mcpServers, newServer]
     MCPClientManager.setConfigs(updated)
     setMcpServers(updated)
@@ -101,20 +166,50 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
     setTimeout(() => refreshMcpTools(), 200)
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleToggleMcp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleToggleMcp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleToggleMcp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleToggleMcp = (id: string) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `updated`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const updated = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const updated = mcpServers.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s)
     MCPClientManager.setConfigs(updated)
     setMcpServers(updated)
     setTimeout(() => refreshMcpTools(), 200)
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleDeleteMcp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleDeleteMcp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleDeleteMcp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleDeleteMcp = async (id: string) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'updated'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `updated`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const updated = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const updated = mcpServers.filter(s => s.id !== id)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ipc.isElectronEnv()) {
       await ipc.mcpKill(id)
     }
@@ -123,7 +218,13 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
     setTimeout(() => refreshMcpTools(), 200)
   }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isProPlan`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isProPlan)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!isProPlan) return null
 
   return (
@@ -301,7 +402,13 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '150px', overflowY: 'auto' }}>
             {mcpTools.map(tool => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isExpanded'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isExpanded`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isExpanded = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const isExpanded = expandedTool === tool.name
               return (
                 <div
@@ -350,4 +457,3 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

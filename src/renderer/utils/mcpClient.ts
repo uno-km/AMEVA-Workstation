@@ -55,10 +55,22 @@ export class MCPClientManager {
 
   /** 백엔드 플랜 상태와 동기화 (우회 시도 방지 및 교차 검증) */
   static async syncPlanStatus(): Promise<boolean> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ipc.isElectronEnv()) {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'backendPro'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `backendPro`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const backendPro = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const backendPro = await ipc.planGetStatus()
         localStorage.setItem('is-pro-plan', String(backendPro))
         return backendPro
@@ -71,7 +83,13 @@ export class MCPClientManager {
 
   /** 로컬 설정 로드 */
   static loadConfigs(): MCPServerConfig[] {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isPro'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isPro`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isPro = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isPro = localStorage.getItem('is-pro-plan') === 'true'
     
     // 기본 로컬 WASM 게이트웨이는 플랜과 무관하게 상시 존재
@@ -83,7 +101,13 @@ export class MCPClientManager {
       enabled: true
     }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isPro`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isPro)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!isPro) {
       // 무료 플랜일 경우 외부 추가 Stdio 서버들은 로드하지 않고 기본 로컬 게이트웨이만 허용
       this.servers = [defaultGateway]
@@ -91,9 +115,21 @@ export class MCPClientManager {
     }
 
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'stored'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `stored`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const stored = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const stored = localStorage.getItem('mcp-servers-config')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `stored`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (stored)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (stored) {
         this.servers = JSON.parse(stored)
         // 로드된 설정에 mcp-wasm-gateway가 누락되어 있다면 병합 보정
@@ -133,39 +169,86 @@ export class MCPClientManager {
     const allTools: MCPTool[] = []
     this.cachedTools.clear()
 
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const server of this.servers) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     for (const server of this.servers) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!server.enabled`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!server.enabled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!server.enabled) continue
 
       try {
         let toolsList: any[] = []
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `server.type === 'http'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (server.type === 'http')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (server.type === 'http') {
           // HTTP Gateway 방식 (WASM Toolkit 등)
           if (!server.url) continue
-  // [RUN-TIME STATE / INVARIANT] - 변수 'response'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `response`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const response = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const response = await this.safeMcpFetch(server.url, {
             jsonrpc: '2.0',
             method: 'tools/list',
             id: `list-${Date.now()}`
           })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `response.ok`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (response.ok)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (response.ok) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `data`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const data = await response.json()
             toolsList = data.result?.tools || []
           }
         } else if (server.type === 'stdio') {
           // Stdio 방식 (Electron 메인 프로세스 spawn 중계)
           if (!ipc.isElectronEnv()) continue
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!server.command`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!server.command)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!server.command) continue
 
           // 1. 메인 프로세스에 해당 서버 기동(spawn)
           const spawnResult = await ipc.mcpSpawn(server.id, server.command, server.args || [])
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `spawnResult.success`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (spawnResult.success)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (spawnResult.success) {
             // 2. tools/list JSON-RPC 전송
             const response = await ipc.mcpCall(server.id, {
@@ -179,7 +262,12 @@ export class MCPClientManager {
           }
         }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `mappedTools`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `mappedTools(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
         const mappedTools: MCPTool[] = toolsList.map(t => ({
           name: t.name,
           description: t.description || '',
@@ -200,22 +288,46 @@ export class MCPClientManager {
 
   /** 특정 MCP 도구 동적 실행 */
   static async callTool(serverId: string, toolName: string, args: any): Promise<{ success: boolean; result: string; error?: string }> {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isPro'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isPro`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isPro = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isPro = await this.syncPlanStatus()
     // 기본 로컬 WASM 게이트웨이가 아닌 다른 stdio 서버 도구일 때만 pro 제한을 적용
     if (!isPro && serverId !== 'mcp-wasm-gateway') {
       return { success: false, result: '', error: '무료 버전에서는 외부 MCP 도구를 호출할 수 없습니다.' }
     }
     this.loadConfigs()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'server'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `server`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const server = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const server = this.servers.find(s => s.id === serverId)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!server || !server.enabled`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!server || !server.enabled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!server || !server.enabled) {
       return { success: false, result: '', error: `서버가 비활성화되었거나 존재하지 않습니다. ID: ${serverId}` }
     }
 
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'callPayload'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `callPayload`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const callPayload = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const callPayload = {
         jsonrpc: '2.0',
         method: 'tools/call',
@@ -226,36 +338,102 @@ export class MCPClientManager {
         id: `call-${Date.now()}`
       }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `server.type === 'http'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (server.type === 'http')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (server.type === 'http') {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!server.url) throw new Error('엔드포인트 URL이 없습니다.'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!server.url) throw new Error('엔드포인트 URL이 없습니다.')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!server.url) throw new Error('엔드포인트 URL이 없습니다.')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'response'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `response`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const response = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const response = await this.safeMcpFetch(server.url, callPayload)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!response.ok`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!response.ok)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!response.ok) {
           throw new Error(`HTTP 에러 발생: ${response.status}`)
         }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `data`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const data = await response.json()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `data.error`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (data.error)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (data.error) {
           return { success: false, result: '', error: data.error.message }
         }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'textContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `textContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const textContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const textContent = data.result?.content?.[0]?.text || JSON.stringify(data.result) || '성공 (응답 데이터 없음)'
         return { success: true, result: textContent }
 
       } else if (server.type === 'stdio') {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv()) throw new Error('Electron API 환경이 아닙니다.'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv()) throw new Error('Electron API 환경이 아닙니다.')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!ipc.isElectronEnv()) throw new Error('Electron API 환경이 아닙니다.')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `data`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const data = await ipc.mcpCall(server.id, callPayload)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `data.error`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (data.error)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (data.error) {
           return { success: false, result: '', error: data.error.message }
         }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'textContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `textContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const textContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const textContent = data.result?.content?.[0]?.text || JSON.stringify(data.result) || '성공'
         return { success: true, result: textContent }
       }
@@ -269,12 +447,29 @@ export class MCPClientManager {
 
   /** Stdio 서버 프로세스 자원 일괄 정리 */
   static async cleanupAll() {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv()) return
     this.loadConfigs()
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const server of this.servers) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     for (const server of this.servers) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `server.type === 'stdio'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (server.type === 'stdio')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (server.type === 'stdio') {
         await ipc.mcpKill(server.id)
       }
@@ -284,9 +479,21 @@ export class MCPClientManager {
   private static mcpToken: string | null = null
 
   private static async getOrFetchToken(): Promise<string | null> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this.mcpToken`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this.mcpToken)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (this.mcpToken) return this.mcpToken
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ipc.isElectronEnv()) {
       try {
         this.mcpToken = await ipc.mcpGetToken()
@@ -299,18 +506,36 @@ export class MCPClientManager {
 
   /** localhost / 127.0.0.1 네트워크 바인딩 실패 시 상호 폴백 재시도 헬퍼 */
   private static async safeMcpFetch(url: string, body: any): Promise<Response> {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'token'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `token`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const token = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const token = await this.getOrFetchToken()
     const headers: Record<string, string> = {
       'Content-Type': 'application/json'
     }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `token`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (token)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (token) {
       headers['Authorization'] = `Bearer ${token}`
     }
 
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const res = await fetch(url, {
         method: 'POST',
         headers,
@@ -320,7 +545,13 @@ export class MCPClientManager {
     } catch (e) {
       // 127.0.0.1 -> localhost 폴백
       if (url.includes('127.0.0.1')) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fallbackUrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fallbackUrl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fallbackUrl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const fallbackUrl = url.replace('127.0.0.1', 'localhost')
         console.warn(`[MCPClientManager] 127.0.0.1 fetch 실패. localhost 폴백 재시도... URL: ${fallbackUrl}`)
         return await fetch(fallbackUrl, {
@@ -331,7 +562,13 @@ export class MCPClientManager {
       }
       // localhost -> 127.0.0.1 폴백
       if (url.includes('localhost')) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fallbackUrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fallbackUrl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fallbackUrl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const fallbackUrl = url.replace('localhost', '127.0.0.1')
         console.warn(`[MCPClientManager] localhost fetch 실패. 127.0.0.1 폴백 재시도... URL: ${fallbackUrl}`)
         return await fetch(fallbackUrl, {
@@ -345,4 +582,3 @@ export class MCPClientManager {
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

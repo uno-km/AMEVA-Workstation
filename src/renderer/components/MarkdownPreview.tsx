@@ -23,10 +23,21 @@ import mermaid from 'mermaid'
 import { JupyterCodeViewer } from './JupyterCodeViewer'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'MERMAID_PLACEHOLDER_PREFIX'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `MERMAID_PLACEHOLDER_PREFIX`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const MERMAID_PLACEHOLDER_PREFIX = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const MERMAID_PLACEHOLDER_PREFIX = 'MERMAIDPLACEHOLDERINDEX'
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `decodeHtmlEntities`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `decodeHtmlEntities(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function decodeHtmlEntities(str: string): string {
   return str
     .replace(/&lt;/g, '<')
@@ -36,11 +47,22 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#39;/g, "'")
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `buildPreviewSegments`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `buildPreviewSegments(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function buildPreviewSegments(markdown: string) {
   const customBlocks: { lang: string; code: string }[] = []
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'renderer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `renderer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const renderer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const renderer = new marked.Renderer()
   renderer.heading = function({ tokens, depth, text }) {
     // Generate an ID for the outline scroll logic
@@ -49,30 +71,72 @@ function buildPreviewSegments(markdown: string) {
     return `<h${depth} id="${escapedText}">${text}</h${depth}>`
   }
   renderer.image = function({ href, title, text }) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isVideo'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isVideo`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isVideo = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isVideo = href.toLowerCase().endsWith('.mp4') || 
                     href.toLowerCase().endsWith('.webm') || 
                     href.toLowerCase().endsWith('.mov') || 
                     href.toLowerCase().endsWith('.ogg') ||
                     href.startsWith('data:video/')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isVideo`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isVideo)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isVideo) {
       return `<video src="${href}" controls style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: 8px 0;"></video>`
     }
     return `<img src="${href}" alt="${text}" title="${title || ''}" style="max-width: 100%;" />`
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'html'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `html`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const html = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const html = marked.parse(markdown, {
     renderer,
     walkTokens(token) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `token.type === 'code'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (token.type === 'code')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (token.type === 'code') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lang`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lang = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const lang = (token.lang || '').toLowerCase()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawCode`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawCode = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const rawCode = decodeHtmlEntities(token.text)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'idx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `idx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const idx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const idx = customBlocks.length
         customBlocks.push({ lang, code: rawCode })
 
@@ -82,38 +146,103 @@ function buildPreviewSegments(markdown: string) {
     }
   }) as string
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fullHtml'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fullHtml`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fullHtml = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const fullHtml = html
   const segments: ({ type: 'html'; html: string } | { type: 'mermaid'; code: string } | { type: 'html-preview'; code: string } | { type: 'code-runner'; code: string; language: string })[] = []
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'SPLIT_RE'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `SPLIT_RE`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const SPLIT_RE = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const SPLIT_RE = new RegExp(
     `<p>\\s*${MERMAID_PLACEHOLDER_PREFIX}(\\d+)\\s*<\\/p>` +
     `|${MERMAID_PLACEHOLDER_PREFIX}(\\d+)`,
     'g'
   )
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lastIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lastIndex`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lastIndex = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let lastIndex = 0
   let match: RegExpExecArray | null
   SPLIT_RE.lastIndex = 0
 
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `while ((match = SPLIT_RE.exec(fullHtml)) !== null) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   while ((match = SPLIT_RE.exec(fullHtml)) !== null) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'before'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `before`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const before = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const before = fullHtml.slice(lastIndex, match.index)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `before.trim()) segments.push({ type: 'html', html: before }`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (before.trim()) segments.push({ type: 'html', html: before })` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (before.trim()) segments.push({ type: 'html', html: before })
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'idxStr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `idxStr`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const idxStr = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const idxStr = match[1] ?? match[2]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'idx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `idx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const idx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const idx = Number(idxStr)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isNaN(idx) && customBlocks[idx] !== undefined`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isNaN(idx) && customBlocks[idx] !== undefined)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!isNaN(idx) && customBlocks[idx] !== undefined) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `block`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const block = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const block = customBlocks[idx]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block.lang === 'mermaid'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block.lang === 'mermaid')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (block.lang === 'mermaid') {
         segments.push({ type: 'mermaid', code: block.code })
       } else if (block.lang === 'html') {
@@ -125,37 +254,90 @@ function buildPreviewSegments(markdown: string) {
     lastIndex = SPLIT_RE.lastIndex
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'remaining'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `remaining`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const remaining = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const remaining = fullHtml.slice(lastIndex)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `remaining.trim()) segments.push({ type: 'html', html: remaining }`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (remaining.trim()) segments.push({ type: 'html', html: remaining })` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (remaining.trim()) segments.push({ type: 'html', html: remaining })
 
   return segments
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `InlineMermaidRenderer`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `InlineMermaidRenderer(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function InlineMermaidRenderer({ code }: { code: string }) {
   const [svg, setSvg] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'elementId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `elementId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const elementId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const elementId = useRef(`mermaid-preview-${Math.random().toString(36).substr(2, 9)}`)
 
   useEffect(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'active'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `active`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const active = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let active = true
-  // [RUN-TIME STATE / INVARIANT] - 변수 'renderDiagram'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `renderDiagram`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const renderDiagram = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const renderDiagram = async () => {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cleanCode`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cleanCode = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const cleanCode = code.replace(/^(\s*)end([가-힣a-zA-Z]+)/gm, '$1end\n$1$2')
         const { svg: renderedSvg } = await mermaid.render(elementId.current, cleanCode)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `active`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (active)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (active) {
           setSvg(renderedSvg)
           setError(null)
         }
       } catch (err: any) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `active`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (active)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (active) {
           setError(err.message || 'Mermaid 렌더링에 실패했습니다.')
         }
@@ -165,7 +347,13 @@ function InlineMermaidRenderer({ code }: { code: string }) {
     return () => { active = false }
   }, [code])
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `error`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (error)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (error) {
     return (
       <div style={{
@@ -187,9 +375,20 @@ function InlineMermaidRenderer({ code }: { code: string }) {
   )
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `MarkdownPreview`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `MarkdownPreview(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function MarkdownPreview({ markdown, editor }: { markdown: string; editor: AmevaEditor | null }) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'segments'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `segments`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const segments = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const segments = useMemo(() => buildPreviewSegments(markdown), [markdown])
   return (
     <div className="markdown-preview-body" style={{ padding: '10px 0', color: 'var(--text-main)', lineHeight: '1.7' }}>
@@ -199,7 +398,13 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
         </div>
       )}
       {segments.map((seg, idx) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `seg.type === 'mermaid'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (seg.type === 'mermaid')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (seg.type === 'mermaid') {
           return (
             <div key={idx} style={{ margin: '16px 0' }}>
@@ -207,7 +412,13 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             </div>
           )
         }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `seg.type === 'html-preview'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (seg.type === 'html-preview')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (seg.type === 'html-preview') {
           return (
             <div key={idx} style={{ margin: '16px 0' }}>
@@ -220,11 +431,29 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             </div>
           )
         }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `seg.type === 'code-runner'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (seg.type === 'code-runner')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (seg.type === 'code-runner') {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (editor) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'runnerLang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `runnerLang`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const runnerLang = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const runnerLang = seg.language === 'js' ? 'javascript' : seg.language === 'py' ? 'python' : (seg.language || 'javascript')
             return (
               <div key={idx} style={{ margin: '16px 0' }}>
@@ -242,4 +471,3 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

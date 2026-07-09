@@ -83,7 +83,13 @@ export const InsertPreviewCard: React.FC<InsertPreviewCardProps> = ({
     // 예상되는 값: b가 null 또는 undefined이면 빈 문자열 반환.
     if (!b) return '';
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'txt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `txt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const txt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const txt = Array.isArray(b.content)
       ? b.content.map((c: any) => c.text || '').join('').slice(0, 40)
       : '';
@@ -96,15 +102,45 @@ export const InsertPreviewCard: React.FC<InsertPreviewCardProps> = ({
 
   // 삽입 컨텍스트 분석을 위해 형제 요소 및 기준점 인덱스를 산출합니다.
   const siblingIds = ins.siblingBlockIds ?? flatBlocks.map((b: any) => b.id);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const currentIdx = ins.siblingIndex ?? siblingIds.indexOf(ins.afterBlockId);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prevBlockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prevBlockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prevBlockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const prevBlockId = currentIdx > 0 ? siblingIds[currentIdx - 1] : null;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nextBlockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nextBlockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nextBlockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const nextBlockId = siblingIds[currentIdx + 1] ?? null;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prevBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prevBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prevBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const prevBlock = prevBlockId ? flatBlocks.find((b: any) => b.id === prevBlockId) : null;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nextBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nextBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nextBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const nextBlock = nextBlockId ? flatBlocks.find((b: any) => b.id === nextBlockId) : null;
 
   // 블록 타입에 대응하는 한국어 레이블 매핑 변수입니다.
@@ -129,7 +165,13 @@ export const InsertPreviewCard: React.FC<InsertPreviewCardProps> = ({
     .map((t: any) => t.text || '')
     .filter(Boolean)
     .join('\n\n');
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasReasonLog'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasReasonLog`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasReasonLog = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hasReasonLog = !!(ins.reasonText || thinkingText);
 
   // ── 완료 상태: 접힌 결과 로그 (삽입 수락/거절이 끝난 상태) ──────────────────
@@ -138,7 +180,13 @@ export const InsertPreviewCard: React.FC<InsertPreviewCardProps> = ({
   // 이 조건이 참일 경우, 하단 액션 버튼이 사라지고 상태 배지형태의 UI가 렌더링되어 반환됩니다.
   // 예상되는 값: ins.status가 'pending'이 아닐 때 결과 뷰 렌더링 진입.
   if (ins.status !== 'pending') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'accepted'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `accepted`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const accepted = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const accepted = ins.status === 'accepted';
     return (
       <div style={{
@@ -235,7 +283,13 @@ export const InsertPreviewCard: React.FC<InsertPreviewCardProps> = ({
   // ── pending 상태: 삽입 위치 미리보기 + 버튼 (아직 수락/거절을 선택하지 않은 대기 상태) ────────────
   // 현재 위치에서 사용자가 제안을 한 칸 위 또는 아래로 수동 조작할 수 있는지 여부를 판별합니다.
   const canMoveUp = ins.afterBlockId !== 'START' && currentIdx > 0;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'canMoveDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `canMoveDown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const canMoveDown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const canMoveDown = ins.afterBlockId !== 'END' && nextBlockId !== null;
 
   // 삽입될 블록의 종류에 맞춰 미리보기 텍스트의 폰트 크기를 다르게 지정하는 렌더링 로직입니다.
@@ -390,4 +444,3 @@ export const InsertPreviewCard: React.FC<InsertPreviewCardProps> = ({
   );
 };
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

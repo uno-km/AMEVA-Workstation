@@ -26,7 +26,12 @@ interface HistoryItem {
   text: string;
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `ConsoleCommandTab`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `ConsoleCommandTab(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function ConsoleCommandTab() {
   const [history, setHistory] = useState<HistoryItem[]>([
     { type: 'out', text: 'AMEVA Virtual Terminal [Host OS RPC]' },
@@ -37,36 +42,84 @@ export function ConsoleCommandTab() {
   const [isFocused, setIsFocused] = useState(false);
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'bottomRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `bottomRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const bottomRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const bottomRef = useRef<HTMLDivElement>(null);
   
   // 컨텍스트 메뉴 상태
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, text: string } | null>(null);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'scrollToBottom'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `scrollToBottom`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const scrollToBottom = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const scrollToBottom = () => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
   useEffect(() => scrollToBottom(), [history]);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleCommand'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleCommand`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleCommand = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleCommand = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `e.key === 'ArrowUp'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (e.key === 'ArrowUp')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (e.key === 'ArrowUp') {
       e.preventDefault();
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `cmdHistory.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (cmdHistory.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (cmdHistory.length > 0) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nextIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nextIndex`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nextIndex = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const nextIndex = historyIndex > 0 ? historyIndex - 1 : 0;
         setHistoryIndex(nextIndex);
         setInput(cmdHistory[nextIndex]);
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `historyIndex < cmdHistory.length - 1`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (historyIndex < cmdHistory.length - 1)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (historyIndex < cmdHistory.length - 1) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nextIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nextIndex`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nextIndex = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const nextIndex = historyIndex + 1;
         setHistoryIndex(nextIndex);
         setInput(cmdHistory[nextIndex]);
@@ -75,33 +128,81 @@ export function ConsoleCommandTab() {
         setInput('');
       }
     } else if (e.key === 'Enter' && input.trim()) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cmd'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cmd`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cmd = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const cmd = input.trim();
       setInput('');
       setCmdHistory(prev => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newHistory'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newHistory`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newHistory = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const newHistory = [...prev, cmd];
         setHistoryIndex(newHistory.length);
         return newHistory;
       });
       setHistory(prev => [...prev, { type: 'in', text: `${cwd} $ ${cmd}` }]);
       
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `cmd === 'clear'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (cmd === 'clear')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (cmd === 'clear') {
         setHistory([]);
         return;
       }
       
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (ipc.isElectronEnv()) {
         try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const res = await (window as any).electronAPI.executeTerminal(cmd, cwd);
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `res.newCwd) setCwd(res.newCwd`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (res.newCwd) setCwd(res.newCwd)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (res.newCwd) setCwd(res.newCwd);
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `res.stdout) setHistory(prev => [...prev, { type: 'out', text: res.stdout }]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (res.stdout) setHistory(prev => [...prev, { type: 'out', text: res.stdout }])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (res.stdout) setHistory(prev => [...prev, { type: 'out', text: res.stdout }]);
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `res.stderr) setHistory(prev => [...prev, { type: 'err', text: res.stderr }]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (res.stderr) setHistory(prev => [...prev, { type: 'err', text: res.stderr }])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (res.stderr) setHistory(prev => [...prev, { type: 'err', text: res.stderr }]);
         } catch (err: any) {
           setHistory(prev => [...prev, { type: 'err', text: err.message || String(err) }]);
@@ -112,12 +213,30 @@ export function ConsoleCommandTab() {
     }
   };
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleContextMenu'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleContextMenu`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleContextMenu = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-  // [RUN-TIME STATE / INVARIANT] - 변수 'selection'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `selection`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const selection = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const selection = window.getSelection();
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `selection && selection.toString().trim()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (selection && selection.toString().trim())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (selection && selection.toString().trim()) {
       setContextMenu({
         x: e.clientX,
@@ -151,13 +270,31 @@ export function ConsoleCommandTab() {
         cursor: 'text'
       }}
       onClick={() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `window.getSelection()?.toString().trim()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (window.getSelection()?.toString().trim())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (window.getSelection()?.toString().trim()) {
           return; // Allow text selection without stealing focus
         }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'inputEl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `inputEl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const inputEl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const inputEl = document.getElementById('terminal-input');
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `inputEl) inputEl.focus(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (inputEl) inputEl.focus()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (inputEl) inputEl.focus();
       }}
     >
@@ -204,24 +341,54 @@ export function ConsoleCommandTab() {
           y={contextMenu.y}
           selectedText={contextMenu.text}
           onCopy={() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `contextMenu.text) navigator.clipboard.writeText(contextMenu.text`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (contextMenu.text) navigator.clipboard.writeText(contextMenu.text)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (contextMenu.text) navigator.clipboard.writeText(contextMenu.text);
           }}
           onPaste={async () => {
             try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const text = await navigator.clipboard.readText();
               setInput(prev => prev + text);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'inputEl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `inputEl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const inputEl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const inputEl = document.getElementById('terminal-input');
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `inputEl) inputEl.focus(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (inputEl) inputEl.focus()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (inputEl) inputEl.focus();
             } catch (err) {
               console.error('clipboard read failed:', err);
             }
           }}
           onInsertToBody={contextMenu.text ? () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'event'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `event`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const event = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const event = new CustomEvent('ameva:insert-text', { detail: contextMenu.text });
             window.dispatchEvent(event);
           } : undefined}
@@ -232,4 +399,3 @@ export function ConsoleCommandTab() {
   );
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

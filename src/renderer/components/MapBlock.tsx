@@ -20,6 +20,12 @@
 import { createReactBlockSpec } from '@blocknote/react'
 import { MapPin, Lock } from 'lucide-react'
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `MapBlockSpec`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `MapBlockSpec(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const MapBlockSpec = createReactBlockSpec(
   {
     type: 'map',
@@ -95,6 +101,11 @@ export const MapBlockSpec = createReactBlockSpec(
   }
 )
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `MapBlock`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `MapBlock(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const MapBlock = MapBlockSpec()
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

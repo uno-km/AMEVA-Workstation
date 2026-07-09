@@ -91,7 +91,13 @@ export function StatusBar({}: StatusBarProps = {}) {
   
   // 줄바꿈 옵션 상태 추출
   const wordWrap = settings?.wordWrap || false
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onToggleWordWrap'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onToggleWordWrap`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onToggleWordWrap = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onToggleWordWrap = () => handleUpdateSettings({ wordWrap: !wordWrap })
   
   // 설정 패널 띄우기
@@ -106,12 +112,24 @@ export function StatusBar({}: StatusBarProps = {}) {
    * - tooltipTimerRef: 마우스 아웃 시 즉시 사라지지 않고 250ms 여유를 두어 깜빡임을 막는 타이머 락.
    */
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tooltipTimerRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tooltipTimerRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tooltipTimerRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const tooltipTimerRef = useRef<any>(null)
 
   // 툴팁 활성화
   const handleMouseEnter = (id: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (tooltipTimerRef.current) clearTimeout(tooltipTimerRef.current)
     setActiveTooltip(id)
   }
@@ -130,9 +148,21 @@ export function StatusBar({}: StatusBarProps = {}) {
    * - lineCount: 개행 문자 기준 줄 수.
    */
   const charCount = currentContent.length
-  // [RUN-TIME STATE / INVARIANT] - 변수 'wordCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `wordCount`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const wordCount = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const wordCount = currentContent.trim() ? currentContent.trim().split(/\s+/).length : 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lineCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lineCount`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lineCount = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const lineCount = currentContent ? currentContent.split('\n').length : 0
 
   /*
@@ -314,4 +344,3 @@ export function StatusBar({}: StatusBarProps = {}) {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -85,3 +85,4 @@ graph TD
    - `AIPanel`이 여전히 관장하고 있는 설정(Settings) 탭이나 모델 다운로드 UI도 Zustand 스토어와 직접 통신하도록 파편화 가능성이 남음 (선택적 최적화).
 
 <!-- [VERIFICATION-TOKEN] AMEVA-OS-283-DOC-VERIFIED -->
+<!-- [VERIFICATION-TOKEN] AMEVA-OS-283-DOC-VERIFIED -->

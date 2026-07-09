@@ -73,45 +73,105 @@ export function useHoverBlock(
     // 편집 모드가 아니거나 에디터 인스턴스가 활성화 전인 경우 즉각 초기화
     // WARNING: 절대 isProPlan 검사를 추가하여 락을 걸지 마라. (Free 에디터의 + 슬래시 삽입 붕괴 방지).
     if (editorMode !== 'edit' || !editor) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `hoverBlock !== null) setHoverBlock(null`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (hoverBlock !== null) setHoverBlock(null)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (hoverBlock !== null) setHoverBlock(null)
       return
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `container`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const container = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const container = editorContainerRef.current
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!container`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!container) return
 
     // 브라우저 뷰포트 마우스 위치 좌표
     const clientX = e.clientX
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clientY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clientY`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clientY = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const clientY = e.clientY
 
     // 커서 좌표 아래에 있는 실시간 최하단 DOM 엘리먼트 캡처
     const el = document.elementFromPoint(clientX, clientY)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!el`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!el)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!el) return
 
     // CONTRACT: 별표 버튼 호버 시 상태 락 유지 계약 준수
     const isOverSparkle = el.closest('.sparkle-hover-btn')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isOverSparkle`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isOverSparkle)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isOverSparkle) {
       return
     }
 
     // 블록 단락을 감싸는 블록노트 공식 클래스 탐색
     const blockOuter = el.closest('.bn-block-outer') as HTMLElement
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `blockOuter`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (blockOuter)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (blockOuter) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const blockId = blockOuter.getAttribute('data-id') || blockOuter.querySelector('[data-id]')?.getAttribute('data-id')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `blockId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (blockId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (blockId) {
         try {
           // 블록노트 인스턴스로부터 상세 단락 구조체 획득
           const targetBlock = editor.getBlock(blockId)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `targetBlock`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (targetBlock)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (targetBlock) {
             // 인라인 텍스트 문자열 병합 취합
             const textContent = targetBlock.content
@@ -120,11 +180,29 @@ export function useHoverBlock(
 
             // 절대 좌표에서 컨테이너 스크롤 높이를 합산하여 상대 배치용 탑/레프트 산출
             const rect = blockOuter.getBoundingClientRect()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'containerRect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `containerRect`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const containerRect = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const containerRect = container.getBoundingClientRect()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'calculatedTop'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `calculatedTop`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const calculatedTop = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const calculatedTop = rect.top - containerRect.top + container.scrollTop
-  // [RUN-TIME STATE / INVARIANT] - 변수 'calculatedLeft'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `calculatedLeft`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const calculatedLeft = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const calculatedLeft = rect.left - containerRect.left
 
             // [PERFORMANCE CRITICAL] 1px 오차 범위 렌더 가드
@@ -158,15 +236,45 @@ export function useHoverBlock(
     // [INVARIANT - Y-axis Margin Safe Guard]
     // 마우스가 우측 공백 마진 등으로 빠졌으나, Y축 세로 높이가 해당 블록 위아래 8px 여유 공간 내인 경우 호버 버튼을 유지함
     if (hoverBlock) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockDom'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockDom`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockDom = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const blockDom = document.querySelector(`[data-id="${hoverBlock.id}"], [data-block-id="${hoverBlock.id}"]`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `blockDom`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (blockDom)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (blockDom) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `outer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const outer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const outer = blockDom.closest('.bn-block-outer') || blockDom
-  // [RUN-TIME STATE / INVARIANT] - 변수 'bRect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `bRect`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const bRect = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const bRect = outer.getBoundingClientRect()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `clientY >= bRect.top - 8 && clientY <= bRect.bottom + 8`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (clientY >= bRect.top - 8 && clientY <= bRect.bottom + 8)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (clientY >= bRect.top - 8 && clientY <= bRect.bottom + 8) {
           return
         }
@@ -191,4 +299,3 @@ export function useHoverBlock(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

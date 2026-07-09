@@ -93,4 +93,3 @@ export type AmevaPartialBlock = PartialBlock<
   StyleSchemaFromSpecs<typeof amevaSchema.styleSpecs>
 >
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -37,49 +37,126 @@ interface StockQuote {
   regularMarketDayLow?: number;
 }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'INDEX_SYMBOLS'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `INDEX_SYMBOLS`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const INDEX_SYMBOLS = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const INDEX_SYMBOLS = ['^GSPC', '^IXIC', '^KS11', '^N225', '^HSI', '^GDAXI'];
 const INDEX_LABELS: Record<string, string> = {
   '^GSPC': 'S&P 500', '^IXIC': 'NASDAQ', '^KS11': 'KOSPI',
   '^N225': '닛케이 225', '^HSI': '항셍', '^GDAXI': 'DAX',
 };
-  // [RUN-TIME STATE / INVARIANT] - 변수 'FX_SYMBOLS'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `FX_SYMBOLS`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const FX_SYMBOLS = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const FX_SYMBOLS = ['USDKRW=X', 'EURKRW=X', 'JPYKRW=X', 'CNYKRW=X'];
 const FX_LABELS: Record<string, string> = {
   'USDKRW=X': 'USD / KRW', 'EURKRW=X': 'EUR / KRW',
   'JPYKRW=X': 'JPY / KRW', 'CNYKRW=X': 'CNY / KRW',
 };
-  // [RUN-TIME STATE / INVARIANT] - 변수 'INTEREST_RATES'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `INTEREST_RATES`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const INTEREST_RATES = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const INTEREST_RATES = [
   { label: '미국 기준금리', value: '5.25~5.50%', note: 'Fed · 2024' },
   { label: '한국 기준금리', value: '3.50%', note: 'BOK · 2024' },
 ];
-  // [RUN-TIME STATE / INVARIANT] - 변수 'DEFAULT_STOCK_SYMBOLS'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `DEFAULT_STOCK_SYMBOLS`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const DEFAULT_STOCK_SYMBOLS = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const DEFAULT_STOCK_SYMBOLS = ['AAPL', 'NVDA', 'TSLA', 'MSFT', '005930.KS'];
-  // [RUN-TIME STATE / INVARIANT] - 변수 'AUTO_REFRESH_MS'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `AUTO_REFRESH_MS`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const AUTO_REFRESH_MS = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const AUTO_REFRESH_MS = 60000;
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 async function fetchQuotesBatch(symbols: string[]): Promise<StockQuote[]> {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fields'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fields`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fields = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const fields = 'shortName,regularMarketPrice,regularMarketChangePercent,regularMarketChange,currency,marketCap,trailingPE,fiftyTwoWeekLow,fiftyTwoWeekHigh,regularMarketVolume,regularMarketOpen,regularMarketDayHigh,regularMarketDayLow';
-  // [RUN-TIME STATE / INVARIANT] - 변수 'url'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `url`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const url = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const url = 'https://query2.finance.yahoo.com/v7/finance/quote?symbols=' + symbols.join(',') + '&fields=' + fields;
   try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(8000) });
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!res.ok) throw new Error('HTTP ' + res.status`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!res.ok) throw new Error('HTTP ' + res.status)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!res.ok) throw new Error('HTTP ' + res.status);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `data`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const data = await res.json();
     return (data?.quoteResponse?.result as StockQuote[]) || [];
   } catch {
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'proxied'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `proxied`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const proxied = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const proxied = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const res = await fetch(proxied, { signal: AbortSignal.timeout(10000) });
-  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parsed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const parsed = JSON.parse((await res.json()).contents);
       return (parsed?.quoteResponse?.result as StockQuote[]) || [];
     } catch (e) {
@@ -89,14 +166,37 @@ async function fetchQuotesBatch(symbols: string[]): Promise<StockQuote[]> {
   }
 }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fmt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fmt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fmt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const fmt = (n?: number, d = 2) => n != null && !isNaN(n) ? n.toLocaleString('ko-KR', { minimumFractionDigits: d, maximumFractionDigits: d }) : '-';
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fmtVol'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fmtVol`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fmtVol = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const fmtVol = (n?: number) => !n ? '-' : n >= 1e9 ? (n/1e9).toFixed(1) + 'B' : n >= 1e6 ? (n/1e6).toFixed(1) + 'M' : n >= 1e3 ? (n/1e3).toFixed(1) + 'K' : String(n);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fmtCap'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fmtCap`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fmtCap = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const fmtCap = (n?: number) => !n ? '-' : n >= 1e12 ? '$' + (n/1e12).toFixed(2) + 'T' : n >= 1e9 ? '$' + (n/1e9).toFixed(1) + 'B' : '$' + (n/1e6).toFixed(0) + 'M';
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `SectionTitle`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `SectionTitle(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function SectionTitle({ label, icon }: { label: string; icon: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '5px 0 4px', marginBottom: '4px', borderBottom: '1px solid var(--border-muted)' }}>
@@ -106,16 +206,33 @@ function SectionTitle({ label, icon }: { label: string; icon: string }) {
   );
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `QuoteRow`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `QuoteRow(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function QuoteRow({ symbol, label, price, pct, currency = '', isUp, onClick, isActive }: {
   symbol: string; label: string; price: number; pct: number
   currency?: string; isUp: boolean; onClick?: () => void; isActive?: boolean
 }) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'bg'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `bg`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const bg = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const bg = isActive
     ? (isUp ? 'rgba(52,211,153,0.12)' : 'rgba(239,68,68,0.12)')
     : (isUp ? 'rgba(52,211,153,0.03)' : 'rgba(239,68,68,0.03)');
-  // [RUN-TIME STATE / INVARIANT] - 변수 'border'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `border`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const border = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const border = isActive
     ? (isUp ? 'rgba(52,211,153,0.4)' : 'rgba(239,68,68,0.4)')
     : (isUp ? 'rgba(52,211,153,0.08)' : 'rgba(239,68,68,0.08)');
@@ -145,15 +262,44 @@ function QuoteRow({ symbol, label, price, pct, currency = '', isUp, onClick, isA
   );
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `DetailPanel`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `DetailPanel(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function DetailPanel({ q, onClose }: { q: StockQuote; onClose: () => void }) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isUp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isUp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isUp = q.regularMarketChangePercent >= 0;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleInsert'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleInsert`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleInsert = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleInsert = () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'now'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `now`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const now = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const now = new Date().toLocaleString('ko-KR');
-  // [RUN-TIME STATE / INVARIANT] - 변수 'md'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `md`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const md = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const md = [
       '### 📊 ' + (q.shortName || q.symbol) + ' (' + q.symbol + ') 시세 스냅샷',
       '> 기준: ' + now,
@@ -173,7 +319,13 @@ function DetailPanel({ q, onClose }: { q: StockQuote; onClose: () => void }) {
     window.dispatchEvent(new CustomEvent('ameva:insert-text', { detail: md }));
   };
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rows'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rows`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rows = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const rows = [
     ['시가', fmt(q.regularMarketOpen)], ['고가', fmt(q.regularMarketDayHigh)],
     ['저가', fmt(q.regularMarketDayLow)], ['거래량', fmtVol(q.regularMarketVolume)],
@@ -209,7 +361,12 @@ function DetailPanel({ q, onClose }: { q: StockQuote; onClose: () => void }) {
   );
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `FinanceDashboardView`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `FinanceDashboardView(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function FinanceDashboardView() {
   const [indexQ, setIndexQ] = useState<StockQuote[]>([]);
   const [fxQ, setFxQ] = useState<StockQuote[]>([]);
@@ -222,12 +379,24 @@ export function FinanceDashboardView() {
   const [lastUpdated, setLastUpdated] = useState('');
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'refresh'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `refresh`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const refresh = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const refresh = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'all'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `all`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const all = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const all = await fetchQuotesBatch([...INDEX_SYMBOLS, ...FX_SYMBOLS, '^TNX', ...symbols]);
       setIndexQ(all.filter(q => INDEX_SYMBOLS.includes(q.symbol)));
       setFxQ(all.filter(q => FX_SYMBOLS.includes(q.symbol)));
@@ -244,21 +413,51 @@ export function FinanceDashboardView() {
 
   useEffect(() => {
     refresh();
-  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `id`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const id = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const id = setInterval(refresh, AUTO_REFRESH_MS);
     return () => clearInterval(id);
   }, [refresh]);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleAdd'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleAdd`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleAdd = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sym'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sym`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sym = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const sym = searchQuery.toUpperCase().trim();
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `sym && !symbols.includes(sym)) { setSymbols(p => [...p, sym]); setSearchQuery(''`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (sym && !symbols.includes(sym)) { setSymbols(p => [...p, sym]); setSearchQuery('')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (sym && !symbols.includes(sym)) { setSymbols(p => [...p, sym]); setSearchQuery(''); }
   };
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'skel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `skel`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const skel = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const skel = (n: number) => [...Array(n)].map((_, i) => (
     <div key={i} style={{ height: '32px', borderRadius: '7px', background: 'var(--bg-glass)', marginBottom: '3px', opacity: 0.45 }} />
   ));
@@ -323,9 +522,21 @@ export function FinanceDashboardView() {
           </form>
 
           {stockQ.map(q => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isUp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isUp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const isUp = q.regularMarketChangePercent >= 0;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isExpanded'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isExpanded`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isExpanded = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const isExpanded = expandedSymbol === q.symbol;
             return (
               <div key={q.symbol}>
@@ -361,4 +572,3 @@ export function FinanceDashboardView() {
   );
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

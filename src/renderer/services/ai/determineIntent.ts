@@ -44,32 +44,74 @@ export function determineIntent(
 ): AIIntent {
   // 런타임 오버라이드 우선 처리
   if (resolvedMode) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'upper'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `upper`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const upper = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const upper = resolvedMode.toUpperCase()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `upper === 'WRITE' || upper === 'EDIT' || upper === 'SUMMARY' || upper === 'CHAT'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (upper === 'WRITE' || upper === 'EDIT' || upper === 'SUMMARY' || upper === 'CHAT')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (upper === 'WRITE' || upper === 'EDIT' || upper === 'SUMMARY' || upper === 'CHAT') {
       return upper as AIIntent
     }
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanPrompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cleanPrompt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cleanPrompt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const cleanPrompt = userMessage.toLowerCase().trim()
 
   // 요약 키워드 감지
   const summaryKeywords = ['요약', '정리', '줄여', 'summarize', 'summary', 'brief']
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `summaryKeywords.some(k => cleanPrompt.includes(k))`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (summaryKeywords.some(k => cleanPrompt.includes(k)))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (summaryKeywords.some(k => cleanPrompt.includes(k))) return 'SUMMARY'
 
   // 태그된 블록 + 수정 키워드 조합은 EDIT 최우선
   const hasTags = taggedBlocks && taggedBlocks.length > 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 'editKeywords'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `editKeywords`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const editKeywords = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const editKeywords = [
     '수정', '변경', '바꿔', '고쳐', '지워', '교체', '고쳐줘',
     'edit', 'modify', 'replace', 'rewrite', 'correct'
   ]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isEditQuery'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isEditQuery`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isEditQuery = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isEditQuery = editKeywords.some(k => cleanPrompt.includes(k))
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `hasTags && isEditQuery`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (hasTags && isEditQuery)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (hasTags && isEditQuery) return 'EDIT'
 
   // 제목 생성 전용 패턴 → CHAT으로 유도 (에디터 삽입 없이 추천 목록만 제공)
@@ -85,7 +127,13 @@ export function determineIntent(
     !cleanPrompt.includes('추가') &&
     !cleanPrompt.includes('넣어') &&
     !cleanPrompt.includes('삽입')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isTitleGenerationOnly`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isTitleGenerationOnly)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isTitleGenerationOnly) return 'CHAT'
 
   // 쓰기(WRITE) 키워드 감지
@@ -94,7 +142,13 @@ export function determineIntent(
     '제목', '본문', '넣어줘', '넣어', '입력해', '추가해줘', '만들어줘',
     '생성해', '쓰기', 'write', 'draft', 'create', 'compose', 'generate'
   ]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `writeKeywords.some(k => cleanPrompt.includes(k))`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (writeKeywords.some(k => cleanPrompt.includes(k)))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (writeKeywords.some(k => cleanPrompt.includes(k))) return 'WRITE'
 
   // 태그 없이 수정 키워드만 있는 경우도 EDIT
@@ -103,4 +157,3 @@ export function determineIntent(
   return 'CHAT'
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

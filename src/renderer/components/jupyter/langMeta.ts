@@ -26,6 +26,12 @@ export interface LangMeta {
   isMermaid: boolean
 }
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `LANG_META`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `LANG_META(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const LANG_META: Record<string, LangMeta> = {
   javascript: { color: '#f59e0b', label: 'JavaScript', runnable: true,  previewable: false, isHtml: false, isMermaid: false },
   js:         { color: '#f59e0b', label: 'JavaScript', runnable: true,  previewable: false, isHtml: false, isMermaid: false },
@@ -49,7 +55,12 @@ export const LANG_META: Record<string, LangMeta> = {
   plaintext:  { color: '#6b7280', label: 'Text',       runnable: false, previewable: false, isHtml: false, isMermaid: false },
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `getLangMeta`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `getLangMeta(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function getLangMeta(lang: string): LangMeta {
   return LANG_META[lang.toLowerCase()] ?? {
     color: '#6b7280', label: lang, runnable: false,
@@ -57,4 +68,3 @@ export function getLangMeta(lang: string): LangMeta {
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

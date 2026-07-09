@@ -133,18 +133,48 @@ export function useAppFileOperations(
    */
   const loadMarkdownIntoEditor = useCallback(async (targetEditor: AppEditor, rawContent: string, isBinary = false, path = '') => {
     setEditorMode('edit')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'markdown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `markdown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const markdown = await parseFileToMarkdown(rawContent, path || filePath || '', isBinary)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `normalized`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const normalized = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const normalized = normalizeMarkdown(markdown)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const lines = normalized.split('\n')
     // 1) 200줄 초과 대형 마크다운 분할 파싱 분기
     if (lines.length > 200 && !isBinary) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'firstChunk'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `firstChunk`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const firstChunk = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const firstChunk = lines.slice(0, 120).join('\n')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'remainingChunk'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `remainingChunk`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const remainingChunk = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const remainingChunk = lines.slice(120).join('\n')
 
       // 선두 120줄 파싱 및 에디터 즉시 대체
@@ -155,13 +185,31 @@ export function useAppFileOperations(
 
       // 350ms 대기 후 나머지 잔여 청크를 하단에 끼워 넣음
       setTimeout(async () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'remainingBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `remainingBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const remainingBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const remainingBlocks = await targetEditor.tryParseMarkdownToBlocks(remainingChunk)
         cleanCodeBlocks(remainingBlocks)
         ensureBlockIds(remainingBlocks)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `doc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const doc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const doc = targetEditor.document
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `doc.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (doc.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (doc.length > 0) {
           targetEditor.insertBlocks(remainingBlocks, doc[doc.length - 1], 'after')
         }
@@ -173,7 +221,13 @@ export function useAppFileOperations(
     } 
     // 2) 일반 파일 동기 즉시 마운트
     else {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const blocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
       cleanCodeBlocks(blocks)
       ensureBlockIds(blocks)
@@ -190,29 +244,71 @@ export function useAppFileOperations(
    * - Rationale: 가져온 파일 내용을 현재 편집실 맨 마지막 노드 뒤에 덧붙이고, appendedFiles 목록에 앵커를 추가한다.
    */
   const appendMarkdownIntoEditor = useCallback(async (targetEditor: AppEditor, rawContent: string, fileName: string, isBinary = false, path = '') => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'markdown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `markdown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const markdown = await parseFileToMarkdown(rawContent, path, isBinary)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `normalized`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const normalized = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const normalized = normalizeMarkdown(markdown)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const newBlocks = await targetEditor.tryParseMarkdownToBlocks(normalized)
     cleanCodeBlocks(newBlocks)
     ensureBlockIds(newBlocks)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `doc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const doc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const doc = targetEditor.document
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `doc.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (doc.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (doc.length > 0) {
       targetEditor.insertBlocks(newBlocks, doc[doc.length - 1], 'after')
     } else {
       targetEditor.replaceBlocks(doc, newBlocks)
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'firstBlockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `firstBlockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const firstBlockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const firstBlockId = newBlocks[0]?.id || ''
     setAppendedFiles([...appendedFiles, { id: `append-${Date.now()}`, filePath: fileName, startBlockId: firstBlockId }])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'derived'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `derived`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const derived = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const derived = await targetEditor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(targetEditor.document))
     setCurrentContent(derived)
   }, [appendedFiles, setAppendedFiles, setCurrentContent])
@@ -222,24 +318,60 @@ export function useAppFileOperations(
    * - Rationale: 기존 탭의 문서 변경 사항을 Zustand 탭 목록에 역매핑 저장하고, 새로운 고유 ID의 탭 레코드를 구성하여 교체 로드한다.
    */
   const openFileInTab = useCallback(async (targetEditor: AppEditor, fileContent: string, path: string, isBinary = false) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const currentBlocks = [...targetEditor.document]
     
     // 현재 열려있는 구 문서 탭 정보 갱신 저장
     updateActiveTab({ filePath, content: currentContent, blocks: currentBlocks, originalContent, lastSavedTime })
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'markdown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `markdown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const markdown = await parseFileToMarkdown(fileContent, path, isBinary)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `normalized`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const normalized = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const normalized = normalizeMarkdown(markdown)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parsed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const parsed = await targetEditor.tryParseMarkdownToBlocks(normalized)
     cleanCodeBlocks(parsed)
     ensureBlockIds(parsed)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newTabId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newTabId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newTabId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const newTabId = Math.random().toString(36).substring(2, 10)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newTab`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newTab = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const newTab = {
       id: newTabId,
       filePath: path,
@@ -267,7 +399,13 @@ export function useAppFileOperations(
    * - Rationale: 에디터 캔버스를 단일 빈 문단으로 덮어쓰고 파일 메타 상태를 초기화 리셋한다.
    */
   const handleStartNewDocument = useCallback(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (editor) {
       const newBlock: AmevaPartialBlock = {
         id: Math.random().toString(36).substring(2, 10),
@@ -288,16 +426,40 @@ export function useAppFileOperations(
    * - Rationale: 플랫폼 환경(Electron/Browser) 분기에 부합하여 파일 다이얼로그를 트리거하고 선택 모드(replace/append/tab)에 맞추어 인서트한다.
    */
   const handleOpenFile = useCallback(async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editor) return
     
     // 1. 데스크톱 앱 내장 일렉트론 다이얼로그 활용
     if (ipc.isElectronEnv()) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'file'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `file`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const file = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const file = await ipc.openFile()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `file`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (file)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (file) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `fileOpenMode === 'append'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (fileOpenMode === 'append')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (fileOpenMode === 'append') {
           await appendMarkdownIntoEditor(editor, file.content, file.filePath.split(/[\\/]/).pop() || '파일', file.isBinary, file.filePath)
         } else if (fileOpenMode === 'tab') {
@@ -310,35 +472,101 @@ export function useAppFileOperations(
     } 
     // 2. 크롬 웹 브라우저 가상 파일 인풋 활용
     else {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'input'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `input`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const input = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const input = document.createElement('input')
       input.type = 'file'
       input.accept = '.md,.markdown,.txt,.docx,.hwpx,.pdf,.xlsx,.ipynb'
       input.onchange = async (e) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'file'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `file`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const file = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const file = (e.target as HTMLInputElement).files?.[0]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `file`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (file)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (file) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'reader'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `reader`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const reader = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const reader = new FileReader()
           reader.onload = async (evt) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'content'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `content`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const content = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const content = evt.target?.result as string
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ext'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ext`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const ext = file.name.split('.').pop()?.toLowerCase() || ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isBinaryFile'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isBinaryFile`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isBinaryFile = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const isBinaryFile = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
             
             // 바이너리 오피스 문서인 경우 ArrayBuffer를 base64로 감싸서 처리
             if (isBinaryFile) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'binReader'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `binReader`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const binReader = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const binReader = new FileReader()
               binReader.onload = async (binEvt) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'arrBuffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `arrBuffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const arrBuffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const arrBuffer = binEvt.target?.result as ArrayBuffer
-  // [RUN-TIME STATE / INVARIANT] - 변수 'base64'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `base64`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const base64 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const base64 = arrayBufferToBase64(arrBuffer)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `fileOpenMode === 'append'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (fileOpenMode === 'append')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                 if (fileOpenMode === 'append') {
                   await appendMarkdownIntoEditor(editor, base64, file.name, true, file.name)
                 } else if (fileOpenMode === 'tab') {
@@ -350,7 +578,13 @@ export function useAppFileOperations(
               }
               binReader.readAsArrayBuffer(file)
             } else {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `fileOpenMode === 'append'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (fileOpenMode === 'append')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (fileOpenMode === 'append') {
                 await appendMarkdownIntoEditor(editor, content, file.name, false, file.name)
               } else if (fileOpenMode === 'tab') {
@@ -374,25 +608,73 @@ export function useAppFileOperations(
    *   아니오 시 일반 마크다운/ipynb/오피스 이진 포맷 파일로 안전하게 컴파일 플러싱한다.
    */
   const handleSaveFile = useCallback(async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editor) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'path'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `path`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const path = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const path = filePath || 'document.md'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ext'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ext`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const ext = path.split('.').pop()?.toLowerCase() || 'md'
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const rawBlocks = convertJupyterToCodeBlocks(editor.document)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'markdown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `markdown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const markdown = await editor.blocksToMarkdownLossy(rawBlocks)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasMedia'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasMedia`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasMedia = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const hasMedia = markdown.includes('data:video/') || markdown.includes('data:audio/')
     
     // 1) 동영상/오디오 포함 시 아메바 .adc 패키징 강제/권장 팝업 조건 노드
     if (hasMedia && ['md', 'markdown', 'txt'].includes(ext)) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (ipc.isElectronEnv()) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'boxRes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `boxRes`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const boxRes = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const boxRes = await ipc.showMessageBox({
           type: 'question',
           buttons: ['예 (권장)', '아니오'],
@@ -403,20 +685,62 @@ export function useAppFileOperations(
         
         // 예 선택 시 adc 패키지 변환 저장
         if (boxRes.response === 0) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'saveResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `saveResult`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const saveResult = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const saveResult = await ipc.saveFile('', undefined)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `saveResult && saveResult.success && saveResult.filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (saveResult && saveResult.success && saveResult.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (saveResult && saveResult.success && saveResult.filePath) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'savedPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `savedPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const savedPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const savedPath = saveResult.filePath
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newExt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newExt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newExt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const newExt = savedPath.split('.').pop()?.toLowerCase() || 'md'
             let contentToSave: string
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `newExt === 'adc'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (newExt === 'adc')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (newExt === 'adc') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blob'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blob`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blob = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const blob = await packMarkdownToADC(markdown)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'arrayBuffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `arrayBuffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const arrayBuffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const arrayBuffer = await blob.arrayBuffer()
               contentToSave = arrayBufferToBase64(arrayBuffer)
             } else if (newExt === 'ipynb') {
@@ -437,11 +761,29 @@ export function useAppFileOperations(
           }
         }
       } else {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'confirmSave'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `confirmSave`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const confirmSave = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const confirmSave = window.confirm("문서에 동영상 또는 오디오 파일이 포함되어 있습니다. 아메바 전용 포맷(.adc)으로 저장하시겠습니까?")
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `confirmSave`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (confirmSave)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (confirmSave) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blob'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blob`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blob = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const blob = await packMarkdownToADC(markdown)
           triggerBrowserDownload(blob, (filePath ? filePath.split('.').slice(0, -1).join('.') : 'document') + '.adc')
           return
@@ -453,7 +795,13 @@ export function useAppFileOperations(
     const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
     
     let contentToSave: string
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ext === 'ipynb'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ext === 'ipynb')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ext === 'ipynb') {
       contentToSave = convertMarkdownToIpynb(markdown)
     } else if (isBinarySave) {
@@ -462,13 +810,37 @@ export function useAppFileOperations(
       contentToSave = markdown
     }
     
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ipc.isElectronEnv()) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'saveResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `saveResult`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const saveResult = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const saveResult = await ipc.saveFile(contentToSave, filePath || undefined)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `saveResult && saveResult.success && saveResult.filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (saveResult && saveResult.success && saveResult.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (saveResult && saveResult.success && saveResult.filePath) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'savedPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `savedPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const savedPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const savedPath = saveResult.filePath
         setFilePath(savedPath)
         setOriginalContent(markdown)
@@ -486,26 +858,80 @@ export function useAppFileOperations(
    * - Rationale: 현재 내용을 새로운 다른 이름의 파일 경로로 저장 대화상자를 열어 주입한다.
    */
   const handleSaveAsFile = useCallback(async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editor) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'markdown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `markdown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
     
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ipc.isElectronEnv()) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'saveResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `saveResult`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const saveResult = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const saveResult = await ipc.saveFile(markdown, undefined)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `saveResult && saveResult.success && saveResult.filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (saveResult && saveResult.success && saveResult.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (saveResult && saveResult.success && saveResult.filePath) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'savedPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `savedPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const savedPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const savedPath = saveResult.filePath
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ext'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ext`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const ext = savedPath.split('.').pop()?.toLowerCase() || 'md'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isBinarySave'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isBinarySave`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isBinarySave = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
         let contentToSave: string
         
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ext === 'ipynb'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ext === 'ipynb')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (ext === 'ipynb') {
           contentToSave = convertMarkdownToIpynb(markdown)
         } else if (isBinarySave) {
@@ -521,13 +947,25 @@ export function useAppFileOperations(
         createSnapshot('다른 이름으로 저장본', contentToSave)
       }
     } else {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'wantOther'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `wantOther`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const wantOther = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const wantOther = window.confirm(
         '브라우저에서는 파일 저장 대화상자가 지원되지 않습니다.\n' +
         'Markdown(.md) 파일로 다운로드하시겠습니까?\n' +
         '(Excel, PDF 등 다른 형식은 상단 [내보내기] 메뉴를 사용하세요)'
       )
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `wantOther`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (wantOther)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (wantOther) {
         triggerBrowserDownload(markdown, 'document_new.md')
       }
@@ -545,4 +983,3 @@ export function useAppFileOperations(
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -30,7 +30,12 @@ export interface WelcomeBannerProps {
   editor: AmevaEditor | null
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `WelcomeBanner`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `WelcomeBanner(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function WelcomeBanner({
   onStartWelcomeEdit,
   onStartNewDocument,
@@ -144,4 +149,3 @@ export function WelcomeBanner({
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

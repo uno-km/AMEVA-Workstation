@@ -264,4 +264,3 @@ export const AIChatInput: React.FC<AIChatInputProps> = ({
   );
 };
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -21,6 +21,12 @@ import React from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Globe, ExternalLink } from 'lucide-react'
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `LinkPreviewBlockSpec`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `LinkPreviewBlockSpec(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const LinkPreviewBlockSpec = createReactBlockSpec(
   {
     type: 'linkPreview',
@@ -36,11 +42,23 @@ export const LinkPreviewBlockSpec = createReactBlockSpec(
     render: ({ block }) => {
       const { url, title, description, thumbnail } = block.props
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleClick'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleClick`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleClick = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const handleClick = (e: React.MouseEvent) => {
         e.preventDefault()
         e.stopPropagation()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `url && (window as any).electronAPI?.openExternalLink`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (url && (window as any).electronAPI?.openExternalLink)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (url && (window as any).electronAPI?.openExternalLink) {
           (window as any).electronAPI.openExternalLink(url)
         } else if (url) {
@@ -48,9 +66,21 @@ export const LinkPreviewBlockSpec = createReactBlockSpec(
         }
       }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isFailed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isFailed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isFailed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const isFailed = title === '서버 코드: 404' || title?.startsWith('연결 실패') || title === '연결 시간 초과'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isLoading'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isLoading`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isLoading = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const isLoading = title === 'Loading preview...'
 
       return (
@@ -168,6 +198,11 @@ export const LinkPreviewBlockSpec = createReactBlockSpec(
   }
 )
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `LinkPreviewBlock`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `LinkPreviewBlock(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const LinkPreviewBlock = LinkPreviewBlockSpec()
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

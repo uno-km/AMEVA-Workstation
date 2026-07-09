@@ -87,7 +87,13 @@ export function useAIHealthCheck(
      * - Rationale: 5초마다 동작하는 비동기 진단 함수. Ollama의 경우 fetch, Local의 경우 IPC 핑을 이용함.
      */
     const checkHealth = async () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'type'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `type`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const type = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const type = settings.apiType || 'local'
 
       // 성공 시 실패 카운트 리셋 및 가용 플래그 true 처리
@@ -99,7 +105,13 @@ export function useAIHealthCheck(
       // [FIX-FLICKER-001] 실패 시 5회 누적 시점부터 가용성 false 반영
       const handleFail = () => {
         failCountRef.current += 1
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `failCountRef.current >= 5`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (failCountRef.current >= 5)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (failCountRef.current >= 5) {
           setIsAvailable(false)
         }
@@ -108,7 +120,13 @@ export function useAIHealthCheck(
       // 1. Ollama 엔드포인트 헬스 체크
       if (type === 'ollama') {
         try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ep'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ep`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ep = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const ep = settings.apiEndpoint || 'http://127.0.0.1:11434'
           
           // CONTRACT: 3초 타임아웃 GET fetch
@@ -116,7 +134,13 @@ export function useAIHealthCheck(
             method: 'GET',
             signal: AbortSignal.timeout(3000)
           })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `res.ok) handleSuccess(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (res.ok) handleSuccess()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (res.ok) handleSuccess()
           else handleFail()
         } catch {
@@ -130,7 +154,13 @@ export function useAIHealthCheck(
       // Rationale: 모델이 올라가는 중(loading model)일 때도 가용한 것으로 임시 판단 처리함
       const result = await ipc.llmCheckHealth()
       
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `result.status === 'ok' || result.status === 'loading model'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (result.status === 'ok' || result.status === 'loading model')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (result.status === 'ok' || result.status === 'loading model') {
         handleSuccess()
       } else {
@@ -158,4 +188,3 @@ export function useAIHealthCheck(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

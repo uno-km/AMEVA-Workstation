@@ -68,11 +68,29 @@ export function useAIMessageState() {
    * - Rationale: 각 액션 훅들에 전역 상태 세터 함수 레퍼런스를 인자로 공급하여 결합을 보장한다.
    */
   const addUserAndAssistantMessages = useAddMessages(setMessages)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalizeAssistantMessage'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalizeAssistantMessage`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalizeAssistantMessage = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const finalizeAssistantMessage = useFinalizeMessage(setMessages, setStreamingText, setIsGenerating)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'updateMessageDiffState'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `updateMessageDiffState`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const updateMessageDiffState = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const updateMessageDiffState = useUpdateDiffState(setMessages)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'updateInsertSuggestionStatus'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `updateInsertSuggestionStatus`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const updateInsertSuggestionStatus = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const updateInsertSuggestionStatus = useUpdateInsertStatus(setMessages)
 
   return {
@@ -95,4 +113,3 @@ export function useAIMessageState() {
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

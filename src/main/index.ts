@@ -73,9 +73,21 @@ process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
 const localFilename = (typeof import.meta !== 'undefined' && import.meta.url) 
   ? fileURLToPath(import.meta.url) 
   : ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'localDirname'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `localDirname`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const localDirname = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const localDirname = localFilename ? dirname(localFilename) : ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 '__dirname'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `__dirname`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const __dirname = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const __dirname = localDirname
 
 /*
@@ -89,22 +101,52 @@ let fileToOpenOnStartup: string | null = null
 // 1. 싱글 인스턴스 락 획득 (중복 창 열림 방지 및 파일 인수 위임)
 const gotTheLock = app.requestSingleInstanceLock()
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!gotTheLock`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!gotTheLock)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
 if (!gotTheLock) {
   // 이미 가동 중인 인스턴스가 존재하면 즉시 본 세션을 소멸 종료
   app.quit()
 } else {
   // 두 번째 인스턴스가 켜지려 할 때 기존 열린 창을 포커싱하고 더블클릭해 가져온 파일 내용물을 렌더러로 리다이렉트
   app.on('second-instance', async (_event, commandLine) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'filePath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `filePath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const filePath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const filePath = parseArgvForFile(commandLine)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `filePath && mainWindow`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (filePath && mainWindow)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (filePath && mainWindow) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `mainWindow.isMinimized()) mainWindow.restore(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (mainWindow.isMinimized()) mainWindow.restore()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.focus()
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'content'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `content`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const content = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const content = await readFile(filePath, 'utf-8')
         mainWindow.webContents.send('file:open-argv', { content, filePath })
       } catch (err) {
@@ -119,9 +161,20 @@ if (!gotTheLock) {
  * - Rationale: CLI 인자 배열에서 마크다운 및 텍스트 파일 포맷 확장자를 지닌 물리 파일 존재 여부를 탐색해 낸다.
  */
 function parseArgvForFile(argv: string[]): string | null {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const arg of argv.slice(1)) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   for (const arg of argv.slice(1)) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `조건 식`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (조건 식)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (
       (arg.endsWith('.md') ||
         arg.endsWith('.markdown') ||
@@ -147,9 +200,21 @@ fileToOpenOnStartup = parseArgvForFile(process.argv)
  * - Rationale: preload.js 스크립트 유효성을 검사하고, 웹 환경 설정을 격리하여 메인 일렉트론 윈도우 프레임을 기동한다.
  */
 function createWindow() {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'preloadPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `preloadPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const preloadPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const preloadPath = join(__dirname, 'preload.js')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!existsSync(preloadPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!existsSync(preloadPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!existsSync(preloadPath)) {
     dialog.showErrorBox(
       'Preload Script Missing',
@@ -217,10 +282,22 @@ app.whenReady().then(() => {
 
   // 렌더러 로딩 완료 시 최초 전달된 startup 파일 내용을 전송 완료 처리
   ipcMain.handle('app:ready', async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `fileToOpenOnStartup && mainWindow`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (fileToOpenOnStartup && mainWindow)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (fileToOpenOnStartup && mainWindow) {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'content'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `content`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const content = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const content = await readFile(fileToOpenOnStartup, 'utf-8')
         mainWindow.webContents.send('file:open-argv', { content, filePath: fileToOpenOnStartup })
         fileToOpenOnStartup = null
@@ -232,7 +309,13 @@ app.whenReady().then(() => {
   })
 
   app.on('activate', () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `BrowserWindow.getAllWindows().length === 0) createWindow(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (BrowserWindow.getAllWindows().length === 0) createWindow()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 
@@ -243,25 +326,73 @@ app.whenReady().then(() => {
 
     // 🤖 [Background Warmup] 앱 기동 시 로컬 LLM 백그라운드 비동기 기동 (웜업)
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'llamaPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `llamaPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const llamaPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const llamaPath = LLMProcessManager.findLlamaCli()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'defaultModelPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `defaultModelPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const defaultModelPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       let defaultModelPath = 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const fs = require('fs')
       
       // 우선 지정 모델 존재 확인 분기
       if (!fs.existsSync(defaultModelPath)) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'llmDir'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `llmDir`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const llmDir = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const llmDir = 'C:\\ameva\\models\\llm'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `fs.existsSync(llmDir)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (fs.existsSync(llmDir))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (fs.existsSync(llmDir)) {
           try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'files'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `files`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const files = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const files = fs.readdirSync(llmDir)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'firstGguf'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `firstGguf`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const firstGguf = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `firstGguf) defaultModelPath = join(llmDir, firstGguf`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (firstGguf) defaultModelPath = join(llmDir, firstGguf)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (firstGguf) defaultModelPath = join(llmDir, firstGguf)
           } catch {}
         }
@@ -291,7 +422,13 @@ let isShuttingDown = false
  *   Vite 개발 서버 환경인 경우 부모 프로세스 트리(taskkill)를 일괄 소멸시켜 좀비를 없앤다.
  */
 const handleGracefulExit = async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isShuttingDown`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isShuttingDown)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isShuttingDown) return
   isShuttingDown = true
   
@@ -301,7 +438,13 @@ const handleGracefulExit = async () => {
   // MCP 서버들 제거
   try { MCPProcessManager.killAll() } catch {}
   
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `process.env.VITE_DEV_SERVER_URL`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (process.env.VITE_DEV_SERVER_URL)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (process.env.VITE_DEV_SERVER_URL) {
     try {
       const { execSync } = require('child_process')
@@ -312,7 +455,13 @@ const handleGracefulExit = async () => {
 }
 
 app.on('window-all-closed', () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `process.platform !== 'darwin'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (process.platform !== 'darwin')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (process.platform !== 'darwin') {
     app.quit()
   }
@@ -320,13 +469,25 @@ app.on('window-all-closed', () => {
 
 // 앱 종료 will-quit 리스너 연동 (추론 엔진 활성 시 exit guard 발동)
 app.on('will-quit', (e) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isShuttingDown && LLMProcessManager.activeServerProcess`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isShuttingDown && LLMProcessManager.activeServerProcess)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!isShuttingDown && LLMProcessManager.activeServerProcess) {
     e.preventDefault()
     handleGracefulExit()
   } else {
     try { MCPProcessManager.killAll() } catch {}
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `process.env.VITE_DEV_SERVER_URL`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (process.env.VITE_DEV_SERVER_URL)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (process.env.VITE_DEV_SERVER_URL) {
       try {
         const { execSync } = require('child_process')
@@ -339,7 +500,13 @@ app.on('will-quit', (e) => {
 
 // 🦾 [CONSOLE EXIT-GUARD] 터미널에서 Ctrl+C (SIGINT) 또는 SIGTERM 시그널로 강제 종료 시, 안전하게 엔진 종료
 process.on('SIGINT', async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isShuttingDown`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isShuttingDown)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isShuttingDown) return
   isShuttingDown = true
   await LLMProcessManager.gracefulShutdown()
@@ -348,7 +515,13 @@ process.on('SIGINT', async () => {
 })
 
 process.on('SIGTERM', async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isShuttingDown`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isShuttingDown)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isShuttingDown) return
   isShuttingDown = true
   await LLMProcessManager.gracefulShutdown()
@@ -356,4 +529,3 @@ process.on('SIGTERM', async () => {
   process.exit(0)
 })
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

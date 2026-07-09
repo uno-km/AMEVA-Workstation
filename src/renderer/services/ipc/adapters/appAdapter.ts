@@ -29,93 +29,193 @@ export interface MessageBoxOptions {
   [key: string]: unknown
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `isElectronEnv`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `isElectronEnv(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function isElectronEnv(): boolean {
   return typeof window !== 'undefined' && !!window.electronAPI
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `appReady`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `appReady(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function appReady(): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.appReady`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.appReady)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.appReady) return
   window.electronAPI.appReady()
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `setZoomLevel`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `setZoomLevel(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function setZoomLevel(level: number): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.setZoomLevel`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.setZoomLevel)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.setZoomLevel) return
   window.electronAPI.setZoomLevel(level)
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function getZoomLevel(): Promise<number> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.getZoomLevel`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.getZoomLevel)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.getZoomLevel) return 0
   return window.electronAPI.getZoomLevel()
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function getZoomFactor(): Promise<number> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.getZoomFactor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.getZoomFactor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.getZoomFactor) return 1.0
   return window.electronAPI.getZoomFactor()
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `setZoomFactor`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `setZoomFactor(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function setZoomFactor(factor: number): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.setZoomFactor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.setZoomFactor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.setZoomFactor) return
   window.electronAPI.setZoomFactor(factor)
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function showMessageBox(options: MessageBoxOptions): Promise<{ response: number }> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.showMessageBox`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.showMessageBox)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.showMessageBox) return { response: 0 }
   return window.electronAPI.showMessageBox(options)
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function planGetStatus(): Promise<boolean> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.planGetStatus`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.planGetStatus)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.planGetStatus) return false
   return window.electronAPI.planGetStatus()
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function planSetStatus(isPro: boolean): Promise<{ success: boolean; isPro?: boolean; error?: string }> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.planSetStatus`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.planSetStatus)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.planSetStatus) return { success: false, error: 'API not available' }
   return window.electronAPI.planSetStatus(isPro)
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function isFreeMode(): Promise<boolean> {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.isFreeMode`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.isFreeMode)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.isFreeMode) return true
   return window.electronAPI.isFreeMode()
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `newWindow`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `newWindow(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function newWindow(): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.newWindow`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.newWindow)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.newWindow) return
   window.electronAPI.newWindow()
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `closeApp`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `closeApp(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function closeApp(): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.closeApp`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.closeApp)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.closeApp) return
   window.electronAPI.closeApp()
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `forceCloseApp`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `forceCloseApp(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function forceCloseApp(): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.forceCloseApp`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!window.electronAPI?.forceCloseApp)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!window.electronAPI?.forceCloseApp) return
   window.electronAPI.forceCloseApp()
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

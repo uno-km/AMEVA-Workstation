@@ -69,13 +69,25 @@ export interface NormalizedBlock {
 
 /** 어떤 값이든 NormalizedInlineContent[]로 변환 */
 function normalizeInlineContent(raw: any): NormalizedInlineContent[] {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!raw`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!raw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!raw) return []
 
   // 이미 배열이면 각 item normalize
   if (Array.isArray(raw)) {
     return raw.flatMap((item: any) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!item`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!item)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!item) return []
       // 표준 InlineContent 형태
       if (typeof item === 'object' && (item.type === 'text' || item.type === 'link')) {
@@ -108,7 +120,13 @@ function normalizeInlineContent(raw: any): NormalizedInlineContent[] {
 
   // 단일 객체 {type, text, styles}
   if (typeof raw === 'object' && raw !== null) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `'text' in raw`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if ('text' in raw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if ('text' in raw) {
       return [{ type: 'text', text: String(raw.text ?? ''), styles: raw.styles ?? {} }]
     }
@@ -119,7 +137,13 @@ function normalizeInlineContent(raw: any): NormalizedInlineContent[] {
 
 /** table content normalize */
 function normalizeTableContent(raw: any): NormalizedTableRow[] {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!raw`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!raw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!raw) return []
 
   const rows: any[] = Array.isArray(raw?.rows) ? raw.rows
@@ -137,7 +161,13 @@ function normalizeTableContent(raw: any): NormalizedTableRow[] {
         if (Array.isArray(cell)) {
           return normalizeInlineContent(cell)
         }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `typeof cell === 'string'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (typeof cell === 'string')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (typeof cell === 'string') {
           return cell ? [{ type: 'text' as const, text: cell, styles: {} }] : []
         }
@@ -149,7 +179,13 @@ function normalizeTableContent(raw: any): NormalizedTableRow[] {
 
 /** 단일 block을 NormalizedBlock으로 변환 */
 function normalizeBlock(raw: any, depth = 0): NormalizedBlock {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!raw || typeof raw !== 'object'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!raw || typeof raw !== 'object')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!raw || typeof raw !== 'object') {
     return {
       id: 'unknown',
@@ -163,13 +199,25 @@ function normalizeBlock(raw: any, depth = 0): NormalizedBlock {
   const type: string = raw.type ?? 'paragraph'
   const id: string = raw.id ?? `auto-${Math.random().toString(36).slice(2)}`
   const props: Record<string, any> = raw.props ?? {}
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const rawContent = raw.content
 
   let content: NormalizedInlineContent[] = []
   let tableRows: NormalizedTableRow[] | undefined
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `type === 'table'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (type === 'table')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (type === 'table') {
     tableRows = normalizeTableContent(rawContent)
     content = []
@@ -190,7 +238,13 @@ function normalizeBlock(raw: any, depth = 0): NormalizedBlock {
 
 /** 최상위 normalize 함수 — export 진입점에서 호출 */
 export function normalizeBlocks(input: any): NormalizedBlock[] {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!input`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!input)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!input) {
     console.warn('[normalizeBlocks] input is null/undefined')
     return []
@@ -199,7 +253,12 @@ export function normalizeBlocks(input: any): NormalizedBlock[] {
   const arr: any[] = Array.isArray(input) ? input : [input]
 
   const result: NormalizedBlock[] = []
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (let i = 0; i < arr.length; i++) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   for (let i = 0; i < arr.length; i++) {
     try {
       result.push(normalizeBlock(arr[i]))
@@ -221,4 +280,3 @@ export function inlineToText(inline: NormalizedInlineContent[]): string {
   return inline.map(c => c.text).join('')
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

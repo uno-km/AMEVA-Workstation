@@ -33,22 +33,52 @@ export function registerSttIpc(): void {
     audioPath: string
     language?: string
   }) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'whisperPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `whisperPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const whisperPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const whisperPath = LLMProcessManager.findWhisperCli()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'modelPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `modelPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const modelPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const modelPath = 'C:\\ameva\\models\\stt\\ggml-small.bin'
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!existsSync(modelPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!existsSync(modelPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!existsSync(modelPath)) {
       return { success: false, error: `Whisper 모델 파일을 찾을 수 없습니다: ${modelPath}` }
     }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!existsSync(payload.audioPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!existsSync(payload.audioPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!existsSync(payload.audioPath)) {
       return { success: false, error: `음성 파일을 찾을 수 없습니다: ${payload.audioPath}` }
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'args'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `args`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const args = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const args = [
       '-m', modelPath,
       '-f', payload.audioPath,
@@ -60,22 +90,58 @@ export function registerSttIpc(): void {
 
     return new Promise<{ success: boolean; text?: string; error?: string }>((resolve) => {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'proc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `proc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const proc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const proc = spawn(whisperPath!, args, { windowsHide: true })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'stdout'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `stdout`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const stdout = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         let stdout = ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'stderr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `stderr`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const stderr = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         let stderr = ''
 
         proc.stdout.on('data', (data: Buffer) => { stdout += data.toString() })
         proc.stderr.on('data', (data: Buffer) => { stderr += data.toString() })
 
         proc.on('close', (code) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'txtPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `txtPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const txtPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const txtPath = payload.audioPath + '.txt'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `code === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (code === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (code === 0) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `stdout.trim()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (stdout.trim())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (stdout.trim()) {
               resolve({ success: true, text: stdout.trim() })
             } else if (existsSync(txtPath)) {
@@ -108,4 +174,3 @@ export function registerSttIpc(): void {
   })
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

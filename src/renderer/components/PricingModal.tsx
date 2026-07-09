@@ -27,13 +27,24 @@ interface PricingModalProps {
   onClose: () => void
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `PricingModal`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `PricingModal(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function PricingModal({ isOpen, onClose }: PricingModalProps) {
   const [isPro, setIsPro] = useState(false)
   const [isFreeLocked, setIsFreeLocked] = useState(false)
 
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isOpen`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isOpen) {
       setIsPro(localStorage.getItem('is-pro-plan') === 'true')
       
@@ -43,14 +54,38 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
   }, [isOpen])
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isOpen`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!isOpen) return null
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleFreeAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleFreeAction`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleFreeAction = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleFreeAction = async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isPro`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isPro)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isPro) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `confirm('Downgrade to Free Plan? (This will reload the application)')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (confirm('Downgrade to Free Plan? (This will reload the application)'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (confirm('Downgrade to Free Plan? (This will reload the application)')) {
         await ipc.planSetStatus(false)
         localStorage.setItem('is-pro-plan', 'false')
@@ -59,22 +94,58 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleProAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleProAction`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleProAction = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleProAction = async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isPro`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isPro)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isPro) return
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isFreeLocked`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isFreeLocked)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isFreeLocked) {
       alert('무료 버전 강제 데모 모드(--free) 상태에서는 Pro Plan으로 업그레이드할 수 없습니다.')
       return
     }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `confirm('Upgrade to Pro Plan? (This will reload the application)')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (confirm('Upgrade to Pro Plan? (This will reload the application)'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (confirm('Upgrade to Pro Plan? (This will reload the application)')) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const result = await ipc.planSetStatus(true)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `result && !result.success`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (result && !result.success)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (result && !result.success) {
         alert(`업그레이드 실패: ${result.error}`)
         return
@@ -84,7 +155,13 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
     }
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleEnterpriseAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleEnterpriseAction`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleEnterpriseAction = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleEnterpriseAction = () => {
     window.open('https://github.com/uno-km/AMEVA-Workstation', '_blank')
   }
@@ -350,4 +427,3 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

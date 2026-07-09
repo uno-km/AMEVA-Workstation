@@ -56,7 +56,13 @@ export const AITaggedBlockPill: React.FC<AITaggedBlockPillProps> = ({
   onRemove,
   onScrollToBlock
 }) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `taggedBlocks.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (taggedBlocks.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (taggedBlocks.length === 0) return null
 
   return (
@@ -118,4 +124,3 @@ export const AITaggedBlockPill: React.FC<AITaggedBlockPillProps> = ({
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

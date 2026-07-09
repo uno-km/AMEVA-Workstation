@@ -30,7 +30,6 @@
 import type { AmevaEditor as AppEditor, AmevaPartialBlock as AppPartialBlock } from '../../../editor/amevaBlockSchema'
 
 /**
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
  * @function handleHeadingFormat
  * @description 에디터 타이핑 중 '#' 입력을 감지해 제목 블록으로 변환하고 포커스에 따른 접두어 노출을 동적으로 가공해 주는 함수.
  */
@@ -51,21 +50,57 @@ export function handleHeadingFormat(
   const cursor = editor.getTextCursorPosition()
   let currentId: string | null = null
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `cursor?.block`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (cursor?.block)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (cursor?.block) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'activeBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `activeBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const activeBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const activeBlock = cursor.block
     currentId = activeBlock.id
 
     // 2. 현재 활성 문단이 paragraph이고 사용자 타이핑 문자열이 '#'으로 시작하는 경우 제목 블록으로 변환
     if (activeBlock.type === 'paragraph') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const text = activeBlock.content ? (activeBlock.content as any).map((c: any) => c.text).join('') : ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'match'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `match`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const match = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const match = text.match(/^(#{1,3})([^\s#].*)$/)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `match`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (match)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (match) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'level'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `level`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const level = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const level = match[1].length
         
         // CONTRACT: 갱신 시점 재귀 루프 차단 가드 락 작동
@@ -84,7 +119,13 @@ export function handleHeadingFormat(
 
   // 3. 커서 포커스 위치가 다른 블록으로 전환(이탈/진입)된 시점의 접두어 노출 가공 보정
   if (currentId !== activeBlockIdRef.current) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prevId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prevId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prevId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const prevId = activeBlockIdRef.current
     activeBlockIdRef.current = currentId
     setActiveBlockId(currentId)
@@ -92,15 +133,45 @@ export function handleHeadingFormat(
     // 1) 이전 포커스 블록(prevBlock) 이탈 시: 접두어인 '# ', '## ' 문자를 깎아내어 화면에 감춤
     if (prevId) {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prevBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prevBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prevBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const prevBlock = editor.getBlock(prevId)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prevBlock?.type === 'heading'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (prevBlock?.type === 'heading')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (prevBlock?.type === 'heading') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const text = prevBlock.content ? (prevBlock.content as any).map((c: any) => c.text).join('') : ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'match'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `match`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const match = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const match = text.match(/^(#{1,3}\s)(.*)$/)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `match`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (match)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (match) {
             setIsUpdating(true)
             editor.updateBlock(prevId, { content: [{ type: 'text', text: match[2], styles: {} }] } as AppPartialBlock)
@@ -113,18 +184,54 @@ export function handleHeadingFormat(
     // 2) 신규 포커스 블록(currentBlock) 진입 시: Heading 레벨에 알맞은 접두어('# ', '## ')를 접합하여 화면에 표출
     if (currentId) {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const currentBlock = editor.getBlock(currentId)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `currentBlock?.type === 'heading'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (currentBlock?.type === 'heading')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (currentBlock?.type === 'heading') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'level'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `level`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const level = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const level = (currentBlock.props as any)?.level || 1
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const text = currentBlock.content ? (currentBlock.content as any).map((c: any) => c.text).join('') : ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prefix'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prefix`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prefix = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const prefix = level === 1 ? '# ' : level === 2 ? '## ' : '### '
           
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!text.startsWith(prefix)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!text.startsWith(prefix))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!text.startsWith(prefix)) {
             setIsUpdating(true)
              editor.updateBlock(currentId, { content: [{ type: 'text', text: prefix + text, styles: {} }] } as AppPartialBlock)
@@ -145,4 +252,3 @@ export function handleHeadingFormat(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

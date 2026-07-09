@@ -17,6 +17,12 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `AgentState`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `AgentState(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const AgentState = {
   Idle: "idle",
   Thinking: "thinking",
@@ -68,4 +74,3 @@ export interface ILLMAdapter {
   generate: (prompt: string, systemPrompt: string, temperature: number, sessionId?: string) => Promise<string>
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

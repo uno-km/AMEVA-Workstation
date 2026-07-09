@@ -76,14 +76,32 @@ export function useAIBlockProcessor(settings: AISettings) {
        * - sessId: 챗 세션과 격리하기 위한 단발성 세션 고유 키.
        */
       let result = ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'settled'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `settled`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const settled = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       let settled = false
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sessId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sessId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sessId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const sessId = `quick-${Date.now()}`
 
       // IPC 리스너 안전 해제를 위한 클린업 이너 헬퍼 함수
       const cleanup = (unsubToken: () => void, unsubDone: () => void) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!settled`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!settled) {
           settled = true
           unsubToken()
@@ -93,12 +111,30 @@ export function useAIBlockProcessor(settings: AISettings) {
 
       // CONTRACT: llmGenerate 기동 전, 리스너를 먼저 선행 구독한다.
       const unsubToken = ipc.onLLMToken(sessId, (token) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!settled`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!settled) result += token
       })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubDone'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsubDone`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsubDone = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const unsubDone = ipc.onLLMDone(sessId, (data) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `settled`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (settled) return
         cleanup(unsubToken, unsubDone)
         resolve(data.success ? result.trim() : (data.error || ''))
@@ -106,7 +142,13 @@ export function useAIBlockProcessor(settings: AISettings) {
 
       // 3. 60초 글로벌 비정상 프리징 복구 타임아웃 세팅
       const timeoutId = setTimeout(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!settled`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!settled) {
           cleanup(unsubToken, unsubDone)
           resolve(result.trim() || '')
@@ -147,4 +189,3 @@ export function useAIBlockProcessor(settings: AISettings) {
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

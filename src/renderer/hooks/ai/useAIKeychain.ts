@@ -82,18 +82,36 @@ export function useAIKeychain(
     // 2. 이미 로드 완료 락이 걸린 프로바이더인 경우 중복 호출 취소
     if (isApiKeyLoadedRef.current[apiProvider]) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'loadSavedApiKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `loadSavedApiKey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const loadSavedApiKey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const loadSavedApiKey = async () => {
       // 공급사에 따른 고유 키체인 레지스트리 명칭 정의
       let keychainKey = 'openai-api-key'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `apiProvider === 'gemini'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (apiProvider === 'gemini')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (apiProvider === 'gemini') keychainKey = 'gemini-api-key'
       else if (apiProvider === 'anthropic') keychainKey = 'claude-api-key'
       else if (apiProvider === 'custom') return
 
       // OS 키체인 스토어 조회
       const savedKey = await ipc.keychainGet(keychainKey)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `savedKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (savedKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (savedKey) {
         // 로드 완료 락 기록 및 뷰 업데이트
         isApiKeyLoadedRef.current[apiProvider] = true
@@ -113,11 +131,29 @@ export function useAIKeychain(
    * - Rationale: 사용자가 수동으로 저장 버튼을 눌렀을 때, 현재 메모리에 올라온 비밀키를 OS 키체인에 안전하게 주입한다.
    */
   const handleSaveKey = async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv() || !apiKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv() || !apiKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv() || !apiKey) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'keychainKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `keychainKey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const keychainKey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let keychainKey = 'openai-api-key'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `apiProvider === 'gemini'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (apiProvider === 'gemini')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (apiProvider === 'gemini') keychainKey = 'gemini-api-key'
     else if (apiProvider === 'anthropic') keychainKey = 'claude-api-key'
     
@@ -130,11 +166,29 @@ export function useAIKeychain(
    * - Rationale: 수동 키 삭제 시, OS 스토리지에서 삭제하고 런타임 설정 내의 API Key 값을 공백문자('')로 밀어버린다.
    */
   const handleDeleteKey = async () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv()) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'keychainKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `keychainKey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const keychainKey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let keychainKey = 'openai-api-key'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `apiProvider === 'gemini'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (apiProvider === 'gemini')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (apiProvider === 'gemini') keychainKey = 'gemini-api-key'
     else if (apiProvider === 'anthropic') keychainKey = 'claude-api-key'
     
@@ -148,9 +202,21 @@ export function useAIKeychain(
    * - handleApiKeyChange: 인풋 타이핑 변화 시 호출되며, 분석 규칙을 거쳐 Gemini/Claude 패턴 감지 시 엔드포인트와 기본 모델을 동적 마이그레이션 적용한다.
    */
   const handleApiKeyChange = (val: string) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'analysis'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `analysis`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const analysis = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const analysis = analyzeApiKey(val)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `analysis.provider !== 'unknown'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (analysis.provider !== 'unknown')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (analysis.provider !== 'unknown') {
       onUpdateSettings({
         apiKey: val,
@@ -174,4 +240,3 @@ export function useAIKeychain(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

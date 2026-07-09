@@ -22,23 +22,58 @@ import { getDefaultReactSlashMenuItems } from '@blocknote/react'
 import { Code2, Globe, Eye, Terminal, FileImage } from 'lucide-react'
 import { type AmevaEditor } from '../../editor/amevaBlockSchema'
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `getCustomSlashMenuItems`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `getCustomSlashMenuItems(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPlugins: string[] = []) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'defaultItems'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `defaultItems`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const defaultItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const defaultItems = getDefaultReactSlashMenuItems(editorInstance)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'filtered'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `filtered`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const filtered = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const filtered = defaultItems.filter(item =>
     !item.title.toLowerCase().includes('code block') &&
     !item.title.toLowerCase().includes('codeblock')
   )
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'insertCodeBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `insertCodeBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const insertCodeBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const insertCodeBlock = (lang: string) => () => {
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pos`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pos = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const pos = editorInstance.getTextCursorPosition()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!pos`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!pos)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!pos) return
       editorInstance.updateBlock(pos.block.id, {
         type: 'jupyter',
@@ -53,12 +88,30 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     } catch {}
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'insertDrawingBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `insertDrawingBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const insertDrawingBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const insertDrawingBlock = () => {
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pos`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pos = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const pos = editorInstance.getTextCursorPosition()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!pos`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!pos)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!pos) return
       editorInstance.updateBlock(pos.block.id, {
         type: 'drawing',
@@ -69,7 +122,13 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     } catch {}
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'codeItems'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `codeItems`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const codeItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const codeItems = [
     {
       title: 'JavaScript Code Block',
@@ -137,9 +196,21 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     },
   ]
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'drawingSubscribed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `drawingSubscribed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const drawingSubscribed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const drawingSubscribed = installedPlugins.includes('drawing-board')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'drawingItems'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `drawingItems`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const drawingItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const drawingItems = drawingSubscribed ? [
     {
       title: 'Drawing Board',
@@ -151,14 +222,32 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     }
   ] : []
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'mapItem'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `mapItem`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const mapItem = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const mapItem = {
     title: 'Google Map Embed',
     onItemClick: () => {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pos`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pos = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const pos = editorInstance.getTextCursorPosition()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!pos`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!pos)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!pos) return
         editorInstance.updateBlock(pos.block.id, {
           type: 'map',
@@ -177,4 +266,3 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
   return [...filtered, ...codeItems, ...drawingItems, mapItem]
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

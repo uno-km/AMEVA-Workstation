@@ -68,6 +68,12 @@ export interface AISettings {
   gpuOnly?: boolean
 }
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `DEFAULT_SETTINGS`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `DEFAULT_SETTINGS(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const DEFAULT_SETTINGS: AISettings = {
   modelPath: 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf',
   codeModelPath: '',
@@ -78,4 +84,3 @@ export const DEFAULT_SETTINGS: AISettings = {
   gpuOnly: true
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

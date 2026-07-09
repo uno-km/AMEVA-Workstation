@@ -28,15 +28,32 @@ export interface UrlMetadata {
   url: string
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata> {
   return new Promise<UrlMetadata>((resolve) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isResolved'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isResolved`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isResolved = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let isResolved = false
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fetchHtml'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fetchHtml`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fetchHtml = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const fetchHtml = (urlStr: string, redirectsRemaining = 5) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `redirectsRemaining < 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (redirectsRemaining < 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (redirectsRemaining < 0) {
         resolve({ title: '', description: '너무 많은 리다이렉트가 발생했습니다.', image: '', url: targetUrl })
         return
@@ -50,9 +67,21 @@ export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata>
         return
       }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'client'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `client`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const client = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const client = parsedUrl.protocol === 'https:' ? https : http
-  // [RUN-TIME STATE / INVARIANT] - 변수 'options'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `options`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const options = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const options = {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -61,53 +90,142 @@ export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata>
         timeout: 5000
       }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'req'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `req`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const req = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const req = client.get(urlStr, options, (res: any) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `res.statusCode >= 300 && res.statusCode < 400 && res.headers.location`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'redirectTarget'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `redirectTarget`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const redirectTarget = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const redirectTarget = new URL(res.headers.location, urlStr).toString()
           res.resume()
           fetchHtml(redirectTarget, redirectsRemaining - 1)
           return
         }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `res.statusCode !== 200`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (res.statusCode !== 200)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (res.statusCode !== 200) {
           res.resume()
           resolve({ title: '', description: `서버 코드: ${res.statusCode}`, image: '', url: targetUrl })
           return
         }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'html'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `html`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const html = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         let html = ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'totalBytes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `totalBytes`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const totalBytes = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         let totalBytes = 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 'MAX_HTML_BYTES'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `MAX_HTML_BYTES`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const MAX_HTML_BYTES = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const MAX_HTML_BYTES = 1024 * 1024
-  // [RUN-TIME STATE / INVARIANT] - 변수 'localIsResolved'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `localIsResolved`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const localIsResolved = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         let localIsResolved = false
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalizeResolve'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalizeResolve`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalizeResolve = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const finalizeResolve = (htmlContent: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `localIsResolved`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (localIsResolved)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (localIsResolved) return
           localIsResolved = true
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'getMetaTag'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `getMetaTag`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const getMetaTag = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const getMetaTag = (property: string) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'regexes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `regexes`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const regexes = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const regexes = [
               new RegExp(`<meta[^>]*property=["']og:${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
               new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*property=["']og:${property}["']`, 'i'),
               new RegExp(`<meta[^>]*name=["']og:${property}["'][^>]*content=["']([^"']*)["']`, 'i'),
               new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*name=["']og:${property}["']`, 'i')
             ]
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const r of regexes) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
             for (const r of regexes) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'match'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `match`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const match = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const match = htmlContent.match(r)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `match && match[1]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (match && match[1])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (match && match[1]) {
                 return match[1]
                   .replace(/&amp;/g, '&')
@@ -121,31 +239,85 @@ export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata>
             return ''
           }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'title'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `title`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const title = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           let title = getMetaTag('title')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!title`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!title)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!title) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'titleMatch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `titleMatch`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const titleMatch = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const titleMatch = htmlContent.match(/<title[^>]*>([^<]*)<\/title>/i)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `titleMatch && titleMatch[1]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (titleMatch && titleMatch[1])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (titleMatch && titleMatch[1]) {
               title = titleMatch[1].trim()
             }
           }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'description'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `description`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const description = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           let description = getMetaTag('description')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!description`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!description)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!description) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'descMatch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `descMatch`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const descMatch = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const descMatch = htmlContent.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']*)["']/i)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `descMatch && descMatch[1]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (descMatch && descMatch[1])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (descMatch && descMatch[1]) {
               description = descMatch[1].trim()
             }
           }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'image'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `image`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const image = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const image = getMetaTag('image')
 
           resolve({
@@ -158,7 +330,13 @@ export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata>
 
         res.on('data', (chunk: Buffer) => {
           totalBytes += chunk.length
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `totalBytes > MAX_HTML_BYTES`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (totalBytes > MAX_HTML_BYTES)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (totalBytes > MAX_HTML_BYTES) {
             html += chunk.toString('utf8', 0, MAX_HTML_BYTES - (totalBytes - chunk.length))
             req.destroy()
@@ -174,7 +352,13 @@ export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata>
       })
 
       req.on('error', (err: any) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isResolved`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isResolved)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (isResolved) return
         isResolved = true
         resolve({ title: '', description: `연결 실패: ${err.message}`, image: '', url: targetUrl })
@@ -182,7 +366,13 @@ export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata>
 
       req.on('timeout', () => {
         req.destroy()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isResolved`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isResolved)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (isResolved) return
         isResolved = true
         resolve({ title: '', description: '연결 시간 초과', image: '', url: targetUrl })
@@ -193,4 +383,3 @@ export async function fetchHtmlMetadata(targetUrl: string): Promise<UrlMetadata>
   })
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -74,7 +74,13 @@ export function useAIEngineLogs() {
 
     // 2. 렌더러 기동 이전에 발생한 초기 로그 버퍼 정보 일괄 획득 동기화
     ipc.llmGetLogs().then((logs) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `logs`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (logs)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (logs) {
         setEngineLogs(logs)
       }
@@ -85,9 +91,21 @@ export function useAIEngineLogs() {
 
     // 3. WebGPU/GPU 관련 브라우저 콘솔 로그 인터셉터 가동을 위한 순정 console 임시 보존
     const origLog = console.log
-  // [RUN-TIME STATE / INVARIANT] - 변수 'origWarn'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `origWarn`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const origWarn = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const origWarn = console.warn
-  // [RUN-TIME STATE / INVARIANT] - 변수 'origErr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `origErr`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const origErr = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const origErr = console.error
 
     /*
@@ -95,13 +113,31 @@ export function useAIEngineLogs() {
      * - Rationale: 콘솔 스트림에 유입되는 객체/문자열을 조인한 후, WebGPU/WebGL 등 그래픽 관련 로그만 추려 메인 로그 파일로 역전송한다.
      */
     const interceptAndSend = (_type: string, args: any[]) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const text = args
         .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
         .join(' ')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lower'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lower`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lower = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const lower = text.toLowerCase()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `조건 식`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (조건 식)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (
         lower.includes('webgpu') ||
         lower.includes('gpu') ||
@@ -129,7 +165,13 @@ export function useAIEngineLogs() {
       console.log = origLog
       console.warn = origWarn
       console.error = origErr
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `unsubLogRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (unsubLogRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (unsubLogRef.current) {
         unsubLogRef.current()
         unsubLogRef.current = null
@@ -152,4 +194,3 @@ export function useAIEngineLogs() {
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

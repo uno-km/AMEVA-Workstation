@@ -26,17 +26,51 @@ export class CollabServerManager {
   static collabSessionToken: string | null = null
 
   static getLocalIPAddress() {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nets'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nets`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nets = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const nets = networkInterfaces()
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const name of Object.keys(nets)) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     for (const name of Object.keys(nets)) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'interfaces'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `interfaces`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const interfaces = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const interfaces = nets[name]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `interfaces`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (interfaces)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (interfaces) {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const net of interfaces) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
         for (const net of interfaces) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `net.family === 'IPv4' && !net.internal`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (net.family === 'IPv4' && !net.internal)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (net.family === 'IPv4' && !net.internal) {
             return net.address
           }
@@ -47,9 +81,21 @@ export class CollabServerManager {
   }
 
   static async startServer(port: number, onStatus: (status: any) => void) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'localIp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `localIp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const localIp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const localIp = this.getLocalIPAddress()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this.collabilationServer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this.collabilationServer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (this.collabilationServer) {
       onStatus({ running: true, port, ip: localIp, token: this.collabSessionToken })
       return { running: true, port, ip: localIp, token: this.collabSessionToken }
@@ -69,11 +115,29 @@ export class CollabServerManager {
       this.activeConnections = new Set()
       this.collabilationServer.on('connection', (ws, req) => {
         try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'reqUrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `reqUrl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const reqUrl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const reqUrl = new URL(req.url || '/', `http://localhost`)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clientToken'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clientToken`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clientToken = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const clientToken = reqUrl.searchParams.get('token')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!clientToken || clientToken !== this.collabSessionToken`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!clientToken || clientToken !== this.collabSessionToken)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!clientToken || clientToken !== this.collabSessionToken) {
             ws.close(1008, 'Unauthorized: invalid session token')
             return
@@ -85,9 +149,20 @@ export class CollabServerManager {
 
         this.activeConnections.add(ws)
         ws.on('message', (message, isBinary) => {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const client of this.activeConnections) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
           for (const client of this.activeConnections) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `client !== ws && client.readyState === 1`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (client !== ws && client.readyState === 1)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (client !== ws && client.readyState === 1) {
               client.send(message, { binary: isBinary })
             }
@@ -116,9 +191,20 @@ export class CollabServerManager {
   }
 
   static stopServer(onStatus: (status: any) => void) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this.collabilationServer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this.collabilationServer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (this.collabilationServer) {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const ws of this.activeConnections) ws.close()`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
       for (const ws of this.activeConnections) ws.close()
       this.activeConnections.clear()
       this.collabilationServer.close()
@@ -130,4 +216,3 @@ export class CollabServerManager {
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

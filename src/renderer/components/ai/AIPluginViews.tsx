@@ -32,12 +32,30 @@ function GoogleMapsView() {
     `https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU3Ko&q=Seoul,Korea&language=ko&zoom=12`
   )
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSearch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleSearch`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleSearch = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!searchQuery.trim()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!searchQuery.trim())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!searchQuery.trim()) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'query'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `query`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const query = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const query = encodeURIComponent(searchQuery.trim())
     setMapQuery(searchQuery.trim())
     // Google Maps embed API — 공개 프리뷰용 API 키 사용
@@ -118,9 +136,20 @@ function GoogleMapsView() {
   )
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `AIPluginViews`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `AIPluginViews(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function AIPluginViews({ activeTab }: { activeTab: string }) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pluginRefs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pluginRefs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pluginRefs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const pluginRefs = {
     calculator: useRef<HTMLDivElement>(null),
     'finance-dashboard': useRef<HTMLDivElement>(null),
@@ -133,15 +162,45 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
   }
 
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `activeTab === 'ai' || activeTab === 'outline' || activeTab === 'google-maps'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (activeTab === 'ai' || activeTab === 'outline' || activeTab === 'google-maps')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (activeTab === 'ai' || activeTab === 'outline' || activeTab === 'google-maps') return;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ref'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ref`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ref = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const ref = pluginRefs[activeTab as keyof typeof pluginRefs];
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ref?.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ref?.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ref?.current) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'globalPlugins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `globalPlugins`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const globalPlugins = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const globalPlugins = (window as any).AMEVA_PLUGINS;
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `globalPlugins?.[activeTab]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (globalPlugins?.[activeTab])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (globalPlugins?.[activeTab]) {
         try {
           globalPlugins[activeTab].render(ref.current.id);
@@ -152,36 +211,86 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
     }
   }, [activeTab]);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'containerStyle'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `containerStyle`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const containerStyle = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const containerStyle = {
     flex: 1, display: 'flex', flexDirection: 'column' as const,
     backgroundColor: 'var(--bg-main)', height: '100%', padding: '16px', overflowY: 'auto' as const
   };
 
-  // [SWITCH ROUTING CASE] - 다중 후보 값 매핑 조건에 따른 최적 라우팅 제어.
+      /*
+       * [SWITCH ROUTING CASE]
+       * - 라우팅 키: `switch (activeTab) {`
+       * - 예상 시나리오: 유입된 상태 변수 분기값과 일치하는 케이스 블록으로 런타임 제어를 즉시 라우팅함.
+       * - 예시: `switch (format)` 분기 시 매치되는 변환 포맷 서브 모듈이 가동됨.
+       */
   switch (activeTab) {
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'calculator': return <div id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'calculator': return <div id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     case 'calculator': return <div id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />
     // [FIX-FINANCE] finance / finance-dashboard 둘 다 내장 뷰로 처리
     // (RightTabStrip에서 tab id는 'finance', 플러그인 id는 'finance-dashboard')
     case 'finance':
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'finance-dashboard': return <FinanceDashboardView />`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'finance-dashboard': return <FinanceDashboardView />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     case 'finance-dashboard': return <FinanceDashboardView />
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'youtube': return <div id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'youtube': return <div id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     case 'youtube': return <div id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'calendar': return <div id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'calendar': return <div id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     case 'calendar': return <div id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'google-drive': return <div id="ameva-plugin-google-drive" style={containerStyle} ref={pluginRefs['google-drive']} />`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'google-drive': return <div id="ameva-plugin-google-drive" style={containerStyle} ref={pluginRefs['google-drive']} />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     case 'google-drive': return <div id="ameva-plugin-google-drive" style={containerStyle} ref={pluginRefs['google-drive']} />
     // [FEAT-MAPS] 구글 지도 — 내장 iframe 뷰 (플러그인 없이 직접 렌더링)
     case 'google-maps': return <GoogleMapsView />
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `default: return null;`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `default: return null;` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
     default: return null;
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

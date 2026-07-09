@@ -22,38 +22,108 @@ import { Download, CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import { useProcessStore } from '../../stores/useProcessStore'
 import type { DownloadQueueItem } from '../../hooks/app/useDownloadManager'
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `formatBytes`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `formatBytes(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function formatBytes(bytes: number = 0): string {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `bytes === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (bytes === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (bytes === 0) return '0 B'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'k'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `k`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const k = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const k = 1024
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sizes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sizes`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sizes = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  // [RUN-TIME STATE / INVARIANT] - 변수 'i'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `i`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const i = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `GlobalDownloadProgress`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `GlobalDownloadProgress(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function GlobalDownloadProgress() {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'downloadQueue'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `downloadQueue`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const downloadQueue = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const downloadQueue = useProcessStore(state => state.downloadQueue)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clearCompletedDownloads'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clearCompletedDownloads`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clearCompletedDownloads = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const clearCompletedDownloads = useProcessStore(state => state.clearCompletedDownloads)
   const [isHovered, setIsHovered] = useState(false)
 
   // 진행 중이거나 대기 중인 항목
   const activeDownloads = downloadQueue.filter((q: DownloadQueueItem) => q.status !== 'completed' && q.status !== 'error')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'completedOrError'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `completedOrError`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const completedOrError = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const completedOrError = downloadQueue.filter((q: DownloadQueueItem) => q.status === 'completed' || q.status === 'error')
   
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `downloadQueue.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (downloadQueue.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (downloadQueue.length === 0) return null
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentActive`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentActive = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const currentActive = downloadQueue.find((q: DownloadQueueItem) => q.status === 'downloading')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isAllDone'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isAllDone`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isAllDone = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isAllDone = activeDownloads.length === 0
 
   return (
@@ -180,4 +250,3 @@ export function GlobalDownloadProgress() {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

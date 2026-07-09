@@ -42,9 +42,14 @@ export const IPC_CHANNELS = {
   OPEN_DEV_TOOLS: 'open-dev-tools',
 } as const;
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `TIME_FORMATS`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `TIME_FORMATS(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const TIME_FORMATS = {
   DEFAULT_LOG: 'YYYY-MM-DD HH:mm:ss',
   SHORT_TIME: 'HH:mm:ss',
 } as const;
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

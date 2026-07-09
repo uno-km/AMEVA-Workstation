@@ -179,7 +179,13 @@ export const AIQuickActions: React.FC<AIQuickActionsProps> = ({
                 // 조건이 참이면 직접 DOM 요소의 인라인 스타일을 수정합니다.
                 // 예상되는 값: isAvailable === true 일 때 style 객체 조작 실행.
                 if (isAvailable) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `target`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const target = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const target = e.currentTarget as HTMLButtonElement;
                   target.style.borderColor = getBorderColor(true);
                   target.style.background = getBackgroundColor(true);
@@ -187,7 +193,13 @@ export const AIQuickActions: React.FC<AIQuickActionsProps> = ({
                 }
               }}
               onMouseLeave={e => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `target`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const target = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const target = e.currentTarget as HTMLButtonElement;
                 target.style.borderColor = getBorderColor(false);
                 target.style.background = getBackgroundColor(false);
@@ -204,4 +216,3 @@ export const AIQuickActions: React.FC<AIQuickActionsProps> = ({
   );
 };
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

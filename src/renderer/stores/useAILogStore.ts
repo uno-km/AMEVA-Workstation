@@ -80,9 +80,21 @@ if (typeof window !== 'undefined' && window.BroadcastChannel) {
   broadcastChannel = new BroadcastChannel('ameva-sensor-logs-channel');
   
   broadcastChannel.onmessage = (event) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `event.data && event.data.type === 'new-logs'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (event.data && event.data.type === 'new-logs')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (event.data && event.data.type === 'new-logs') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'logs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `logs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const logs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const logs = event.data.logs as string[];
       // 타 프레임 채널로부터 유입된 로그를 로컬 버퍼에 병합 플러시
       useAILogStore.getState()._flushExternalLogs(logs);
@@ -102,9 +114,21 @@ export const useAILogStore = create<AILogState>((set) => ({
    */
   _flushExternalLogs: (logs: string[]) => {
     set((state) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newLogs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newLogs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newLogs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       let newLogs = [...state.sensorLogs, ...logs];
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `newLogs.length > AI_TERMINAL_CONSTANTS.MAX_LOG_BUFFER`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (newLogs.length > AI_TERMINAL_CONSTANTS.MAX_LOG_BUFFER)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (newLogs.length > AI_TERMINAL_CONSTANTS.MAX_LOG_BUFFER) {
         newLogs = newLogs.slice(newLogs.length - AI_TERMINAL_CONSTANTS.MAX_LOG_BUFFER);
       }
@@ -125,7 +149,13 @@ export const useAILogStore = create<AILogState>((set) => ({
     
     // 100ms 지연 타이머 기동
     flushTimeout = setTimeout(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'logsToFlush'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `logsToFlush`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const logsToFlush = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const logsToFlush = [...pendingSensorLogs];
       pendingSensorLogs = [];
       flushTimeout = null;
@@ -136,7 +166,13 @@ export const useAILogStore = create<AILogState>((set) => ({
       }
 
       set((state) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newLogs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newLogs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newLogs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         let newLogs = [...state.sensorLogs, ...logsToFlush];
         
         // CONTRACT: 링 버퍼 초과 슬라이싱 유지 계약
@@ -168,4 +204,3 @@ export const useAILogStore = create<AILogState>((set) => ({
   setStreamingText: (text: string) => set({ streamingText: text }),
 }));
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

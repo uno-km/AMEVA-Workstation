@@ -54,13 +54,31 @@ export function useAppIpcBridge(onFileOpen?: FileOpenArgvHandler) {
 
   // 1. 모델 다운로드 진행 이벤트 구독
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv()) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsub'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsub`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsub = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const unsub = ipc.onLLMDownloadProgress((status: any) => {
       setDownloadStatus((prev: any) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'filenameOnly'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `filenameOnly`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const filenameOnly = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const filenameOnly = String(status.filename || '').split(/[/\\]/).pop() || status.filename
 
         // 신규 다운로드 시작
@@ -87,12 +105,30 @@ export function useAppIpcBridge(onFileOpen?: FileOpenArgvHandler) {
 
   // 2. OS argv 파일 열기 이벤트 구독
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv() || !onFileOpen`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv() || !onFileOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv() || !onFileOpen) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsub'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsub`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsub = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const unsub = ipc.onFileOpenArgv((_event: any, file: any) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `file && file.filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (file && file.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (file && file.filePath) {
         onFileOpen(file).catch((e: any) => {
           console.error('[useAppIpcBridge] OS argv 파일 열기 처리 실패:', e)
@@ -113,4 +149,3 @@ export function useAppIpcBridge(onFileOpen?: FileOpenArgvHandler) {
   }, [])
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -48,23 +48,53 @@ const keyframeStyles = `
  * 상태(running, completed, pending)에 따라 적절한 아이콘과 애니메이션을 동적으로 결정합니다.
  */
 export function ThoughtNodeItem({ node, isLast: _isLast }: { node: ThoughtNode; isLast: boolean }) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isHeader'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isHeader`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isHeader = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isHeader = node.isHeader;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasChildren'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasChildren`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasChildren = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hasChildren = node.children && node.children.length > 0;
 
   let iconElement: React.ReactNode = null;
   
   // 헤더 노드일 경우: 내용에 따라 특정 Lucide 아이콘을 매핑합니다.
   if (isHeader) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'HeaderIcon'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `HeaderIcon`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const HeaderIcon = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let HeaderIcon = Brain;
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `node.title.includes('의도')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (node.title.includes('의도'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (node.title.includes('의도')) HeaderIcon = Terminal;
     else if (node.title.includes('플래닝') || node.title.includes('시스템')) HeaderIcon = Settings2;
     else if (node.title.includes('실시간') || node.title.includes('추론')) HeaderIcon = Sparkles;
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `node.status === 'running'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (node.status === 'running')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (node.status === 'running') {
       iconElement = <HeaderIcon size={14} style={{ color: 'var(--secondary)', animation: 'pulseGlow 1.5s infinite ease-in-out' }} />;
     } else {
@@ -185,4 +215,3 @@ export function ThoughtTreeView({ text, isStreaming }: { text: string; isStreami
   );
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -82,10 +82,21 @@ function isKnownTag(name: string): name is TagName {
  */
 function getCodeBlockSpans(text: string): Array<[number, number]> {
   const spans: Array<[number, number]> = []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fence'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fence`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fence = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const fence = /```[^\n]*\n[\s\S]*?```/g
   let m: RegExpExecArray | null
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `while ((m = fence.exec(text)) !== null) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   while ((m = fence.exec(text)) !== null) {
     spans.push([m.index, m.index + m[0].length])
   }
@@ -94,9 +105,20 @@ function getCodeBlockSpans(text: string): Array<[number, number]> {
 
 /** Returns true when position `idx` falls inside any of the code-block spans */
 function inCodeBlock(idx: number, spans: Array<[number, number]>): boolean {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const [s, e] of spans) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   for (const [s, e] of spans) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `idx >= s && idx < e`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (idx >= s && idx < e)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (idx >= s && idx < e) return true
   }
   return false
@@ -128,34 +150,99 @@ export interface SanitizeResult {
  * - Content inside fenced code blocks is left untouched.
  */
 export function sanitizeResponse(raw: string): SanitizeResult {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'codeSpans'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `codeSpans`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const codeSpans = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const codeSpans = getCodeBlockSpans(raw)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let finalContent = ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'thinkingContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `thinkingContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const thinkingContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let thinkingContent = ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hadInternalTags'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hadInternalTags`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hadInternalTags = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let hadInternalTags = false
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pos`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pos = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let pos = 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 'depth'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `depth`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const depth = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let depth = 0
   let openTagName: string | null = null
 
   COMPLETE_TAG_RE.lastIndex = 0
 
   let match: RegExpExecArray | null
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `while ((match = COMPLETE_TAG_RE.exec(raw)) !== null) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   while ((match = COMPLETE_TAG_RE.exec(raw)) !== null) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'matchStart'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `matchStart`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const matchStart = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const matchStart = match.index
-  // [RUN-TIME STATE / INVARIANT] - 변수 'matchEnd'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `matchEnd`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const matchEnd = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const matchEnd = matchStart + match[0].length
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isClosing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isClosing`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isClosing = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isClosing = match[0][1] === '/'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tagName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tagName`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tagName = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const tagName = match[2].toLowerCase()
 
     // Skip tags inside code blocks
@@ -163,7 +250,13 @@ export function sanitizeResponse(raw: string): SanitizeResult {
       continue
     }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isClosing`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isClosing)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!isClosing) {
       // Opening tag
       if (depth === 0) {
@@ -173,7 +266,13 @@ export function sanitizeResponse(raw: string): SanitizeResult {
         depth = 1
         pos = matchEnd
       } else {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `tagName === openTagName`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (tagName === openTagName)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (tagName === openTagName) depth++
         thinkingContent += raw.slice(pos, matchStart)
         pos = matchEnd
@@ -182,10 +281,22 @@ export function sanitizeResponse(raw: string): SanitizeResult {
       // Closing tag
       if (depth > 0 && isKnownTag(tagName)) {
         thinkingContent += raw.slice(pos, matchStart)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `tagName === openTagName`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (tagName === openTagName)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (tagName === openTagName) {
           depth = Math.max(0, depth - 1)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `depth === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (depth === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (depth === 0) {
             openTagName = null
           }
@@ -283,7 +394,13 @@ export class StreamingSanitizer {
   // -------------------------------------------------------------------------
 
   private _emit(text: string): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this._inThinking`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this._inThinking)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (this._inThinking) {
       this._thinkingBuffer += text
     } else {
@@ -292,7 +409,13 @@ export class StreamingSanitizer {
   }
 
   private _flushPendingBackticks(): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this._pendingBackticks > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this._pendingBackticks > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (this._pendingBackticks > 0) {
       this._emit('`'.repeat(this._pendingBackticks))
       this._pendingBackticks = 0
@@ -300,14 +423,37 @@ export class StreamingSanitizer {
   }
 
   private _process(): void {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'raw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `raw`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const raw = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const raw = this._rawAccum
-  // [RUN-TIME STATE / INVARIANT] - 변수 'i'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `i`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const i = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let i = this._processedUpTo
 
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `while (i < raw.length) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     while (i < raw.length) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ch`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ch = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const ch = raw[i]
 
       // ------------------------------------------------------------------
@@ -317,7 +463,13 @@ export class StreamingSanitizer {
         this._pendingBackticks++
         i++
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this._pendingBackticks === 3`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this._pendingBackticks === 3)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (this._pendingBackticks === 3) {
           this._emit('```')
           this._pendingBackticks = 0
@@ -347,43 +499,115 @@ export class StreamingSanitizer {
       // Potential tag start '<'
       // ------------------------------------------------------------------
       if (ch === '<') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'remaining'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `remaining`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const remaining = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const remaining = raw.slice(i)
 
         // Check for a complete known tag
         const tagMatch = /^(<\/?(thinking|reasoning|thought|though|think)\s*>)/i.exec(remaining)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `tagMatch`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (tagMatch)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (tagMatch) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fullTag'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fullTag`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fullTag = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const fullTag = tagMatch[0]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isClosing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isClosing`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isClosing = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const isClosing = fullTag[1] === '/'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tagName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tagName`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tagName = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const tagName = (tagMatch[2] ?? '').toLowerCase()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tagEnd'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tagEnd`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tagEnd = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const tagEnd = i + fullTag.length
 
           this._hadTags = true
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isClosing`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isClosing)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!isClosing) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this._depth === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this._depth === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (this._depth === 0) {
               this._inThinking = true
               this._openTagName = tagName
               this._depth = 1
             } else {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `tagName === this._openTagName`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (tagName === this._openTagName)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (tagName === this._openTagName) this._depth++
               // Tag markup consumed; content between chunks already went to _emit
             }
           } else {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this._depth > 0 && isKnownTag(tagName)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this._depth > 0 && isKnownTag(tagName))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (this._depth > 0 && isKnownTag(tagName)) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `tagName === this._openTagName`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (tagName === this._openTagName)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (tagName === this._openTagName) {
                 this._depth = Math.max(0, this._depth - 1)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this._depth === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this._depth === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                 if (this._depth === 0) {
                   this._inThinking = false
                   this._openTagName = null
@@ -425,15 +649,39 @@ export class StreamingSanitizer {
   private _flush(): void {
     this._flushPendingBackticks()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'raw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `raw`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const raw = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const raw = this._rawAccum
-  // [RUN-TIME STATE / INVARIANT] - 변수 'remaining'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `remaining`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const remaining = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const remaining = raw.slice(this._processedUpTo)
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `remaining.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (remaining.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (remaining.length === 0) return
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `this._inThinking`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (this._inThinking)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (this._inThinking) {
       // Inside an unclosed tag — all remaining text is thinking content
       this._thinkingBuffer += remaining
@@ -442,7 +690,13 @@ export class StreamingSanitizer {
       const tailResult = sanitizeResponse(remaining)
       this._safeOutput += tailResult.finalContent.trimStart()
       this._thinkingBuffer += tailResult.thinkingContent
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `tailResult.hadInternalTags`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (tailResult.hadInternalTags)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (tailResult.hadInternalTags) this._hadTags = true
     }
 
@@ -451,26 +705,53 @@ export class StreamingSanitizer {
 
   private _couldBePartialTag(text: string): boolean {
     const prefixes: string[] = []
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const name of TAG_NAMES) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     for (const name of TAG_NAMES) {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (let len = 1; len <= name.length; len++) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
       for (let len = 1; len <= name.length; len++) {
         prefixes.push(name.slice(0, len))
       }
     }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'uniquePrefixes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `uniquePrefixes`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const uniquePrefixes = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const uniquePrefixes = Array.from(new Set(prefixes))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prefixPattern'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prefixPattern`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prefixPattern = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const prefixPattern = new RegExp(
       `^<\\/?(?:${uniquePrefixes.join('|')})?$`,
       'i'
     )
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clean'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clean`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clean = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const clean = text.split('>')[0]
     return prefixPattern.test(clean)
   }
 }
 
 console.debug(MAX_PARTIAL_TAG_LEN);
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

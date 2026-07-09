@@ -21,14 +21,19 @@ import * as ipc from '../ipc/electronApiAdapter'
 import { MCPClientManager } from '../../utils/mcpClient'
 import { AgentEngine } from '../../utils/agentEngine'
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 export async function registerAgentTools(agent: AgentEngine, enabledPlugins: Record<string, boolean>) {
   // 플러그인 비활성화 처리
   if (!enabledPlugins.webSearch) {
     agent.unregisterTool('web_search')
     ipc.llmAddLog({ text: '웹검색 도구 OFF (마켓플레이스 플러그인 제한)', prefix: 'ReAct' })
   }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!enabledPlugins.pythonConsole`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!enabledPlugins.pythonConsole)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!enabledPlugins.pythonConsole) {
     agent.unregisterTool('run_python')
     ipc.llmAddLog({ text: '파이썬 콘솔 도구 OFF (마켓플레이스 플러그인 제한)', prefix: 'ReAct' })
@@ -45,7 +50,13 @@ export async function registerAgentTools(agent: AgentEngine, enabledPlugins: Rec
         required: ['stockCode']
       },
       execute: async (args: unknown) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const res = await MCPClientManager.callTool('mcp-wasm-gateway', 'query_stock_info', args)
         return { success: res.success, result: res.result, error: res.error }
       }
@@ -56,22 +67,45 @@ export async function registerAgentTools(agent: AgentEngine, enabledPlugins: Rec
 
   // 외부 MCP 도구 동적 주입
   try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'mcpTools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `mcpTools`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const mcpTools = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const mcpTools = await MCPClientManager.fetchAllTools()
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const tool of mcpTools) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     for (const tool of mcpTools) {
       agent.registerTool({
         name: tool.name,
         description: tool.description,
         parameters: tool.inputSchema as any,
         execute: async (args: unknown) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const res = await MCPClientManager.callTool(tool.serverId, tool.name, args)
           return { success: res.success, result: res.result, error: res.error }
         }
       })
     }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `mcpTools.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (mcpTools.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (mcpTools.length > 0) {
       ipc.llmAddLog({ text: `MCP 도구 ${mcpTools.length}개 연동 완료.`, prefix: 'ReAct' })
     }
@@ -80,4 +114,3 @@ export async function registerAgentTools(agent: AgentEngine, enabledPlugins: Rec
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

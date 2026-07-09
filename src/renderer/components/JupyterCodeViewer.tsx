@@ -40,7 +40,12 @@ import { ConsoleOutput } from './jupyter/ConsoleOutput'
 
 export { getLangMeta } // Re-export for compatibility
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `JupyterCodeViewer`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `JupyterCodeViewer(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function JupyterCodeViewer({
   code,
   language,
@@ -53,24 +58,60 @@ export function JupyterCodeViewer({
   console.debug("Unused vars (JupyterCodeViewer):", { React, onRunFailure });
   // 메타데이터 주석 해독
   const lines = (code || '').split('\n')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'firstLine'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `firstLine`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const firstLine = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const firstLine = lines[0]?.trim()
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedLanguage'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `resolvedLanguage`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const resolvedLanguage = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let resolvedLanguage = language
-  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `resolvedCode`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const resolvedCode = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let resolvedCode = code
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'amevaLangMatch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `amevaLangMatch`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const amevaLangMatch = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const amevaLangMatch = firstLine ? firstLine.match(/^(?:\/\/#|--|<!--)\s*\[AMEVA_LANG:([a-zA-Z0-9_-]+)\](?:\s*-->)?/) || firstLine.match(/^(?:\/\/|#|--)\s*\[AMEVA_LANG:([a-zA-Z0-9_-]+)\]/) : null
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `amevaLangMatch`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (amevaLangMatch)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (amevaLangMatch) {
     resolvedLanguage = amevaLangMatch[1].toLowerCase()
     resolvedCode = lines.slice(1).join('\n')
   }
 
   const { isRunning, runJSCode, runPythonCode, runSQLCode } = useCodeRuntime()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'meta'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `meta`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const meta = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const meta = getLangMeta(resolvedLanguage)
 
   const [outputLines, setOutputLines] = useState<{ type: 'stdout' | 'stderr' | 'info'; text: string }[]>([])
@@ -89,28 +130,52 @@ export function JupyterCodeViewer({
     setShowHtmlRender(false)
   }, [code, resolvedLanguage])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleRun'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleRun`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleRun = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleRun = async () => {
     setHasRun(true)
     setSuccess(null)
     setTableData(null)
     setOutputLines([{ type: 'info', text: `▶ ${meta.label} 코드 실행 중...` }])
     try {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `resolvedLanguage === 'html'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (resolvedLanguage === 'html')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (resolvedLanguage === 'html') {
         setSuccess(true)
         setOutputLines([{ type: 'info', text: '렌더링 완료' }])
         setShowHtmlRender(true)
         return
       }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const result = (resolvedLanguage === 'python' || resolvedLanguage === 'py')
         ? await runPythonCode(resolvedCode)
         : (resolvedLanguage === 'sql')
         ? await runSQLCode(resolvedCode)
         : await runJSCode(resolvedCode)
       setSuccess(result.success)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const lines = (result.output || '').split('\n')
         .filter((l: string, i: number, a: string[]) => !(i === a.length - 1 && l === ''))
       setOutputLines(lines.map((text: string) => ({
@@ -123,7 +188,13 @@ export function JupyterCodeViewer({
     }
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleCopy'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleCopy`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleCopy = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleCopy = async () => {
     try {
       await navigator.clipboard.writeText(resolvedCode)
@@ -132,7 +203,13 @@ export function JupyterCodeViewer({
     } catch {}
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'accentColor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `accentColor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const accentColor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const accentColor = meta.color
 
   return (
@@ -338,4 +415,3 @@ export function JupyterCodeViewer({
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

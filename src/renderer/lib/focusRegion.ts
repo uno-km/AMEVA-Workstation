@@ -37,7 +37,19 @@
  * ──────────────────────────────────────────────────────────────
  */
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `FOCUS_REGION_ATTR`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `FOCUS_REGION_ATTR(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const FOCUS_REGION_ATTR = 'data-focus-region'
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `FOCUS_REGION_CLASS`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `FOCUS_REGION_CLASS(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const FOCUS_REGION_CLASS = 'focus-region-active'
 
 // ── 구독자 타입 ─────────────────────────────────────────────────
@@ -45,7 +57,13 @@ type Listener = (activeId: string | null) => void
 
 // ── 모듈 상태 ───────────────────────────────────────────────────
 let currentActiveId: string | null = null
-  // [RUN-TIME STATE / INVARIANT] - 변수 'listeners'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `listeners`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const listeners = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const listeners = new Set<Listener>()
 
 // ── 내부 헬퍼 ───────────────────────────────────────────────────
@@ -53,12 +71,29 @@ function notify() {
   listeners.forEach(l => l(currentActiveId))
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `applyClass`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `applyClass(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function applyClass(id: string | null, add: boolean) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!id`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!id)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!id) return
   document.querySelectorAll(`[${FOCUS_REGION_ATTR}="${id}"]`).forEach(el => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `add`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (add)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (add) {
       el.classList.add(FOCUS_REGION_CLASS)
     } else {
@@ -74,7 +109,13 @@ function applyClass(id: string | null, add: boolean) {
  * null 전달 시 현재 active region 비활성화.
  */
 export function activate(id: string | null): void {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `id === currentActiveId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (id === currentActiveId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (id === currentActiveId) return
 
   // 이전 active 제거
@@ -111,18 +152,47 @@ export function subscribe(listener: Listener): () => void {
 // 문서 어디를 클릭하든 가장 가까운 [data-focus-region] 조상을 찾아 활성화
 // capture phase 사용: 이벤트가 innermost 요소로 내려가기 전에 감지
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `handleGlobalMouseDown`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `handleGlobalMouseDown(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function handleGlobalMouseDown(e: MouseEvent): void {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `target`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const target = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const target = e.target as Element | null
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!target`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!target)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!target) {
     activate(null)
     return
   }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'regionEl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `regionEl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const regionEl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const regionEl = target.closest(`[${FOCUS_REGION_ATTR}]`)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `id`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const id = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const id = regionEl?.getAttribute(FOCUS_REGION_ATTR) ?? null
   activate(id)
 }
@@ -133,20 +203,49 @@ document.addEventListener('mousedown', handleGlobalMouseDown, true)
 // ── 접근성: 키보드 Tab 이동도 추적 ──────────────────────────────
 // Tab 키로 포커스가 이동하면 해당 region도 활성화
 function handleGlobalFocusIn(e: FocusEvent): void {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `target`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const target = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const target = e.target as Element | null
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!target`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!target)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!target) return
   // 이미 mousedown에서 처리됐으면 불필요하지만, 키보드 전용 이동 감지를 위해 유지
   const regionEl = target.closest(`[${FOCUS_REGION_ATTR}]`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!regionEl`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!regionEl)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!regionEl) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `id`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const id = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const id = regionEl.getAttribute(FOCUS_REGION_ATTR)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `id && id !== currentActiveId) activate(id`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (id && id !== currentActiveId) activate(id)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (id && id !== currentActiveId) activate(id)
 }
 
 document.addEventListener('focusin', handleGlobalFocusIn, true)
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

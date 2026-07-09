@@ -200,7 +200,13 @@ export const useProcessStore = create<ProcessState>((set) => ({
    */
   adjustEditorZoom: (delta) =>
     set((state) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `next`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const next = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const next = Math.min(2.5, Math.max(0.4, Math.round((state.editorZoom + delta) * 10) / 10))
       return { editorZoom: next }
     }),
@@ -214,10 +220,15 @@ export const useProcessStore = create<ProcessState>((set) => ({
    */
   adjustBrowserZoom: (delta) =>
     set((state) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `next`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const next = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const next = Math.min(2.5, Math.max(0.4, Math.round((state.browserZoom + delta) * 10) / 10))
       return { browserZoom: next }
     })
 }))
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

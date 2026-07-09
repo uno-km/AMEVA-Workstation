@@ -61,7 +61,13 @@ export class MCPProcessManager {
         // 프로세스 생성 (stdin/stdout 파이프 바인딩, stderr는 메인 프로세스로 위임)
         const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] })
         
-  // [RUN-TIME STATE / INVARIANT] - 변수 'state'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `state`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const state = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const state = {
           process: proc,
           stdoutBuffer: '',
@@ -76,20 +82,50 @@ export class MCPProcessManager {
           
           // 개행 기호 단위로 계속 슬라이싱
           while ((newlineIndex = state.stdoutBuffer.indexOf('\n')) !== -1) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawLine'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawLine`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawLine = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const rawLine = state.stdoutBuffer.slice(0, newlineIndex).trim()
             state.stdoutBuffer = state.stdoutBuffer.slice(newlineIndex + 1)
             
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!rawLine`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!rawLine)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (!rawLine) continue
             try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parsed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const parsed = JSON.parse(rawLine)
               // JSON-RPC id가 존재 시 대기 중인 프라미스 매핑 resolve 처리 후 맵 제거
               if (parsed.id !== undefined) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'resolver'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `resolver`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const resolver = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const resolver = state.pendingResolvers.get(String(parsed.id))
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `resolver`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (resolver)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                 if (resolver) {
                   resolver(parsed)
                   state.pendingResolvers.delete(String(parsed.id))
@@ -129,7 +165,13 @@ export class MCPProcessManager {
    */
   static callServer(serverId: string, request: any): Promise<any> {
     return new Promise((resolve) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'state'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `state`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const state = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const state = this.processes.get(serverId)
       // 쓰기 파이프가 차단되었거나 비활성 시 에러 반환
       if (!state || !state.process.stdin || !state.process.stdin.writable) {
@@ -141,13 +183,25 @@ export class MCPProcessManager {
         return
       }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'reqId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `reqId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const reqId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const reqId = String(request.id)
       state.pendingResolvers.set(reqId, resolve)
 
       // 15초 제한 시간 경과 시 만료 가드
       const timeout = setTimeout(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `state.pendingResolvers.has(reqId)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (state.pendingResolvers.has(reqId))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (state.pendingResolvers.has(reqId)) {
           state.pendingResolvers.delete(reqId)
           resolve({
@@ -178,9 +232,21 @@ export class MCPProcessManager {
    * - Rationale: 윈도우 OS의 하위 트리 좀비 상주를 막기 위해 taskkill로 자식의 자식까지 강제 소멸시킨다.
    */
   static killServer(serverId: string) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'state'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `state`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const state = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const state = this.processes.get(serverId)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `state`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (state)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (state) {
       try {
         // 윈도우 플랫폼 트리 킬 계약 준수
@@ -200,11 +266,15 @@ export class MCPProcessManager {
    */
   static killAll() {
     console.log('[MCP-Manager] 모든 MCP 서버 프로세스 종료 중...')
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const serverId of this.processes.keys()) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     for (const serverId of this.processes.keys()) {
       this.killServer(serverId)
     }
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

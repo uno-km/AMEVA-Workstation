@@ -103,15 +103,33 @@ export function MessageCodeBlock({ lang, code, onInsert }: MessageCodeBlockProps
    * 부모 컴포넌트에서 주입된 onInsert 콜백을 호출하여 이 코드를 새로운 Jupyter 블록 등으로 본문에 삽입합니다.
    */
   const handleInsert = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `onInsert`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (onInsert)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (onInsert) {
       onInsert(code, 'insert', undefined, true, lang);
     }
   };
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'meta'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `meta`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const meta = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const meta = getChatLangMeta(lang);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'accentColor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `accentColor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const accentColor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const accentColor = meta.color;
 
   return (
@@ -204,17 +222,41 @@ export function renderMessageContent(
     .replace(/\[EDIT_SUGGESTION:[^\]]*\]/gi, '')
     .trim();
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!cleaned`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!cleaned)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!cleaned) return null;
 
   // 🦾 [MCP-Visual-WOW] "✔ **MCP 데이터 연동 완료**" 패턴 존재 시 시각적으로 돋보이는 초록색 연동 알림 카드를 그립니다.
   // AI가 시스템(호스트/터미널/DB)과 연동하여 특수 동작을 수행했을 때 사용자에게 명확한 피드백을 주기 위함입니다.
   if (cleaned.includes("✔ **MCP 데이터 연동 완료**") || cleaned.includes("✔ MCP 데이터 연동 완료")) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const lines = cleaned.split('\n');
-  // [RUN-TIME STATE / INVARIANT] - 변수 'title'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `title`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const title = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const title = "✔ MCP 데이터 연동 완료";
-  // [RUN-TIME STATE / INVARIANT] - 변수 'description'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `description`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const description = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const description = lines.filter(l => !l.includes("✔")).join('\n').trim();
 
 
@@ -262,7 +304,13 @@ export function renderMessageContent(
   return parts.map((part, idx) => {
     // 짝수 번째 인덱스는 코드 블록 바깥의 일반 텍스트 영역을 의미합니다.
     if (idx % 2 === 0) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!part`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!part)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!part) return null;
       return <span key={idx}>{part}</span>;
     }
@@ -270,14 +318,38 @@ export function renderMessageContent(
     // 홀수 번째 인덱스는 fenced code block 내부 영역을 의미합니다.
     // 첫 번째 개행 문자를 찾아 언어 식별자(lang)와 실제 코드 본문(code)을 분리합니다.
     const firstLineEnd = part.indexOf('\n');
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lang`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lang = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let lang = 'code';
-  // [RUN-TIME STATE / INVARIANT] - 변수 'code'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `code`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const code = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let code = part;
     
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `firstLineEnd !== -1`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (firstLineEnd !== -1)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (firstLineEnd !== -1) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'maybeLang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `maybeLang`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const maybeLang = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const maybeLang = part.substring(0, firstLineEnd).trim();
       // 언어 식별자가 비정상적으로 길거나, 띄어쓰기/괄호가 포함된 경우(일반 텍스트 오인)를 방어합니다.
       if (maybeLang && maybeLang.length < 15 && !maybeLang.includes(' ') && !maybeLang.includes('(')) {
@@ -300,4 +372,3 @@ export function renderMessageContent(
   });
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

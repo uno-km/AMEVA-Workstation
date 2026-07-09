@@ -36,9 +36,21 @@ import type { DocumentSnapshot } from '../../shared/types'
 
 // IndexedDB 저장소 스펙 설정 상수
 const DB_NAME = 'AMEVA_Markdown_Editor_DB'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'STORE_NAME'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `STORE_NAME`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const STORE_NAME = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const STORE_NAME = 'snapshots'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'DB_VERSION'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `DB_VERSION`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const DB_VERSION = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const DB_VERSION = 1
 
 /**
@@ -46,12 +58,30 @@ const DB_VERSION = 1
  * - Rationale: ReadableStream과 CompressionStream('gzip')을 체인 연동하여 딜레이 제어로 평문 텍스트를 압축 바이트화한다.
  */
 async function compressText(text: string): Promise<Uint8Array> {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'encoder'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `encoder`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const encoder = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const encoder = new TextEncoder()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawBytes'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawBytes`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawBytes = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const rawBytes = encoder.encode(text)
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'stream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `stream`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const stream = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(rawBytes)
@@ -59,11 +89,29 @@ async function compressText(text: string): Promise<Uint8Array> {
     }
   })
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'compressionStream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `compressionStream`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const compressionStream = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const compressionStream = stream.pipeThrough(new CompressionStream('gzip'))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'response'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `response`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const response = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const response = new Response(compressionStream)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'compressedBuffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `compressedBuffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const compressedBuffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const compressedBuffer = await response.arrayBuffer()
   return new Uint8Array(compressedBuffer)
 }
@@ -73,7 +121,13 @@ async function compressText(text: string): Promise<Uint8Array> {
  * - Rationale: ReadableStream과 DecompressionStream('gzip')을 연동하여 압축 바이트를 UTF-8 문자열로 디코딩한다.
  */
 async function decompressText(compressedBytes: Uint8Array): Promise<string> {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'stream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `stream`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const stream = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(compressedBytes)
@@ -81,11 +135,29 @@ async function decompressText(compressedBytes: Uint8Array): Promise<string> {
     }
   })
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'decompressionStream'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `decompressionStream`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const decompressionStream = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const decompressionStream = stream.pipeThrough(new DecompressionStream('gzip'))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'response'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `response`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const response = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const response = new Response(decompressionStream)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'decompressedBuffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `decompressedBuffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const decompressedBuffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const decompressedBuffer = await response.arrayBuffer()
   return new TextDecoder().decode(decompressedBuffer)
 }
@@ -96,18 +168,42 @@ async function decompressText(compressedBytes: Uint8Array): Promise<string> {
  */
 function initDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `request`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const request = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const request = indexedDB.open(DB_NAME, DB_VERSION)
 
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve(request.result)
 
     request.onupgradeneeded = (_event) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'db'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `db`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const db = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const db = request.result
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!db.objectStoreNames.contains(STORE_NAME)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!db.objectStoreNames.contains(STORE_NAME))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!db.objectStoreNames.contains(STORE_NAME)) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `store`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const store = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
         store.createIndex('documentId', 'documentId', { unique: false })
         store.createIndex('timestamp', 'timestamp', { unique: false })
@@ -161,15 +257,45 @@ export function useHistory(documentId: string) {
    */
   const fetchSnapshots = useCallback(
     async (database: IDBDatabase | null = db) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!database`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!database)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!database) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'transaction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `transaction`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const transaction = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const transaction = database.transaction(STORE_NAME, 'readonly')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `store`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const store = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const store = transaction.objectStore(STORE_NAME)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'index'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `index`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const index = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const index = store.index('documentId')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `request`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const request = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const request = index.openCursor(IDBKeyRange.only(documentId), 'prev')
 
       const rawList: CompressedSnapshot[] = []
@@ -177,9 +303,21 @@ export function useHistory(documentId: string) {
       // 1) 동기 수집 Promise 가동 (비동기 await 차단 구역)
       const gatherPromise = new Promise<CompressedSnapshot[]>((resolve, reject) => {
         request.onsuccess = () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cursor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cursor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cursor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const cursor = request.result
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `cursor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (cursor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (cursor) {
             rawList.push(cursor.value as CompressedSnapshot)
             cursor.continue()
@@ -193,11 +331,23 @@ export function useHistory(documentId: string) {
       // 2) 트랜잭션 영역을 빠져나온 후 압축 해제 병렬 배치 실행
       const compressed = await gatherPromise
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'decompressed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `decompressed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const decompressed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const decompressed = await Promise.all(
         compressed.map(async (val) => {
           try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'content'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `content`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const content = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const content = await decompressText(val.compressedContent)
             return { id: val.id, timestamp: val.timestamp, title: val.title, content } as DocumentSnapshot
           } catch (err) {
@@ -219,12 +369,24 @@ export function useHistory(documentId: string) {
    */
   const createSnapshot = useCallback(
     async (title: string, content: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!db`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!db)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!db) return
 
       // [SEC-W-024] 저장 공격 및 가상 디스크 폭발 방지 20MB 가드
       const MAX_SNAPSHOT_BYTES = 20 * 1024 * 1024
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `new Blob([content]).size > MAX_SNAPSHOT_BYTES`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (new Blob([content]).size > MAX_SNAPSHOT_BYTES)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (new Blob([content]).size > MAX_SNAPSHOT_BYTES) {
         console.warn('[Snapshot] 콘텐츠가 너무 커서 스냅샷을 저장할 수 없습니다 (최대 20MB).')
         return
@@ -244,11 +406,29 @@ export function useHistory(documentId: string) {
         }
 
         return new Promise<void>((resolve, reject) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'transaction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `transaction`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const transaction = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const transaction = db.transaction(STORE_NAME, 'readwrite')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `store`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const store = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const store = transaction.objectStore(STORE_NAME)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `request`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const request = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const request = store.add(snapshot)
 
           request.onsuccess = () => {
@@ -270,14 +450,38 @@ export function useHistory(documentId: string) {
    */
   const deleteSnapshot = useCallback(
     async (id: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!db`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!db)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!db) return
       return new Promise<void>((resolve, reject) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'transaction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `transaction`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const transaction = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const transaction = db.transaction(STORE_NAME, 'readwrite')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'store'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `store`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const store = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const store = transaction.objectStore(STORE_NAME)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'request'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `request`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const request = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const request = store.delete(id)
 
         request.onsuccess = () => {
@@ -295,28 +499,75 @@ export function useHistory(documentId: string) {
    * - Rationale: 이전 복원 텍스트와 현 버퍼 문자열 간의 줄단위 변경(added, removed, unchanged) 구조 배열을 반환한다.
    */
   const getLineDiff = (oldText: string, newText: string) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'oldLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `oldLines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const oldLines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const oldLines = oldText.split('\n')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newLines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newLines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const newLines = newText.split('\n')
     const diffs: { type: 'added' | 'removed' | 'unchanged'; value: string }[] = []
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'i'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `i`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const i = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let i = 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 'j'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `j`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const j = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let j = 0
 
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `while (i < oldLines.length || j < newLines.length) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
     while (i < oldLines.length || j < newLines.length) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `i < oldLines.length && j < newLines.length`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (i < oldLines.length && j < newLines.length)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (i < oldLines.length && j < newLines.length) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `oldLines[i] === newLines[j]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (oldLines[i] === newLines[j])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (oldLines[i] === newLines[j]) {
           diffs.push({ type: 'unchanged', value: oldLines[i] })
           i++
           j++
         } else {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `oldLines[i + 1] === newLines[j]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (oldLines[i + 1] === newLines[j])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (oldLines[i + 1] === newLines[j]) {
             diffs.push({ type: 'removed', value: oldLines[i] })
             i++
@@ -350,4 +601,3 @@ export function useHistory(documentId: string) {
     fetchSnapshots: () => fetchSnapshots(db),
   }
 }
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

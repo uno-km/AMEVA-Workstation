@@ -20,16 +20,45 @@
 import { useState } from 'react'
 import { RuntimeState } from './runtimeState'
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `getOrCreateJSWorker`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `getOrCreateJSWorker(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function getOrCreateJSWorker() {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `RuntimeState.persistentWorker`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (RuntimeState.persistentWorker)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (RuntimeState.persistentWorker) return RuntimeState.persistentWorker
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'workerBlobCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `workerBlobCode`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const workerBlobCode = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const workerBlobCode = `
-  // [RUN-TIME STATE / INVARIANT] - 변수 'logs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `logs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const logs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const logs = [];
-  // [RUN-TIME STATE / INVARIANT] - 변수 'customConsole'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `customConsole`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const customConsole = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const customConsole = {
       log: function(...args) {
         logs.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' '));
@@ -54,12 +83,24 @@ function getOrCreateJSWorker() {
     const BLOCKED_PATTERNS = ['fetch(', 'XMLHttpRequest', 'importScripts', 'WebSocket', 'navigator.sendBeacon'];
 
     self.onmessage = function(e) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'codeToRun'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `codeToRun`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const codeToRun = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       let codeToRun = e.data || '';
 
       // 금지 패턴 사전 검사
       for (const pattern of BLOCKED_PATTERNS) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `codeToRun.includes(pattern)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (codeToRun.includes(pattern))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (codeToRun.includes(pattern)) {
           postMessage({ success: false, logs: ['[SECURITY] 네트워크 접근 코드는 실행이 차단되었습니다: ' + pattern] });
           return;
@@ -75,7 +116,13 @@ function getOrCreateJSWorker() {
       try {
         // eval을 사용하여 워커 전역 네임스페이스 상에서 코드를 순차 누적 실행 (변수 상태 완벽 세션 보존)
         const result = self.eval(codeToRun);
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `result !== undefined`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (result !== undefined)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (result !== undefined) {
           logs.push('→ ' + (typeof result === 'object' ? JSON.stringify(result, null, 2) : String(result)));
         }
@@ -86,24 +133,53 @@ function getOrCreateJSWorker() {
     };
   `
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blob'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blob`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blob = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const blob = new Blob([workerBlobCode], { type: 'application/javascript' })
   RuntimeState.persistentWorker = new Worker(URL.createObjectURL(blob))
   return RuntimeState.persistentWorker
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `useJSRuntime`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `useJSRuntime(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function useJSRuntime() {
   const [isRunning, setIsRunning] = useState(false)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'runJSCode'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `runJSCode`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const runJSCode = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const runJSCode = (code: string): Promise<{ success: boolean; output: string; tableData?: any }> => {
     return new Promise((resolve) => {
       setIsRunning(true)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'worker'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `worker`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const worker = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const worker = getOrCreateJSWorker()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'timeoutId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `timeoutId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const timeoutId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const timeoutId = setTimeout(() => {
         worker.terminate()
         RuntimeState.persistentWorker = null
@@ -134,4 +210,3 @@ export function useJSRuntime() {
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

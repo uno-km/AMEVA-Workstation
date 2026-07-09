@@ -56,14 +56,38 @@ export function buildSystemPrompt(params: SystemPromptBuildParams): string {
 
   // 현재 시스템 날짜 정보 주입 (소형 모델의 시간 왜곡 방지)
   const sysDate = new Date()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sysYear'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sysYear`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sysYear = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const sysYear = sysDate.getFullYear()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sysMonth'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sysMonth`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sysMonth = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const sysMonth = sysDate.getMonth() + 1
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sysDay'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sysDay`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sysDay = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const sysDay = sysDate.getDate()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prompt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prompt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let prompt =
     `${baseSystemPrompt}\n\n` +
     `[System Time Info]\n` +
@@ -73,7 +97,13 @@ export function buildSystemPrompt(params: SystemPromptBuildParams): string {
 
   // 빈 에디터 대응 지침 추가
   const isContextEmpty = !context || context.trim() === '' || context.trim() === '[]'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isContextEmpty`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isContextEmpty)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isContextEmpty) {
     prompt =
       `[⚠️ 초강력 절대 지침: 빈 에디터 대응 정책]\n` +
@@ -85,7 +115,13 @@ export function buildSystemPrompt(params: SystemPromptBuildParams): string {
 
   // 태깅된 블록 컨텍스트 주입
   if (taggedBlocks && taggedBlocks.length > 0) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'referencedContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `referencedContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const referencedContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const referencedContent = taggedBlocks
       .map((b, i) => `[참조 블록 ${i + 1}] (ID: ${b.id}): "${b.text}"`)
       .join('\n')
@@ -145,4 +181,3 @@ export function buildSystemPrompt(params: SystemPromptBuildParams): string {
   return prompt
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

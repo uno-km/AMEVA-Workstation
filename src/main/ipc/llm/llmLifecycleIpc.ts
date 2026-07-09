@@ -27,7 +27,13 @@ import { isFreeModeRequested, getProPlanMemory, setProPlanMemory } from '../../s
  */
 export function registerLlmLifecycleIpc(): void {
   ipcMain.on('llm:add-log', (_event, payload: { text: string; prefix?: string }) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prefix'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prefix`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prefix = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const prefix = payload.prefix || 'SYS';
     LLMProcessManager.broadcastLog(prefix, payload.text + (!payload.text.endsWith('\n') ? '\n' : ''));
   })
@@ -43,23 +49,53 @@ export function registerLlmLifecycleIpc(): void {
     if (LLMProcessManager.isStarting) {
       return { status: 'loading model', running: true }
     }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!LLMProcessManager.activeServerProcess`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!LLMProcessManager.activeServerProcess)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!LLMProcessManager.activeServerProcess) {
       return { status: 'offline', running: false }
     }
     return new Promise<{ status: string; running: boolean }>((resolve) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'httpM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `httpM`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const httpM = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const httpM = require('http')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hReq'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hReq`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hReq = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const hReq = httpM.request(
         { hostname: '127.0.0.1', port: LLMProcessManager.serverPort, path: '/health', method: 'GET', timeout: 5000 },
         (hRes: any) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'body'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `body`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const body = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           let body = ''
           hRes.on('data', (d: Buffer) => { body += d.toString() })
           hRes.on('end', () => {
             try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'j'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `j`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const j = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const j = JSON.parse(body)
               resolve({ status: j.status || 'ok', running: true })
             } catch {
@@ -81,36 +117,108 @@ export function registerLlmLifecycleIpc(): void {
   // 🤖 [llm:restart] 서버 강제 재기동 웜업 핸들러
   ipcMain.handle('llm:restart', async (_event) => {
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'llamaPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `llamaPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const llamaPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const llamaPath = LLMProcessManager.findLlamaCli()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!llamaPath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!llamaPath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!llamaPath) return { success: false, error: 'llama.cpp 엔진 경로를 찾을 수 없습니다.' }
       
-  // [RUN-TIME STATE / INVARIANT] - 변수 'modelPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `modelPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const modelPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       let modelPath = 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const fs = require('fs')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!fs.existsSync(modelPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!fs.existsSync(modelPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!fs.existsSync(modelPath)) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'llmDir'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `llmDir`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const llmDir = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const llmDir = 'C:\\ameva\\models\\llm'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `fs.existsSync(llmDir)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (fs.existsSync(llmDir))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (fs.existsSync(llmDir)) {
           try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'files'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `files`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const files = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const files = fs.readdirSync(llmDir)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'firstGguf'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `firstGguf`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const firstGguf = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `firstGguf) modelPath = join(llmDir, firstGguf`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (firstGguf) modelPath = join(llmDir, firstGguf)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (firstGguf) modelPath = join(llmDir, firstGguf)
           } catch {}
         }
       }
       
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf)을 찾을 수 없습니다.' }
       
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `LLMProcessManager.activeServerProcess`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (LLMProcessManager.activeServerProcess)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (LLMProcessManager.activeServerProcess) {
         try { LLMProcessManager.activeServerProcess.kill('SIGKILL') } catch {}
         LLMProcessManager.activeServerProcess = null
@@ -119,7 +227,13 @@ export function registerLlmLifecycleIpc(): void {
       await LLMProcessManager.asyncCleanupOrphanedProcesses()
       
       LLMProcessManager.logToRenderer('[System] 수동 재구동 요청 수신. llama-server 웜업 재기동...\n')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ok'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ok`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ok = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
       return { success: ok, error: ok ? undefined : '재기동 실패 (CPU 폴백 포함)' }
     } catch (err: any) {
@@ -129,25 +243,61 @@ export function registerLlmLifecycleIpc(): void {
 
   ipcMain.handle('llm:start', async (_event, modelPath: string) => {
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'llamaPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `llamaPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const llamaPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const llamaPath = LLMProcessManager.findLlamaCli()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!llamaPath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!llamaPath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!llamaPath) return { success: false, error: 'llama.cpp 엔진 경로를 찾을 수 없습니다.' }
       
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const fs = require('fs')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!fs.existsSync(modelPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!fs.existsSync(modelPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!fs.existsSync(modelPath)) {
         return { success: false, error: `모델 파일을 찾을 수 없습니다: ${modelPath}` }
       }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `LLMProcessManager.activeServerProcess`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (LLMProcessManager.activeServerProcess)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (LLMProcessManager.activeServerProcess) {
         return { success: true }
       }
 
       LLMProcessManager.logToRenderer(`[System] 로컬 AI 엔진 수동 기동 요청 수신 (모델: ${modelPath})\n`)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ok'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ok`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ok = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
       return { success: ok, error: ok ? undefined : '엔진 기동 실패' }
     } catch (err: any) {
@@ -158,7 +308,13 @@ export function registerLlmLifecycleIpc(): void {
   ipcMain.handle('llm:stop', async () => {
     try {
       LLMProcessManager.logToRenderer('[System] 로컬 AI 엔진 수동 정지 요청 수신\n')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `LLMProcessManager.activeServerProcess`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (LLMProcessManager.activeServerProcess)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (LLMProcessManager.activeServerProcess) {
         try { LLMProcessManager.activeServerProcess.kill('SIGKILL') } catch {}
         LLMProcessManager.activeServerProcess = null
@@ -180,7 +336,13 @@ export function registerLlmLifecycleIpc(): void {
   })
 
   ipcMain.handle('plan:set-status', (_event, isPro: boolean) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isFreeModeRequested`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isFreeModeRequested)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isFreeModeRequested) {
       setProPlanMemory(false)
       return { success: false, error: '무료 데모 모드에서는 플랜을 변경할 수 없습니다.' }
@@ -192,26 +354,68 @@ export function registerLlmLifecycleIpc(): void {
   ipcMain.handle('llm:getGpuName', async () => {
     try {
       const info: any = await app.getGPUInfo('basic')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'devices'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `devices`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const devices = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const devices = info?.gpuDevice || []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'activeDevice'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `activeDevice`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const activeDevice = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const activeDevice = devices.find((d: any) => d.active) || devices[0]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `activeDevice && activeDevice.deviceString`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (activeDevice && activeDevice.deviceString)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (activeDevice && activeDevice.deviceString) {
         return activeDevice.deviceString
       }
     } catch (e) {
     }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `process.platform === 'win32'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (process.platform === 'win32')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (process.platform === 'win32') {
       try {
         const { execSync } = require('child_process')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'out'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `out`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const out = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const out = execSync('wmic path win32_VideoController get name', { encoding: 'utf8' })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const lines = out.split(/\r?\n/).map((l: string) => l.trim()).filter((l: string) => l && l !== "Name")
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `lines.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (lines.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (lines.length > 0) {
           return lines.join(', ')
         }
@@ -221,4 +425,3 @@ export function registerLlmLifecycleIpc(): void {
   })
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

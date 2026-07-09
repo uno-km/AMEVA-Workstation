@@ -31,16 +31,38 @@ export const isFreeModeRequested: boolean =
 // 메인 프로세스 측의 실제 플랜 상태 (데모 모드 시 항상 false 강제)
 let isProPlanMemory: boolean = !isFreeModeRequested
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `getProPlanMemory`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `getProPlanMemory(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function getProPlanMemory(): boolean {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isFreeModeRequested`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isFreeModeRequested)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isFreeModeRequested) return false
   return isProPlanMemory
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `setProPlanMemory`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `setProPlanMemory(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function setProPlanMemory(isPro: boolean): boolean {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isFreeModeRequested`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isFreeModeRequested)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isFreeModeRequested) {
     isProPlanMemory = false
   } else {
@@ -49,4 +71,3 @@ export function setProPlanMemory(isPro: boolean): boolean {
   return isProPlanMemory
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

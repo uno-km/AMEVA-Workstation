@@ -44,7 +44,13 @@ const CODING_KEYWORDS: string[] = [
  * @returns true if the message is a coding-related request, false otherwise
  */
 export function detectCodingRequest(userMessage: string): boolean {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanPrompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cleanPrompt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cleanPrompt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const cleanPrompt = userMessage.toLowerCase().trim()
   return CODING_KEYWORDS.some(k => cleanPrompt.includes(k))
 }
@@ -58,14 +64,25 @@ export function detectCodingRequest(userMessage: string): boolean {
  * @returns true if the message requires agent execution, false otherwise
  */
 export function detectAgentRequest(userMessage: string): boolean {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'agentKeywords'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `agentKeywords`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const agentKeywords = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const agentKeywords = [
     '검색', '찾아줘', '구글', '네이버', '실행', '파이썬', '계산',
     'search', 'run', '주가', '주식', '시세', 'stock'
   ]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanPrompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cleanPrompt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cleanPrompt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const cleanPrompt = userMessage.toLowerCase().trim()
   return agentKeywords.some(k => cleanPrompt.includes(k))
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

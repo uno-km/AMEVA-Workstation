@@ -25,29 +25,69 @@ export interface AgentStockCardResult {
   insertSuggestions: InsertSuggestion[]
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `parseStockDataAndGenerateCard`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `parseStockDataAndGenerateCard(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function parseStockDataAndGenerateCard(
   accumulatedLogs: string,
   finalAnswer: string,
   taggedBlocks?: { id: string; text: string }[]
 ): AgentStockCardResult {
   const insertSuggestions: InsertSuggestion[] = []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cleanContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cleanContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let cleanContent = finalAnswer
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'stockLog'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `stockLog`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const stockLog = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const stockLog = `${accumulatedLogs} ${finalAnswer}`
   let stockData: any = null
-  // [RUN-TIME STATE / INVARIANT] - 변수 'jsonRegex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `jsonRegex`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const jsonRegex = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const jsonRegex = /({[\s\S]*?})/g
   let match: RegExpExecArray | null
   
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `while ((match = jsonRegex.exec(stockLog)) !== null) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   while ((match = jsonRegex.exec(stockLog)) !== null) {
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parsed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const parsed = JSON.parse(match[1].trim())
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `parsed && parsed.name && parsed.price`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (parsed && parsed.name && parsed.price)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (parsed && parsed.name && parsed.price) {
         stockData = parsed
         break
@@ -57,24 +97,72 @@ export function parseStockDataAndGenerateCard(
     }
   }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `stockData`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (stockData)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (stockData) {
     cleanContent = `✔ **MCP 데이터 연동 완료**\n${stockData.name}(${stockData.code})의 실시간 주가 데이터 수집을 성공했습니다.`
-  // [RUN-TIME STATE / INVARIANT] - 변수 'targetId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `targetId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const targetId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const targetId = (taggedBlocks && taggedBlocks.length > 0) ? taggedBlocks[0].id : 'START'
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isUp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isUp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isUp = !String(stockData.change || '').includes('▼') && !String(stockData.pct || '').includes('-')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'themeBg'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `themeBg`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const themeBg = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const themeBg = isUp ? '#f0fdf4' : '#fef2f2'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'themeBorder'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `themeBorder`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const themeBorder = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const themeBorder = isUp ? '#bbf7d0' : '#fecaca'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'themeText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `themeText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const themeText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const themeText = isUp ? '#15803d' : '#b91c1c'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'themeAccent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `themeAccent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const themeAccent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const themeAccent = isUp ? '#22c55e' : '#ef4444'
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'htmlCard'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `htmlCard`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const htmlCard = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const htmlCard = `//# [AMEVA_LANG:html]\n` +
       `<div style="background: ${themeBg}; border: 1.5px solid ${themeBorder}; border-radius: 12px; padding: 20px; color: #1e293b; font-family: sans-serif; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: relative; max-width: 580px; box-sizing: border-box;">\n` +
       `  <div style="position: absolute; top: 16px; right: 16px; background: ${themeAccent}; color: white; font-size: 10px; font-weight: bold; padding: 3px 8px; border-radius: 20px;">⚡ MCP Live</div>\n` +
@@ -99,13 +187,31 @@ export function parseStockDataAndGenerateCard(
   } else {
     // INSERT/EDIT 제안 파싱
     const editSug = parseEditSuggestion(finalAnswer)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editSug`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editSug)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (editSug) {
       cleanContent = editSug.cleanContent
     } else {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'insertResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `insertResult`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const insertResult = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const insertResult = parseInsertSuggestions(finalAnswer, finalAnswer, [])
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `insertResult`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (insertResult)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (insertResult) {
         insertSuggestions.push(...insertResult.suggestions)
         cleanContent = insertResult.cleanContent
@@ -116,4 +222,3 @@ export function parseStockDataAndGenerateCard(
   return { cleanContent, insertSuggestions }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

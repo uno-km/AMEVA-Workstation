@@ -38,7 +38,12 @@ import { useAI } from '../../hooks/useAI'
 
 export interface ModalManagerProps {}
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `ModalManager`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `ModalManager(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function ModalManager({}: ModalManagerProps = {}) {
   const {
     settings, handleUpdateSettings, handleInstallPlugin, handleUninstallPlugin, isProPlan,
@@ -78,13 +83,25 @@ export function ModalManager({}: ModalManagerProps = {}) {
 
   const { settings: aiSettings, updateSettings: updateAISettings } = useAI()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleQuitConfirm'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleQuitConfirm`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleQuitConfirm = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleQuitConfirm = () => {
     setIsQuitConfirmOpen(false)
     handleCloseApp()
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleRefreshConfirm'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleRefreshConfirm`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleRefreshConfirm = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleRefreshConfirm = () => {
     window.location.reload()
   }
@@ -148,7 +165,13 @@ export function ModalManager({}: ModalManagerProps = {}) {
         onMinimize={toggleExportMinimized}
         onClose={() => { setExportProgress(IDLE_PROGRESS); setExportMinimized(false) }}
         onOpenFile={(path) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fileUrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fileUrl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fileUrl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const fileUrl = path.startsWith('http') ? path : `file:///${path.replace(/\\/g, '/')}`
           ipc.openExternalLink(fileUrl)
         }}
@@ -169,4 +192,3 @@ export function ModalManager({}: ModalManagerProps = {}) {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

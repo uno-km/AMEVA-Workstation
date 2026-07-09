@@ -196,11 +196,29 @@ export function MarkdownEditor({
    * - installedPlugins: 폰트 강제 변경 등 설치 완료된 플러그인 리스트.
    */
   const wordWrap = settings?.wordWrap || false
-  // [RUN-TIME STATE / INVARIANT] - 변수 'showCodeRunner'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `showCodeRunner`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const showCodeRunner = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const showCodeRunner = settings?.showCodeConsole || false
-  // [RUN-TIME STATE / INVARIANT] - 변수 'theme'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `theme`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const theme = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const theme = settings?.theme || 'dark'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'installedPlugins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `installedPlugins`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const installedPlugins = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const installedPlugins = settings?.installedPlugins || []
 
   // Rationale: console.debug 경고 누락 및 미사용 변수 체크 해결
@@ -237,13 +255,37 @@ export function MarkdownEditor({
    * - Rationale: rich-styling 플러그인이 로드되어 있을 때에만 선택된 폰트와 크기를 에디터 에디터 본문 DOM에 강제 인젝션한다.
    */
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editorContainerRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editorContainerRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editorContainerRef.current) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'editorDom'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `editorDom`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const editorDom = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const editorDom = editorContainerRef.current.querySelector('.bn-editor') as HTMLElement
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editorDom`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editorDom)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (editorDom) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `hasRichStyling`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (hasRichStyling)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (hasRichStyling) {
         editorDom.style.fontFamily = selectedFont
         editorDom.style.fontSize = selectedSize
@@ -266,37 +308,109 @@ export function MarkdownEditor({
    * - CONTRACT: 메모리 리스너 누수 방지를 위해 리스너 제거(cleanup) 코드를 유지한다.
    */
   useEffect(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `container`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const container = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const container = editorContainerRef.current
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!container`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!container) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMouseDownCapture'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleMouseDownCapture`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleMouseDownCapture = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const handleMouseDownCapture = (e: MouseEvent) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'target'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `target`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const target = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const target = e.target as HTMLElement
-  // [RUN-TIME STATE / INVARIANT] - 변수 'addBtn'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `addBtn`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const addBtn = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const addBtn = target.closest('.bn-side-menu-btn')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isDragHandle'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isDragHandle`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isDragHandle = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const isDragHandle = target.closest('.bn-drag-handle')
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `addBtn && !isDragHandle`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (addBtn && !isDragHandle)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (addBtn && !isDragHandle) {
         e.preventDefault()
         e.stopPropagation()
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `hoverBlock && editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (hoverBlock && editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (hoverBlock && editor) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `block`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const block = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const block = editor.getBlock(hoverBlock.id)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (block) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isEmptyParagraph'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isEmptyParagraph`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isEmptyParagraph = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const isEmptyParagraph = block.type === 'paragraph' && 
               (!block.content || block.content.length === 0 || 
                (block.content.length === 1 && block.content[0].type === 'text' && (block.content[0] as any).text === ''));
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isEmptyParagraph`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isEmptyParagraph)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (isEmptyParagraph) {
               editor.updateBlock(block.id, {
                 type: 'paragraph',
@@ -304,13 +418,25 @@ export function MarkdownEditor({
               } as any)
               editor.setTextCursorPosition(block.id, 'end')
             } else {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'insertedBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `insertedBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const insertedBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const insertedBlocks = editor.insertBlocks(
                 [{ type: 'paragraph', content: '/' }],
                 block,
                 'after'
               )
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `insertedBlocks && insertedBlocks.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (insertedBlocks && insertedBlocks.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (insertedBlocks && insertedBlocks.length > 0) {
                 editor.setTextCursorPosition(insertedBlocks[0].id, 'end')
               }
@@ -344,7 +470,13 @@ export function MarkdownEditor({
   const { selectedImg, setSelectedImg } = useImageLightbox(editorContainerRef)
   const { handleSelection } = useSelectionTracking(editor, onSelectedTextChange, onSelectionChange)
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!editor) {
     return (
       <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -410,9 +542,21 @@ export function MarkdownEditor({
             title="이 블록을 AI 채팅 컨텍스트로 태그하여 참조"
             onClick={(e) => {
               e.stopPropagation()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `taggedBlocks.some(b => b.id === hoverBlock.id)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (taggedBlocks.some(b => b.id === hoverBlock.id))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (taggedBlocks.some(b => b.id === hoverBlock.id)) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'snippet'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `snippet`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const snippet = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const snippet = hoverBlock.text.length > 20
                 ? hoverBlock.text.slice(0, 20) + '...'
                 : hoverBlock.text || '본문 문단'
@@ -425,7 +569,13 @@ export function MarkdownEditor({
 
         {/* 협업 참여자 드래그 선택 범위 박스 실시간 투영 */}
         {peers.map((peer) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!peer.dragSelection?.rects`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!peer.dragSelection?.rects)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!peer.dragSelection?.rects) return null
           return peer.dragSelection.rects.map((rect, idx) => (
             <div
@@ -442,7 +592,13 @@ export function MarkdownEditor({
 
         {/* 협업 참여자 마우스 포인터 실시간 이동 투영 */}
         {peers.map((peer) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!peer.pointer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!peer.pointer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!peer.pointer) return null
           return (
             <div
@@ -498,7 +654,13 @@ export function MarkdownEditor({
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'items'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `items`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const items = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const items = getCustomSlashMenuItems(editor, installedPlugins)
                 return items.filter(item =>
                   item.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -510,9 +672,21 @@ export function MarkdownEditor({
             <SuggestionMenuController
               triggerCharacter="@"
               getItems={async (query) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                 if (!editor) return []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'peerItems'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `peerItems`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const peerItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const peerItems = peers.map(p => ({
                   title: p.name || '알 수 없는 사용자',
                   subtext: '협업 참가자 멘션',
@@ -521,9 +695,21 @@ export function MarkdownEditor({
                     editor.insertInlineContent([{ type: 'text', text: `@${p.name} `, styles: { bold: true } as any }])
                   }
                 }))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'docItems'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `docItems`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const docItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const docItems = tabs.map(t => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'title'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `title`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const title = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const title = t.filePath ? t.filePath.split(/[\\/]/).pop() || '문서' : '제목 없음'
                   return {
                     title: title,
@@ -540,7 +726,13 @@ export function MarkdownEditor({
                     }
                   }
                 })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'allItems'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `allItems`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const allItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const allItems = [...peerItems, ...docItems]
                 return allItems.filter(item => item.title.toLowerCase().includes(query.toLowerCase()))
               }}
@@ -549,17 +741,47 @@ export function MarkdownEditor({
             <SuggestionMenuController
               triggerCharacter="#"
               getItems={async (query) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                 if (!editor) return []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'headingBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `headingBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const headingBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const headingBlocks = editor.document.filter(b => b.type === 'heading')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'items'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `items`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const items = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const items = headingBlocks.map(b => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'textContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `textContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const textContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const textContent = b.content && Array.isArray(b.content) 
                     ? b.content.map((c: any) => c.text).join('') 
                     : '제목 없음'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'level'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `level`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const level = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const level = b.props?.level || 1
                   return {
                     title: textContent,
@@ -632,4 +854,3 @@ export { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
 export { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
 export { WelcomeBanner } from './editor/WelcomeBanner'
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

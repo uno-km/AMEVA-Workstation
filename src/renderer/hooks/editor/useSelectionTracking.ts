@@ -54,21 +54,45 @@ export function useSelectionTracking(
    * - Rationale: 브라우저 native Selection과 BlockNote selection을 교차 캡처하여 최신 범위 메타를 갱신 전파한다.
    */
   const handleSelection = useCallback(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editor) return
 
     // 1. 브라우저 네이티브 드래그 문자열 캡처 (선택 해제 시 공백 자동 주입)
     const selText = window.getSelection()?.toString() || ''
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `onSelectedTextChange`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (onSelectedTextChange)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (onSelectedTextChange) {
       onSelectedTextChange(selText)
     }
 
     // 2. BlockNote의 블록 노드 범위 단위 셀렉션 정보 캡처
     const sel = editor.getSelection()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `sel && sel.blocks && sel.blocks.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (sel && sel.blocks && sel.blocks.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (sel && sel.blocks && sel.blocks.length > 0) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `onSelectionChange`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (onSelectionChange)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (onSelectionChange) {
         onSelectionChange({ 
           anchorBlockId: sel.blocks[0].id, 
@@ -95,4 +119,3 @@ export function useSelectionTracking(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

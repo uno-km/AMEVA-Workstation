@@ -25,7 +25,12 @@ interface MinimapProps {
   blocks: any[]
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `Minimap`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `Minimap(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   console.debug("Unused vars (Minimap):", { editor });
   const [scrollState, setScrollState] = useState({
@@ -35,13 +40,37 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   })
   
   const [isHovered, setIsHovered] = useState(false)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'minimapRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `minimapRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const minimapRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const minimapRef = useRef<HTMLDivElement>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isDragging'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isDragging`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isDragging = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isDragging = useRef(false)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'dragStartY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `dragStartY`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const dragStartY = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const dragStartY = useRef(0)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'dragStartScrollTop'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `dragStartScrollTop`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const dragStartScrollTop = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const dragStartScrollTop = useRef(0)
 
   // 에디터 스크롤 컨테이너 가져오기
@@ -55,9 +84,21 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     let container: HTMLElement | null = null
     let observer: MutationObserver | null = null
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleScroll'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleScroll`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleScroll = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const handleScroll = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!container`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!container) return
       setScrollState({
         scrollTop: container.scrollTop,
@@ -66,17 +107,47 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
       })
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'attachListener'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `attachListener`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const attachListener = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const attachListener = () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'activeContainer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `activeContainer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const activeContainer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const activeContainer = getScrollContainer()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `activeContainer && activeContainer !== container`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (activeContainer && activeContainer !== container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (activeContainer && activeContainer !== container) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `container`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (container) {
           container.removeEventListener('scroll', handleScroll)
         }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `observer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (observer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (observer) {
           observer.disconnect()
         }
@@ -98,11 +169,23 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
 
     return () => {
       clearInterval(interval)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `container`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (container) {
         container.removeEventListener('scroll', handleScroll)
       }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `observer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (observer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (observer) {
         observer.disconnect()
       }
@@ -110,25 +193,67 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   }, [editorContainerRef, blocks])
 
   const { scrollTop, scrollHeight, clientHeight } = scrollState
-  // [RUN-TIME STATE / INVARIANT] - 변수 'viewportTopPercent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `viewportTopPercent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const viewportTopPercent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const viewportTopPercent = (scrollTop / scrollHeight) * 100
-  // [RUN-TIME STATE / INVARIANT] - 변수 'viewHeightPercent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `viewHeightPercent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const viewHeightPercent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const viewHeightPercent = (clientHeight / scrollHeight) * 100
 
   // 클릭 및 드래그 스크롤 통합 제어
   const handleMapMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `container`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const container = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const container = getScrollContainer()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!container || !minimapRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!container || !minimapRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!container || !minimapRef.current) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rect`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rect = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const rect = minimapRef.current.getBoundingClientRect()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clickY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clickY`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clickY = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const clickY = e.clientY - rect.top
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clickRatio'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clickRatio`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clickRatio = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const clickRatio = clickY / rect.height
     
     // 클릭 위치로 실시간 즉각 점프
@@ -142,27 +267,75 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     document.addEventListener('mouseup', handleDragEnd)
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleDragMove'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleDragMove`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleDragMove = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleDragMove = (e: MouseEvent) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isDragging.current || !minimapRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isDragging.current || !minimapRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!isDragging.current || !minimapRef.current) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'container'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `container`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const container = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const container = getScrollContainer()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!container`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!container) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rect`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rect = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const rect = minimapRef.current.getBoundingClientRect()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentY'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentY`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentY = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const currentY = Math.max(0, Math.min(rect.height, e.clientY - rect.top))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ratio'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ratio`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ratio = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const ratio = currentY / rect.height
 
     // 마우스가 누르고 있는 위치를 에디터의 중심점으로 부드럽게 흡수
     container.scrollTop = ratio * container.scrollHeight - container.clientHeight / 2
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleDragEnd'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleDragEnd`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleDragEnd = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleDragEnd = () => {
     isDragging.current = false
     document.removeEventListener('mousemove', handleDragMove)
@@ -173,27 +346,74 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   const extractTextLines = (): { text: string; type: string; level?: number }[] => {
     const lines: { text: string; type: string; level?: number }[] = []
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'traverse'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `traverse`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const traverse = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const traverse = (items: any[]) => {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const item of items) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
       for (const item of items) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `item.type === 'heading'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (item.type === 'heading')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (item.type === 'heading') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const text = item.content?.map((c: any) => c.text).join('') || 'Heading'
           lines.push({ text: '#'.repeat(item.props?.level || 1) + ' ' + text, type: 'heading', level: item.props?.level })
         } else if (item.type === 'codeBlock' || item.type === 'jupyter') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'codeText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `codeText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const codeText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const codeText = item.props?.code || ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'splitLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `splitLines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const splitLines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const splitLines = codeText.split('\n')
           splitLines.forEach((l: string) => {
             lines.push({ text: l || ' ', type: 'code' })
           })
         } else if (item.type === 'paragraph') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const text = item.content?.map((c: any) => c.text).join('') || ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'splitLines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `splitLines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const splitLines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const splitLines = text.split('\n')
           splitLines.forEach((l: string) => {
             lines.push({ text: l || ' ', type: 'text' })
@@ -204,7 +424,13 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
           lines.push({ text: '| Table content |', type: 'table' })
         }
         
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `item.children && item.children.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (item.children && item.children.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (item.children && item.children.length > 0) {
           traverse(item.children)
         }
@@ -215,7 +441,13 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     return lines
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const lines = extractTextLines()
 
   return (
@@ -263,14 +495,38 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
           <div style={{ color: 'rgba(255,255,255,0.2)' }}>AMEVA Document Minimap...</div>
         ) : (
           lines.map((line, idx) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'color'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `color`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const color = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             let color = 'rgba(255, 255, 255, 0.25)' // 일반 텍스트: 차분한 그레이
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fontWeight'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fontWeight`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fontWeight = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             let fontWeight = 'normal'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'fontStyle'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `fontStyle`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const fontStyle = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             let fontStyle = 'normal'
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `line.type === 'heading'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (line.type === 'heading')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (line.type === 'heading') {
               color = '#f8fafc' // 헤더: 밝은 화이트
               fontWeight = 'bold'
@@ -321,4 +577,3 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

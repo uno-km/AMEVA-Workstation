@@ -79,17 +79,53 @@ export function useAIStreamProcessor() {
    * - pendingTokenUpdateRef: 60ms 스로틀 제한 시간 동안 추가로 유입된 토큰들의 렌더링 지연 예약을 위한 타이머 플래그 레퍼런스.
    */
   const sanitizerRef = useRef<StreamingSanitizer>(new StreamingSanitizer())
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawAccumRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawAccumRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawAccumRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const rawAccumRef = useRef<string>('')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentAssistantIdRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentAssistantIdRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentAssistantIdRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const currentAssistantIdRef = useRef<string | null>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentSessionIdRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentSessionIdRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentSessionIdRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const currentSessionIdRef = useRef<string | null>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isAgentRunningRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isAgentRunningRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isAgentRunningRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isAgentRunningRef = useRef<boolean>(false)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lastRenderTimeRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lastRenderTimeRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lastRenderTimeRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const lastRenderTimeRef = useRef<number>(0)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pendingTokenUpdateRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pendingTokenUpdateRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pendingTokenUpdateRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const pendingTokenUpdateRef = useRef<boolean>(false)
 
   /**
@@ -132,19 +168,43 @@ export function useAIStreamProcessor() {
       if (sessId !== currentSessionIdRef.current) return
       setStreamingText(rawAccumRef.current)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'assistantId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `assistantId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const assistantId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const assistantId = currentAssistantIdRef.current
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!assistantId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!assistantId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!assistantId) return
 
       // 생각 부분과 안전 텍스트 부분의 파싱 데이터 획득
       const safeText = sanitizerRef.current.getSafeOutput()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'thinkingText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `thinkingText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const thinkingText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const thinkingText = sanitizerRef.current.getThinkingBuffer()
 
       setMessages((prev) =>
         prev.map((m) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `m.id !== assistantId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (m.id !== assistantId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (m.id !== assistantId) return m
 
           // 실시간으로 흘러나오는 생각 흐름 정보 구성
@@ -217,4 +277,3 @@ export function useAIStreamProcessor() {
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

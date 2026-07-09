@@ -205,7 +205,13 @@ export function useAIAgent() {
    * - Rationale: useAIState의 updateSettings와 연동하여 AI 설정을 부분/전체 패치하도록 랩핑.
    */
   const setSettings = useCallback((updater: any) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `next`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const next = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const next = typeof updater === 'function' ? updater(settings) : updater
     updateSettings(next)
   }, [settings, updateSettings])
@@ -290,14 +296,32 @@ export function useAIAgent() {
   const abortGeneration = useCallback(() => {
     clearQueue()
     setMessages(useAILogStore.getState().messages.filter((m) => !m.id.startsWith('msg_queue_')))
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ipc.isElectronEnv() || !isGenerating`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ipc.isElectronEnv() || !isGenerating)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!ipc.isElectronEnv() || !isGenerating) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentSessionId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentSessionId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentSessionId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const currentSessionId = currentSessionIdRef.current || 'default'
     ipc.llmAbort(currentSessionId)
   }, [isGenerating, clearQueue, setMessages, currentSessionIdRef])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clearHistory'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clearHistory`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clearHistory = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const clearHistory = useCallback(() => {
     setMessages([])
     setStreamingText('')
@@ -305,12 +329,24 @@ export function useAIAgent() {
 
   const { processBlock } = useAIBlockProcessor(settings)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleUpdateMessageDiffState'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleUpdateMessageDiffState`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleUpdateMessageDiffState = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleUpdateMessageDiffState = useCallback((msgId: string, state: 'accepted' | 'rejected') => {
     updateMessageDiffState(msgId, state, () => processNextQueueRef.current?.())
   }, [updateMessageDiffState])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleUpdateInsertSuggestionStatus'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleUpdateInsertSuggestionStatus`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleUpdateInsertSuggestionStatus = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleUpdateInsertSuggestionStatus = useCallback((
     msgId: string,
     status: 'pending' | 'accepted' | 'rejected',
@@ -362,4 +398,3 @@ export function useAIAgent() {
  *    - `handleDone` 콜백의 예외 처리 단에서 `setIsGenerating(false)`가 누락되었는지 확인.
  * ============================================================================
  */
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

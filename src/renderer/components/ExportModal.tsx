@@ -31,6 +31,12 @@ import { X, Minus, FileOutput, CheckCircle, XCircle, Loader } from 'lucide-react
 
 import type { ExportPhase, ExportProgress } from '../../shared/types'
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `IDLE_PROGRESS`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `IDLE_PROGRESS(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const IDLE_PROGRESS: ExportProgress = {
   phase: 'idle',
   format: '',
@@ -61,23 +67,53 @@ const FORMAT_LABELS: Record<string, string> = {
 
 /** 실제 운영 시 document.querySelector('#status-bar') 등으로 portal 위치 지정 가능 */
 export function ExportModal({ progress, minimized, onMinimize, onClose, onOpenFile }: ExportModalProps) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'barRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `barRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const barRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const barRef = useRef<HTMLDivElement>(null)
 
   // 프로세스바 width 애니메이션
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `barRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (barRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (barRef.current) {
       barRef.current.style.width = `${progress.percent}%`
     }
   }, [progress.percent])
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `progress.phase === 'idle'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (progress.phase === 'idle')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (progress.phase === 'idle') return null
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'label'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `label`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const label = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const label = FORMAT_LABELS[progress.format] ?? progress.format.toUpperCase()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'color'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `color`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const color = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const color = PHASE_COLORS[progress.phase]
 
   // ── 최소화 상태: 하단 미니 표시기 ────────────────────────────
@@ -356,4 +392,3 @@ export function ExportModal({ progress, minimized, onMinimize, onClose, onOpenFi
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

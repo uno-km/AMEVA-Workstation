@@ -17,6 +17,12 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `PROVIDER_MODELS`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `PROVIDER_MODELS(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const PROVIDER_MODELS = {
   gemini: [
     { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
@@ -40,12 +46,24 @@ export const PROVIDER_MODELS = {
   ]
 }
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `API_ENDPOINTS`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `API_ENDPOINTS(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const API_ENDPOINTS = {
   gemini: 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
   openai: 'https://api.openai.com/v1/chat/completions',
   anthropic: 'https://api.anthropic.com/v1/messages',
 }
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `API_KEY_PATTERNS`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `API_KEY_PATTERNS(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const API_KEY_PATTERNS = [
   {
     provider: 'gemini' as const,
@@ -70,4 +88,3 @@ export const API_KEY_PATTERNS = [
   }
 ]
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

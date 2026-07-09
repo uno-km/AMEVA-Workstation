@@ -28,20 +28,49 @@ import { getProPlanMemory } from '../services/planState.js'
 import { fetchHtmlMetadata } from '../services/htmlScraper.js'
 import { WindowDefenseManager } from '../services/windowDefenseManager.js'
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'require'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `require`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const require = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const require = createRequire(import.meta.url)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pdfModule'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pdfModule`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pdfModule = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const pdfModule = require('pdf-parse')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pdf'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pdf`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pdf = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const pdf = typeof pdfModule === 'function' ? pdfModule : (pdfModule.default || pdfModule)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'credentialsPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `credentialsPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const credentialsPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const credentialsPath = join(app.getPath('userData'), 'credentials.json')
 
 // [SEC-W-005] openExternal 프로토콜 화이트리스트 — 임의 프로토콜 핸들러 실행 차단
 const ALLOWED_EXTERNAL_PROTOCOLS = ['http:', 'https:', 'mailto:']
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `getActiveWindow`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `getActiveWindow(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function getActiveWindow(event: any, getMainWindow: () => BrowserWindow | null): BrowserWindow | null {
   return BrowserWindow.fromWebContents(event.sender) || getMainWindow()
 }
@@ -55,7 +84,13 @@ export function registerFileIpc(
 ): void {
   // IPC 핸들러 - 파일 관리
   ipcMain.handle('dialog:openFile', async (event) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const result = await dialog.showOpenDialog(getActiveWindow(event, getMainWindow)!, {
       properties: ['openFile'],
       filters: [
@@ -69,30 +104,78 @@ export function registerFileIpc(
         { name: 'Jupyter Notebook', extensions: ['ipynb'] },
       ],
     })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `result.canceled || result.filePaths.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (result.canceled || result.filePaths.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (result.canceled || result.filePaths.length === 0) return null
-  // [RUN-TIME STATE / INVARIANT] - 변수 'filePath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `filePath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const filePath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const filePath = result.filePaths[0]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ext'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ext`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const ext = filePath.split('.').pop()?.toLowerCase() || ''
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isBinary'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isBinary`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isBinary = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isBinary = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
     let content: string
     
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ext === 'pdf'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ext === 'pdf')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ext === 'pdf') {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'buffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `buffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const buffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const buffer = await readFile(filePath)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `data`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const data = await pdf(buffer)
         content = data.text || ''
       } catch (err: any) {
         content = `Error parsing PDF: ${err.message}`
       }
     } else if (isBinary) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'buffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `buffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const buffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const buffer = await readFile(filePath)
       content = buffer.toString('base64')
     } else {
@@ -107,28 +190,76 @@ export function registerFileIpc(
   })
 
   ipcMain.handle('dialog:selectLocalFile', async (event, filters?: any[]) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const result = await dialog.showOpenDialog(getActiveWindow(event, getMainWindow)!, {
       properties: ['openFile'],
       filters: filters || [{ name: 'All Files', extensions: ['*'] }],
     })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `result.canceled || result.filePaths.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (result.canceled || result.filePaths.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (result.canceled || result.filePaths.length === 0) return null
-  // [RUN-TIME STATE / INVARIANT] - 변수 'filePath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `filePath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const filePath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const filePath = result.filePaths[0]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'buffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `buffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const buffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const buffer = await readFile(filePath)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'base64'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `base64`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const base64 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const base64 = buffer.toString('base64')
     return { filePath, base64 }
   })
 
   ipcMain.handle('dialog:saveFile', async (event, content: string, filePath?: string, isSaveAs?: boolean) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'targetPath'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `targetPath`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const targetPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let targetPath = filePath
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!targetPath || isSaveAs`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!targetPath || isSaveAs)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!targetPath || isSaveAs) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const result = await dialog.showSaveDialog(getActiveWindow(event, getMainWindow)!, {
         title: 'Save Document',
         defaultPath: filePath,
@@ -143,17 +274,41 @@ export function registerFileIpc(
           { name: 'Jupyter Notebook', extensions: ['ipynb'] },
         ],
       })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `result.canceled || !result.filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (result.canceled || !result.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (result.canceled || !result.filePath) return { success: false }
       targetPath = result.filePath
     }
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ext'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ext`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const ext = targetPath.split('.').pop()?.toLowerCase() || ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isBinarySave'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isBinarySave`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isBinarySave = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isBinarySave = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
     
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isBinarySave`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isBinarySave)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isBinarySave) {
       await writeFile(targetPath, Buffer.from(content, 'base64'))
     } else {
@@ -164,15 +319,33 @@ export function registerFileIpc(
   })
 
   ipcMain.handle('dialog:saveExportedFile', async (event, data: string, isBase64: boolean, defaultName: string, filters: any[]) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const result = await dialog.showSaveDialog(getActiveWindow(event, getMainWindow)!, {
       title: 'Export File',
       defaultPath: defaultName,
       filters: filters,
     })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `result.canceled || !result.filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (result.canceled || !result.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (result.canceled || !result.filePath) return null
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isBase64`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isBase64)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isBase64) {
       await writeFile(result.filePath, Buffer.from(data, 'base64'))
     } else {
@@ -195,20 +368,38 @@ export function registerFileIpc(
     })
     await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`)
     await new Promise((resolve) => setTimeout(resolve, 800))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pdfData'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pdfData`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pdfData = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const pdfData = await printWindow.webContents.printToPDF({
       margins: { top: 1, bottom: 1, left: 1, right: 1 },
       pageSize: 'A4',
       printBackground: true,
     })
     printWindow.close()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'saveResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `saveResult`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const saveResult = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const saveResult = await dialog.showSaveDialog(getMainWindow()!, {
       title: 'Save PDF File',
       defaultPath: 'document.pdf',
       filters: [{ name: 'PDF Document', extensions: ['pdf'] }],
     })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `saveResult.canceled || !saveResult.filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (saveResult.canceled || !saveResult.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (saveResult.canceled || !saveResult.filePath) return null
     await writeFile(saveResult.filePath, pdfData)
     return saveResult.filePath
@@ -216,26 +407,62 @@ export function registerFileIpc(
 
   // IPC 핸들러 - 웹 실시간 검색 (CORS 우회 통로)
   ipcMain.handle('action:webSearch', async (_event, query: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!getProPlanMemory()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!getProPlanMemory())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!getProPlanMemory()) {
       return { success: false, error: '무료 요금제에서는 실시간 웹 검색 기능을 사용할 수 없습니다. Pro 요금제로 업그레이드하세요.' }
     }
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'res'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `res`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const res = await net.fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
       })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!res.ok`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!res.ok)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!res.ok) {
         throw new Error(`DuckDuckGo 응답 오류: ${res.status}`)
       }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'html'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `html`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const html = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const html = await res.text()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'matches'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `matches`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const matches = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const matches = html.match(/<a class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g) || []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'snippets'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `snippets`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const snippets = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const snippets = matches
         .slice(0, 3)
         .map(m => m.replace(/<[^>]*>/g, '').trim())
@@ -261,31 +488,79 @@ export function registerFileIpc(
 
   // 줌 레벨 조정
   ipcMain.on('window:setZoom', (event, level: number) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'win'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `win`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const win = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const win = getActiveWindow(event, getMainWindow)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `win) win.webContents.setZoomLevel(level`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (win) win.webContents.setZoomLevel(level)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (win) win.webContents.setZoomLevel(level)
   })
 
   ipcMain.handle('window:getZoom', async (event) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'win'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `win`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const win = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const win = getActiveWindow(event, getMainWindow)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `win) return win.webContents.getZoomLevel(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (win) return win.webContents.getZoomLevel()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (win) return win.webContents.getZoomLevel()
     return 0
   })
 
   ipcMain.on('window:setZoomFactor', (event, factor: number) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'win'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `win`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const win = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const win = getActiveWindow(event, getMainWindow)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `win) win.webContents.setZoomFactor(factor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (win) win.webContents.setZoomFactor(factor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (win) win.webContents.setZoomFactor(factor)
   })
 
   ipcMain.handle('window:getZoomFactor', async (event) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'win'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `win`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const win = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const win = getActiveWindow(event, getMainWindow)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `win) return win.webContents.getZoomFactor(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (win) return win.webContents.getZoomFactor()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (win) return win.webContents.getZoomFactor()
     return 1.0
   })
@@ -295,12 +570,30 @@ export function registerFileIpc(
   })
 
   ipcMain.on('action:openExternal', (_event, url: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `url.startsWith('file:///')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (url.startsWith('file:///'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (url.startsWith('file:///')) {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'decoded'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `decoded`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const decoded = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const decoded = decodeURIComponent(url.slice('file:///'.length))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'normalized'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `normalized`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const normalized = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const normalized = resolvePath(decoded.replace(/\//g, '\\'))
         shell.showItemInFolder(normalized)
       } catch {
@@ -310,9 +603,21 @@ export function registerFileIpc(
     }
 
     try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'parsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parsed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const parsed = new URL(url)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!ALLOWED_EXTERNAL_PROTOCOLS.includes(parsed.protocol)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!ALLOWED_EXTERNAL_PROTOCOLS.includes(parsed.protocol))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!ALLOWED_EXTERNAL_PROTOCOLS.includes(parsed.protocol)) {
         console.warn(`[Security] Blocked openExternal with disallowed protocol: ${parsed.protocol}`)
         return
@@ -332,9 +637,21 @@ export function registerFileIpc(
     format: string
     defaultName: string
   }) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'win'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `win`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const win = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const win = getActiveWindow(event, getMainWindow)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!win`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!win)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!win) return { success: false, error: '활성화된 윈도우가 없습니다.' }
 
     const extensionsMap: Record<string, string[]> = {
@@ -346,7 +663,13 @@ export function registerFileIpc(
       xml: ['xml']
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'filters'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `filters`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const filters = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const filters = [
       {
         name: `${payload.format.toUpperCase()} Document`,
@@ -360,7 +683,13 @@ export function registerFileIpc(
       filters
     })
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `canceled || !filePath`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (canceled || !filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (canceled || !filePath) {
       return { success: false, error: '저장이 취소되었습니다.' }
     }
@@ -368,39 +697,79 @@ export function registerFileIpc(
     try {
       let outputBuffer: Buffer | string
 
-  // [SWITCH ROUTING CASE] - 다중 후보 값 매핑 조건에 따른 최적 라우팅 제어.
+      /*
+       * [SWITCH ROUTING CASE]
+       * - 라우팅 키: `switch (payload.format) {`
+       * - 예상 시나리오: 유입된 상태 변수 분기값과 일치하는 케이스 블록으로 런타임 제어를 즉시 라우팅함.
+       * - 예시: `switch (format)` 분기 시 매치되는 변환 포맷 서브 모듈이 가동됨.
+       */
       switch (payload.format) {
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'html':`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'html':` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
         case 'html':
           outputBuffer = exportersMain.blocksToHTML(payload.blocks)
           await writeFile(filePath, outputBuffer, 'utf-8')
           break
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'docx':`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'docx':` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
         case 'docx':
           outputBuffer = await exportersMain.exportToWord(payload.blocks)
           await writeFile(filePath, outputBuffer)
           break
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'xlsx':`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'xlsx':` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
         case 'xlsx':
           outputBuffer = await exportersMain.exportToExcel(payload.blocks)
           await writeFile(filePath, outputBuffer)
           break
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'pptx':`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'pptx':` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
         case 'pptx':
           outputBuffer = await exportersMain.exportToPPTX(payload.blocks)
           await writeFile(filePath, outputBuffer)
           break
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'hwpx':`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'hwpx':` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
         case 'hwpx':
           outputBuffer = await exportersMain.exportToHWPX(payload.blocks)
           await writeFile(filePath, outputBuffer)
           break
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `case 'xml':`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `case 'xml':` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
         case 'xml':
           outputBuffer = exportersMain.exportToXML(payload.blocks)
           await writeFile(filePath, outputBuffer, 'utf-8')
           break
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `default:`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `default:` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
         default:
           throw new Error(`지원하지 않는 변환 포맷입니다: ${payload.format}`)
       }
@@ -413,16 +782,40 @@ export function registerFileIpc(
   })
 
   ipcMain.on('window:close', (event) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'win'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `win`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const win = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const win = getActiveWindow(event, getMainWindow)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `win) win.close(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (win) win.close()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (win) win.close()
   })
 
   ipcMain.on('window:force-close', (event) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'win'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `win`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const win = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const win = getActiveWindow(event, getMainWindow)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `win`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (win)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (win) {
       WindowDefenseManager.forceQuit(win)
     }
@@ -430,12 +823,24 @@ export function registerFileIpc(
 
   ipcMain.handle('keychain:set', async (_event, key: string, value: string) => {
     try {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!safeStorage.isEncryptionAvailable()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!safeStorage.isEncryptionAvailable())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!safeStorage.isEncryptionAvailable()) {
         return { success: false, error: 'OS 암호화 스토리지를 사용할 수 없는 환경입니다.' }
       }
       let data: Record<string, string> = {}
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `existsSync(credentialsPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (existsSync(credentialsPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (existsSync(credentialsPath)) {
         try {
           data = JSON.parse(readFileSync(credentialsPath, 'utf8'))
@@ -443,7 +848,13 @@ export function registerFileIpc(
           data = {}
         }
       }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'encrypted'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `encrypted`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const encrypted = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const encrypted = safeStorage.encryptString(value)
       data[key] = encrypted.toString('base64')
       writeFileSync(credentialsPath, JSON.stringify(data), 'utf8')
@@ -455,19 +866,61 @@ export function registerFileIpc(
 
   ipcMain.handle('keychain:get', async (_event, key: string) => {
     try {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!existsSync(credentialsPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!existsSync(credentialsPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!existsSync(credentialsPath)) return null
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!safeStorage.isEncryptionAvailable()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!safeStorage.isEncryptionAvailable())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!safeStorage.isEncryptionAvailable()) return null
-  // [RUN-TIME STATE / INVARIANT] - 변수 'data'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `data`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const data = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const data = JSON.parse(readFileSync(credentialsPath, 'utf8'))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'encryptedBase64'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `encryptedBase64`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const encryptedBase64 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const encryptedBase64 = data[key]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!encryptedBase64`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!encryptedBase64)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!encryptedBase64) return null
-  // [RUN-TIME STATE / INVARIANT] - 변수 'buffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `buffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const buffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const buffer = Buffer.from(encryptedBase64, 'base64')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'decrypted'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `decrypted`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const decrypted = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const decrypted = safeStorage.decryptString(buffer)
       return decrypted
     } catch {
@@ -477,7 +930,13 @@ export function registerFileIpc(
 
   ipcMain.handle('keychain:delete', async (_event, key: string) => {
     try {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!existsSync(credentialsPath)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!existsSync(credentialsPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!existsSync(credentialsPath)) return { success: true }
       let data: Record<string, string> = {}
       try {
@@ -498,4 +957,3 @@ export function registerFileIpc(
   })
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

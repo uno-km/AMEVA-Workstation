@@ -141,9 +141,21 @@ export function useAIAgentMode() {
 
       // 실시간 루프 진행 디버그 텍스트 누적 버퍼
       let accumulatedLogs = ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'agentQuery'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `agentQuery`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const agentQuery = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const agentQuery = buildAgentQuery(userMessage, messages, taggedBlocks)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'agentSystemPrompt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `agentSystemPrompt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const agentSystemPrompt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const agentSystemPrompt = getAgentSystemPrompt()
 
       // 3. 에이전트 세션 실행 개시 및 실시간 중간 로그 콜백 바인딩
@@ -153,20 +165,62 @@ export function useAIAgentMode() {
 
         // 유저 화면에 실시간으로 '어떤 도구를 몇 단계째 실행 중인지' 피드백 갱신
         setMessages((prev) => prev.map((m) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `m.id !== assistantId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (m.id !== assistantId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (m.id !== assistantId) return m
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'statusText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `statusText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const statusText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           let statusText = '🤖 에이전트 추론 루프 기동 중...'
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `accumulatedLogs.includes('Action:')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (accumulatedLogs.includes('Action:'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (accumulatedLogs.includes('Action:')) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const lines = accumulatedLogs.split('\n')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'actionLine'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `actionLine`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const actionLine = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const actionLine = lines.find((l) => l.includes('Action:'))
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `actionLine`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (actionLine)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (actionLine) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'actName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `actName`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const actName = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const actName = actionLine.replace(/Action:\s*/i, '').trim()
               statusText = `⚙️ [도구 실행] '${actName}' 도구를 기동하고 있습니다...`
             }
@@ -211,7 +265,13 @@ export function useAIAgentMode() {
                 insertSuggestions: insertSuggestions,
                 // 생각 궤적 단계별로 분해 정렬하여 타임라인 데이터 구성
                 reasoningTrace: agentResult.steps.flatMap((s: { thought: string; action?: string; actionInput?: string; observation?: string }, sIdx: number) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'traces'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `traces`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const traces = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const traces = [{
                     id: `trace_agent_${m.id}_${sIdx}_thought`,
                     source: 'model' as const,
@@ -220,11 +280,29 @@ export function useAIAgentMode() {
                     model: finalSettings.modelPath || 'unknown',
                     timestamp: new Date().toISOString()
                   }]
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `s.action`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (s.action)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                   if (s.action) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'actionText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `actionText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const actionText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     let actionText = `🎯 도구 실행: ${s.action}\n인자: ${s.actionInput}`
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `s.observation`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (s.observation)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                     if (s.observation) {
                       actionText += `\n\n🔍 결과:\n${s.observation.replace(/^Observation:\s*/i, '').trim()}`
                     }
@@ -281,4 +359,3 @@ export function useAIAgentMode() {
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

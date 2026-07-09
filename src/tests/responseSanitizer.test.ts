@@ -30,10 +30,21 @@ import { sanitizeResponse, StreamingSanitizer } from '../../renderer/utils/respo
 // 미니 테스트 프레임워크
 // ─────────────────────────────────────────────────────────────
 let _passed = 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 '_failed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `_failed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const _failed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 let _failed = 0
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `test`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `test(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function test(name: string, fn: () => void): void {
   try {
     fn()
@@ -46,33 +57,68 @@ function test(name: string, fn: () => void): void {
   }
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `expect`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `expect(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function expect(actual: any) {
   return {
     toBe(expected: any) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `actual !== expected`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (actual !== expected)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (actual !== expected) {
         throw new Error(`Expected: ${JSON.stringify(expected)}\n         Got:      ${JSON.stringify(actual)}`)
       }
     },
     toContain(substring: string) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `typeof actual !== 'string' || !actual.includes(substring)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (typeof actual !== 'string' || !actual.includes(substring))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (typeof actual !== 'string' || !actual.includes(substring)) {
         throw new Error(`Expected "${actual}" to contain "${substring}"`)
       }
     },
     notToContain(substring: string) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `typeof actual === 'string' && actual.includes(substring)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (typeof actual === 'string' && actual.includes(substring))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (typeof actual === 'string' && actual.includes(substring)) {
         throw new Error(`Expected "${actual}" NOT to contain "${substring}"`)
       }
     },
     toBeTruthy() {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!actual) throw new Error(`Expected truthy, got ${JSON.stringify(actual)}``
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!actual) throw new Error(`Expected truthy, got ${JSON.stringify(actual)}`)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!actual) throw new Error(`Expected truthy, got ${JSON.stringify(actual)}`)
     },
     toBeFalsy() {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `actual) throw new Error(`Expected falsy, got ${JSON.stringify(actual)}``
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (actual) throw new Error(`Expected falsy, got ${JSON.stringify(actual)}`)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (actual) throw new Error(`Expected falsy, got ${JSON.stringify(actual)}`)
     },
   }
@@ -84,7 +130,13 @@ function expect(actual: any) {
 console.log('\n[Test Suite 1] Complete tag stripping')
 
 test('<thought>reasoning</thought>final answer', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<thought>이것은 내부 추론입니다</thought>최종 답변입니다')
   expect(r.finalContent).toBe('최종 답변입니다')
   expect(r.thinkingContent).toBe('이것은 내부 추론입니다')
@@ -92,7 +144,13 @@ test('<thought>reasoning</thought>final answer', () => {
 })
 
 test('<though> typo tag', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<though>abc</though>최종')
   expect(r.finalContent).toBe('최종')
   expect(r.thinkingContent).toBe('abc')
@@ -100,7 +158,13 @@ test('<though> typo tag', () => {
 })
 
 test('<think> tag', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<think>secret reasoning</think>answer')
   expect(r.finalContent).toBe('answer')
   expect(r.thinkingContent).toBe('secret reasoning')
@@ -108,7 +172,13 @@ test('<think> tag', () => {
 })
 
 test('<thinking> tag', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<thinking>내부 사고</thinking>최종 답변')
   expect(r.finalContent).toBe('최종 답변')
   expect(r.thinkingContent).toBe('내부 사고')
@@ -116,7 +186,13 @@ test('<thinking> tag', () => {
 })
 
 test('<reasoning> tag', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<reasoning>step 1\nstep 2</reasoning>결론입니다')
   expect(r.finalContent).toBe('결론입니다')
   expect(r.thinkingContent).toBe('step 1\nstep 2')
@@ -124,7 +200,13 @@ test('<reasoning> tag', () => {
 })
 
 test('Case-insensitive: <THOUGHT>', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<THOUGHT>big thoughts</THOUGHT>final')
   expect(r.finalContent).toBe('final')
   expect(r.hadInternalTags).toBeTruthy()
@@ -136,7 +218,13 @@ test('Case-insensitive: <THOUGHT>', () => {
 console.log('\n[Test Suite 2] Unclosed tags')
 
 test('Unclosed <think> — content after tag should not leak', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<think>internal reasoning without closing tag')
   expect(r.finalContent).toBe('')
   expect(r.thinkingContent).toBe('internal reasoning without closing tag')
@@ -144,7 +232,13 @@ test('Unclosed <think> — content after tag should not leak', () => {
 })
 
 test('Unclosed <thought> with content before', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('visible text\n<thought>hidden\nreasoning')
   expect(r.finalContent).toBe('visible text')
   expect(r.hadInternalTags).toBeTruthy()
@@ -156,7 +250,13 @@ test('Unclosed <thought> with content before', () => {
 console.log('\n[Test Suite 3] No internal tags')
 
 test('Normal text — unchanged', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('일반 마크다운 **볼드** 텍스트')
   expect(r.finalContent).toBe('일반 마크다운 **볼드** 텍스트')
   expect(r.thinkingContent).toBe('')
@@ -164,7 +264,13 @@ test('Normal text — unchanged', () => {
 })
 
 test('Empty string', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('')
   expect(r.finalContent).toBe('')
   expect(r.hadInternalTags).toBeFalsy()
@@ -176,9 +282,21 @@ test('Empty string', () => {
 console.log('\n[Test Suite 4] Code block preservation')
 
 test('Code block with <think> inside should be preserved', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'input'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `input`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const input = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const input = '```js\nconst x = "<think>"\n```\n최종 답변'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse(input)
   expect(r.finalContent).toContain('<think>')
   expect(r.finalContent).toContain('최종 답변')
@@ -186,7 +304,13 @@ test('Code block with <think> inside should be preserved', () => {
 })
 
 test('Inline code with tags — preserved', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('Use `<thought>` as a variable name\n\n외부 텍스트')
   // inline code는 코드 블록(```)만 보호하므로 이 경우 제거될 수 있음 — 현재 설계 문서화
   // 이 테스트는 동작 확인용
@@ -199,24 +323,48 @@ test('Inline code with tags — preserved', () => {
 console.log('\n[Test Suite 5] StreamingSanitizer streaming')
 
 test('Normal streaming — no tags', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 's'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `s`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const s = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const s = new StreamingSanitizer()
   s.appendChunk('안녕')
   s.appendChunk('하세요')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const result = s.finalize()
   expect(result.finalContent).toBe('안녕하세요')
   expect(result.hadInternalTags).toBeFalsy()
 })
 
 test('Streaming: complete <think>...</think> in chunks', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 's'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `s`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const s = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const s = new StreamingSanitizer()
   s.appendChunk('<think>')
   s.appendChunk('secret')
   s.appendChunk('</think>')
   s.appendChunk('final answer')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const result = s.finalize()
   expect(result.finalContent).toBe('final answer')
   expect(result.thinkingContent).toContain('secret')
@@ -224,54 +372,132 @@ test('Streaming: complete <think>...</think> in chunks', () => {
 })
 
 test('Streaming: tag split across chunks — secret must not leak', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 's'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `s`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const s = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const s = new StreamingSanitizer()
   // "<thi" + "nk>" + "secret text" + "</thi" + "nk>" + "final"
   s.appendChunk('<thi')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe1'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe1`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe1 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe1 = s.getSafeOutput()
   s.appendChunk('nk>')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe2'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe2`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe2 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe2 = s.getSafeOutput()
   s.appendChunk('secret text')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe3'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe3`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe3 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe3 = s.getSafeOutput()
   s.appendChunk('</thi')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe4'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe4`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe4 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe4 = s.getSafeOutput()
   s.appendChunk('nk>')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe5'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe5`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe5 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe5 = s.getSafeOutput()
   s.appendChunk('final')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe6'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe6`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe6 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe6 = s.getSafeOutput()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'allSafe'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `allSafe`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const allSafe = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const allSafe = safe1 + safe2 + safe3 + safe4 + safe5 + safe6
 
   expect(allSafe).notToContain('secret')
   expect(allSafe).notToContain('<think')
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const result = s.finalize()
   expect(result.finalContent).toContain('final')
   expect(result.thinkingContent).toContain('secret')
 })
 
 test('Streaming: text before tag — text should appear in safeOutput', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 's'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `s`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const s = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const s = new StreamingSanitizer()
   s.appendChunk('visible ')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe1'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe1`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe1 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe1 = s.getSafeOutput()
   s.appendChunk('<think>')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'safe2'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `safe2`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const safe2 = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const safe2 = s.getSafeOutput()
   s.appendChunk('hidden')
   s.appendChunk('</think>')
   s.appendChunk(' after')
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'result'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `result`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const result = s.finalize()
   expect(result.finalContent).toContain('visible')
   expect(result.finalContent).toContain('after')
@@ -284,7 +510,13 @@ test('Streaming: text before tag — text should appear in safeOutput', () => {
 console.log('\n[Test Suite 6] Final/Reasoning separation')
 
 test('finalContent has no internal tags', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<thought>step1\nstep2</thought>사용자에게 보일 답변')
   expect(r.finalContent).notToContain('<thought>')
   expect(r.finalContent).notToContain('</thought>')
@@ -292,7 +524,13 @@ test('finalContent has no internal tags', () => {
 })
 
 test('thinkingContent has the reasoning', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse('<think>분석: 이것은 복잡한 질문</think>간단한 답변')
   expect(r.thinkingContent).toContain('분석')
   expect(r.finalContent).notToContain('분석')
@@ -316,7 +554,13 @@ test('DEFAULT_SETTINGS systemPrompt should not contain <thought> output directiv
   // 이 테스트는 실제 소스 파일을 읽어야 하지만,
   // 여기서는 sanitizeResponse가 이런 패턴을 처리하는지를 확인
   const fakeModelOutput = '<thought>[의도 분석]\n- 복잡한 요청</thought>여기 답변입니다'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse(fakeModelOutput)
   expect(r.finalContent).toBe('여기 답변입니다')
   expect(r.hadInternalTags).toBeTruthy()
@@ -328,35 +572,83 @@ test('DEFAULT_SETTINGS systemPrompt should not contain <thought> output directiv
 console.log('\n[Test Suite 8] Regression — markdown/code block preservation')
 
 test('Markdown headers, lists, bold are preserved', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'md'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `md`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const md = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const md = '# 제목\n\n- item 1\n- item 2\n\n**bold** and *italic*'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse(md)
   expect(r.finalContent).toBe(md)
   expect(r.hadInternalTags).toBeFalsy()
 })
 
 test('Code block with language tag preserved', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'md'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `md`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const md = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const md = '```python\ndef hello():\n    print("hello")\n```'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse(md)
   expect(r.finalContent).toContain('def hello()')
   expect(r.hadInternalTags).toBeFalsy()
 })
 
 test('EDIT_SUGGESTION tag is NOT stripped (it is a different tag)', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'input'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `input`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const input = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const input = '수정했습니다.\n\n[EDIT_SUGGESTION: block123]\nnew content here'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse(input)
   expect(r.finalContent).toContain('[EDIT_SUGGESTION: block123]')
 })
 
 test('HTML entities are preserved', () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'input'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `input`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const input = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const input = 'Use &lt;div&gt; in HTML'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const r = sanitizeResponse(input)
   expect(r.finalContent).toBe('Use &lt;div&gt; in HTML')
 })
@@ -366,7 +658,13 @@ test('HTML entities are preserved', () => {
 // ─────────────────────────────────────────────────────────────
 console.log(`\n${'='.repeat(50)}`)
 console.log(`Results: ${_passed} passed, ${_failed} failed`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `_failed > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (_failed > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
 if (_failed > 0) {
   console.error('\n⚠️  Some tests FAILED. Fix before proceeding.')
   process.exit(1)
@@ -375,4 +673,3 @@ if (_failed > 0) {
   process.exit(0)
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

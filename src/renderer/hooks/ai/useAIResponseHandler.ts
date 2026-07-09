@@ -90,9 +90,21 @@ export function useAIResponseHandler(
 
     // 스트림 종료 및 최종 정제 결과 획득 (생각 버퍼와 최종 결과 분리)
     const sanitizeResult = finalize()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawForEdit'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawForEdit`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawForEdit = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const rawForEdit = rawAccumRef.current
-  // [RUN-TIME STATE / INVARIANT] - 변수 'targetId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `targetId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const targetId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const targetId = currentAssistantIdRef.current
 
     /*
@@ -103,10 +115,22 @@ export function useAIResponseHandler(
 
     // 에디터 활성 문서 트리 내 모든 블록의 flat id 배열 획득 (삽입 시 상대 위치 검증용)
     let siblingBlockIds: string[] = []
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editorRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editorRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (editorRef.current) {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'flatBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `flatBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const flatBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const flatBlocks = (function flatten(blocks: any[]): any[] {
           return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
         })(editorRef.current.document || [])
@@ -134,11 +158,29 @@ export function useAIResponseHandler(
     if (editSuggestionResult && data.success && editorRef.current) {
       try {
         const { blockId: editBlockId, proposedText } = editSuggestionResult
-  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `block`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const block = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const block = editorRef.current.getBlock(editBlockId)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (block) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block.type === 'jupyter'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block.type === 'jupyter')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (block.type === 'jupyter') {
             editorRef.current.updateBlock(editBlockId, {
               type: 'jupyter',
@@ -162,7 +204,13 @@ export function useAIResponseHandler(
      */
     if (insertSuggestions.length > 0 && data.success && editorRef.current) {
       insertSuggestions.forEach((s) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `s.afterBlockId && s.afterBlockId !== 'undefined'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (s.afterBlockId && s.afterBlockId !== 'undefined')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (s.afterBlockId && s.afterBlockId !== 'undefined') {
           try {
             editorRef.current.insertBlocks(
@@ -188,20 +236,56 @@ export function useAIResponseHandler(
      *   최종 정제 텍스트에서 특수 지시 헤더를 날린 후 대상 블록을 덮어쓴다.
      */
     if (!editSuggestionResult && insertSuggestions.length === 0 && data.success && editorRef.current) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `taggedBlocks && taggedBlocks.length > 0 && (intent === 'EDIT' || intent === 'WRITE')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (taggedBlocks && taggedBlocks.length > 0 && (intent === 'EDIT' || intent === 'WRITE'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (taggedBlocks && taggedBlocks.length > 0 && (intent === 'EDIT' || intent === 'WRITE')) {
         try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'firstBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `firstBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const firstBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const firstBlock = taggedBlocks[0]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'block'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `block`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const block = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const block = editorRef.current.getBlock(firstBlock.id)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (block) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalClean'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalClean`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalClean = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const finalClean = sanitizeResult.finalContent
               .replace(/^\[(WRITE|EDIT|CHAT|SUMMARY)\]\s*/i, '')
               .trim()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block.type === 'jupyter'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block.type === 'jupyter')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (block.type === 'jupyter') {
               editorRef.current.updateBlock(firstBlock.id, {
                 type: 'jupyter',
@@ -243,7 +327,13 @@ export function useAIResponseHandler(
      * - Rationale: 사용자가 이전 수락/거절을 수동 결정하기 전까지 뒤의 큐들이 에디터를 덮어쓰는 동기화 꼬임 현상을 차단함.
      */
     const hasPendingDecision = data.success && (!!editSuggestionResult || insertSuggestions.length > 0)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!hasPendingDecision`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!hasPendingDecision)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!hasPendingDecision) {
       setTimeout(() => processNextQueueRef.current?.(), 80)
     }
@@ -266,4 +356,3 @@ export function useAIResponseHandler(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -21,6 +21,12 @@ import { useState, useEffect } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Video, Play, ExternalLink } from 'lucide-react'
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `YoutubeBlockSpec`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `YoutubeBlockSpec(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const YoutubeBlockSpec = createReactBlockSpec(
   {
     type: 'youtube',
@@ -41,12 +47,24 @@ export const YoutubeBlockSpec = createReactBlockSpec(
       const [localThumbnail] = useState(thumbnail || (videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : ''))
 
       useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `videoId && title === 'YouTube Video'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (videoId && title === 'YouTube Video')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (videoId && title === 'YouTube Video') {
           fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`)
             .then(res => res.json())
             .then(data => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `data.title`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (data.title)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (data.title) {
                 setLocalTitle(data.title)
                 editor.updateBlock(block, { props: { ...block.props, title: data.title } })
@@ -55,7 +73,13 @@ export const YoutubeBlockSpec = createReactBlockSpec(
         }
       }, [videoId, title, editor, block])
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!videoId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!videoId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!videoId) {
         return (
           <div style={{
@@ -134,6 +158,11 @@ export const YoutubeBlockSpec = createReactBlockSpec(
   }
 )
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `YoutubeBlock`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `YoutubeBlock(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const YoutubeBlock = YoutubeBlockSpec()
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

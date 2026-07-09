@@ -28,7 +28,13 @@ import { useAI } from '../../../hooks/useAI';
  */
 export function AIChatInput({ selectedText }: { selectedText?: string }) {
   const [input, setInput] = useState('');
-  // [RUN-TIME STATE / INVARIANT] - 변수 'textareaRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `textareaRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const textareaRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // 파사드(Facade)를 통한 Zustand 상태 및 에이전트 액션 구독
@@ -41,9 +47,21 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
     isAvailable
   } = useAI();
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleSend'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleSend`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleSend = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleSend = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!input.trim() || isGenerating`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!input.trim() || isGenerating)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!input.trim() || isGenerating) return;
     
     // 에이전트에게 생성 요청 전달 (선택된 텍스트가 있다면 컨텍스트로 함께 전달)
@@ -56,9 +74,21 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
     }, 50);
   };
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleKeyDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleKeyDown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleKeyDown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `e.key === 'Enter' && !e.shiftKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (e.key === 'Enter' && !e.shiftKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -67,14 +97,26 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
 
   // 텍스트에리어 자동 높이 조절
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `textareaRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (textareaRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
     }
   }, [input]);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'providerType'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `providerType`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const providerType = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const providerType = settings.apiType === 'local' 
     ? 'Local GGUF' 
     : settings.apiType === 'wasm' 
@@ -211,4 +253,3 @@ export function AIChatInput({ selectedText }: { selectedText?: string }) {
   );
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

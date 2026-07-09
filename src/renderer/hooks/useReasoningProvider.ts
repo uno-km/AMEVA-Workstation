@@ -70,14 +70,30 @@ type LLMCallFn = (
 // Trace 이벤트 생성 헬퍼
 // ---------------------------------------------------------------------------
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 '_traceIdCounter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `_traceIdCounter`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const _traceIdCounter = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 let _traceIdCounter = 0
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `makeTraceId`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `makeTraceId(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function makeTraceId(): string {
   return `trace_${Date.now()}_${++_traceIdCounter}`
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `makeEvent`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `makeEvent(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function makeEvent(
   type: ReasoningTraceEvent['type'],
   text: string,
@@ -104,9 +120,21 @@ function makeEvent(
  * - 로컬 GGUF 모델은 미지원.
  */
 function supportsNativeThinking(apiType: string, modelPath?: string): boolean {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `apiType !== 'api'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (apiType !== 'api')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (apiType !== 'api') return false
-  // [RUN-TIME STATE / INVARIANT] - 변수 'name'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `name`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const name = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const name = (modelPath || '').toLowerCase()
   return (
     name.includes('claude-3-7') ||
@@ -123,7 +151,12 @@ function supportsNativeThinking(apiType: string, modelPath?: string): boolean {
 // JSON 파싱 헬퍼 (LLM 출력에서 JSON 추출)
 // ---------------------------------------------------------------------------
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `extractJSON`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `extractJSON(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function extractJSON<T>(raw: string): T | null {
   try {
     // code fence 제거
@@ -132,7 +165,13 @@ function extractJSON<T>(raw: string): T | null {
   } catch {
     // fallback: 첫 { ... } 추출 시도
     const match = raw.match(/\{[\s\S]*\}/)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `match`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (match)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (match) {
       try {
         return JSON.parse(match[0]) as T
@@ -146,7 +185,13 @@ function extractJSON<T>(raw: string): T | null {
 // Stepwise Reasoning Pipeline (Fallback — 5 LLM calls)
 // ---------------------------------------------------------------------------
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ANALYZE_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ANALYZE_SYSTEM`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ANALYZE_SYSTEM = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const ANALYZE_SYSTEM = `당신은 전문 분석가입니다.
 사용자 요청을 분석하여 아래 JSON 형식으로만 응답하십시오. 최종 답변은 절대 포함하지 마십시오.
 
@@ -160,7 +205,13 @@ const ANALYZE_SYSTEM = `당신은 전문 분석가입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'PLAN_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `PLAN_SYSTEM`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const PLAN_SYSTEM = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const PLAN_SYSTEM = `당신은 전략 계획 전문가입니다.
 제공된 분석 결과를 바탕으로 해결 절차를 수립하십시오. 최종 답변은 절대 포함하지 마십시오.
 
@@ -173,7 +224,13 @@ const PLAN_SYSTEM = `당신은 전략 계획 전문가입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'SOLVE_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `SOLVE_SYSTEM`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const SOLVE_SYSTEM = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const SOLVE_SYSTEM = `당신은 전문 문제 해결사입니다.
 계획에 따라 답변 초안을 생성하십시오.
 
@@ -186,7 +243,13 @@ const SOLVE_SYSTEM = `당신은 전문 문제 해결사입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'VERIFY_SYSTEM'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `VERIFY_SYSTEM`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const VERIFY_SYSTEM = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const VERIFY_SYSTEM = `당신은 품질 검토 전문가입니다.
 제공된 초안을 검증하십시오. 오류, 누락, 과장, 불명확성을 점검하십시오.
 
@@ -199,9 +262,20 @@ const VERIFY_SYSTEM = `당신은 품질 검토 전문가입니다.
 
 반드시 위 JSON만 출력하십시오.`
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `buildFinalizeSystem`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `buildFinalizeSystem(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function buildFinalizeSystem(context?: string): string {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ctx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ctx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ctx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const ctx = context ? `\n\n[참조 문서 컨텍스트]\n${context.slice(0, 1500)}` : ''
   return `당신은 최종 답변 생성 전문가입니다.
 분석, 계획, 초안, 검증 결과를 종합하여 최종 답변을 생성하십시오.
@@ -220,7 +294,6 @@ raw CoT(내부 사고 과정)는 절대 그대로 노출하지 마십시오.${ct
 반드시 위 JSON만 출력하십시오.`
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 async function runStepwisePipeline(
   input: string,
   llmCall: LLMCallFn,
@@ -232,7 +305,12 @@ async function runStepwisePipeline(
 ): Promise<ReasoningResult> {
   const trace: ReasoningTraceEvent[] = []
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `emit`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `emit(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
   function emit(event: ReasoningTraceEvent) {
     trace.push(event)
     onEvent?.(event)
@@ -246,54 +324,120 @@ async function runStepwisePipeline(
       Math.min(maxTokens ?? 512, 400),
       temperature ?? 0.3
     )
-  // [RUN-TIME STATE / INVARIANT] - 변수 'analyze'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `analyze`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const analyze = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const analyze = extractJSON<AnalyzeStepOutput>(analyzeRaw)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!analyze?.summary) throw new Error('analyze step failed: no summary'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!analyze?.summary) throw new Error('analyze step failed: no summary')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!analyze?.summary) throw new Error('analyze step failed: no summary')
     emit(makeEvent('analysis', analyze.summary, model))
 
     // --- Step 2: Plan ---
     const planPrompt = `[분석 결과]\n${JSON.stringify(analyze, null, 2)}\n\n[원래 요청]\n${input}`
-  // [RUN-TIME STATE / INVARIANT] - 변수 'planRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `planRaw`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const planRaw = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const planRaw = await llmCall(
       planPrompt,
       PLAN_SYSTEM,
       Math.min(maxTokens ?? 512, 400),
       temperature ?? 0.3
     )
-  // [RUN-TIME STATE / INVARIANT] - 변수 'plan'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `plan`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const plan = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const plan = extractJSON<PlanStepOutput>(planRaw)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!plan?.summary) throw new Error('plan step failed: no summary'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!plan?.summary) throw new Error('plan step failed: no summary')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!plan?.summary) throw new Error('plan step failed: no summary')
     emit(makeEvent('plan', plan.summary, model))
 
     // --- Step 3: Solve ---
     const solvePrompt = `[분석]\n${JSON.stringify(analyze, null, 2)}\n\n[계획]\n${JSON.stringify(plan, null, 2)}\n\n[원래 요청]\n${input}`
-  // [RUN-TIME STATE / INVARIANT] - 변수 'solveRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `solveRaw`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const solveRaw = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const solveRaw = await llmCall(
       solvePrompt,
       SOLVE_SYSTEM,
       maxTokens ?? 512,
       temperature ?? 0.5
     )
-  // [RUN-TIME STATE / INVARIANT] - 변수 'solve'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `solve`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const solve = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const solve = extractJSON<SolveStepOutput>(solveRaw)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!solve?.summary) throw new Error('solve step failed: no summary'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!solve?.summary) throw new Error('solve step failed: no summary')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!solve?.summary) throw new Error('solve step failed: no summary')
     emit(makeEvent('solve', solve.summary, model))
 
     // --- Step 4: Verify ---
     const verifyPrompt = `[초안]\n${solve.draft}\n\n[원래 요청]\n${input}`
-  // [RUN-TIME STATE / INVARIANT] - 변수 'verifyRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `verifyRaw`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const verifyRaw = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const verifyRaw = await llmCall(
       verifyPrompt,
       VERIFY_SYSTEM,
       Math.min(maxTokens ?? 512, 300),
       temperature ?? 0.3
     )
-  // [RUN-TIME STATE / INVARIANT] - 변수 'verify'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `verify`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const verify = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const verify = extractJSON<VerifyStepOutput>(verifyRaw)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!verify?.summary) throw new Error('verify step failed: no summary'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!verify?.summary) throw new Error('verify step failed: no summary')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!verify?.summary) throw new Error('verify step failed: no summary')
     emit(makeEvent('verify', verify.summary, model))
 
@@ -306,23 +450,52 @@ async function runStepwisePipeline(
       `\n[원래 요청]\n${input}`,
     ].join('\n')
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalizeRaw'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalizeRaw`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalizeRaw = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const finalizeRaw = await llmCall(
       finalizePrompt,
       buildFinalizeSystem(context),
       maxTokens ?? 1024,
       temperature ?? 0.6
     )
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalize'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalize`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalize = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const finalize = extractJSON<FinalizeStepOutput>(finalizeRaw)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!finalize?.final) throw new Error('finalize step failed: no final'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!finalize?.final) throw new Error('finalize step failed: no final')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!finalize?.final) throw new Error('finalize step failed: no final')
 
     // finalize.visible_reasoning_trace를 trace에 추가
     if (Array.isArray(finalize.visible_reasoning_trace)) {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const item of finalize.visible_reasoning_trace) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
       for (const item of finalize.visible_reasoning_trace) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `item?.text`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (item?.text)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (item?.text) {
           emit(makeEvent(item.type || 'summary', item.text, model))
         }
@@ -331,9 +504,21 @@ async function runStepwisePipeline(
 
     return { trace, final: finalize.final, status: 'ok' }
   } catch (err: unknown) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'errMsg'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `errMsg`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const errMsg = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const errMsg = err instanceof Error ? err.message : String(err)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'errEvent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `errEvent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const errEvent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const errEvent = makeEvent('error', `파이프라인 오류: ${errMsg}`, model)
     trace.push(errEvent)
     onEvent?.(errEvent)
@@ -345,9 +530,20 @@ async function runStepwisePipeline(
 // Main Hook
 // ---------------------------------------------------------------------------
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `useReasoningProvider`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `useReasoningProvider(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function useReasoningProvider() {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'run'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `run`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const run = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const run = useCallback(
     async (
       input: string,
@@ -364,7 +560,13 @@ export function useReasoningProvider() {
         onTraceEvent,
       } = options
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'modelName'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `modelName`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const modelName = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const modelName = modelPath
         ? modelPath.split(/[/\\]/).pop() || modelPath
         : apiType
@@ -374,14 +576,26 @@ export function useReasoningProvider() {
       // ------------------------------------------------------------------
       if (supportsNativeThinking(apiType, modelPath)) {
         try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nativeResult'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nativeResult`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nativeResult = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const nativeResult = await tryNativeThinking(
             input,
             options,
             modelName,
             onTraceEvent
           )
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `nativeResult`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (nativeResult)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (nativeResult) return nativeResult
         } catch {
           // native thinking 실패 → fallback으로 진행
@@ -392,17 +606,40 @@ export function useReasoningProvider() {
       // 2. Fallback: Stepwise Reasoning Pipeline
       // ------------------------------------------------------------------
       if (enableFallbackPipeline && ipc.isElectronEnv()) {
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `llmCall`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `llmCall(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
         const llmCall: LLMCallFn = async (prompt, systemPrompt, maxTok, temp) => {
           return new Promise<string>((resolve) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'buffer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `buffer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const buffer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             let buffer = ''
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubToken'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsubToken`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsubToken = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const unsubToken = ipc.onLLMToken("default", (token: string) => {
               buffer += token
             })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubDone'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsubDone`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsubDone = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const unsubDone = ipc.onLLMDone("default", (data: { success: boolean; error?: string }) => {
               unsubToken()
               unsubDone()
@@ -446,14 +683,38 @@ export function useReasoningProvider() {
 
       // 일반 단일 LLM 호출로 최종 답변만 반환
       let finalAnswer = ''
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (ipc.isElectronEnv()) {
         finalAnswer = await new Promise<string>((resolve) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'buf'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `buf`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const buf = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           let buf = ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubToken'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsubToken`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsubToken = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const unsubToken = ipc.onLLMToken("default", (t: string) => { buf += t })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsubDone'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsubDone`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsubDone = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const unsubDone = ipc.onLLMDone("default", (d: { success: boolean; error?: string }) => {
             unsubToken()
             unsubDone()
@@ -488,7 +749,6 @@ export function useReasoningProvider() {
 // Native Thinking 시도 (API 모드 전용 — Claude/Gemini 등)
 // ---------------------------------------------------------------------------
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
 async function tryNativeThinking(
   input: string,
   options: ReasoningRunOptions,
@@ -503,4 +763,3 @@ async function tryNativeThinking(
   return null
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

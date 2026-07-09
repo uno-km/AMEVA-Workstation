@@ -58,28 +58,58 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const [thoughtExpanded, setThoughtExpanded] = useState(false);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isUser'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isUser`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isUser = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isUser = msg.role === 'user';
 
   // AI 스트리밍 중에는 사용자가 실시간 추론 과정을 추적할 수 있도록 '생각 과정' 아코디언을 자동으로 펼칩니다.
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `msg.isStreaming) setThoughtExpanded(true`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (msg.isStreaming) setThoughtExpanded(true)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (msg.isStreaming) setThoughtExpanded(true);
   }, [msg.isStreaming]);
 
   // msg.reasoningTrace 배열에서 type이 'thinking'인 트레이스 텍스트들을 추출해 하나로 결합합니다.
   const traceEvents = msg.reasoningTrace || [];
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasRealTrace'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasRealTrace`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasRealTrace = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hasRealTrace = traceEvents.length > 0;
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'thinkingText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `thinkingText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const thinkingText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const thinkingText = traceEvents
     .filter((t: any) => t.type === 'thinking')
     .map((t: any) => t.text || '')
     .filter((t: any) => Boolean(t))
     .join('\n\n---\n\n');
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cleanContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cleanContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cleanContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const cleanContent = msg.content; // sanitization을 거친 최종 응답 본문 텍스트
 
   // AI의 추론 텍스트의 볼륨과 단계를 요약(분석)하여 UI에 표시할 메타데이터 생성
@@ -102,15 +132,45 @@ export function MessageBubble({
    * '에디터 본문에 즉각 삽입'하는 액션을 수행하기 위해 코드 스니펫만 파싱해냅니다.
    */
   let codeSnippet = '';
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `cleanContent.includes('```')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (cleanContent.includes('```'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (cleanContent.includes('```')) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'parts'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parts`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parts = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const parts = cleanContent.split('```');
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `parts[1]`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (parts[1])` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (parts[1]) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const lines = parts[1].split('\n');
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `lines[0] && lines[0].trim().length < 15 && !lines[0].includes(' ') && !lines[0].includes('(')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (lines[0] && lines[0].trim().length < 15 && !lines[0].includes(' ') && !lines[0].includes('('))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (lines[0] && lines[0].trim().length < 15 && !lines[0].includes(' ') && !lines[0].includes('(')) {
         codeSnippet = lines.slice(1).join('\n').trim();
       } else {
@@ -119,7 +179,13 @@ export function MessageBubble({
     }
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'textToApply'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `textToApply`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const textToApply = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const textToApply = codeSnippet || cleanContent.trim();
 
   // 시스템 메시지일 경우 단순 중앙 정렬된 회색 텍스트로만 렌더링
@@ -249,29 +315,76 @@ export function MessageBubble({
                   onUpdateInsertSuggestionStatus?.(msg.id, 'rejected', undefined, undefined, idx)
                 }}
                 onMove={(direction) => {
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
                   const flatAll: any[] = (function flatten(bks: any[]): any[] {
                     return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
                   })(blocks || [])
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ids'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ids`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ids = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const ids = ins.siblingBlockIds ?? flatAll.map((b: any) => b.id)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const currIdx = ins.siblingIndex ?? ids.indexOf(ins.afterBlockId)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'highlightBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `highlightBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const highlightBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const highlightBlock = (targetId: string) => {
                     setTimeout(() => {
                       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `resolvedId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const resolvedId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                         const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!resolvedId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!resolvedId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                         if (!resolvedId) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'el'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `el`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const el = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                         const el = document.querySelector(`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `el`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (el)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `outer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const outer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                           const outer = el.closest('.bn-block-outer') || el
                           outer.setAttribute('data-highlighted-temp', 'true')
                           setTimeout(() => outer.removeAttribute('data-highlighted-temp'), 1200)
@@ -282,18 +395,48 @@ export function MessageBubble({
                     }, 50)
                   }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `direction === 'up' && currIdx > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (direction === 'up' && currIdx > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                   if (direction === 'up' && currIdx > 0) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newIdx = currIdx - 1
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newId = newIdx === 0 ? 'START' : ids[newIdx - 1]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx, idx)
                     highlightBlock(newId)
                   } else if (direction === 'down') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newIdx = currIdx + 1
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newId = newIdx >= ids.length ? 'END' : ids[newIdx]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx, idx)
                     highlightBlock(newId)
@@ -309,7 +452,13 @@ export function MessageBubble({
                 blocks={blocks || []}
                 onScrollToBlock={onScrollToBlock}
                 onApply={() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ins`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ins = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const ins = msg.insertSuggestion!
                   onApplyInsertSuggestion?.(msg.id, ins.afterBlockId, ins.blockType, ins.content, ins.level)
                 }}
@@ -317,31 +466,84 @@ export function MessageBubble({
                   onUpdateInsertSuggestionStatus?.(msg.id, 'rejected')
                 }}
                 onMove={(direction) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ins'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ins`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ins = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const ins = msg.insertSuggestion!
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
                   const flatAll: any[] = (function flatten(bks: any[]): any[] {
                     return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])])
                   })(blocks || [])
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ids'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ids`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ids = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const ids = ins.siblingBlockIds ?? flatAll.map((b: any) => b.id)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const currIdx = ins.siblingIndex ?? ids.indexOf(ins.afterBlockId)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'highlightBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `highlightBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const highlightBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                   const highlightBlock = (targetId: string) => {
                     setTimeout(() => {
                       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `resolvedId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const resolvedId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                         const resolvedId = targetId === 'START' ? ids[0] : targetId === 'END' ? ids[ids.length - 1] : targetId
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!resolvedId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!resolvedId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                         if (!resolvedId) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'el'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `el`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const el = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                         const el = document.querySelector(`[data-id="\${resolvedId}"], [data-block-id="\${resolvedId}"]`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `el`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (el)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                         if (el) {
                           el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `outer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const outer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                           const outer = el.closest('.bn-block-outer') || el
                           outer.setAttribute('data-highlighted-temp', 'true')
                           setTimeout(() => outer.removeAttribute('data-highlighted-temp'), 1200)
@@ -352,18 +554,48 @@ export function MessageBubble({
                     }, 50)
                   }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `direction === 'up' && currIdx > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (direction === 'up' && currIdx > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
                   if (direction === 'up' && currIdx > 0) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newIdx = currIdx - 1
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newId = newIdx === 0 ? 'START' : ids[newIdx - 1]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx)
                     highlightBlock(newId)
                   } else if (direction === 'down') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newIdx = currIdx + 1
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                     const newId = newIdx >= ids.length ? 'END' : ids[newIdx]
                     onUpdateInsertSuggestionStatus?.(msg.id, 'pending', newId, newIdx)
                     highlightBlock(newId)
@@ -459,4 +691,3 @@ export function MessageBubble({
   );
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

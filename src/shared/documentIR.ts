@@ -174,27 +174,66 @@ export interface DocumentIR {
 // BlockNote blocks[] → DocumentIR 변환 헬퍼
 // ─────────────────────────────────────────────────────────────
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 '_blockIdCounter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `_blockIdCounter`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const _blockIdCounter = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 let _blockIdCounter = 0
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `genId`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `genId(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function genId(): string {
   return `ir_${Date.now()}_${++_blockIdCounter}`
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `getPlainText`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `getPlainText(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function getPlainText(block: any): string {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!block.content`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!block.content)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!block.content) return ''
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `Array.isArray(block.content)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (Array.isArray(block.content))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (Array.isArray(block.content)) {
     return block.content.map((c: any) => c.text || '').join('')
   }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `typeof block.content === 'string'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (typeof block.content === 'string')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (typeof block.content === 'string') return block.content
   return ''
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `mapBlockType`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `mapBlockType(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function mapBlockType(type: string): DocumentBlockType {
   const mapping: Record<string, DocumentBlockType> = {
     heading: 'heading',
@@ -214,7 +253,12 @@ function mapBlockType(type: string): DocumentBlockType {
   return mapping[type] || 'unknown'
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `convertBlock`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `convertBlock(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function convertBlock(
   block: any,
   order: number,
@@ -222,11 +266,29 @@ function convertBlock(
   assets?: DocumentAsset[],
   warnings?: string[]
 ): DocumentBlock {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'id'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `id`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const id = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const id = block.id || genId()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'type'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `type`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const type = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const type = mapBlockType(block.type)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const text = getPlainText(block)
 
   const irBlock: DocumentBlock = {
@@ -245,7 +307,13 @@ function convertBlock(
 
   // List style
   if (type === 'list') {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block.type === 'bulletListItem'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block.type === 'bulletListItem')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (block.type === 'bulletListItem') irBlock.listStyle = 'bullet'
     else if (block.type === 'numberedListItem') irBlock.listStyle = 'numbered'
     else if (block.type === 'checkListItem') {
@@ -264,7 +332,13 @@ function convertBlock(
 
   // Image asset
   if (type === 'image' && block.props?.url) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'assetId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `assetId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const assetId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const assetId = genId()
     const asset: DocumentAsset = {
       id: assetId,
@@ -278,7 +352,12 @@ function convertBlock(
 
   // Table
   if (type === 'table') {
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `rows`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `rows(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
     const rows: DocumentTableRow[] = (block.tableRows ?? []).map((row: any, ri: number) => ({
       cells: Array.isArray(row.cells)
         ? row.cells.map((cell: any) => (Array.isArray(cell) ? cell.map((c: any) => c.text || '').join('') : ''))
@@ -286,7 +365,13 @@ function convertBlock(
       isHeader: ri === 0,
     }))
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `rows.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (rows.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (rows.length > 0) {
       irBlock.tableData = {
         rows,
@@ -303,7 +388,13 @@ function convertBlock(
 
   // Style hints from inline content
   const inlineContent = Array.isArray(block.content) ? block.content : []
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `inlineContent.some((c: any) => c.styles?.bold)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (inlineContent.some((c: any) => c.styles?.bold))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (inlineContent.some((c: any) => c.styles?.bold)) {
     irBlock.styleHints = { ...(irBlock.styleHints || {}), bold: true }
   }
@@ -311,7 +402,12 @@ function convertBlock(
   return irBlock
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `flattenBlocks`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `flattenBlocks(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 function flattenBlocks(
   blocks: any[],
   result: DocumentBlock[],
@@ -320,15 +416,38 @@ function flattenBlocks(
   parentId?: string,
   orderStart = 0
 ): number {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'order'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `order`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const order = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   let order = orderStart
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const block of blocks) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   for (const block of blocks) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'irBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `irBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const irBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const irBlock = convertBlock(block, order++, parentId, assets, warnings)
     result.push(irBlock)
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `Array.isArray(block.children) && block.children.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (Array.isArray(block.children) && block.children.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (Array.isArray(block.children) && block.children.length > 0) {
       order = flattenBlocks(block.children, result, assets, warnings, irBlock.id, order)
     }
@@ -357,16 +476,39 @@ export function blocksToDocumentIR(
 
   // 제목 추출
   const firstHeading = irBlocks.find(b => b.type === 'heading' && b.level === 1)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'title'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `title`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const title = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const title = firstHeading?.text || sourceFileName?.replace(/\.[^.]+$/, '') || undefined
 
   // 레이아웃 힌트: heading1 기준으로 섹션 그룹화
   let currentSectionIds: string[] = []
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const block of irBlocks) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   for (const block of irBlocks) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block.type === 'heading' && block.level === 1`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block.type === 'heading' && block.level === 1)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (block.type === 'heading' && block.level === 1) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `currentSectionIds.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (currentSectionIds.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (currentSectionIds.length > 0) {
         layoutHints.push({ slideGroupIds: currentSectionIds })
       }
@@ -375,16 +517,33 @@ export function blocksToDocumentIR(
       currentSectionIds.push(block.id)
     }
   }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `currentSectionIds.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (currentSectionIds.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (currentSectionIds.length > 0) {
     layoutHints.push({ slideGroupIds: currentSectionIds })
   }
 
   // asset relations
   for (const block of irBlocks) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `block.assetRefs`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (block.assetRefs)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (block.assetRefs) {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const assetId of block.assetRefs) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
       for (const assetId of block.assetRefs) {
         relations.push({ fromBlockId: block.id, toAssetId: assetId, relationType: 'references' })
       }
@@ -393,13 +552,37 @@ export function blocksToDocumentIR(
 
   // 레이아웃 품질 점수
   const hasHeadings = irBlocks.some(b => b.type === 'heading')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hasContent = irBlocks.some(b => b.text && b.text.trim().length > 0)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasAssets'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasAssets`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasAssets = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hasAssets = assets.length > 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 'warnCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `warnCount`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const warnCount = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const warnCount = warnings.length
-  // [RUN-TIME STATE / INVARIANT] - 변수 'layoutQualityScore'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `layoutQualityScore`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const layoutQualityScore = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const layoutQualityScore = Math.max(
     0,
     (hasHeadings ? 30 : 0) +
@@ -424,4 +607,3 @@ export function blocksToDocumentIR(
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

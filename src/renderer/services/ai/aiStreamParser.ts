@@ -65,14 +65,38 @@ const VALID_BLOCK_TYPES: InsertSuggestion['blockType'][] = [
  * @returns ParsedEditSuggestion 또는 null
  */
 export function parseEditSuggestion(rawText: string): ParsedEditSuggestion | null {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'editMatch'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `editMatch`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const editMatch = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const editMatch = rawText.match(/\[EDIT_SUGGESTION:\s*([a-zA-Z0-9_\-]+)\](?:\r?\n)?([\s\S]*)/i)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editMatch`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editMatch)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!editMatch) return null
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const blockId = editMatch[1]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'proposedText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `proposedText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const proposedText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const proposedText = editMatch[2].trim()
 
   // 태그 이전 텍스트를 cleanContent로 반환 (사용자에게 보여지는 말풍선 텍스트)
@@ -98,7 +122,13 @@ export function parseInsertSuggestions(
   finalContent: string,
   siblingBlockIds: string[] = []
 ): ParsedInsertSuggestions | null {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tagRegex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tagRegex`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tagRegex = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const tagRegex = /\[INSERT_SUGGESTION:\s*afterBlockId=([^,\]]+),\s*type=(\w+)(?:,\s*level=(\d))?\]/gi
   let match: RegExpExecArray | null
   const parsedMatches: Array<{
@@ -110,7 +140,12 @@ export function parseInsertSuggestions(
     endIndex: number
   }> = []
 
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `while ((match = tagRegex.exec(rawText)) !== null) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
   while ((match = tagRegex.exec(rawText)) !== null) {
     parsedMatches.push({
       tag: match[0],
@@ -122,12 +157,24 @@ export function parseInsertSuggestions(
     })
   }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `parsedMatches.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (parsedMatches.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (parsedMatches.length === 0) return null
 
   // 첫 번째 태그 앞의 텍스트를 이유 설명 및 cleanContent로 처리
   const firstTagIdx = parsedMatches[0].startIndex
-  // [RUN-TIME STATE / INVARIANT] - 변수 'preTagText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `preTagText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const preTagText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const preTagText = rawText.slice(0, firstTagIdx).trim()
 
   // 내부 태그(thinking/reasoning) 제거 후 이유 텍스트 정제
@@ -144,15 +191,33 @@ export function parseInsertSuggestions(
 
   // 각 태그와 그 다음 태그 사이의 텍스트를 내용으로 파싱
   const suggestions: InsertSuggestion[] = parsedMatches.map((curr, i) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nextStart'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nextStart`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nextStart = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const nextStart =
       i + 1 < parsedMatches.length ? parsedMatches[i + 1].startIndex : rawText.length
-  // [RUN-TIME STATE / INVARIANT] - 변수 'insertContent'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `insertContent`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const insertContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const insertContent = rawText.slice(curr.endIndex, nextStart).trim()
 
     // afterBlockId 보정: 유효하지 않은 값은 'END'로 대체
     let afterBlockId = curr.afterBlockIdRaw
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!afterBlockId || afterBlockId === '...' || afterBlockId === 'undefined') {
       afterBlockId = 'END'
     }
@@ -166,7 +231,13 @@ export function parseInsertSuggestions(
 
     // 삽입 위치의 sibling 인덱스 계산
     const foundIdx = siblingBlockIds.indexOf(afterBlockId)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'siblingIndex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `siblingIndex`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const siblingIndex = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const siblingIndex = foundIdx >= 0 ? foundIdx : siblingBlockIds.length - 1
 
     return {
@@ -200,4 +271,3 @@ export function cleanModeEchoFromContent(content: string): string {
     .trim()
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

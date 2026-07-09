@@ -74,25 +74,79 @@ export interface GlobalShortcutsParams {
 
 /** matchHotkey 유틸: 키 이벤트와 단축키 문자열 비교 */
 function matchHotkey(e: KeyboardEvent, hotkey: string): boolean {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'parts'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parts`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parts = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const parts = hotkey.toLowerCase().split('+')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'key'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `key`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const key = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const key = parts[parts.length - 1]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'needsCtrl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `needsCtrl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const needsCtrl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const needsCtrl = parts.includes('control') || parts.includes('ctrl')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'needsShift'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `needsShift`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const needsShift = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const needsShift = parts.includes('shift')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'needsAlt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `needsAlt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const needsAlt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const needsAlt = parts.includes('alt')
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `needsCtrl && !e.ctrlKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (needsCtrl && !e.ctrlKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (needsCtrl && !e.ctrlKey) return false
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `needsShift && !e.shiftKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (needsShift && !e.shiftKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (needsShift && !e.shiftKey) return false
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `needsAlt && !e.altKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (needsAlt && !e.altKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (needsAlt && !e.altKey) return false
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'eKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `eKey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const eKey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const eKey = e.key.toLowerCase()
   return eKey === key || (key === '\\' && eKey === '\\')
 }
@@ -110,7 +164,13 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
 
   const { adjustEditorZoom, setBrowserZoom } = useProcessStore()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleKeyDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleKeyDown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleKeyDown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     const hotkeys: HotkeyConfig = settings.hotkeys || {
       save: 'Control+s', open: 'Control+o', newFile: 'Control+n',
@@ -121,13 +181,25 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
     // F11 — 전체화면 토글
     if (e.key === 'F11') {
       e.preventDefault()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `document.fullscreenElement) document.exitFullscreen(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (document.fullscreenElement) document.exitFullscreen()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (document.fullscreenElement) document.exitFullscreen()
       else document.documentElement.requestFullscreen()
       return
     }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `matchHotkey(e, hotkeys.save || 'Control+s')`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (matchHotkey(e, hotkeys.save || 'Control+s'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (matchHotkey(e, hotkeys.save || 'Control+s')) {
       e.preventDefault()
       onSave()
@@ -185,32 +257,86 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
 
   }, [settings.hotkeys, onSave, onOpen, onNewTab, onToggleAI, onToggleMode, onZoomIn, onZoomOut, onZoomReset])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleWheelZoom'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleWheelZoom`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleWheelZoom = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleWheelZoom = useCallback((e: WheelEvent) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!e.ctrlKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!e.ctrlKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!e.ctrlKey) return
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'editorWrapper'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `editorWrapper`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const editorWrapper = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const editorWrapper = document.querySelector('.editor-zoom-wrapper')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isInsideEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isInsideEditor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isInsideEditor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isInsideEditor = editorWrapper?.contains(e.target as Node) ?? false
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isInsideEditor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isInsideEditor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isInsideEditor) {
       // 에디터 내부: CSS zoom으로 처리
       e.preventDefault()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'delta'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `delta`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const delta = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const delta = e.deltaY < 0 ? 0.1 : -0.1
       adjustEditorZoom(delta)
     } else {
       // 에디터 외부: Electron webFrame zoom
       if ((window as any).electronAPI?.setZoomFactor) {
         e.preventDefault()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'step'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `step`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const step = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const step = e.deltaY < 0 ? 0.1 : -0.1
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prev'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prev`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prev = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const prev = useProcessStore.getState().browserZoom
-  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `next`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const next = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const next = Math.min(3.0, Math.max(0.3, Math.round((prev + step) * 10) / 10))
         setBrowserZoom(next)
         ;(window as any).electronAPI.setZoomFactor(next)
@@ -229,4 +355,3 @@ export function useGlobalShortcuts(params: GlobalShortcutsParams) {
   }, [handleKeyDown, handleWheelZoom])
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

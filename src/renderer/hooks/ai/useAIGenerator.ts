@@ -143,14 +143,32 @@ export function useAIGenerator(
 
     // 사용자의 입력 의도 분류 및 런타임 오버라이드 설정 병합
     const intent = determineIntent(userMessage, taggedBlocks, (runtimeSettings as any)?.resolvedMode)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalSettings'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalSettings`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalSettings = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const finalSettings = { ...settings, ...runtimeSettings }
 
     // FIM 코딩 특화 모델 경로 스위칭 처리
     const isCodingRequest = detectCodingRequest(userMessage)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'codeModelUsed'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `codeModelUsed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const codeModelUsed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let codeModelUsed = false
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isCodingRequest && finalSettings.codeModelPath && finalSettings.codeModelPath !== ''`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isCodingRequest && finalSettings.codeModelPath && finalSettings.codeModelPath !== '')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isCodingRequest && finalSettings.codeModelPath && finalSettings.codeModelPath !== '') {
       finalSettings.modelPath = finalSettings.codeModelPath
       codeModelUsed = true
@@ -158,9 +176,21 @@ export function useAIGenerator(
 
     // 무료 라이선스 사용자의 클라우드 호출 횟수 임계 한계 도달 체크
     const limitResult = checkUsageLimit(isPro, finalSettings)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `limitResult.isLimitExceeded`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (limitResult.isLimitExceeded)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (limitResult.isLimitExceeded) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'limitMessageId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `limitMessageId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const limitMessageId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const limitMessageId = `msg_limit_${Date.now()}`
       setMessages([
         ...useAILogStore.getState().messages,
@@ -176,7 +206,13 @@ export function useAIGenerator(
 
     // 신규 말풍선 엘리먼트 ID 및 세션 UUID 생성
     const assistantId = `msg_${Date.now()}_assistant`
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sessId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sessId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sessId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const sessId = crypto.randomUUID()
 
     // 60ms 디바운서 인스턴스 초기화 기동
@@ -193,9 +229,21 @@ export function useAIGenerator(
 
     addUserAndAssistantMessages(userMsg, assistantId, originalText, blockId)
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `codeModelUsed`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (codeModelUsed)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (codeModelUsed) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'modelNameOnly'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `modelNameOnly`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const modelNameOnly = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const modelNameOnly = finalSettings.modelPath.split(/[/\\]/).pop()
       setEngineLogs(`[System] 코딩 요청이 감지되었습니다. 코딩 특화 모델(${modelNameOnly})로 전환하여 응답을 생성합니다.\n`)
     }
@@ -262,9 +310,21 @@ export function useAIGenerator(
 
     // 무료 플랜 사용량 누적 카운트 업
     const isLocalModel = finalSettings.apiType === 'local' || finalSettings.apiType === 'wasm' || finalSettings.apiType === 'ollama'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isPersonalApiKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isPersonalApiKey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isPersonalApiKey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isPersonalApiKey = finalSettings.apiType === 'api' && !!finalSettings.apiKey && finalSettings.apiKey.trim() !== ''
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isPro && !isLocalModel && !isPersonalApiKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isPro && !isLocalModel && !isPersonalApiKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!isPro && !isLocalModel && !isPersonalApiKey) {
       incrementUsageCount()
     }
@@ -287,4 +347,3 @@ export function useAIGenerator(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

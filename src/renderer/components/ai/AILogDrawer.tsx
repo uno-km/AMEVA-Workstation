@@ -22,25 +22,66 @@ import { Terminal, ListTree, Plus, Minus } from 'lucide-react';
 import { ConsoleLogTab } from './log-drawer/ConsoleLogTab';
 import { ConsoleCommandTab } from './log-drawer/ConsoleCommandTab';
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `AILogDrawer`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `AILogDrawer(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function AILogDrawer({ isExpanded, onToggle }: any) {
   const [isHovered, setIsHovered] = useState(false);
   const [activeTab, setActiveTab] = useState<'log' | 'cmd'>('log');
   // [FEAT-3] 드로어 높이 조절 상태 — 기본값 35vh (픽셀)
   const [drawerHeight, setDrawerHeight] = useState<number | null>(null);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isDraggingRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isDraggingRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isDraggingRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isDraggingRef = useRef(false);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'startYRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `startYRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const startYRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const startYRef = useRef(0);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'startHeightRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `startHeightRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const startHeightRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const startHeightRef = useRef(0);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'scale'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `scale`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const scale = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const scale = isHovered ? '1.1' : '1';
-  // [RUN-TIME STATE / INVARIANT] - 변수 'opacity'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `opacity`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const opacity = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const opacity = isHovered || isExpanded ? 1 : 0.4;
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tabStyle'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tabStyle`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tabStyle = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const tabStyle = (isActive: boolean): React.CSSProperties => ({
     padding: '4px 12px',
     background: isActive ? 'var(--bg-glass-active)' : 'transparent',
@@ -67,17 +108,47 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
     const drawerEl = (e.target as HTMLElement).closest('[data-drawer-root]') as HTMLElement | null;
     startHeightRef.current = drawerEl?.offsetHeight ?? (window.innerHeight * 0.35);
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onMouseMove'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onMouseMove`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onMouseMove = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const onMouseMove = (me: MouseEvent) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isDraggingRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isDraggingRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!isDraggingRef.current) return;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'delta'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `delta`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const delta = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const delta = startYRef.current - me.clientY; // 위로 드래그 = 높이 증가
-  // [RUN-TIME STATE / INVARIANT] - 변수 'newHeight'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `newHeight`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const newHeight = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const newHeight = Math.max(120, Math.min(window.innerHeight * 0.8, startHeightRef.current + delta));
       setDrawerHeight(newHeight);
     };
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onMouseUp'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onMouseUp`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onMouseUp = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const onMouseUp = () => {
       isDraggingRef.current = false;
       window.removeEventListener('mousemove', onMouseMove);
@@ -90,13 +161,25 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
   // [FEAT-3] +/- 버튼으로 높이 증감
   const adjustHeight = (delta: number) => {
     setDrawerHeight(prev => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'base'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `base`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const base = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const base = prev ?? (window.innerHeight * 0.35);
       return Math.max(120, Math.min(window.innerHeight * 0.8, base + delta));
     });
   };
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'resolvedHeight'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `resolvedHeight`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const resolvedHeight = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const resolvedHeight = drawerHeight ? `${drawerHeight}px` : '35vh';
 
   return (
@@ -240,4 +323,3 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
   );
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

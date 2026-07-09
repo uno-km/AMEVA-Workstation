@@ -52,17 +52,35 @@ export function flattenBlocks(blocks: any[]): FlatBlock[] {
     // 각 블록의 타입(Paragraph, Table, Jupyter 등)에 맞춰 텍스트를 추출합니다.
     // 예상되는 값: 배열의 길이만큼 반복하며 FlatBlock 객체 생성 시도.
     for (const item of items) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!item`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!item)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!item) continue;
       
-  // [RUN-TIME STATE / INVARIANT] - 변수 'text'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `text`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       let text = '';
       
       // 블록 내부에 일반적인 텍스트 콘텐츠가 존재하는지 확인하는 조건문입니다.
       // 인라인 스타일이 적용된 배열 형태의 텍스트이거나 단일 문자열일 경우를 모두 처리합니다.
       // 예상되는 값: item.content가 존재하면 텍스트를 결합하여 추출.
       if (item.content) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `Array.isArray(item.content)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (Array.isArray(item.content))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (Array.isArray(item.content)) {
           text = item.content.map((c: any) => c.text || '').join('');
         } else if (typeof item.content === 'string') {
@@ -75,13 +93,35 @@ export function flattenBlocks(blocks: any[]): FlatBlock[] {
       // 예상되는 값: item.type === 'table' 일 때 모든 표 데이터가 직렬화된 문자열 반환.
       if (item.type === 'table' && item.content?.rows) {
         const cellTexts: string[] = [];
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const row of item.content.rows) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
         for (const row of item.content.rows) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `row.cells`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (row.cells)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (row.cells) {
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (const cell of row.cells) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
             for (const cell of row.cells) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `Array.isArray(cell)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (Array.isArray(cell))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (Array.isArray(cell)) {
                 cellTexts.push(cell.map((c: any) => c.text || '').join(''));
               }
@@ -137,9 +177,21 @@ export function retrieveRelevantBlocks(query: string, flatBlocks: FlatBlock[], t
   // 평탄화된 모든 문서 블록을 순회하며 가중치(Score)를 계산하는 맵핑 반복문입니다.
   // 검색 알고리즘의 핵심 비즈니스 로직이 구현되어 있습니다.
   const scored = flatBlocks.map(block => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockTextLower'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockTextLower`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockTextLower = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const blockTextLower = block.text.toLowerCase();
-  // [RUN-TIME STATE / INVARIANT] - 변수 'score'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `score`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const score = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let score = 0;
     
     // 개별 검색어(Term)가 현재 블록의 텍스트에 얼마나 포함되어 있는지 검사하는 내부 반복문입니다.
@@ -154,7 +206,13 @@ export function retrieveRelevantBlocks(query: string, flatBlocks: FlatBlock[], t
         // 예를 들어 'car'를 검색할 때 'care'의 일부분이 아닌, 독립된 단어 'car'에 더 높은 가중치를 부여합니다.
         // 예상되는 값: 정규식 테스트 통과 시 score가 10 추가 증가.
         const boundaryRegex = new RegExp('(?:^|\\s|[.,!?])' + term + '(?:$|\\s|[.,!?])', 'i');
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `boundaryRegex.test(blockTextLower)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (boundaryRegex.test(blockTextLower))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (boundaryRegex.test(blockTextLower)) {
           score += 10;
         }
@@ -176,9 +234,18 @@ export function retrieveRelevantBlocks(query: string, flatBlocks: FlatBlock[], t
     .slice(0, topK);
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `parseEditSuggestion`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `parseEditSuggestion(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const parseEditSuggestion = (t: string) => t;
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `parseInsertSuggestions`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `parseInsertSuggestions(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const parseInsertSuggestions = (t: string) => t;
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

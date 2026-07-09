@@ -52,38 +52,103 @@ export function InsertPreviewCard({
     return (bks || []).flatMap((b: any) => [b, ...flatten(b.children || [])]);
   })(blocks || []);
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `getBlockLabel`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `getBlockLabel(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
   function getBlockLabel(b: any): string {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!b`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!b)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!b) return '';
-  // [RUN-TIME STATE / INVARIANT] - 변수 'txt'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `txt`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const txt = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const txt = Array.isArray(b.content)
       ? b.content.map((c: any) => c.text || '').join('').slice(0, 40)
       : '';
     return txt || `[${b.type}]`;
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'siblingIds'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `siblingIds`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const siblingIds = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const siblingIds = ins.siblingBlockIds ?? flatBlocks.map((b: any) => b.id);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'currentIdx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `currentIdx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const currentIdx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const currentIdx = ins.siblingIndex ?? siblingIds.indexOf(ins.afterBlockId);
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prevBlockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prevBlockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prevBlockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const prevBlockId = currentIdx > 0 ? siblingIds[currentIdx - 1] : null;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nextBlockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nextBlockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nextBlockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const nextBlockId = siblingIds[currentIdx + 1] ?? null;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prevBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prevBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prevBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const prevBlock = prevBlockId ? flatBlocks.find((b: any) => b.id === prevBlockId) : null;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'nextBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `nextBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const nextBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const nextBlock = nextBlockId ? flatBlocks.find((b: any) => b.id === nextBlockId) : null;
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'typeLabel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `typeLabel`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const typeLabel = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const typeLabel = ins.blockType === 'heading'
     ? `제목 H${ins.level ?? 1}`
     : ins.blockType === 'paragraph' ? '단락'
     : ins.blockType === 'bulletListItem' ? '글머리 목록'
     : ins.blockType === 'numberedListItem' ? '번호 목록' : ins.blockType;
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'positionLabel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `positionLabel`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const positionLabel = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const positionLabel = ins.afterBlockId === 'START'
     ? '문서 맨 앞'
     : ins.afterBlockId === 'END'
@@ -98,12 +163,24 @@ export function InsertPreviewCard({
     .map(t => t.text || '')
     .filter(Boolean)
     .join('\n\n');
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasReasonLog'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasReasonLog`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasReasonLog = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hasReasonLog = !!(ins.reasonText || thinkingText);
 
   // ── 완료 상태: 접힌 결과 로그 ──────────────────
   if (ins.status !== 'pending') {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'accepted'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `accepted`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const accepted = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const accepted = ins.status === 'accepted';
     return (
       <div style={{
@@ -114,7 +191,13 @@ export function InsertPreviewCard({
         {/* 결과 헤더 — 클릭으로 펼침 및 수락 시 스크롤 포커싱 */}
         <div
           onClick={() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `accepted && ins.afterBlockId && onScrollToBlock`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (accepted && ins.afterBlockId && onScrollToBlock)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (accepted && ins.afterBlockId && onScrollToBlock) {
               onScrollToBlock(ins.afterBlockId);
             }
@@ -195,10 +278,22 @@ export function InsertPreviewCard({
 
   // ── pending 상태: 삽입 위치 미리보기 + 버튼 ────────────
   const canMoveUp = ins.afterBlockId !== 'START' && currentIdx > 0;
-  // [RUN-TIME STATE / INVARIANT] - 변수 'canMoveDown'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `canMoveDown`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const canMoveDown = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const canMoveDown = ins.afterBlockId !== 'END' && nextBlockId !== null;
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'previewFontSize'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `previewFontSize`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const previewFontSize = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const previewFontSize = ins.blockType === 'heading'
     ? (ins.level === 1 ? '15px' : ins.level === 2 ? '13px' : '12px')
     : '12px';
@@ -370,4 +465,3 @@ export function InsertPreviewCard({
   );
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -32,7 +32,13 @@ const FREE_PLAN_DAILY_LIMIT = 10
 
 /** LocalStorage 키 상수 */
 const STORAGE_KEY_DATE = 'ai-usage-date'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'STORAGE_KEY_COUNT'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `STORAGE_KEY_COUNT`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const STORAGE_KEY_COUNT = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const STORAGE_KEY_COUNT = 'ai-daily-usage-count'
 
 /**
@@ -71,13 +77,25 @@ export function checkUsageLimit(
     settings.apiType === 'local' ||
     settings.apiType === 'wasm' ||
     settings.apiType === 'ollama'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isPersonalApiKey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isPersonalApiKey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isPersonalApiKey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const isPersonalApiKey =
     settings.apiType === 'api' &&
     !!settings.apiKey &&
     settings.apiKey.trim() !== ''
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isLocalModel || isPersonalApiKey`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isLocalModel || isPersonalApiKey)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (isLocalModel || isPersonalApiKey) {
     return { isLimitExceeded: false, currentCount: 0 }
   }
@@ -87,12 +105,30 @@ export function checkUsageLimit(
   let usageCount: number
 
   try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lastDate'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lastDate`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lastDate = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const lastDate = localStorage.getItem(STORAGE_KEY_DATE)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawCount`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawCount = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const rawCount = localStorage.getItem(STORAGE_KEY_COUNT)
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `lastDate !== todayStr`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (lastDate !== todayStr)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (lastDate !== todayStr) {
       // 날짜가 바뀌었으면 카운터 리셋
       localStorage.setItem(STORAGE_KEY_DATE, todayStr)
@@ -107,7 +143,13 @@ export function checkUsageLimit(
     return { isLimitExceeded: false, currentCount: 0 }
   }
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `usageCount >= FREE_PLAN_DAILY_LIMIT`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (usageCount >= FREE_PLAN_DAILY_LIMIT)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (usageCount >= FREE_PLAN_DAILY_LIMIT) {
     return {
       isLimitExceeded: true,
@@ -128,16 +170,46 @@ export function checkUsageLimit(
  */
 export function incrementUsageCount(): void {
   try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'todayStr'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `todayStr`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const todayStr = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const todayStr = new Date().toISOString().split('T')[0]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lastDate'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lastDate`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lastDate = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const lastDate = localStorage.getItem(STORAGE_KEY_DATE)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rawCount'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rawCount`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rawCount = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const rawCount = localStorage.getItem(STORAGE_KEY_COUNT)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'count'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `count`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const count = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let count = 0
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `lastDate === todayStr`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (lastDate === todayStr)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (lastDate === todayStr) {
       count = parseInt(rawCount || '0', 10)
     }
@@ -149,4 +221,3 @@ export function incrementUsageCount(): void {
   }
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

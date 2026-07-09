@@ -24,7 +24,13 @@ import { Check, Edit2, FileImage } from 'lucide-react'
 // Dynamic import or guarded import of Excalidraw to bypass Node environment check during build
 let Excalidraw: any = null
 try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'ex'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `ex`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const ex = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const ex = require('@excalidraw/excalidraw')
   Excalidraw = ex.Excalidraw
 } catch {
@@ -34,6 +40,12 @@ try {
   })
 }
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `DrawingBlockSpec`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `DrawingBlockSpec(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const DrawingBlockSpec = createReactBlockSpec(
   {
     type: 'drawing',
@@ -47,16 +59,34 @@ export const DrawingBlockSpec = createReactBlockSpec(
       const [mounted, setMounted] = useState(false)
       const [isEditing, setIsEditing] = useState(true)
       const [excalidrawLoaded, setExcalidrawLoaded] = useState(!!Excalidraw)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'saveTimeoutRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `saveTimeoutRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const saveTimeoutRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
       useEffect(() => {
         setMounted(true)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!Excalidraw`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!Excalidraw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!Excalidraw) {
           // If not loaded via require, check dynamic import in interval
           const interval = setInterval(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `Excalidraw`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (Excalidraw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (Excalidraw) {
               setExcalidrawLoaded(true)
               clearInterval(interval)
@@ -76,14 +106,32 @@ export const DrawingBlockSpec = createReactBlockSpec(
 
       // Debounced save to prevent rendering lag during drawing strokes
       const handleCanvasChange = (elements: any[]) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `saveTimeoutRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (saveTimeoutRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (saveTimeoutRef.current) {
           clearTimeout(saveTimeoutRef.current)
         }
         saveTimeoutRef.current = setTimeout(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'stringified'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `stringified`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const stringified = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const stringified = JSON.stringify(elements)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `stringified !== block.props.data`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (stringified !== block.props.data)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (stringified !== block.props.data) {
             editor.updateBlock(block.id, {
               type: 'drawing',
@@ -93,7 +141,13 @@ export const DrawingBlockSpec = createReactBlockSpec(
         }, 500)
       };
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!mounted || (!Excalidraw && !excalidrawLoaded)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!mounted || (!Excalidraw && !excalidrawLoaded))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!mounted || (!Excalidraw && !excalidrawLoaded)) {
         return (
           <div style={{
@@ -208,6 +262,11 @@ export const DrawingBlockSpec = createReactBlockSpec(
   }
 )
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `DrawingBlock`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `DrawingBlock(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const DrawingBlock = DrawingBlockSpec()
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

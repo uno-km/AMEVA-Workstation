@@ -28,7 +28,12 @@ import * as ipc from '../services/ipc/electronApiAdapter'
 
 export interface MenuBarProps {}
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `MenuBar`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `MenuBar(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function MenuBar({}: MenuBarProps = {}) {
   const {
     handleOpenFile: onOpenFile,
@@ -55,30 +60,102 @@ export function MenuBar({}: MenuBarProps = {}) {
     setShowMarketplaceModal, setShowPricingModal
   } = useUIStore()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hotkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hotkeys`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hotkeys = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hotkeys = settings?.hotkeys
-  // [RUN-TIME STATE / INVARIANT] - 변수 'showConsole'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `showConsole`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const showConsole = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const showConsole = settings?.showCodeConsole || false
-  // [RUN-TIME STATE / INVARIANT] - 변수 'setShowConsole'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `setShowConsole`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const setShowConsole = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const setShowConsole = (val: boolean) => handleUpdateSettings({ showCodeConsole: val })
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onPrint'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onPrint`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onPrint = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onPrint = () => handleExport('pdf')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onNewWindow'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onNewWindow`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onNewWindow = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onNewWindow = ipc.newWindow
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenSettings'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onOpenSettings`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onOpenSettings = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onOpenSettings = () => setIsSettingsOpen(true)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenAbout'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onOpenAbout`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onOpenAbout = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onOpenAbout = () => setIsAboutOpen(true)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenGuide'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onOpenGuide`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onOpenGuide = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onOpenGuide = () => setIsGuideOpen(true)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenMarketplace'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onOpenMarketplace`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onOpenMarketplace = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onOpenMarketplace = () => setShowMarketplaceModal(true)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenPricing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onOpenPricing`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onOpenPricing = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onOpenPricing = () => setShowPricingModal(true)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'formatHotkey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `formatHotkey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const formatHotkey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const formatHotkey = (raw: string | undefined): string => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!raw`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!raw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!raw) return ''
     return raw
       .replace('Control', 'Ctrl')
@@ -90,7 +167,13 @@ export function MenuBar({}: MenuBarProps = {}) {
       .join('+')
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hkeys`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hkeys = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hkeys = hotkeys || {
     save: 'Control+s',
     open: 'Control+o',
@@ -104,14 +187,32 @@ export function MenuBar({}: MenuBarProps = {}) {
   }
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [isAltMode, setIsAltMode] = useState(false)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'containerRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `containerRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const containerRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const containerRef = useRef<HTMLDivElement | null>(null)
 
   // 외부 클릭 시 드롭다운 메뉴 및 Alt 모드 해제
   useEffect(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleClickOutside'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleClickOutside`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleClickOutside = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const handleClickOutside = (e: MouseEvent) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `containerRef.current && !containerRef.current.contains(e.target as Node)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (containerRef.current && !containerRef.current.contains(e.target as Node))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setActiveMenu(null)
         setIsAltMode(false)
@@ -121,9 +222,21 @@ export function MenuBar({}: MenuBarProps = {}) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'triggerAction'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `triggerAction`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const triggerAction = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const triggerAction = (action?: () => void) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `action) action(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (action) action()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (action) action()
     setActiveMenu(null)
     setIsAltMode(false)
@@ -139,9 +252,21 @@ export function MenuBar({}: MenuBarProps = {}) {
     onOpenSettings, onOpenMarketplace, onOpenAbout, onOpenGuide, onOpenPricing, onOpenGithub
   })
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleMenuClick'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleMenuClick`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleMenuClick = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleMenuClick = (menu: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `activeMenu === menu`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (activeMenu === menu)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (activeMenu === menu) {
       setActiveMenu(null)
       setIsAltMode(false)
@@ -151,14 +276,38 @@ export function MenuBar({}: MenuBarProps = {}) {
     }
   }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'renderLabel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `renderLabel`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const renderLabel = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const renderLabel = (text: string, shortcut: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isAltMode`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isAltMode)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!isAltMode) return <span>{text}</span>
     
-  // [RUN-TIME STATE / INVARIANT] - 변수 'index'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `index`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const index = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const index = text.toLowerCase().indexOf(shortcut.toLowerCase())
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `index === -1`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (index === -1)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (index === -1) return <span>{text}</span>
     
     return (
@@ -413,4 +562,3 @@ export function MenuBar({}: MenuBarProps = {}) {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

@@ -17,6 +17,12 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `RuntimeState`
+   * - 역할: 유입 인자를 가공하고 비즈니스 계약 조건에 맞춰 최종 객체/바이너리를 생산함.
+   * - 예시: `RuntimeState(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export const RuntimeState = {
   pyodideInstance: null as any,
   persistentWorker: null as Worker | null,
@@ -25,7 +31,13 @@ export const RuntimeState = {
 
 // [SEC-W-014] 외부에서 런타임 리소스를 정리할 수 있는 함수
 export function cleanupCodeRuntime() {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `RuntimeState.persistentWorker`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (RuntimeState.persistentWorker)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (RuntimeState.persistentWorker) {
     RuntimeState.persistentWorker.terminate()
     RuntimeState.persistentWorker = null
@@ -34,4 +46,3 @@ export function cleanupCodeRuntime() {
   RuntimeState.sqliteDatabaseInstance = null
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

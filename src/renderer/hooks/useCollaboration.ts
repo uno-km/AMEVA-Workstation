@@ -83,7 +83,13 @@ export function useCollaboration(
    * - setPeers: 타 피어 정보 일괄 갱신 액션.
    */
   const peers = useAICollabStore((state) => state.peers)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'setPeers'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `setPeers`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const setPeers = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const setPeers = useAICollabStore((state) => state.setPeers)
 
   /*
@@ -107,7 +113,13 @@ export function useCollaboration(
 
   // Rerender 주기 밖에서 커넥터 인스턴스를 무결하게 유지하기 위한 Ref 참조 객체
   const ydocRef = useRef<Y.Doc | null>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'providerRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `providerRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const providerRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const providerRef = useRef<WebsocketProvider | null>(null)
 
   // 사용자의 명시적 수동 시작 플래그 연동
@@ -118,7 +130,13 @@ export function useCollaboration(
    * - Rationale: 문서 ID 변경 시마다 기존 Y.Doc을 완전히 폐기 해제하고 신규 Doc 인스턴스를 생성 빌드한다.
    */
   useEffect(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `doc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const doc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const doc = new Y.Doc()
     ydocRef.current = doc
     setYdoc(doc)
@@ -135,24 +153,60 @@ export function useCollaboration(
    * - Rationale: 주 프로세스로부터 중계 서버의 포트 바인딩 및 가동 상태 시그널을 상시 수신한다.
    */
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (ipc.isElectronEnv()) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'unsub'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `unsub`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const unsub = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const unsub = ipc.onServerStatus((status: any) => {
         setServerRunning(status.running)
         setServerInfo({ port: status.port, error: status.error })
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `status.ip) setServerIp(status.ip`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (status.ip) setServerIp(status.ip)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (status.ip) setServerIp(status.ip)
         
         // [SEC-W-009] 주입받은 토큰 보안 보존 및 서버 정지 시 초기화
         if (status.token) setSessionToken(status.token)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!status.running) setSessionToken(null`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!status.running) setSessionToken(null)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!status.running) setSessionToken(null)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `useLocalServer && !status.running) setCollabActive(false`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (useLocalServer && !status.running) setCollabActive(false)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (useLocalServer && !status.running) setCollabActive(false)
       })
       return () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `unsub) unsub(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (unsub) unsub()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (unsub) unsub()
       }
     }
@@ -166,7 +220,13 @@ export function useCollaboration(
     // 협업이 비활성화되었을 경우 기존 소켓 끊기 및 리스트 청소
     if (!isActive || !ydocRef.current) {
       setProvider(prev => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prev) prev.disconnect(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (prev) prev.disconnect()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (prev) prev.disconnect()
         return null
       })
@@ -176,7 +236,13 @@ export function useCollaboration(
       return
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `doc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const doc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const doc = ydocRef.current
     
     // [SEC-W-009] 인가 토큰 쿼리 스트링 매핑 조합
@@ -211,13 +277,31 @@ export function useCollaboration(
 
       // [Awareness 변경 감지 리스너] 타 피어들의 마우스 포인터 좌표 및 하이라이팅 변경 시 peers 상태 리스트 재조립
       const handleAwarenessChange = () => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'states'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `states`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const states = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const states = wsProvider!.awareness.getStates()
         const newPeers: PeerState[] = []
         states.forEach((state: any, clientID: number) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `clientID === doc.clientID`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (clientID === doc.clientID)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (clientID === doc.clientID) return   // 본인 데이터 제외
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `state.user`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (state.user)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (state.user) {
             newPeers.push({
               id: clientID.toString(),
@@ -239,7 +323,13 @@ export function useCollaboration(
 
     // CONTRACT: 소멸 시 소켓 해제 및 락 반환
     return () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `wsProvider) wsProvider.disconnect(`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (wsProvider) wsProvider.disconnect()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (wsProvider) wsProvider.disconnect()
       providerRef.current = null
       setPeers([])
@@ -252,14 +342,32 @@ export function useCollaboration(
    * - Rationale: 내장 Node.js 기반 중계 서버 구동을 시작하거나 중지한다. (데스크톱 앱 환경 가드).
    */
   const toggleLocalServer = useCallback(async (port: number) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `useLocalServer && !ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (useLocalServer && !ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (useLocalServer && !ipc.isElectronEnv()) {
       alert("⚠️ 현재 일반 브라우저 환경입니다.\n\n로컬 PC 서버를 직접 구동하려면 일렉트론 데스크톱 앱을 사용해 주셔야 합니다.\n\n일반 브라우저에서는 '로컬 서버 사용' 체크박스를 끄시면 공용 협업 데모 서버(wss://demos.yjs.dev)를 통해 다른 사람과 실시간 협업을 바로 시작해 보실 수 있습니다!")
       return
     }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `useLocalServer && ipc.isElectronEnv()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (useLocalServer && ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (useLocalServer && ipc.isElectronEnv()) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `serverRunning`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (serverRunning)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (serverRunning) {
         await ipc.stopCollaborationServer()
       } else {
@@ -277,11 +385,29 @@ export function useCollaboration(
    * - throttleTimeoutRef: 큐 해제용 지연 프레임 타이머.
    */
   const lastMouseTimeRef = useRef<number>(0)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lastPointerPosRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lastPointerPosRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lastPointerPosRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const lastPointerPosRef = useRef<{ x: number; y: number } | null>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pendingMouseRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pendingMouseRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pendingMouseRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const pendingMouseRef = useRef<{ x: number; y: number } | null>(null)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'throttleTimeoutRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `throttleTimeoutRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const throttleTimeoutRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const throttleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
  
   /**
@@ -290,39 +416,105 @@ export function useCollaboration(
    *   Displacement filter 및 Adaptive throttle을 연산하여 네트워크 소켓 부하를 극한으로 깎아낸다.
    */
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prov'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prov`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prov = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const prov = providerRef.current
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!prov || !editorContainerRef.current || !isActive`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!prov || !editorContainerRef.current || !isActive)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!prov || !editorContainerRef.current || !isActive) return
  
     // 컨테이너 절대 스크롤 높이를 합산하여 상대 배치용 포인터 x/y 계산
     const rect = editorContainerRef.current.getBoundingClientRect()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'x'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `x`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const x = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const x = e.clientX - rect.left
-  // [RUN-TIME STATE / INVARIANT] - 변수 'y'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `y`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const y = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const y = e.clientY - rect.top + editorContainerRef.current.scrollTop
  
     // 1. [PERFORMANCE] 미세 움직임 필터링 (3px 거리 가드)
     if (lastPointerPosRef.current) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'dx'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `dx`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const dx = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const dx = x - lastPointerPosRef.current.x
-  // [RUN-TIME STATE / INVARIANT] - 변수 'dy'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `dy`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const dy = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const dy = y - lastPointerPosRef.current.y
-  // [RUN-TIME STATE / INVARIANT] - 변수 'distance'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `distance`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const distance = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const distance = Math.sqrt(dx * dx + dy * dy)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `distance < 3`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (distance < 3)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (distance < 3) return
     }
  
-  // [RUN-TIME STATE / INVARIANT] - 변수 'now'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `now`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const now = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const now = Date.now()
     
     // 2. [PERFORMANCE] 적응형 스로틀 가인 계산 (피어 수에 비례하여 60ms~150ms 유연 보정)
     const currentPeersCount = peers.length
-  // [RUN-TIME STATE / INVARIANT] - 변수 'THROTTLE_LIMIT'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `THROTTLE_LIMIT`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const THROTTLE_LIMIT = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const THROTTLE_LIMIT = Math.min(150, 60 + currentPeersCount * 2)
  
-  // [RUN-TIME STATE / INVARIANT] - 변수 'sendPointer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `sendPointer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const sendPointer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const sendPointer = (posX: number, posY: number) => {
       prov.awareness.setLocalStateField('pointer', { x: posX, y: posY, username })
       lastMouseTimeRef.current = Date.now()
@@ -331,7 +523,13 @@ export function useCollaboration(
  
     // 주기가 넘었으면 즉시 패킷 발송
     if (now - lastMouseTimeRef.current >= THROTTLE_LIMIT) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `throttleTimeoutRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (throttleTimeoutRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (throttleTimeoutRef.current) {
         clearTimeout(throttleTimeoutRef.current)
         throttleTimeoutRef.current = null
@@ -342,10 +540,22 @@ export function useCollaboration(
     // 주기에 걸렸으면 마지막 위치를 홀딩했다가 스로틀 주기가 풀리는 지점에 1회 보완 전송
     else {
       pendingMouseRef.current = { x, y }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!throttleTimeoutRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!throttleTimeoutRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!throttleTimeoutRef.current) {
         throttleTimeoutRef.current = setTimeout(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `pendingMouseRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (pendingMouseRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (pendingMouseRef.current) {
             sendPointer(pendingMouseRef.current.x, pendingMouseRef.current.y)
             pendingMouseRef.current = null
@@ -359,7 +569,13 @@ export function useCollaboration(
   // 타이머 메모리 리턴 클린업
   useEffect(() => {
     return () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `throttleTimeoutRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (throttleTimeoutRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (throttleTimeoutRef.current) {
         clearTimeout(throttleTimeoutRef.current)
       }
@@ -371,32 +587,91 @@ export function useCollaboration(
    * - Rationale: 사용자가 에디터 상에서 글을 드래그하면, 해당 픽셀 사각형(ClientRects)들을 따서 피어들에게 전송한다.
    */
   const updateDragSelection = useCallback((selection: { anchorBlockId: string; focusBlockId: string } | null) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prov'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prov`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prov = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const prov = providerRef.current
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!prov || !editorContainerRef.current || !isActive`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!prov || !editorContainerRef.current || !isActive)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!prov || !editorContainerRef.current || !isActive) return
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!selection`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!selection)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!selection) {
       prov.awareness.setLocalStateField('dragSelection', null)
       return
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'containerRect'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `containerRect`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const containerRect = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const containerRect = editorContainerRef.current.getBoundingClientRect()
     const rects: { top: number; left: number; width: number; height: number }[] = []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'domSelection'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `domSelection`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const domSelection = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const domSelection = window.getSelection()
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `domSelection && !domSelection.isCollapsed`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (domSelection && !domSelection.isCollapsed)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (domSelection && !domSelection.isCollapsed) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'range'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `range`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const range = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const range = domSelection.getRangeAt(0)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clientRects'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clientRects`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clientRects = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const clientRects = range.getClientRects()
-  // [LOOP CONTROL ITERATION] - 데이터 콜렉션 순회 및 조건 도달 시까지의 반복적 상태 전이 연산 수행.
+      /*
+       * [LOOP CONTROL ITERATION]
+       * - 루프 조건: `for (let i = 0; i < clientRects.length; i++) {`
+       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
+       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
+       */
       for (let i = 0; i < clientRects.length; i++) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'r'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `r`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const r = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const r = clientRects[i]
         rects.push({
           top: r.top - containerRect.top + editorContainerRef.current.scrollTop,
@@ -419,12 +694,30 @@ export function useCollaboration(
    * - Rationale: 현재 내가 에디터 내에서 글을 적거나 마킹하고 있는 타깃 블록의 외곽선을 피어들에게 실시간 공유한다.
    */
   const updateBlockHighlight = useCallback((blockId: string | null, isEditing: boolean = false) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prov'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prov`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prov = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const prov = providerRef.current
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!prov || !isActive`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!prov || !isActive)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!prov || !isActive) return
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!blockId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!blockId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!blockId) {
       prov.awareness.setLocalStateField('blockHighlight', null)
       return
@@ -472,4 +765,3 @@ export function useCollaboration(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

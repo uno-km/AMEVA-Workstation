@@ -31,7 +31,12 @@ interface FindReplaceBarProps {
   initialMode?: 'find' | 'replace'
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `FindReplaceBar`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `FindReplaceBar(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function FindReplaceBar({
   isOpen,
   onClose,
@@ -40,7 +45,13 @@ export function FindReplaceBar({
   initialMode = 'find'
 }: FindReplaceBarProps) {
   const [showReplace, setShowReplace] = useState(initialMode === 'replace')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'findInputRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `findInputRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const findInputRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const findInputRef = useRef<HTMLInputElement>(null)
 
   const {
@@ -60,7 +71,13 @@ export function FindReplaceBar({
 
   // 모드가 변경될 때 상태 동기화 및 인풋 포커스
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isOpen`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isOpen) {
       setShowReplace(initialMode === 'replace')
       setTimeout(() => {
@@ -73,9 +90,21 @@ export function FindReplaceBar({
 
   // ESC 키 누르면 찾기 창 닫기
   useEffect(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleEsc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleEsc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleEsc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const handleEsc = (e: KeyboardEvent) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `e.key === 'Escape' && isOpen`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (e.key === 'Escape' && isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (e.key === 'Escape' && isOpen) {
         onClose()
       }
@@ -84,7 +113,13 @@ export function FindReplaceBar({
     return () => window.removeEventListener('keydown', handleEsc)
   }, [isOpen, onClose])
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isOpen`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!isOpen) return null
 
   return (
@@ -310,4 +345,3 @@ export function FindReplaceBar({
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

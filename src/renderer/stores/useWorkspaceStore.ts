@@ -220,7 +220,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
    */
   addTaggedBlock: (block) =>
     set((state) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `state.taggedBlocks.some((b) => b.id === block.id)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (state.taggedBlocks.some((b) => b.id === block.id))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (state.taggedBlocks.some((b) => b.id === block.id)) return {}
       return { taggedBlocks: [...state.taggedBlocks, block] }
     }),
@@ -233,4 +239,3 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setSelectedSnapshot: (snapshot) => set({ selectedSnapshot: snapshot })
 }))
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

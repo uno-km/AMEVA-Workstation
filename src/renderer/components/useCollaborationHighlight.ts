@@ -20,32 +20,67 @@
 import { useEffect, useRef } from 'react'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `useCollaborationHighlight`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `useCollaborationHighlight(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function useCollaborationHighlight(
   editor: AmevaEditor | null,
   onBlockHighlight: ((blockId: string | null, isEditing: boolean) => void) | undefined,
   editorContainerRef: React.RefObject<HTMLDivElement | null>
 ) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cbRef'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cbRef`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cbRef = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const cbRef = useRef(onBlockHighlight)
   useEffect(() => {
     cbRef.current = onBlockHighlight
   }, [onBlockHighlight])
 
   useEffect(() => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor || !cbRef.current`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor || !cbRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editor || !cbRef.current) return
 
     let prevActiveId: string | null = null
     let editingTimer: ReturnType<typeof setTimeout> | null = null
     let selectionTimer: ReturnType<typeof setTimeout> | null = null
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isCurrentlyEditing'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isCurrentlyEditing`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isCurrentlyEditing = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     let isCurrentlyEditing = false
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isEditorMounted'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isEditorMounted`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isEditorMounted = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const isEditorMounted = () => {
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'view'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `view`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const view = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
         return !!(view && view.dom && document.body.contains(view.dom))
       } catch {
@@ -53,105 +88,273 @@ export function useCollaborationHighlight(
       }
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'clearActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `clearActive`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const clearActive = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const clearActive = () => {
       document.querySelectorAll('[data-bn-active]').forEach(el =>
         el.removeAttribute('data-bn-active')
       )
-  // [RUN-TIME STATE / INVARIANT] - 변수 'bnEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `bnEditor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const bnEditor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const bnEditor = document.querySelector('.bn-editor')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `bnEditor) bnEditor.removeAttribute('data-bn-editor-focused'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')
     }
 
     // 디바운스된 브로드캐스트 전송 (부모 컴포넌트 렌더링 무한 루프 예방)
     const broadcast = (blockId: string, isEditing: boolean) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `cbRef.current) cbRef.current(blockId, isEditing`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (cbRef.current) cbRef.current(blockId, isEditing)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (cbRef.current) cbRef.current(blockId, isEditing)
       prevActiveId = blockId
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'markActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `markActive`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const markActive = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const markActive = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isEditorMounted()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isEditorMounted())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!isEditorMounted()) return
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'selection'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `selection`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const selection = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const selection = typeof editor.getSelection === 'function' ? editor.getSelection() : undefined
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!selection || !selection.blocks || selection.blocks.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!selection || !selection.blocks || selection.blocks.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!selection || !selection.blocks || selection.blocks.length === 0) {
           clearActive()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prevActiveId && cbRef.current) cbRef.current(null, false`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (prevActiveId && cbRef.current) cbRef.current(null, false)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (prevActiveId && cbRef.current) cbRef.current(null, false)
           prevActiveId = null
           return
         }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const blockId = selection.blocks[selection.blocks.length - 1].id
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `blockId === prevActiveId && isCurrentlyEditing`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (blockId === prevActiveId && isCurrentlyEditing)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (blockId === prevActiveId && isCurrentlyEditing) return
 
         clearActive()
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockOuter'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockOuter`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockOuter = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const blockOuter = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `blockOuter`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (blockOuter)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (blockOuter) {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'outerEl'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `outerEl`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const outerEl = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const outerEl = blockOuter.closest('.bn-block-outer') ?? blockOuter
           outerEl.setAttribute('data-bn-active', 'true')
         }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'bnEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `bnEditor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const bnEditor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const bnEditor = document.querySelector('.bn-editor')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `bnEditor) bnEditor.setAttribute('data-bn-editor-focused', 'true'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (bnEditor) bnEditor.setAttribute('data-bn-editor-focused', 'true')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (bnEditor) bnEditor.setAttribute('data-bn-editor-focused', 'true')
 
         prevActiveId = blockId
       } catch {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prevActiveId && cbRef.current) cbRef.current(null, false`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (prevActiveId && cbRef.current) cbRef.current(null, false)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (prevActiveId && cbRef.current) cbRef.current(null, false)
         prevActiveId = null
       }
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleFocusOut'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleFocusOut`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleFocusOut = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const handleFocusOut = () => {
       clearActive()
-  // [RUN-TIME STATE / INVARIANT] - 변수 'bnEditor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `bnEditor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const bnEditor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const bnEditor = document.querySelector('.bn-editor')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `bnEditor) bnEditor.removeAttribute('data-bn-editor-focused'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prevActiveId && cbRef.current) cbRef.current(null, false`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (prevActiveId && cbRef.current) cbRef.current(null, false)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (prevActiveId && cbRef.current) cbRef.current(null, false)
       prevActiveId = null
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleFocusIn'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleFocusIn`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleFocusIn = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const handleFocusIn = () => {
       markActive()
     }
 
     // 200ms 디바운스 처리된 타이핑 변경 리스너
     const handleChange = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isEditorMounted()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isEditorMounted())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!isEditorMounted()) return
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pos`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pos = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const pos = editor.getTextCursorPosition()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!pos`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!pos)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!pos) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prevActiveId && cbRef.current) cbRef.current(null, false`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (prevActiveId && cbRef.current) cbRef.current(null, false)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (prevActiveId && cbRef.current) cbRef.current(null, false)
           prevActiveId = null
           isCurrentlyEditing = false
           return
         }
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const blockId = pos.block.id
         isCurrentlyEditing = true
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editingTimer) clearTimeout(editingTimer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editingTimer) clearTimeout(editingTimer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (editingTimer) clearTimeout(editingTimer)
         editingTimer = setTimeout(() => {
           broadcast(blockId, true)
@@ -163,7 +366,13 @@ export function useCollaborationHighlight(
           }, 1500)
         }, 200)
       } catch {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `prevActiveId && cbRef.current) cbRef.current(null, false`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (prevActiveId && cbRef.current) cbRef.current(null, false)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (prevActiveId && cbRef.current) cbRef.current(null, false)
         prevActiveId = null
       }
@@ -171,18 +380,54 @@ export function useCollaborationHighlight(
 
     // 200ms 디바운스 처리된 커서 이동 리스너
     const handleSelectionChange = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isEditorMounted()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isEditorMounted())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!isEditorMounted()) return
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'pos'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `pos`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const pos = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const pos = editor.getTextCursorPosition()
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!pos`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!pos)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (!pos) return
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockId'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockId`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockId = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const blockId = pos.block.id
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `blockId !== prevActiveId`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (blockId !== prevActiveId)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (blockId !== prevActiveId) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `selectionTimer) clearTimeout(selectionTimer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (selectionTimer) clearTimeout(selectionTimer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (selectionTimer) clearTimeout(selectionTimer)
           selectionTimer = setTimeout(() => {
             broadcast(blockId, isCurrentlyEditing)
@@ -191,16 +436,46 @@ export function useCollaborationHighlight(
       } catch {}
     }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleBlur'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleBlur`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleBlur = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const handleBlur = () => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isEditorMounted()`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isEditorMounted())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (!isEditorMounted()) return
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editingTimer) clearTimeout(editingTimer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editingTimer) clearTimeout(editingTimer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (editingTimer) clearTimeout(editingTimer)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `selectionTimer) clearTimeout(selectionTimer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (selectionTimer) clearTimeout(selectionTimer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (selectionTimer) clearTimeout(selectionTimer)
       isCurrentlyEditing = false
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `cbRef.current) cbRef.current(null, false`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (cbRef.current) cbRef.current(null, false)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (cbRef.current) cbRef.current(null, false)
       prevActiveId = null
     }
@@ -220,9 +495,21 @@ export function useCollaborationHighlight(
       document.removeEventListener('focusout', handleFocusOut)
       document.removeEventListener('focusin', handleFocusIn)
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editingTimer) clearTimeout(editingTimer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editingTimer) clearTimeout(editingTimer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (editingTimer) clearTimeout(editingTimer)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `selectionTimer) clearTimeout(selectionTimer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (selectionTimer) clearTimeout(selectionTimer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (selectionTimer) clearTimeout(selectionTimer)
       document.removeEventListener('selectionchange', handleSelectionChange)
       editorContainerRef.current?.removeEventListener('blur', handleBlur, true)
@@ -230,4 +517,3 @@ export function useCollaborationHighlight(
   }, [editor, editorContainerRef])
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

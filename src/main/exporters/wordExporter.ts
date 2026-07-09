@@ -26,7 +26,13 @@
  * - createRequire: ES 모듈 내에서 CJS 모듈을 임포트하기 위한 Node.js 모듈 헬퍼.
  */
 import { createRequire } from 'module'
-  // [RUN-TIME STATE / INVARIANT] - 변수 'require'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `require`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const require = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const require = createRequire(import.meta.url)
 
 // docx 모듈 바인딩
@@ -48,7 +54,6 @@ const {
 } = docx
 
 /**
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
  * @function exportToWord
  * @description 마크다운 블록 트리를 순회 해석해 Calibri 폰트 테마의 정제된 .docx 문서 바이너리 버퍼를 생성한다.
  */
@@ -85,20 +90,55 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
    *   마크다운 요소 타입에 적응해 워드 문단을 push 적재한다.
    */
   const addBlock = (block: ExporterBlock, depth = 0) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'runs'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `runs`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const runs = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const runs = inlineToRuns(block.content || [])
-  // [RUN-TIME STATE / INVARIANT] - 변수 'plainText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `plainText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const plainText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const plainText = getPlainTextFromNormalized(block)
 
-  // [SWITCH ROUTING CASE] - 다중 후보 값 매핑 조건에 따른 최적 라우팅 제어.
+      /*
+       * [SWITCH ROUTING CASE]
+       * - 라우팅 키: `switch (block.type) {`
+       * - 예상 시나리오: 유입된 상태 변수 분기값과 일치하는 케이스 블록으로 런타임 제어를 즉시 라우팅함.
+       * - 예시: `switch (format)` 분기 시 매치되는 변환 포맷 서브 모듈이 가동됨.
+       */
     switch (block.type) {
       // 1) 헤더 타이틀 요소
       case 'heading': {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'level'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `level`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const level = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const level = Math.min(3, Math.max(1, Number(block.props?.level) || 1))
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hLevel'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hLevel`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hLevel = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const hLevel = level === 1 ? HeadingLevel.HEADING_1 : level === 2 ? HeadingLevel.HEADING_2 : HeadingLevel.HEADING_3
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hRuns'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hRuns`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hRuns = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const hRuns = (block.content || []).length > 0
           ? block.content.map((c: ExporterInlineContent) => new TextRun({ text: c.text, bold: true, font: 'Calibri', size: headingSizes[level] || 28, color: headingColors[level] || '374151' }))
           : [new TextRun({ text: plainText, bold: true, font: 'Calibri', size: headingSizes[level] || 28 })]
@@ -133,11 +173,29 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
 
       // 5) 코드 블록 (다크 테마 배경에 연두색 폰트로 가시성 매핑)
       case 'codeBlock': {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lang`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lang = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const lang = block.props?.language || ''
-  // [RUN-TIME STATE / INVARIANT] - 변수 'lines'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `lines`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const lines = plainText.split('\n')
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `lang`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (lang)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (lang) {
           docChildren.push(new Paragraph({
             children: [new TextRun({ text: lang.toUpperCase(), font: 'Consolas', size: 16, color: '64748B', bold: true })],
@@ -165,18 +223,54 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
 
       // 7) 표/테이블 요소 (가드 절차 적용)
       case 'table': {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'rows'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `rows`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const rows = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const rows = block.tableRows ?? []
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `rows.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (rows.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (rows.length > 0) {
           try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'docxRows'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `docxRows`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const docxRows = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const docxRows = rows.map((row: ExporterTableRow, ri: number) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cells'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cells`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cells = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const cells = (Array.isArray(row.cells) ? row.cells : []) as (ExporterInlineContent[] | unknown)[]
-  // [RUN-TIME STATE / INVARIANT] - 변수 'docxCells'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `docxCells`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const docxCells = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const docxCells = cells.map((cell: ExporterInlineContent[] | unknown) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'cellText'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cellText`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const cellText = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
                 const cellText = Array.isArray(cell) ? inlineToText(cell as ExporterInlineContent[]) : ''
                 return new TableCell({
                   children: [new Paragraph({
@@ -219,9 +313,20 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         }))
         break
 
-    // [CASE DECISION BINDING] - 분기 타겟 조건 충족 시의 대응 비즈니스 처리 단락.
+    /*
+     * [CASE ROUTING DECISION BINDING]
+     * - 분기 타겟: `default:`
+     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
+     * - 예시: `default:` 만족 시 해당 포맷 바이너리 빌더 호출.
+     */
       default:
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `runs.length > 0) docChildren.push(new Paragraph({ children: runs, spacing: { after: 120 } })`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (runs.length > 0) docChildren.push(new Paragraph({ children: runs, spacing: { after: 120 } }))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (runs.length > 0) docChildren.push(new Paragraph({ children: runs, spacing: { after: 120 } }))
     }
 
@@ -257,4 +362,3 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
   return await Packer.toBuffer(doc)
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

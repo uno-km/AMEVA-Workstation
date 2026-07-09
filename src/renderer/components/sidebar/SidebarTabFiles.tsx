@@ -43,7 +43,12 @@ export interface SidebarTabFilesProps {
   sectionLabel: (text: string) => React.ReactNode
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `SidebarTabFiles`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `SidebarTabFiles(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
   const {
     editorMode, setEditorMode, handleOpenFile, handleSaveFile, handleExport,
@@ -55,48 +60,126 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
     tabs, activeTabId, setActiveTabId, removeTab
   } = useWorkspaceStore()
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hkeys'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hkeys`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hkeys = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hkeys = settings?.hotkeys || {
     save: 'Control+s', open: 'Control+o', newFile: 'Control+n', pdfExport: 'Control+p',
     toggleAI: 'Control+\\', toggleMode: 'Control+h', zoomIn: 'Control+=', zoomOut: 'Control+-', zoomReset: 'Control+0'
   }
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'formatHotkey'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `formatHotkey`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const formatHotkey = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const formatHotkey = (raw: string | undefined): string => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!raw`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!raw)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!raw) return ''
     return raw.replace('Control', 'Ctrl').replace('Shift', 'Shift').replace('Alt', 'Alt').replace('Meta', 'Cmd')
       .split('+').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' + ')
   }
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onSelectAppendedFile'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onSelectAppendedFile`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onSelectAppendedFile = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onSelectAppendedFile = (startBlockId: string) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'el'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `el`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const el = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const el = document.querySelector(`[data-id="${startBlockId}"], [data-block-id="${startBlockId}"]`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `el`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (el)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `outer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const outer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const outer = el.closest('.bn-block-outer') || el
       outer.setAttribute('data-highlighted-temp', 'true')
       setTimeout(() => { outer.removeAttribute('data-highlighted-temp') }, 1800)
     }
   }
   
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onOpenFile'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onOpenFile`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onOpenFile = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onOpenFile = handleOpenFile
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onSaveFile'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onSaveFile`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onSaveFile = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onSaveFile = handleSaveFile
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onExport'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onExport`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onExport = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onExport = handleExport
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onSelectTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onSelectTab`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onSelectTab = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onSelectTab = (id: string) => setActiveTabId(id)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'onCloseTab'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `onCloseTab`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const onCloseTab = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const onCloseTab = (id: string) => removeTab(id)
 
   const [exportOpen, setExportOpen] = useState(false)
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'handleExportClick'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `handleExportClick`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const handleExportClick = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const handleExportClick = (format: ExportFormat) => {
     onExport(format)
   }
@@ -260,7 +343,13 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
           )}
 
           {fileOpenMode === 'tab' && tabs.map((tab, idx) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'isActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `isActive`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const isActive = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
             const isActive = activeTabId === tab.id
             return (
               <div
@@ -354,4 +443,3 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

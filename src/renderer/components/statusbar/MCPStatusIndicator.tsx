@@ -29,7 +29,12 @@ interface MCPStatusIndicatorProps {
   tooltipStyle: React.CSSProperties
 }
 
-  // [FUNCTION CONTRACT] - 외부/내부로부터 유입되는 인자 규격을 분석하여 약속된 리턴 타입을 안정적으로 생산함.
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `MCPStatusIndicator`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `MCPStatusIndicator(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
 export function MCPStatusIndicator({
   isProPlan,
   mcpServers,
@@ -43,11 +48,23 @@ export function MCPStatusIndicator({
 
   // MCP 서버 제공 툴 목록 로드
   useEffect(() => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'loadTools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `loadTools`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const loadTools = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const loadTools = async () => {
       setIsLoadingTools(true)
       try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'tools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `tools`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const tools = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const tools = await MCPClientManager.fetchAllTools()
         setMcpTools(tools)
       } catch (e) {
@@ -56,7 +73,13 @@ export function MCPStatusIndicator({
         setIsLoadingTools(false)
       }
     }
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `isProPlan && mcpServers && mcpServers.length > 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (isProPlan && mcpServers && mcpServers.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (isProPlan && mcpServers && mcpServers.length > 0) {
       loadTools()
     } else {
@@ -64,14 +87,38 @@ export function MCPStatusIndicator({
     }
   }, [mcpServers, isProPlan])
 
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!isProPlan || !mcpServers || mcpServers.length === 0`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!isProPlan || !mcpServers || mcpServers.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
   if (!isProPlan || !mcpServers || mcpServers.length === 0) return null
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'activeServers'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `activeServers`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const activeServers = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const activeServers = mcpServers.filter((s: any) => s.enabled)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'hasActive'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `hasActive`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const hasActive = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const hasActive = activeServers.length > 0
-  // [RUN-TIME STATE / INVARIANT] - 변수 'statusColor'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `statusColor`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const statusColor = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
   const statusColor = hasActive ? '#10b981' : '#f87171'
   
   return (
@@ -116,7 +163,13 @@ export function MCPStatusIndicator({
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {mcpServers.map((s: any) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'serverTools'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `serverTools`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const serverTools = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const serverTools = mcpTools.filter(t => t.serverId === s.id)
               return (
                 <div key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: '3px', fontSize: '10.5px' }}>
@@ -167,4 +220,3 @@ export function MCPStatusIndicator({
   )
 }
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

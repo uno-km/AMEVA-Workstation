@@ -90,9 +90,21 @@ export function useAppAISuggestions(
   const customSetTaggedBlocks = useCallback((
     val: { id: string; text: string }[]
   ) => {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'prev'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `prev`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const prev = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const prev = taggedBlocks
-  // [RUN-TIME STATE / INVARIANT] - 변수 'next'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `next`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const next = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
     const next = val
     setTaggedBlocks(next)
     
@@ -114,7 +126,13 @@ export function useAppAISuggestions(
    * - Rationale: 특정 블록 ID를 타깃하여 포커스를 강제하고, DOM 엘리먼트를 부드럽게 중앙으로 스크롤 이동시킨 후 1.5초간 노란색 테두리 광원을 입힌다.
    */
   const handleScrollToBlock = useCallback((blockId: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (editor) {
       try {
         // 블록노트 포커스 및 캐럿 이동
@@ -127,12 +145,30 @@ export function useAppAISuggestions(
     
     // DOM 엘리먼트 획득 및 부드러운 스크롤 실행
     const el = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `el`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (el)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  // [RUN-TIME STATE / INVARIANT] - 변수 'outer'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `outer`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const outer = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const outer = el.closest('.bn-block-outer') || el
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `outer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (outer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (outer) {
         // 1.5초 지연 임시 하이라이트 CSS 플래그 주입
         outer.setAttribute('data-highlighted-temp', 'true')
@@ -149,15 +185,33 @@ export function useAppAISuggestions(
    *   드래그 영역이 유효하다면 ProseMirror API(`tr.replaceSelectionWith`)를 사용하여 선택부를 직접 변경한다.
    */
   const handleApplySuggestion = useCallback((text: string, mode: 'replace' | 'insert', blockId?: string, isCodeBlock?: boolean, lang?: string) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editor) return
     try {
       // 1. 코딩 블록 삽입 요청인 경우 Jupyter 셀로 자동 변환 생성
       if (isCodeBlock) {
         try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'finalLang'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `finalLang`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const finalLang = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const finalLang = lang === 'js' ? 'javascript' : lang === 'ts' ? 'typescript' : lang === 'py' ? 'python' : (lang || 'javascript')
-  // [RUN-TIME STATE / INVARIANT] - 변수 'blockPayload'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `blockPayload`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const blockPayload = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const blockPayload = {
             type: 'jupyter' as const,
             props: {
@@ -167,9 +221,21 @@ export function useAppAISuggestions(
             }
           }
           
-  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `doc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const doc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const doc = editor.document || []
-  // [RUN-TIME STATE / INVARIANT] - 변수 'activeBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `activeBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const activeBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const activeBlock = editor.getTextCursorPosition()?.block
           
           // 현재 커서 뒤에 삽입하거나, 문서 최하단 뒤에 이어 붙임
@@ -187,11 +253,29 @@ export function useAppAISuggestions(
       // 2. 특정 타깃 블록 ID가 지정되어 단락을 직접 교체해야 하는 경우
       if (blockId) {
         try {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'targetBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `targetBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const targetBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
           const targetBlock = editor.getBlock(blockId)
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `targetBlock`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (targetBlock)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (targetBlock) {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `targetBlock.type === 'jupyter'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (targetBlock.type === 'jupyter')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
             if (targetBlock.type === 'jupyter') {
               editor.updateBlock(blockId, {
                 type: 'jupyter',
@@ -211,11 +295,23 @@ export function useAppAISuggestions(
 
       // 3. 드래그 선택 범위에 대한 ProseMirror 저수준 트랜잭션 치환 폴백
       const view = (editor as any).proseMirrorView || (editor as any)._tiptapEditor?.view
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `view`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (view)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
       if (view) {
         const { state, dispatch } = view
         const { tr, selection } = state
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `mode === 'replace'`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (mode === 'replace')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (mode === 'replace') {
           dispatch(tr.replaceSelectionWith(state.schema.text(text)))
         } else {
@@ -252,7 +348,13 @@ export function useAppAISuggestions(
     level?: number,
     suggestionIndex?: number
   ) => {
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!editor`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
     if (!editor) return
     try {
       // 신규 삽입용 블록 사양 객체 빌드
@@ -270,7 +372,13 @@ export function useAppAISuggestions(
         blockPayload.props = { level: Math.min(3, Math.max(1, level)) as 1 | 2 | 3 }
       }
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'doc'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `doc`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const doc = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
       const doc = editor.document
       
       // 문서 전체가 비어있을 경우 덮어쓰기
@@ -287,14 +395,32 @@ export function useAppAISuggestions(
       } 
       // 특정 블록 ID를 찾아 바로 뒤에 삽입
       else {
-  // [RUN-TIME STATE / INVARIANT] - 변수 'flatBlocks'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `flatBlocks`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const flatBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const flatBlocks = (function flatten(blocks: any[]): any[] {
           return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
         })(doc)
-  // [RUN-TIME STATE / INVARIANT] - 변수 'targetBlock'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `targetBlock`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const targetBlock = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
         const targetBlock = flatBlocks.find(b => b.id === afterBlockId)
         
-  // [ALGORITHM BRANCH / DECISION] - 비즈니스 요구사항 부합 여부에 따른 동적 분기 흐름 제어 및 예외 가드.
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `targetBlock`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (targetBlock)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
         if (targetBlock) {
           editor.insertBlocks([blockPayload as AmevaPartialBlock], targetBlock, 'after')
         } else {
@@ -328,4 +454,3 @@ export function useAppAISuggestions(
  * ============================================================================
  */
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026

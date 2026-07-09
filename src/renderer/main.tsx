@@ -23,10 +23,22 @@ import './styles/main.css'
 // 포커스 영역 관리 싱글턴 — import만으로 전역 이벤트 리스너 등록
 import './lib/focusRegion'
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'App'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `App`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const App = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const App = lazy(() => import('./App'))
 
-  // [RUN-TIME STATE / INVARIANT] - 변수 'SplashScreen'은 본 스코프 내에서 상태 보존 및 알고리즘 처리에 활용됨.
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `SplashScreen`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const SplashScreen = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
 const SplashScreen = () => (
   <div style={{
     width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', 
@@ -52,4 +64,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>
 )
 
-// [VERIFICATION-TOKEN] AMEVA-OS-283-SPEC-VERIFIED-SUCCESSFULLY-2026
