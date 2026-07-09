@@ -1,12 +1,13 @@
 import { useCallback } from 'react'
 import { parseEditSuggestion, parseInsertSuggestions } from '../../services/ai/aiStreamParser'
 import type { InsertSuggestion } from '../../types/aiTypes'
+import type { SanitizeResult } from '../../utils/responseSanitizer'
 
 export function useAIResponseHandler(
   currentSessionIdRef: React.MutableRefObject<string | null>,
   currentAssistantIdRef: React.MutableRefObject<string | null>,
   rawAccumRef: React.MutableRefObject<string>,
-  finalize: () => { finalContent: string; rawContent: string },
+  finalize: () => SanitizeResult,
   finalizeAssistantMessage: (args: any) => void,
   unsubscribeSession: () => void,
   editorRef: React.MutableRefObject<any>,

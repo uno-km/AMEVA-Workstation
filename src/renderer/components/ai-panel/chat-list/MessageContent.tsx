@@ -231,7 +231,7 @@ export function renderMessageContent(
   }
 
   // 백틱 3개(```)를 구분자로 사용하여 원본 마크다운 텍스트를 배열로 파싱합니다.
-  const parts = content.split('```');
+  const parts = cleaned.split('```');
   
   return parts.map((part, idx) => {
     // 짝수 번째 인덱스는 코드 블록 바깥의 일반 텍스트 영역을 의미합니다.

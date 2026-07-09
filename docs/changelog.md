@@ -1,5 +1,37 @@
 # AMEVA OS Changelog
 
+## 2026-07-09 (TypeScript Compile Error & Unused Warning Resolution)
+
+### 🚀 주요 아키텍처 변경 사항
+- **타입 정의 복원 및 동기화**:
+  - `AIPanelHeader` 컴포넌트의 props 정의(`AIPanelHeaderProps`)에 `isGenerating` 및 `onClearMessages`를 명시적으로 추가하여 타입 호환 문제를 방지했습니다. 
+  - `useAIResponseHandler.ts` 내 `finalize` 함수의 반환 형식을 `SanitizeResult` 타입으로 명확히 연동하여, `useAIStreamProcessor`와의 데이터 교환 정합성을 100% 확보하고 타입 에러를 차단했습니다.
+  - `AIPanel` 컴포넌트가 `useAI`로부터 받아오던 AI 테마 에러(`settings.theme` 문제)를 `useAppContext`의 전역 설정 `appSettings`를 직접 활용하는 방식으로 보정하여 비즈니스 논리에 알맞게 해결했습니다.
+- **Zustand 및 Hook 미사용 추출 자원 대규모 정리**:
+  - `App.tsx`에서 20개 이상의 불필요한 스토어 상태/액션 구조 분해 할당을 정리하고, 실제 호출되지 않는 미사용 내부 핸들러(`handleToggleRightTab`, `handleSwitchOpenMode`, `handleSelectAppendedFile`)를 안전하게 제거했습니다.
+  - `StatusBar.tsx`, `AppLayout.tsx`, `RefreshConfirmModal.tsx`, `useAI.ts` 등에서 발생하던 불필요한 React 및 타입 임포트 구문을 완전히 걷어냄으로써 전체 코드베이스의 빌드 청결도를 유지했습니다.
+
+### 📁 수정된 파일 목록
+- `[MODIFY]` [AIPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/AIPanel.tsx) - 미사용 변수 제거 및 테마 설정을 `appSettings`로 우회.
+- `[MODIFY]` [AIPanelHeader.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/ai/AIPanelHeader.tsx) - isGenerating, onClearMessages 속성 지원 및 로더 회전/휴지통 UI 구현.
+- `[MODIFY]` [useAIResponseHandler.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/ai/useAIResponseHandler.ts) - finalize 반환 타입을 `SanitizeResult`로 구체화.
+- `[MODIFY]` [App.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/App.tsx) - 미사용 임포트, 비구조화 할당 항목 및 미사용 핸들러 함수들 전면 정리.
+- `[MODIFY]` [useAI.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/hooks/useAI.ts) - useAIState 내 미사용 removeFromQueue 할당 제거.
+- `[MODIFY]` [AppLayout.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/layout/AppLayout.tsx) - 미사용 타입 임포트(EditorMode, DocumentSnapshot) 제거.
+- `[MODIFY]` [StatusBar.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/StatusBar.tsx) - 미사용 타입 임포트(PeerState) 제거.
+- `[MODIFY]` [RefreshConfirmModal.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/RefreshConfirmModal.tsx) - 미사용 React 임포트 제거.
+
+## 2026-07-08 (Zustand Subscription Optimization & Focus Loop Fix)
+
+### 🚀 주요 아키텍처 변경 사항
+- **Zustand 스토어 구독 최적화 (useShallow 도입)**: `App.tsx`와 `ModalManager.tsx`에서 `useUIStore()` 전체를 그대로 구독하던 방식(God Subscription)을 `useShallow`를 활용한 필요한 상태만 부분 구독하는 형태로 최적화했습니다. 이를 통해 전역 z-index 변경 시 발생하던 불필요한 전체 리렌더링 폭풍을 방지하여 단축키 및 이벤트 리스너 해제/바인딩의 불안정함(이벤트 1씩 밀리는 정합성 문제)을 해결했습니다.
+- **모달 z-index 업데이트 가드 조건 추가**: `FreeModal.tsx`가 포커싱되어 `bringToFront()`를 호출할 때, 모달의 현재 z-index가 이미 전역 최상위 z-index(`baseZIndex`) 이상인 경우 추가 업데이트를 생략하도록 가드 로직을 도입했습니다. 이를 통해 포커스 및 마우스 다운에 따른 무한 루프 에러(`Maximum update depth exceeded`)를 원천 차단했습니다.
+
+### 📁 수정된 파일 목록
+- `[MODIFY]` [App.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/App.tsx) - `useUIStore` 호출부를 `useShallow`로 감싸 부분 선택 구독으로 변경.
+- `[MODIFY]` [ModalManager.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/layout/ModalManager.tsx) - `useUIStore` 호출부를 `useShallow`로 감싸 필요한 모달 상태 변경만 감지하도록 개선.
+- `[MODIFY]` [FreeModal.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/src/renderer/components/ui/modals/FreeModal.tsx) - 마운트 `useEffect` 및 `handleModalFocus` 내 z-index 비교 가드 추가.
+
 ## 2026-07-08 (Graceful Shutdown & Window Defense Modularization)
 
 ### 🚀 Major Architectural Changes

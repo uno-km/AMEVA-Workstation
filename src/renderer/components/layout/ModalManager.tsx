@@ -12,6 +12,7 @@ import { RefreshConfirmModal } from '../RefreshConfirmModal'
 
 import { useAppContext } from '../../contexts/AppContext'
 import { useUIStore } from '../../stores/useUIStore'
+import { useShallow } from 'zustand/react/shallow'
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore'
 import { useProcessStore } from '../../stores/useProcessStore'
 import { useAI } from '../../hooks/useAI'
@@ -30,7 +31,26 @@ export function ModalManager({}: ModalManagerProps = {}) {
     setShowModelHub, isAboutOpen, setIsAboutOpen, isGuideOpen, setIsGuideOpen,
     showMarketplaceModal, setShowMarketplaceModal, showPricingModal, setShowPricingModal,
     isQuitConfirmOpen, setIsQuitConfirmOpen, isRefreshConfirmOpen, setIsRefreshConfirmOpen
-  } = useUIStore()
+  } = useUIStore(useShallow((s) => ({
+    isDiffOpen: s.isDiffOpen,
+    setIsDiffOpen: s.setIsDiffOpen,
+    isSettingsOpen: s.isSettingsOpen,
+    settingsInitialTab: s.settingsInitialTab,
+    setIsSettingsOpen: s.setIsSettingsOpen,
+    setShowModelHub: s.setShowModelHub,
+    isAboutOpen: s.isAboutOpen,
+    setIsAboutOpen: s.setIsAboutOpen,
+    isGuideOpen: s.isGuideOpen,
+    setIsGuideOpen: s.setIsGuideOpen,
+    showMarketplaceModal: s.showMarketplaceModal,
+    setShowMarketplaceModal: s.setShowMarketplaceModal,
+    showPricingModal: s.showPricingModal,
+    setShowPricingModal: s.setShowPricingModal,
+    isQuitConfirmOpen: s.isQuitConfirmOpen,
+    setIsQuitConfirmOpen: s.setIsQuitConfirmOpen,
+    isRefreshConfirmOpen: s.isRefreshConfirmOpen,
+    setIsRefreshConfirmOpen: s.setIsRefreshConfirmOpen
+  })))
 
   const { selectedSnapshot, currentContent } = useWorkspaceStore()
   
@@ -44,9 +64,9 @@ export function ModalManager({}: ModalManagerProps = {}) {
   }
 
   const handleRefreshConfirm = () => {
-    setIsRefreshConfirmOpen(false)
     window.location.reload()
   }
+
   return (
     <>
       <DiffModal

@@ -1,6 +1,5 @@
 import React, { useState, useRef } from 'react'
 import { Settings, ZoomIn, WrapText } from 'lucide-react'
-import type { PeerState } from '../../shared/types'
 import { AIStatusIndicator } from './statusbar/AIStatusIndicator'
 import { MCPStatusIndicator } from './statusbar/MCPStatusIndicator'
 import { DocStatusIndicator } from './statusbar/DocStatusIndicator'
@@ -16,7 +15,8 @@ export interface StatusBarProps {}
 
 export function StatusBar({}: StatusBarProps = {}) {
   const { peers, serverRunning, settings, handleUpdateSettings, mcpServers, isProPlan } = useAppContext()
-  const { editorZoom: zoomLevel, browserZoom = 1.0, setIsSettingsOpen } = useUIStore()
+  const { setIsSettingsOpen } = useUIStore()
+  const { editorZoom: zoomLevel, browserZoom = 1.0 } = useProcessStore()
   const { filePath, currentContent, lastSavedTime, originalContent } = useWorkspaceStore()
   const { downloadStatus } = useProcessStore()
   const { settings: aiSettings, isAvailable: aiAvailable } = useAI()

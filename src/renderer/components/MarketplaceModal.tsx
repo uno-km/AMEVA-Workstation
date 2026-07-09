@@ -68,16 +68,28 @@ export function MarketplaceModal({
   }
 
   // 마켓플레이스 서버 플러그인 로드
+  // [FIX] AbortController로 5초 타임아웃 적용.
+  // port 3010 EADDRINUSE 등 외부 서버 문제 시 영원히 로딩 중이던 문제를 수정.
+  // 이전 앱 세션이 완전히 종료되지 않아 포트를 점유할 경우 서버가 crash되어
+  // 연결이 거부되며, 그 경우 에러 메시지와 재시도 버튼을 표시한다.
   const fetchPlugins = async () => {
     setLoading(true)
     setError(null)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 5000) // 5초 타임아웃
     try {
-      const res = await fetch('http://localhost:3010/api/plugins')
-      if (!res.ok) throw new Error('서버 통신 실패')
+      const res = await fetch('http://localhost:3010/api/plugins', { signal: controller.signal })
+      clearTimeout(timeoutId)
+      if (!res.ok) throw new Error(`서버 응답 오류 (HTTP ${res.status})`)
       const data = await res.json()
       setPlugins(data)
     } catch (err: any) {
-      setError('Marketplace 서버를 찾을 수 없거나 오프라인 상태입니다. (Port: 3010)')
+      clearTimeout(timeoutId)
+      if (err.name === 'AbortError') {
+        setError('Marketplace 서버 연결 시간 초과 (5초). 서버가 실행 중인지 확인하세요. (Port: 3010)')
+      } else {
+        setError('Marketplace 서버를 찾을 수 없거나 오프라인 상태입니다. (Port: 3010) — 앱을 완전히 종료 후 재시작하거나 아래 버튼을 눌러 재시도하세요.')
+      }
     } finally {
       setLoading(false)
     }
@@ -176,9 +188,23 @@ export function MarketplaceModal({
               fontSize: '11px',
               lineHeight: '1.5',
               textAlign: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '10px',
             }}
           >
-            {error}
+            <span>{error}</span>
+            {/* [FIX] 재시도 버튼 — 서버 재기동 후 바로 재연결 시도 가능 */}
+            <button
+              onClick={fetchPlugins}
+              style={{
+                padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+                background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.35)',
+                color: '#f87171', fontSize: '11px', fontWeight: 600, alignSelf: 'center'
+              }}
+            >
+              🔄 다시 시도
+            </button>
           </div>
         )}
 

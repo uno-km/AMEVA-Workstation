@@ -1,10 +1,9 @@
-
 import { BaseModal } from './BaseModal'
 import type { BaseModalProps } from './BaseModal'
 import { useDraggable } from '../../../hooks/app/useDraggable'
 import { useModalResize } from '../../../hooks/app/useModalResize'
 import { useUIStore } from '../../../stores/useUIStore'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 export interface FreeModalProps extends BaseModalProps {
   initialX?: number
@@ -19,17 +18,26 @@ export function FreeModal(props: FreeModalProps) {
   
   const bringToFront = useUIStore(s => s.bringToFront)
   const [zIndex, setZIndex] = useState(10000)
+  const isInitialized = useRef(false)
 
   // 컴포넌트가 마운트될 때, 또는 열릴 때 한 번 z-index를 최상단으로 올립니다.
   useEffect(() => {
-    if (isOpen) setZIndex(bringToFront())
+    if (isOpen && !isInitialized.current) {
+      setZIndex(bringToFront())
+      isInitialized.current = true
+    } else if (!isOpen) {
+      isInitialized.current = false
+    }
   }, [isOpen, bringToFront])
   
   const { pos, handleMouseDown } = useDraggable({ x: initialX, y: initialY })
   const { modalSize, handleResizeMouseDown } = useModalResize(initialWidth, initialHeight)
 
   const handleModalFocus = () => {
-    setZIndex(bringToFront())
+    const currentBase = useUIStore.getState().baseZIndex
+    if (zIndex < currentBase) {
+      setZIndex(bringToFront())
+    }
   }
 
   if (!isOpen) return null

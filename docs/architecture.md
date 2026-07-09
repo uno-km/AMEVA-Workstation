@@ -15,6 +15,10 @@ AMEVA OS is a serverless local AI & WASM hybrid operating system that executes c
   - *Note*: Implements a Ring Buffer pattern for sensor logs to prevent memory leaks.
   - *Note*: Implements a debounced Batch Update for sensor logs to prevent CPU thrashing.
   - *Note*: Utilizes `BroadcastChannel` to synchronize transient logs across local client instances without writing them to the persistent Yjs CRDT model.
+- **`useWorkspaceStore.ts`**: 워크스페이스 문서 내용 및 다중 탭 상태를 관리.
+- **`useUIStore.ts`**: 모달, 패널, 레이아웃 상태 및 전역 `baseZIndex`를 관리.
+  - *Critical Performance Rule*: 스토어의 `baseZIndex` 등 전역 UI 상태 변화가 전체 렌더링에 미치는 영향을 최소화하기 위해, 컨테이너 컴포넌트(예: `App.tsx`, `ModalManager.tsx`)에서 이 스토어를 구독할 때는 반드시 `useShallow`를 활용하여 개별 속성을 선택적으로 구독해야 합니다.
+- **`FreeModal` z-index 가드 규칙**: `FreeModal` 컴포넌트 내부 포커스 핸들러에서 중복 `bringToFront()` 호출로 인한 무한 렌더링 루프를 차단하기 위해, 모달의 현재 z-index가 전역 최상위 z-index(`baseZIndex`)보다 작을 때만 상태 업데이트를 수행하는 방어 가드를 적용합니다.
 
 ### 2.3 Presentation Layer
 - **`AIPanel.tsx`**: The main terminal interface. Acts as a layout wrapper and orchestrator for tabs.

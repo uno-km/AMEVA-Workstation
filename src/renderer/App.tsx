@@ -5,10 +5,10 @@ import { useProcessStore } from './stores/useProcessStore'
 import { useAppBootstrap } from './hooks/app/useAppBootstrap'
 import { useAppTabs } from './hooks/app/useAppTabs'
 import { useAppIpcBridge } from './hooks/app/useAppIpcBridge'
+import { useShallow } from 'zustand/react/shallow'
 import { useGlobalShortcuts } from './hooks/app/useGlobalShortcuts'
 import { useAppFileOperations } from './hooks/app/useAppFileOperations'
 import { useAppAISuggestions } from './hooks/app/useAppAISuggestions'
-import { useYoutubePiP } from './hooks/app/useYoutubePiP'
 import { useCollaboration } from './hooks/useCollaboration'
 import { useHistory } from './hooks/useHistory'
 
@@ -44,19 +44,13 @@ export default function App() {
   const {
     filePath, setFilePath, currentContent, setCurrentContent, appendContent,
     originalContent, setOriginalContent, lastSavedTime, setLastSavedTime,
-    fileOpenMode, setFileOpenMode, tabs, setTabs, updateActiveTab,
-    activeTabId, setActiveTabId, appendedFiles, setAppendedFiles,
-    selectedText, setSelectedText, activeBlockId, setActiveBlockId,
-    taggedBlocks, setTaggedBlocks, selectedSnapshot, setSelectedSnapshot
+    fileOpenMode, setFileOpenMode, updateActiveTab,
+    activeTabId, setActiveTabId,
+    setSelectedText, setActiveBlockId,
+    taggedBlocks, setTaggedBlocks
   } = useWorkspaceStore()
 
-  const {
-    messages: aiMessages, isGenerating, isAvailable, models,
-    settings: aiSettings, generateResponse, abortGeneration,
-    clearHistory: clearAIHistory, updateSettings: updateAISettings,
-    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs, setEngineLogs,
-    refreshModels, importModel, pendingQueue, removeFromQueue,
-  } = useAI()
+  const { updateInsertSuggestionStatus } = useAI()
 
   const {
     ydoc, provider, peers, serverRunning,
@@ -72,12 +66,9 @@ export default function App() {
     handleStartNewDocument, handleOpenFile, handleSaveFile, handleSaveAsFile
   } = useAppFileOperations(editor, setEditorMode, createSnapshot)
 
-  const {
-    customSetTaggedBlocks, handleScrollToBlock,
-    handleApplySuggestion, handleApplyInsertSuggestion
-  } = useAppAISuggestions(editor, updateInsertSuggestionStatus)
+  const { handleScrollToBlock } = useAppAISuggestions(editor, updateInsertSuggestionStatus)
 
-  const { handleNewTab, handleSelectTab, handleCloseTab } = useAppTabs(
+  const { handleNewTab } = useAppTabs(
     editor, filePath, setFilePath, currentContent, setCurrentContent,
     originalContent, setOriginalContent, lastSavedTime, setLastSavedTime
   )
@@ -85,22 +76,33 @@ export default function App() {
   const { handleExport } = useAppExport(editor)
 
   const {
-    showMarketplaceModal, setShowMarketplaceModal,
-    showPricingModal, setShowPricingModal, showModelHub, setShowModelHub,
+    showModelHub,
     showAIPanel, setShowAIPanel, toggleAIPanel, activeRightTab, setActiveRightTab,
-    showSidebar, setShowSidebar, showStatusBar, setShowStatusBar,
+    showSidebar, setShowSidebar, showStatusBar,
     toastMessage, showFindReplace, setShowFindReplace,
-    findReplaceMode, isChatFloating, setIsChatFloating,
-    hasChatUnread, setHasChatUnread,
-    isQuitConfirmOpen, setIsQuitConfirmOpen,
-    isRefreshConfirmOpen, setIsRefreshConfirmOpen,
+    findReplaceMode, isChatFloating,
     setIsDiffOpen
-  } = useUIStore()
+  } = useUIStore(useShallow((s) => ({
+    showModelHub: s.showModelHub,
+    showAIPanel: s.showAIPanel,
+    setShowAIPanel: s.setShowAIPanel,
+    toggleAIPanel: s.toggleAIPanel,
+    activeRightTab: s.activeRightTab,
+    setActiveRightTab: s.setActiveRightTab,
+    showSidebar: s.showSidebar,
+    setShowSidebar: s.setShowSidebar,
+    showStatusBar: s.showStatusBar,
+    toastMessage: s.toastMessage,
+    showFindReplace: s.showFindReplace,
+    setShowFindReplace: s.setShowFindReplace,
+    findReplaceMode: s.findReplaceMode,
+    isChatFloating: s.isChatFloating,
+    setIsDiffOpen: s.setIsDiffOpen
+  })))
 
   const {
-    downloadStatus, setDownloadStatus,
     isProPlan, setIsProPlan, mcpServersState, setMcpServersState,
-    editorZoom, browserZoom
+    editorZoom
   } = useProcessStore()
 
   const {
@@ -143,14 +145,7 @@ export default function App() {
 
 
 
-  const handleToggleRightTab = (tab: string) => {
-    if (showAIPanel && activeRightTab === tab) {
-      setShowAIPanel(false)
-    } else {
-      setActiveRightTab(tab)
-      setShowAIPanel(true)
-    }
-  }
+
 
   const { width: sidebarWidth, isDragging: isSidebarDragging, handleMouseDown: handleSidebarResizeStart } = usePanelResize({
     storageKey: 'sidebar', defaultWidth: 280, minWidth: 160, maxWidth: 520, direction: 'right'
@@ -186,33 +181,7 @@ export default function App() {
     }
   }, [chatMessages, isChatFloating, activeTabId])
 
-  const handleSwitchOpenMode = (mode: 'replace' | 'append' | 'tab') => {
-    setFileOpenMode(mode)
-    if (mode === 'replace') {
-      setAppendedFiles([])
-      setTabs([{ id: 'default', filePath: filePath, content: currentContent, blocks: [] }])
-      setActiveTabId('default')
-    } else if (mode === 'append') {
-      setAppendedFiles([{
-        id: 'base-file',
-        filePath: filePath ? filePath.split(/[\\/]/).pop() || '무제 문서.md' : '무제 문서.md',
-        startBlockId: editor?.document[0]?.id || ''
-      }])
-    } else if (mode === 'tab') {
-      setTabs([{ id: 'default', filePath: filePath, content: currentContent, blocks: [] }])
-      setActiveTabId('default')
-    }
-  }
 
-  const handleSelectAppendedFile = useCallback((startBlockId: string) => {
-    const el = document.querySelector(`[data-id="${startBlockId}"], [data-block-id="${startBlockId}"]`)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      const outer = el.closest('.bn-block-outer') || el
-      outer.setAttribute('data-highlighted-temp', 'true')
-      setTimeout(() => { outer.removeAttribute('data-highlighted-temp') }, 1800)
-    }
-  }, [])
 
   const handleSelectSnapshotForDiff = (snapshot: any) => {
     setSelectedSnapshot(snapshot)

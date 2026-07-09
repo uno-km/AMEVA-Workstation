@@ -99,6 +99,56 @@ export function MarkdownEditor({
   useCollaborationHighlight(editor, onBlockHighlight, editorContainerRef)
   useNativeUploadIntercept(editor, editorContainerRef)
 
+  // ➕ SideMenu의 '+' 버튼 클릭 이벤트를 DOM 캡처링 단계에서 가로채어 슬래시 명령(/) 자동 호출
+  useEffect(() => {
+    const container = editorContainerRef.current
+    if (!container) return
+
+    const handleMouseDownCapture = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      // '+' 버튼인지 감지 (드래그 핸들이 아닌 bn-side-menu-btn 클릭)
+      const addBtn = target.closest('.bn-side-menu-btn')
+      const isDragHandle = target.closest('.bn-drag-handle')
+
+      if (addBtn && !isDragHandle) {
+        e.preventDefault()
+        e.stopPropagation()
+
+        if (hoverBlock && editor) {
+          const block = editor.getBlock(hoverBlock.id)
+          if (block) {
+            const isEmptyParagraph = block.type === 'paragraph' && 
+              (!block.content || block.content.length === 0 || 
+               (block.content.length === 1 && block.content[0].type === 'text' && (block.content[0] as any).text === ''));
+
+            if (isEmptyParagraph) {
+              editor.updateBlock(block.id, {
+                type: 'paragraph',
+                content: '/'
+              } as any)
+              editor.setTextCursorPosition(block.id, 'end')
+            } else {
+              const insertedBlocks = editor.insertBlocks(
+                [{ type: 'paragraph', content: '/' }],
+                block,
+                'after'
+              )
+              if (insertedBlocks && insertedBlocks.length > 0) {
+                editor.setTextCursorPosition(insertedBlocks[0].id, 'end')
+              }
+            }
+            editor.focus()
+          }
+        }
+      }
+    }
+
+    container.addEventListener('mousedown', handleMouseDownCapture, true)
+    return () => {
+      container.removeEventListener('mousedown', handleMouseDownCapture, true)
+    }
+  }, [editor, hoverBlock, editorContainerRef])
+
   // 드롭 & 페이스트 (URL 렌더링) 처리 훅
   const { onDropCapture } = useEditorDragDrop(editor, editorMode)
   const { onPasteCapture } = useEditorPaste(editor, editorMode)
@@ -145,8 +195,13 @@ export function MarkdownEditor({
       >
         <PeerBlockHighlightLayer peers={peers} containerRef={editorContainerRef} />
 
-        {/* 🤖 컨텍스트 연동 호버 에이전트 별표(✨) 버튼 레이어 */}
-        {hoverBlock && editorMode === 'edit' && (
+        {/* 🤖 컨텍스트 연동 호버 에이전트 별표(✨) 버튼 레이어
+          *
+          * [중요] isProPlan 조건 적용 위치
+          * ✨ 별표 버튼은 Pro 전용 기능(블록 컨텍스트 태깅)이므로 isProPlan=true일 때만 표시.
+          * + 버튼 슬래시 메뉴는 기본 기능이므로 hoverBlock 추적은 항상 유지된다. (useHoverBlock.ts 참고)
+          */}
+        {hoverBlock && editorMode === 'edit' && isProPlan && (
           <button
             className="sparkle-hover-btn"
             style={{

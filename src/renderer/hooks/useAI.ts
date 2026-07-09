@@ -20,8 +20,7 @@ export function useAI() {
     models, 
     codeModels,
     settings, 
-    updateSettings, 
-    removeFromQueue
+    updateSettings
   } = useAIState();
 
   // 2. 도메인별 분리된 훅 호출

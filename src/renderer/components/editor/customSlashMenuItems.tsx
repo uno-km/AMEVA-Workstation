@@ -114,7 +114,7 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
       title: 'Drawing Board',
       onItemClick: insertDrawingBlock,
       aliases: ['drawing', 'draw', 'sketch', 'paint', 'canvas'],
-      group: 'Media',
+      group: 'Drawing',
       icon: <FileImage size={16} color="#a855f7" />,
       subtext: 'Excalidraw 기반 화이트보드 드로잉 블록 삽입 (/draw)',
     }
@@ -135,7 +135,7 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
       } catch {}
     },
     aliases: ['map', 'googlemap', 'location', '지도'],
-    group: 'Media',
+    group: 'Maps',
     icon: <Globe size={16} color="#10b981" />,
     subtext: '구글 지도 임베드 블록 삽입 (/map)',
   }

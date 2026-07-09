@@ -1,5 +1,5 @@
 
-import { useRef, useEffect } from 'react'
+import { useEffect } from 'react'
 import { FileText, Wand2, Languages, Expand, Lightbulb } from 'lucide-react'
 import { useAIPanelLogic } from '../hooks/ai/useAIPanelLogic'
 import { AIChatList } from './ai-panel/AIChatList'
@@ -27,18 +27,18 @@ import { useAppContext } from '../contexts/AppContext'
 import { useAppAISuggestions } from '../hooks/app/useAppAISuggestions'
 
 export function AIPanel() {
-  const { showAIPanel: isOpen, setShowAIPanel, activeRightTab: activeTab, setIsSettingsOpen, showModelHub, setShowModelHub } = useUIStore()
+  const { showAIPanel: isOpen, setShowAIPanel, activeRightTab: activeTab, setIsSettingsOpen, showModelHub } = useUIStore()
   const { currentContent, selectedText, setSelectedText, activeBlockId, taggedBlocks, setTaggedBlocks } = useWorkspaceStore()
-  const { downloadStatus, setDownloadStatus, aiPanelWidth: panelWidth = 320 } = useProcessStore()
+  const { downloadStatus, setDownloadStatus } = useProcessStore()
   
   const {
     messages, isGenerating, isAvailable, models, settings,
     generateResponse, abortGeneration, clearHistory, updateSettings,
-    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs, setEngineLogs,
-    refreshModels, importModel, pendingQueue, removeFromQueue
+    updateMessageDiffState, updateInsertSuggestionStatus, engineLogs,
+    refreshModels, pendingQueue, removeFromQueue
   } = useAI()
   
-  const { editor } = useAppContext()
+  const { editor, settings: appSettings } = useAppContext()
   const blocks = editor?.document || []
   
   const { handleApplySuggestion, handleApplyInsertSuggestion } = useAppAISuggestions(editor, updateInsertSuggestionStatus)
@@ -89,7 +89,7 @@ export function AIPanel() {
   }, [setInput, textareaRef])
 
   if (!isOpen) return null
-  const isWhiteTheme = settings.theme === 'white'
+  const isWhiteTheme = appSettings?.theme === 'white'
   const displayModelLabel = settings.apiModel || (gpuName ? `GPU: ${gpuName}` : 'auto')
 
   return (

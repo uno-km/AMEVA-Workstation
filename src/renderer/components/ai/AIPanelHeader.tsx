@@ -1,5 +1,5 @@
 
-import { Settings2, X, Sparkles } from 'lucide-react'
+import { Settings2, X, Sparkles, Trash2, Loader2 } from 'lucide-react'
 
 export interface AIPanelHeaderProps {
   title: string
@@ -7,6 +7,8 @@ export interface AIPanelHeaderProps {
   modelLabel: string
   onOpenSettings: () => void
   onClose?: () => void
+  isGenerating?: boolean
+  onClearMessages?: () => void
 }
 
 export function AIPanelHeader({
@@ -14,7 +16,9 @@ export function AIPanelHeader({
   providerLabel,
   modelLabel,
   onOpenSettings,
-  onClose
+  onClose,
+  isGenerating,
+  onClearMessages
 }: AIPanelHeaderProps) {
   return (
     <div style={{
@@ -35,7 +39,11 @@ export function AIPanelHeader({
         boxShadow: '0 0 12px var(--primary-glow)',
         flexShrink: 0,
       }}>
-        <Sparkles size={14} color="#fff" />
+        {isGenerating ? (
+          <Loader2 size={14} color="#fff" style={{ animation: 'spin 1s linear infinite' }} />
+        ) : (
+          <Sparkles size={14} color="#fff" />
+        )}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '5px', flexWrap: 'wrap' }}>
@@ -67,6 +75,21 @@ export function AIPanelHeader({
         </div>
       </div>
       <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+        {onClearMessages && (
+          <button
+            onClick={onClearMessages}
+            style={{
+              background: 'transparent',
+              border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', display: 'flex', alignItems: 'center',
+              padding: '4px', borderRadius: '5px', transition: 'all 0.15s',
+              flexShrink: 0,
+            }}
+            title="대화 비우기"
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
         <button
           onClick={onOpenSettings}
           style={{
