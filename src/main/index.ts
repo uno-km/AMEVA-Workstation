@@ -248,20 +248,6 @@ function createWindow() {
   // [SEC-W-022] 창 보호 및 단축키 방어 전담 모듈 적용
   WindowDefenseManager.applyDefenses(mainWindow, () => isShuttingDown)
 
-  // [FIX-CSP-BYPASS-003] openstreetmap.org의 Content Security Policy 및 X-Frame-Options 헤더를 가로채 제거함으로써 iframe 내에 Directions 화면이 렌더링되도록 허용
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    const responseHeaders = { ...details.responseHeaders }
-    
-    // openstreetmap.org 도메인 요청일 경우 프레임 제한 정책 완전 우회
-    if (details.url.includes('openstreetmap.org')) {
-      delete responseHeaders['content-security-policy']
-      delete responseHeaders['content-security-policy-report-only']
-      delete responseHeaders['x-frame-options']
-    }
-    
-    callback({ responseHeaders })
-  })
-
   // 개발 서버 주소가 지정되어 있다면 로컬 서버를 로드하고, 아니면 dist 정적 마크업 파일을 마운트한다.
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
@@ -443,14 +429,21 @@ app.whenReady().then(() => {
 
   // [SEC-W-021] Content-Security-Policy 헤더 동적 세팅 주입
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://* http://localhost:* http://127.0.0.1:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
-        ]
-      }
-    })
+    const responseHeaders = { ...details.responseHeaders }
+    
+    // [FIX-CSP-BYPASS-003] openstreetmap.org로부터 날아오는 응답 헤더 중 외부 프레임 임베딩을 차단하는 헤더들을 가로채어 제거
+    if (details.url.includes('openstreetmap.org')) {
+      delete responseHeaders['content-security-policy']
+      delete responseHeaders['content-security-policy-report-only']
+      delete responseHeaders['x-frame-options']
+    } else {
+      // 일반 요청인 경우에만 기본 CSP 덮어씀
+      responseHeaders['Content-Security-Policy'] = [
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob:; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://* http://localhost:* http://127.0.0.1:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
+      ]
+    }
+    
+    callback({ responseHeaders })
   })
 
   // 렌더러 로딩 완료 시 최초 전달된 startup 파일 내용을 전송 완료 처리

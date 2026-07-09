@@ -354,7 +354,7 @@ function GoogleMapsView() {
       </div>
 
       {/* 지도 iframe */}
-      <div style={{ height: '350px', position: 'relative', background: '#16161a', flexShrink: 0 }}>
+      <div style={{ height: '480px', position: 'relative', background: '#16161a', flexShrink: 0, overflow: 'hidden' }}>
         {isLoading ? (
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
             위치 정보 조회 중...
@@ -362,7 +362,15 @@ function GoogleMapsView() {
         ) : (
           <iframe
             src={mapSrc}
-            style={{ width: '100%', height: '100%', border: 'none', filter: 'invert(0.9) hue-rotate(180deg)' }}
+            style={{
+              position: 'absolute',
+              top: '-50px',
+              left: 0,
+              width: '100%',
+              height: 'calc(100% + 50px)',
+              border: 'none',
+              filter: 'invert(0.9) hue-rotate(180deg)'
+            }}
             title="Google Maps OpenStreetMap View"
             referrerPolicy="no-referrer-when-downgrade"
             loading="lazy"

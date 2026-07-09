@@ -148,8 +148,9 @@ export const MapBlockSpec = createReactBlockSpec(
           <div style={{
             position: 'relative',
             width: '100%',
-            height: '320px',
-            backgroundColor: '#000'
+            height: '480px',
+            backgroundColor: '#000',
+            overflow: 'hidden'
           }}>
             <iframe
               src={(() => {
@@ -178,7 +179,15 @@ export const MapBlockSpec = createReactBlockSpec(
               width="100%"
               height="100%"
               frameBorder="0"
-              style={{ border: 0, filter: 'invert(0.9) hue-rotate(180deg)' }}
+              style={{
+                position: 'absolute',
+                top: '-50px',
+                left: 0,
+                width: '100%',
+                height: 'calc(100% + 50px)',
+                border: 0,
+                filter: 'invert(0.9) hue-rotate(180deg)'
+              }}
               allowFullScreen
               loading="lazy"
               title={`지도: ${locationName}`}

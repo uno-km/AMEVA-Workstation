@@ -530,13 +530,21 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
                     )}
                   </div>
                   {/* 지도 */}
-                  <div style={{ height: '320px', width: '100%' }}>
+                  <div style={{ height: '480px', width: '100%', position: 'relative', overflow: 'hidden' }}>
                     <iframe
                       src={mapSrc}
                       width="100%"
                       height="100%"
                       frameBorder="0"
-                      style={{ border: 0, filter: 'invert(0.9) hue-rotate(180deg)' }}
+                      style={{
+                        position: 'absolute',
+                        top: '-50px',
+                        left: 0,
+                        width: '100%',
+                        height: 'calc(100% + 50px)',
+                        border: 0,
+                        filter: 'invert(0.9) hue-rotate(180deg)'
+                      }}
                       allowFullScreen
                       loading="lazy"
                       title={`지도: ${locationName}`}
