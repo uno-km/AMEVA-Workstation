@@ -1,3 +1,8 @@
+/*
+ * AMEVA OS Stylesheet - MenuBar.css
+ * Location: src/renderer/styles/components/MenuBar.css
+ * Consumers: 관련 컴포넌트(JSX) 뷰 렌더링에 이 스타일 클래스가 매핑되어 사용됨.
+ */
 /* 메뉴바(MenuBar) 컴포넌트 독립 스타일 */
 .menu-bar-container {
   display: flex;

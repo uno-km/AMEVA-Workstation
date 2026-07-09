@@ -18,6 +18,10 @@
  * - MUST NOT cause performance degradation: 줄 수, 글자 수 등은 매 입력(`currentContent` 변경)마다 재계산되므로,
  *   내부에 무거운 동기적 문자열 파싱이나 복잡도 O(N^2) 이상의 알고리즘을 추가하지 말 것.
  * - MUST: `PeerState` 타입 임포트는 쓰이지 않아 빌드 에러를 유발하므로 다시 들여오지 말 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/AppLayout.tsx): 레이아웃 그리드 내부 또는 플로팅 레이어 영역 내에서 그리기로 소비.
+ * - 소비처 B (src/renderer/App.tsx): 전역 모달 매니저 및 뷰포트 상태 스위칭에 따라 동적 마운트되어 소비.
  */
 
 /* 

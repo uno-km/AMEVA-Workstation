@@ -18,6 +18,10 @@
  *   줄이면 React 상태 리렌더링 폭풍으로 인해 CPU 점유율 과부하가 발생함.
  * - MUST: 생성 세션 ID(`currentSessionIdRef.current`)와 토큰 유입 시의 세션 ID를 매번 대조 검증하여,
  *   네트워크 지연으로 인해 이전 세션의 잔여 토큰이 현재 대화창에 뒤섞이는 오작동을 완전히 방지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

@@ -17,6 +17,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST: 우측 패널 탭 토글 액션(`toggleRightTab`) 기동 시,
  *   이미 열려있는 탭을 한 번 더 선택한 경우에는 반드시 패널을 닫아버리는(`showAIPanel: false`) 직관적인 토글 Invariant 계약을 보존할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/hooks/): 도메인 훅 내부에서 상태 값 바인딩 및 변경 액션 호출 시 소비.
+ * - 소비처 B (src/renderer/components/): 컴포넌트 내 렌더 조건 판단을 위해 실시간 구독(Subscribe) 소비.
  */
 
 /* 

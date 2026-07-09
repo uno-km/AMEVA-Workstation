@@ -18,6 +18,10 @@
  *   생성 상태(`setIsGenerating(false)`)를 해제하여 UI 및 후속 대기 큐(`processNextQueueRef`)가 영구 프리징되는 현상을 완벽 차단할 것.
  * - MUST NOT swallow agent execution errors: 에이전트 루프 내부 예외 발생 시,
  *   console.error와 대화 말풍선 카드에 에러 원인을 명시해 띄우고 실패 레코드를 반환할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

@@ -22,6 +22,10 @@
  * - INVARIANT: 모달 외부 Backdrop 영역 클릭 시 `onClose`가 실행되어 창이 닫혀야 하나,
  *   모달 본체 카드 영역(div)을 클릭했을 때는 이벤트가 버블링되어 모달이 의도치 않게 닫히는 현상을 막기 위해
  *   반드시 카드 엘리먼트에 `e.stopPropagation()` 계약을 보존할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/AppLayout.tsx): 레이아웃 그리드 내부 또는 플로팅 레이어 영역 내에서 그리기로 소비.
+ * - 소비처 B (src/renderer/App.tsx): 전역 모달 매니저 및 뷰포트 상태 스위칭에 따라 동적 마운트되어 소비.
  */
 
 /* 

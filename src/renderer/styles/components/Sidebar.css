@@ -1,3 +1,8 @@
+/*
+ * AMEVA OS Stylesheet - Sidebar.css
+ * Location: src/renderer/styles/components/Sidebar.css
+ * Consumers: 관련 컴포넌트(JSX) 뷰 렌더링에 이 스타일 클래스가 매핑되어 사용됨.
+ */
 /* ── 사이드바 포커스 영역 및 테두리 인디케이터 ── */
 
 /* 사이드바 전체 */

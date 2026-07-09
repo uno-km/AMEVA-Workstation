@@ -17,6 +17,10 @@
  * - MUST: React 렌더링 생명주기의 비동기 타이밍 어긋남으로 인해 큐 데이터 유실(Race Condition)이 일어나는 것을 막기 위해,
  *   반드시 Zustand 스토어 세터(`setPendingQueue`) 호출과 동시에 로컬 Mutable `pendingQueueRef.current`에도 1:1 동기화 적재할 것.
  * - MUST NOT: `isGeneratingRef.current`가 참(True)인 동안에는 스케줄러가 절대 다음 요청을 Dequeue해서는 안 됨. (추론 동기 락 붕괴 방지).
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

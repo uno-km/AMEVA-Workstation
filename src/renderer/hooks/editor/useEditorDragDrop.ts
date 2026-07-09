@@ -17,6 +17,10 @@
  * - MUST NOT cause sync block: 외부 URL 메타 정보 Fetch 비동기 연산 중에는 메인 렌더 스레드가 중단되지 않도록,
  *   반드시 async/await 비동기 격리 락 구조를 유지하고 catch 예외 로그를 콘솔에 정확히 기재할 것.
  * - MUST: `app:insert-youtube` 전역 윈도우 이벤트 감청 등록 시, 훅 소멸 단계(`cleanup`)에서 리스너를 완전히 제거(`removeEventListener`)할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

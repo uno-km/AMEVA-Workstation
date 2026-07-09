@@ -16,6 +16,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST: 리스너 누수 방지를 위해 훅 언마운트(`cleanup`) 시점에 전역 윈도우 마우스 무브 이벤트를 완벽히 `removeEventListener` 하고,
  *   임시 주입되었던 `data-bn-hover-sync` 속성을 반드시 소멸 제거해 줄 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

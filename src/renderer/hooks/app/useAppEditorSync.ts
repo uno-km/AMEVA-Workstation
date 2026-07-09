@@ -17,6 +17,10 @@
  * - MUST NOT bypass double execution guard: 타이핑 도중의 동기화 꼬임이나 무한 렌더 루프를 막기 위해,
  *   반드시 `isUpdating` 가드 플래그 계약을 유지하여 동기화 작업이 겹쳐서 기동되는 것을 철저히 격리 차단할 것.
  * - MUST: 훅 해제 시 300ms 디바운서(`syncTimeoutRef`) 및 3분 백업 타이머(`id`)를 완벽하게 해제(`clearTimeout`, `clearInterval`)하여 렌더러 메모리 누수를 원천 차단할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

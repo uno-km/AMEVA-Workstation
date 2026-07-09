@@ -16,6 +16,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT cause update recursion: 에디터를 갱신(`editor.updateBlock`)하는 동안 발생하는 변경 이벤트를 캡처하여 무한 루프가 돌지 않도록,
  *   반드시 블록 업데이트 앞뒤 단에서 `setIsUpdating(true/false)` 가드 락 계약을 철저히 이행할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

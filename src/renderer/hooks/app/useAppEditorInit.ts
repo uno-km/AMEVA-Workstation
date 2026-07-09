@@ -16,6 +16,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT load welcome template repeatedly: 탭이 이동되거나 리액트 상태가 바뀔 때 웰컴 마크다운이 반복 유입되는 것을 가드하기 위해,
  *   반드시 `isInitialLoad.current` 레퍼런스를 락 플래그로 활용하여 평생 단 1회만 초기 웰컴 가이드가 들어가도록 통제할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

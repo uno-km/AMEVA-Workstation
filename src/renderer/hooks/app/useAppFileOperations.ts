@@ -16,6 +16,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT bypass chunked load: 200줄 이상의 대형 파일 로드 시에는 반드시 120줄 선파싱 후, 
  *   나머지 350ms 프레임 비동기 지연 결합 처리 계약을 유지하여 타이핑/화면 전환 시 렉을 없앨 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

@@ -16,6 +16,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT bypass state termination: 추론 실패 및 Abort 발생 시점에도 반드시 `setIsGenerating(false)`와 `setStreamingText('')`를 실행하여,
  *   화면 락을 풀고 대화 버퍼를 비워 렌더러가 무한 대기 상태(UI freeze)에 빠지지 않도록 보장할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

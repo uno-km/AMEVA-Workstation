@@ -17,6 +17,10 @@
  *   반드시 `isApiKeyLoadedRef.current[apiProvider]` 레퍼런스를 락 플래그로 활용하여 중복 로드를 철저히 격리할 것.
  * - MUST NOT persist plain key on disk: 키체인에 저장된 비밀키는 오직 런타임 settings 메모리에만 바인딩하고,
  *   localStorage 디스크에는 절대 평문 상태로 보존하지 말 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

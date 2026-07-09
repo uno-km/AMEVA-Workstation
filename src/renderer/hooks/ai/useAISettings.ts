@@ -17,6 +17,10 @@
  *   로컬 스토리지 보존 시점에는 **반드시 비구조화 할당(`const { apiKey: _apiKey, ...safeSettings } = updated`)을 통해 `apiKey`를 완전 소거(MUST NOT save apiKey to localStorage)**하여 전송할 것.
  * - MUST: 마이그레이션 도중 JSON 파싱 에러나 로컬스토리지 쓰기 예외 발생 시,
  *   catch 블록에서 에러를 삼키지 않고 `console.error`로 상세 내역을 남길 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

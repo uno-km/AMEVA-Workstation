@@ -18,6 +18,10 @@
  * - MUST NOT bypass usage check: 상용 클라우드 Gemini/Claude 백엔드의 무단 남용을 방지하기 위해, Pro 플랜이 아닌 일반 유저의 API 호출 한도 체크를 절대 우회해서는 안 됨.
  * - MUST: `generateResponse` 진입 시 `isGeneratingRef.current` 락이 켜져 있다면,
  *   추론 요청을 묵살하지 않고 반드시 순차 처리를 위해 대기 큐(`enqueue`)에 직렬화해 넣어야 한다.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

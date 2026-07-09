@@ -19,6 +19,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT exceed MAX_LOG_BUFFER: 시스템 메모리 누수 방지를 위해,
  *   로그를 병합 플러싱(`_flushExternalLogs`, `addSensorLog`)하는 모든 경로에서는 반드시 슬라이싱 연산을 거쳐 버퍼 개수를 `MAX_LOG_BUFFER` 이하로 제한 유지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/hooks/): 도메인 훅 내부에서 상태 값 바인딩 및 변경 액션 호출 시 소비.
+ * - 소비처 B (src/renderer/components/): 컴포넌트 내 렌더 조건 판단을 위해 실시간 구독(Subscribe) 소비.
  */
 
 /* 

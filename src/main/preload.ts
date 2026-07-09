@@ -14,6 +14,10 @@
  *   반드시 제거 콜백(`() => ipcRenderer.removeListener(...)`)을 반환하는 클린업 계약을 유지할 것.
  * - MUST NOT expose raw ipcRenderer: 렌더러가 임의의 악성 IPC 메시지를 마음대로 보내는 것을 방지하기 위해,
  *   절대 `ipcRenderer` 객체 본체를 날것 그대로(raw) expose하지 말고 래퍼 캡슐화 규칙을 고수할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/main/index.ts): 일렉트론 메인 라이프사이클(ready/will-quit) 및 윈도우 생성 시점에 결합 구동.
+ * - 소비처 B (src/main/preload.ts): contextBridge 안전 통로 노출을 위한 핵심 백엔드 기능 공급자로 소비.
  */
 
 /* 

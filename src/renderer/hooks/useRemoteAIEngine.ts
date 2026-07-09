@@ -16,6 +16,10 @@
  * - MUST NOT cause fetch block: Ollama fetch 진단 시 무한 대기로 렌더러가 멈추는 프리징을 차단하기 위해,
  *   반드시 `AbortSignal.timeout(1500)` 가드 계약을 보존하여 1.5초 이내에 강제 실패 처리할 것.
  * - MUST: 훅 해제 시 4초 주기 인터벌 타이머(`timer`)를 완벽하게 `clearInterval` 하여 렌더러의 메모리 누수를 철저히 차단할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

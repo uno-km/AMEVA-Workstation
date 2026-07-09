@@ -17,6 +17,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT duplicate tagged block: 동일한 에디터 블록 단락이 AI 태그 리스트에 두 번 이상 들어가지 않도록,
  *   반드시 `addTaggedBlock` 액션 실행 단계에서 `state.taggedBlocks.some`을 통한 ID 중복 검사 Invariant를 보존할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/hooks/): 도메인 훅 내부에서 상태 값 바인딩 및 변경 액션 호출 시 소비.
+ * - 소비처 B (src/renderer/components/): 컴포넌트 내 렌더 조건 판단을 위해 실시간 구독(Subscribe) 소비.
  */
 
 /* 

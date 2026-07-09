@@ -16,6 +16,10 @@
  * [책임 범위 - RESPONSIBILITY]
  * - IndexedDB 생성(`initDB`) 및 해당 문서의 과거 스냅샷들을 가져와 디컴프레션 복원한다.
  * - 현 버퍼 내용을 자동/수동 백업 기입하고, 이전 스냅샷과 현 문서 간의 줄 단위 변경 비교(Diff) 행렬을 계산한다.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

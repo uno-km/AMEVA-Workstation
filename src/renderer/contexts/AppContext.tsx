@@ -15,6 +15,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST: `useAppContext` 호출 시 컨텍스트 바인딩이 누락되어 `null`이 잡히는 경우,
  *   런타임 NPE(NullPointerException) 오작동을 차단하기 위해 반드시 `'useAppContext must be used within an AppProvider'` 예외를 throw 하도록 가드 계약을 유지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): AMEVA OS 최상위 마운트 레이어에서 의존성 로더로 연동 소비.
+ * - 소비처 B (src/renderer/main.tsx): 렌더러 엔트리 라이프사이클의 기본 기능으로 수입 소비.
  */
 
 /* 

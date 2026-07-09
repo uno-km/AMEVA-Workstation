@@ -17,6 +17,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST: 기존 export/import 호환성을 보장하기 위해 어댑터 하위 경로 파일들의 export문을 그대로 보존할 것.
  * - MUST NOT: 본 어댑터를 통하지 않는 ad-hoc window 캐스팅(`(window as any).electronAPI`) 사용을 지양하고 본 어댑터 인터페이스를 타깃할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): AMEVA OS 최상위 마운트 레이어에서 의존성 로더로 연동 소비.
+ * - 소비처 B (src/renderer/main.tsx): 렌더러 엔트리 라이프사이클의 기본 기능으로 수입 소비.
  */
 
 /* 

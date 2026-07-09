@@ -15,6 +15,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST: Yjs Shared Array에 메세지를 추가할 때는 배열 충돌 방지를 위해 단일 요소 푸시더라도 반드시 어레이 래핑 포맷(`push([msg])`) 계약을 고수할 것.
  * - MUST: 컴포넌트 언마운트(`cleanup`) 시점에 반드시 Yjs Array의 observe 리스너를 `unobserve` 하여 메모리 릭을 방지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

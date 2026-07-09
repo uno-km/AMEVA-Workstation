@@ -17,6 +17,10 @@
  * - MUST NOT swallow critical process management errors: `startEngine` 및 `stopEngine` 시 발생하는 예외는
  *   바이너리가 좀비 프로세스화되어 메모리에 남는 치명적인 버그를 유발하므로, catch 블록에서 삼키지 않고 위로 전파(Rethrow)할 것.
  * - MUST: 컴포넌트 언마운트 시 백그라운드 3초 주기의 인터벌 타이머(`interval`)를 확실하게 `clearInterval` 하여 렌더러 메모리 유실을 철저히 방지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

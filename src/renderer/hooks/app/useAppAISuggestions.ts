@@ -17,6 +17,10 @@
  * - MUST NOT swallow editor modification errors: ProseMirror 트랜잭션 및 BlockNote API 조작 시 발생하는 예외는
  *   VFS 구조 붕괴 및 Yjs 협업 세션 비동기 파열을 유발할 수 있으므로, catch 블록에서 에러 로그(`console.error`)를 반드시 출력할 것.
  * - MUST: ProseMirror 뷰 포커스(`view.focus()`) 복원 시, DOM 트리 내에 해당 엘리먼트가 여전히 마운트되어 존재하는지(`document.body.contains(view.dom)`) 선행 검사한 후 실행하여 브라우저 NPE 크래시를 차단할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

@@ -16,6 +16,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT: settings가 화이트 테마인 경우 `isWhiteTheme` 불리언 값을 올바르게 추출해야 하며, CSS variables가 충돌하지 않도록 스타일 분기해야 한다.
  * - MUST: 터미널 챗 또는 에디터 선택 텍스트 주입 이벤트를 구독 및 해제(`addEventListener`/`removeEventListener`)하여 메모리 누수를 완전히 방지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/AppLayout.tsx): 레이아웃 그리드 내부 또는 플로팅 레이어 영역 내에서 그리기로 소비.
+ * - 소비처 B (src/renderer/App.tsx): 전역 모달 매니저 및 뷰포트 상태 스위칭에 따라 동적 마운트되어 소비.
  */
 
 /* 

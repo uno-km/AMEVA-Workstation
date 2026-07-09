@@ -17,6 +17,10 @@
  * - MUST: Presentational Component 성격을 엄격히 보존하기 위해, 이 파일 내에서 직접 API를 쏘거나 Zustand 스토어 세터를 통해 비즈니스 정책을 결정하지 마라.
  * - MUST NOT bypass transition control: 드래그 중에는 패널 리사이징의 반응 속도 극대화를 위해 `transition: 'none'`을 보장해야 하며,
  *   유휴 상태로 복귀할 때는 부드러운 애니메이션(`transition: 'width 0.25s cubic-bezier(...)'`)을 유지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/AppLayout.tsx): 레이아웃 그리드 내부 또는 플로팅 레이어 영역 내에서 그리기로 소비.
+ * - 소비처 B (src/renderer/App.tsx): 전역 모달 매니저 및 뷰포트 상태 스위칭에 따라 동적 마운트되어 소비.
  */
 
 /* 

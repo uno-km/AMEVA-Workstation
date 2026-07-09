@@ -15,6 +15,10 @@
  * [책임 범위 - RESPONSIBILITY]
  * - 평문 텍스트 내 dataurl 데이터들을 바이너리 버퍼(`base64ToArrayBuffer`)로 복원하여 jszip 아카이브에 압축 기입(`packMarkdownToADC`)한다.
  * - 룸에 로드할 때 .adc zip 압축을 풀어 `document.md` 원문을 획득하고, 미디어 상대 경로들을 다시 브라우저가 다이렉트 렌더 가능한 dataurl base64로 환원(`unpackADCToMarkdown`) 주입한다.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/hooks/): 관련 비즈니스 훅 내부 연산 시 순수 함수 유틸리티로 수입 소비.
+ * - 소비처 B (src/renderer/components/): 렌더링 전 데이터 정제 단계에서 포맷터 유틸리티로 소비.
  */
 
 /* 

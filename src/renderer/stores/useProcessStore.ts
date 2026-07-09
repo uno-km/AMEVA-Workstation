@@ -17,6 +17,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST: 에디터 줌 및 가상 브라우저 줌 수동 조절(`adjustEditorZoom`, `adjustBrowserZoom`) 액션 구동 시,
  *   화면 렌더 텍스트 붕괴 및 아웃오브바운드 붕괴를 막기 위해 **최소 0.4배(40%) ~ 최대 2.5배(250%)**의 하드 한계 배율(Math.min, Math.max) 가드 Invariant를 보존할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/hooks/): 도메인 훅 내부에서 상태 값 바인딩 및 변경 액션 호출 시 소비.
+ * - 소비처 B (src/renderer/components/): 컴포넌트 내 렌더 조건 판단을 위해 실시간 구독(Subscribe) 소비.
  */
 
 /* 

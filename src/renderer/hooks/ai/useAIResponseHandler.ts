@@ -18,6 +18,10 @@
  *   예외 발생 시 catch 블록에서 로그를 삼키지 않고 `console.error`로 상세 역추적을 남길 것.
  * - MUST: `finalize` 결과로 나오는 `SanitizeResult` 객체에서 생각 버퍼(`thinkingContent`)와
  *   안전 정제 출력물(`finalContent`)을 손상 없이 획득하여 Assistant 메시지 모델에 밀어 넣어야 한다.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

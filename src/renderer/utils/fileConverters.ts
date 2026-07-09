@@ -15,6 +15,10 @@
  * [책임 범위 - RESPONSIBILITY]
  * - IPYNB 쥬피터 JSON 및 Markdown 셀 간 상호 변환(`convertMarkdownToIpynb`, `parseFileToMarkdown`).
  * - 이진 파일 디스크 다운로드 유도(`triggerBrowserDownload`), base64 변환(`arrayBufferToBase64`) 및 Mammoth, JSZip, ExcelJS 등 외부 포맷 번역을 통제한다.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/hooks/): 관련 비즈니스 훅 내부 연산 시 순수 함수 유틸리티로 수입 소비.
+ * - 소비처 B (src/renderer/components/): 렌더링 전 데이터 정제 단계에서 포맷터 유틸리티로 소비.
  */
 
 /* 

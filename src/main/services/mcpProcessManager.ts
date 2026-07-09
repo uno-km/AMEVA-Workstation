@@ -13,6 +13,10 @@
  * 
  * [책임 범위 - RESPONSIBILITY]
  * - 서버 프로세스의 기동(`spawnServer`), 종료(`killServer`, `killAll`), 및 JSON-RPC 주입/해석(`callServer`) 생명주기를 통제한다.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/main/index.ts): 일렉트론 메인 라이프사이클(ready/will-quit) 및 윈도우 생성 시점에 결합 구동.
+ * - 소비처 B (src/main/preload.ts): contextBridge 안전 통로 노출을 위한 핵심 백엔드 기능 공급자로 소비.
  */
 
 /* 

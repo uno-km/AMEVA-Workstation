@@ -18,6 +18,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT swallow API failures: 메타데이터 Fetch 실패 혹은 VFS/블록 업데이트 에러 발생 시,
  *   유저가 상태를 직관적으로 파악할 수 있도록 '연결 실패' 안내 메타데이터를 주입하고, `console.error`로 예외 원인을 상세 로깅할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

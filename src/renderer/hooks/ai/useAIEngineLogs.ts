@@ -16,6 +16,10 @@
  * - MUST RESTORE: 브라우저 콘솔을 탈취한 후, 훅의 언마운트(`cleanup`) 시점에는 반드시 원래의 브라우저 순정 콘솔 메서드(`origLog`, `origWarn`, `origErr`)로 원상 복구해 둘 것.
  *   그렇지 않으면 타 서브시스템 컴포넌트의 일반 렌더 로그 출력이 차단되거나 중복 유출되는 심각한 콘솔 누수가 발생함.
  * - MUST NOT swallow initialization errors: 초기 로그 수집 비동기 호출(`ipc.llmGetLogs`)의 실패 예외는 반드시 `console.error`로 로깅하여 시각화할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

@@ -16,6 +16,10 @@
  * - MUST: window.getSelection() 조회 시 텍스트가 잡히지 않는 경우, 
  *   이전 선택 텍스트 찌꺼기가 전역 챗 인풋 바에 계속 누적 전송되는 오류를 막기 위해
  *   반드시 공백문자('')를 주입하여 상태를 완전히 리셋해 줄 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

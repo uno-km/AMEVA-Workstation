@@ -15,6 +15,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST NOT bypass unsubscribing: 새 추론 세션을 구독(`subscribeSession`) 개시하기 전에는,
  *   반드시 기존에 잔존하고 있던 리스너 해제 레퍼런스(`unsubTokenRef.current()`, `unsubDoneRef.current()`)를 호출하여 선행 소멸시켜 둔 후 새로 덮어씌울 것. (Memory Leak 방지 계약).
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

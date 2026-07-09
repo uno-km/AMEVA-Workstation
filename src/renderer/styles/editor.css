@@ -1,3 +1,8 @@
+/*
+ * AMEVA OS Stylesheet - editor.css
+ * Location: src/renderer/styles/editor.css
+ * Consumers: 관련 컴포넌트(JSX) 뷰 렌더링에 이 스타일 클래스가 매핑되어 사용됨.
+ */
 /* ── [FEAT-5] 에디터 블록 hover / focus 테두리 효과 ────────────────────── */
 /* 기본 상태: 투명 테두리 예약 (레이아웃 시프트 없이 부드럽게 전환) */
 .bn-block-outer {

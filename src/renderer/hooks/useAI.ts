@@ -16,6 +16,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - INVARIANT: `useAI`는 오케스트레이션만을 수행하므로, 본 파일 내에 직접적인 AI 메시지 파싱이나 DB 쿼리, IPC llm API를 직접 바인딩하지 말 것.
  * - MUST NOT: `useAIState`와 `useAIAgent` 간의 변수 추출 시, 중복 변수가 얽혀 경고를 생성하지 않도록 사용 범위를 사전에 격리할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

@@ -14,6 +14,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - MUST: 커스텀 블록 타입(AmevaBlock, AmevaPartialBlock)의 제네릭 매핑 사양을 흐리거나 변경하지 말 것.
  *   타입이 흐려지면 `MarkdownEditor` 및 `useAppAISuggestions` 등의 인라인 제안 이식 구문에서 심각한 TS 컴파일 에러를 뿜음.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): AMEVA OS 최상위 마운트 레이어에서 의존성 로더로 연동 소비.
+ * - 소비처 B (src/renderer/main.tsx): 렌더러 엔트리 라이프사이클의 기본 기능으로 수입 소비.
  */
 
 /* 

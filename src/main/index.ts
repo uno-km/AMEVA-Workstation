@@ -17,6 +17,10 @@
  * - MUST: 터미널 강제 시그널(Ctrl+C, SIGINT, SIGTERM) 수신 시 및 앱 종료 시점에 반드시 `LLMProcessManager.gracefulShutdown`과 `MCPProcessManager.killAll`을 가동하여,
  *   로컬 AI Llama 포트 및 Node.js MCP 좀비 프로세스가 OS 백그라운드에 남아 좀비화 및 메모리 누수를 일으키는 현상을 원천 방지할 것.
  * - MUST NOT disable contextIsolation: 보안 취약점 차단을 위해 렌더러 `webPreferences` 설정 내 `contextIsolation: true` 및 `sandbox: true` 보안 가드를 영구 유지할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/main/index.ts): 일렉트론 메인 라이프사이클(ready/will-quit) 및 윈도우 생성 시점에 결합 구동.
+ * - 소비처 B (src/main/preload.ts): contextBridge 안전 통로 노출을 위한 핵심 백엔드 기능 공급자로 소비.
  */
 
 /* 

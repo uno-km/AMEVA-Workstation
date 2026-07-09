@@ -1,3 +1,8 @@
+/*
+ * AMEVA OS Stylesheet - base.css
+ * Location: src/renderer/styles/base.css
+ * Consumers: 관련 컴포넌트(JSX) 뷰 렌더링에 이 스타일 클래스가 매핑되어 사용됨.
+ */
 * {
   box-sizing: border-box;
   margin: 0;

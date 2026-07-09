@@ -21,6 +21,10 @@
  * - Llama CLI/Server 및 Whisper STT CLI 경로를 검지한다.
  * - GPU 레이어 오프로드 가속(`-ngl 99`) 기동을 시도하고, 드라이버 불일치로 실패 시 CPU 스레드 모드(`-ngl 0`)로 자동 폴백 웜업시킨다.
  * - 윈도우 F5/Ctrl+C/will-quit 발생 시 기존 유령 백그라운드 Llama 프로세스를 OS 프로세스 테이블에서 안전하게 청소(`asyncCleanupOrphanedProcesses`)한다.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/main/index.ts): 일렉트론 메인 라이프사이클(ready/will-quit) 및 윈도우 생성 시점에 결합 구동.
+ * - 소비처 B (src/main/preload.ts): contextBridge 안전 통로 노출을 위한 핵심 백엔드 기능 공급자로 소비.
  */
 
 /* 

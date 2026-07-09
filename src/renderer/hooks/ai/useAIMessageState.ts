@@ -18,6 +18,10 @@
  * [절대 깨면 안 되는 계약 - CONTRACT]
  * - INVARIANT: 메시지 리스트 갱신 함수들이 스토어 참조를 잃어 대화 버퍼가 꼬이지 않도록,
  *   반드시 Zustand 스토어 세터(`setMessages`, `setStreamingText`) 레퍼런스를 하위 자식 훅 생성자(factory)에 안전하게 이식해 보존할 것.
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 

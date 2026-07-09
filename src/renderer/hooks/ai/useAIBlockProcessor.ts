@@ -17,6 +17,10 @@
  *   반드시 리스너 해제 콜백(`unsubToken()`, `unsubDone()`)을 호출하여 렌더러 IPC 리스너 누수를 방지할 것.
  * - MUST: 리스너가 먼저 메인 스레드 HMR/RPC 이벤트를 잡을 수 있도록,
  *   `ipc.llmGenerate` 호출 패킷을 쏘기 전에 리스너 구독 등록을 선행 수행할 것. (Race Condition 방지 계약).
+ 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/App.tsx): 최상위 Facade 구조에 통합 마운트.
+ * - 소비처 B (src/renderer/contexts/AppContext.tsx): 리액트 Context 훅 목록에 바인딩되어 하위 뷰에 전파.
  */
 
 /* 
