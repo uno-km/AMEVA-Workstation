@@ -129,7 +129,7 @@ export function InlineLinkPreviewRenderer({ code }: { code: string }) {
               </span>
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                {!isFailed && !isLoading && url && (
+                {url && (
                   <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     style={{
@@ -155,6 +155,7 @@ export function InlineLinkPreviewRenderer({ code }: { code: string }) {
                     {isExpanded ? '접기 ▲' : '미리보기 ▶'}
                   </button>
                 )}
+
                 
                 {url && (
                   <button

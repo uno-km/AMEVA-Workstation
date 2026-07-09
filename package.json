@@ -8,6 +8,7 @@
     "dev": "node scripts/dev.js",
     "dev:host": "vite --host",
     "dev:browser": "vite --mode browser",
+    "app": "vite",
     "web": "vite --mode browser",
     "market": "node ../AMEVA-Workstation-Market-Place/server.js",
     "dev:market": "node ../AMEVA-Workstation-Market-Place/server.js",

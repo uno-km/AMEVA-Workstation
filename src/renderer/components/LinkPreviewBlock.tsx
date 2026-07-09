@@ -19,7 +19,7 @@
 
 import React, { useState } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
-import { Globe, ExternalLink } from 'lucide-react'
+import { Globe } from 'lucide-react'
 
 /*
  * [소비처 - CONSUMERS / USAGE CONTEXT]
@@ -127,7 +127,7 @@ function LinkPreviewComponent({ block }: { block: any }) {
               
               {/* 확장(새창열기) 및 미리보기 버튼 */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                {!isFailed && !isLoading && url && (
+                {url && (
                   <button
                     onClick={() => setIsExpanded(!isExpanded)}
                     style={{
@@ -153,6 +153,7 @@ function LinkPreviewComponent({ block }: { block: any }) {
                     {isExpanded ? '접기 ▲' : '미리보기 ▶'}
                   </button>
                 )}
+
                 
                 {url && (
                   <button

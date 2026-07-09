@@ -54,6 +54,7 @@ import { useAIMessageState } from './ai/useAIMessageState'
 import { useAIQueue } from './ai/useAIQueue'
 import { useAIEngineLogs } from './ai/useAIEngineLogs'
 import * as ipc from '../services/ipc/electronApiAdapter'
+import { WebLLMEngine } from '../services/ai/WebLLMEngine'
 
 /* 
  * [SUB-DOMAINS ACTION ENGINES]
@@ -315,15 +316,17 @@ export function useAIAgent() {
 
     /*
      * [ALGORITHM BRANCH / DECISION]
-     * - 조건 식: `ipc.isElectronEnv()`
-     * - 만족 시: Electron 환경에서만 메인 프로세스로 LLM 강제 중단 시그널을 추가 발송한다.
-     * - 불만족 시: 렌더러 측 상태만 초기화하고 종료한다. (웹 환경 등)
+     * - 조건 식: `settings.apiType === 'wasm'`
+     * - 만족 시: 렌더러단 WebGPU 엔진(`WebLLMEngine`)의 진행 중인 Wasm 연산을 강제 중단한다.
+     * - 불만족 시: Electron 환경의 메인 프로세스(`ipc.llmAbort`)로 LLM 강제 중단 시그널을 발송한다.
      */
-    if (ipc.isElectronEnv()) {
+    if (settings.apiType === 'wasm') {
+      WebLLMEngine.getInstance().abort()
+    } else if (ipc.isElectronEnv()) {
       const currentSessionId = currentSessionIdRef.current || 'default'
       ipc.llmAbort(currentSessionId)
     }
-  }, [isGenerating, clearQueue, setMessages, setIsGenerating, currentSessionIdRef])
+  }, [isGenerating, clearQueue, setMessages, setIsGenerating, currentSessionIdRef, settings.apiType])
 
       /*
        * [RUN-TIME STATE / INVARIANT]

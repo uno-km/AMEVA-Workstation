@@ -18,9 +18,10 @@
  */
 
 import { useState, useEffect } from 'react'
-import { Cpu, Zap, SlidersHorizontal, Shield, Server, ExternalLink } from 'lucide-react'
+import { Cpu, Zap, SlidersHorizontal, Shield, Server, ExternalLink, HardDriveDownload, CheckCircle2, AlertCircle } from 'lucide-react'
 import type { AISettings } from '../../types/aiTypes'
 import { PROVIDER_MODELS } from '../../../shared/constants/aiSettings'
+import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
 
 export interface SettingsTabAIEngineProps {
   activeTab: string
@@ -54,6 +55,22 @@ export function SettingsTabAIEngine({
 
   const [ollamaModels, setOllamaModels] = useState<{name: string}[]>([])
   const [isOllamaLoading, setIsOllamaLoading] = useState(false)
+
+  /*
+   * [FEAT-WEBGPU-STATE] WebGPU (WASM) 엔진 로딩 상태 및 진단 변수
+   */
+  const [wasmLoading, setWasmLoading] = useState(false)
+  const [wasmProgressText, setWasmProgressText] = useState('')
+  const [wasmLoaded, setWasmLoaded] = useState(() => WebLLMEngine.getInstance().isModelLoaded())
+  const [wasmDiagnostic, setWasmDiagnostic] = useState<{ supported: boolean; message: string } | null>(null)
+
+  const WEBGPU_CATALOG = [
+    { label: 'Qwen2.5 1.5B Instruct (가장 빠름, 추천)', value: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC' },
+    { label: 'Llama 3.2 1B Instruct (가벼움, 초고속)', value: 'Llama-3.2-1B-Instruct-q4f16_1-MLC' },
+    { label: 'Llama 3.2 3B Instruct (정확성 우수)', value: 'Llama-3.2-3B-Instruct-q4f16_1-MLC' },
+    { label: 'Gemma 2 2B IT (구글 최신)', value: 'gemma-2-2b-it-q4f16_1-MLC' },
+    { label: 'SmolLM2 1.7B Instruct (최경량 코딩/챗)', value: 'SmolLM2-1.7B-Instruct-q4f16_1-MLC' },
+  ] as const
 
   /*
    * [FIX-OLLAMA-STATE] Ollama 자동화 상태 변수 그룹
@@ -92,6 +109,44 @@ export function SettingsTabAIEngine({
       { label: 'Llama3.1 8B',  model: 'llama3.1:8b',  sizeGb: '5.0GB' },
     ]},
   ] as const
+
+  // WebGPU 환경 자동 진단
+  useEffect(() => {
+    if (apiType === 'wasm') {
+      WebLLMEngine.getInstance().checkWebGPUSupport().then(res => {
+        setWasmDiagnostic(res)
+      })
+      setWasmLoaded(WebLLMEngine.getInstance().isModelLoaded())
+    }
+  }, [apiType])
+
+  /**
+   * [FEAT-WEBGPU-INIT] WebGPU 온디바이스 모델을 브라우저 캐시에 수동 로드/다운로드하는 핸들러
+   */
+  const handleLoadWebGPUModel = async (modelIdToLoad: string) => {
+    setWasmLoading(true)
+    setWasmProgressText('초기화 준비 중...')
+    try {
+      const success = await WebLLMEngine.getInstance().initModel(modelIdToLoad, (report) => {
+        setWasmProgressText(report.text)
+      })
+      if (success) {
+        setWasmLoaded(true)
+        onUpdateAISettings({ apiModel: modelIdToLoad })
+      }
+    } catch (e: unknown) {
+      /*
+       * [ERROR HANDLING - EXCEPTION LOGGING]
+       * - WebGPU 모델 다운로드/초기화 실패 시 에러 메시지를 로그로 기록하고 UI에 상태를 전파한다.
+       * - e.message 접근 전 instanceof Error 타입 가드로 안전하게 메시지를 추출한다.
+       */
+      const errorMsg = e instanceof Error ? e.message : String(e)
+      console.error('[SettingsTabAIEngine] WebGPU 모델 로딩 실패:', errorMsg)
+      setWasmProgressText(`로딩 실패: ${errorMsg}`)
+    } finally {
+      setWasmLoading(false)
+    }
+  }
 
   // apiType이 ollama로 진입할 때 설치 여부 자동 체크 및 모델 목록 조회
   useEffect(() => {
@@ -304,6 +359,91 @@ export function SettingsTabAIEngine({
             <p style={{ margin: 0, fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
               API Key는 좌측의 <strong>Credentials</strong> 탭에서 안전하게 시스템 KeyChain에 등록할 수 있습니다.
               {apiProvider === 'anthropic' && <span style={{ color: 'var(--accent)', display: 'block', marginTop: '4px' }}>⚠️ Anthropic 공식 API는 헤더 규격이 달라 직접 연동 시 에러가 날 수 있습니다. OpenRouter 프록시 사용을 권장합니다.</span>}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* 1.5 WebGPU 온디바이스 설정 */}
+      {apiType === 'wasm' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', background: 'rgba(168, 85, 247, 0.03)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Cpu size={14} color="#a855f7" />
+            <h4 style={{ fontSize: '11.5px', fontWeight: 700, margin: 0, color: '#a855f7' }}>WebGPU 가속 온디바이스 AI (@mlc-ai/web-llm)</h4>
+            <span style={{ marginLeft: 'auto', fontSize: '9.5px', padding: '2px 8px', borderRadius: '99px',
+              background: wasmLoaded ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
+              color: wasmLoaded ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
+              {wasmLoaded ? '⚡ 캐시 로드됨 (준비 완료)' : '⏳ 미초기화 / 다운로드 필요'}
+            </span>
+          </div>
+
+          {wasmDiagnostic && (
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: wasmDiagnostic.supported ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${wasmDiagnostic.supported ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
+              {wasmDiagnostic.supported ? <CheckCircle2 size={14} color="#10b981" /> : <AlertCircle size={14} color="#ef4444" />}
+              <div style={{ fontSize: '10px', color: 'var(--text-main)', lineHeight: '1.4' }}>
+                <strong style={{ display: 'block', color: wasmDiagnostic.supported ? '#10b981' : '#ef4444' }}>
+                  {wasmDiagnostic.supported ? 'WebGPU 가속 사용 가능' : 'WebGPU 진단 알림'}
+                </strong>
+                <span>{wasmDiagnostic.message}</span>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-main)' }}>온디바이스 모델 프리셋 선택</label>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <select
+                value={apiModel || WEBGPU_CATALOG[0].value}
+                onChange={e => {
+                  onUpdateAISettings({ apiModel: e.target.value })
+                  setWasmLoaded(WebLLMEngine.getInstance().isModelLoaded() && WebLLMEngine.getInstance().getCurrentModelId() === e.target.value)
+                }}
+                disabled={wasmLoading}
+                style={{
+                  flex: 1, padding: '8px 10px', borderRadius: '6px',
+                  background: 'var(--bg-glass)', border: '1px solid var(--border-muted)',
+                  color: 'var(--text-main)', fontSize: '11px', outline: 'none'
+                }}
+              >
+                {WEBGPU_CATALOG.map(m => (
+                  <option key={m.value} value={m.value}>{m.label} ({m.value})</option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => handleLoadWebGPUModel(apiModel || WEBGPU_CATALOG[0].value)}
+                disabled={wasmLoading || !wasmDiagnostic?.supported}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '4px',
+                  padding: '0 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+                  background: wasmLoading ? 'var(--border-muted)' : '#a855f7',
+                  color: '#fff', border: 'none', cursor: wasmLoading ? 'not-allowed' : 'pointer',
+                  whiteSpace: 'nowrap', transition: 'all 0.15s'
+                }}
+              >
+                <HardDriveDownload size={13} />
+                {wasmLoading ? '초기화 중...' : (wasmLoaded ? '다시 로드' : '모델 다운로드/로드')}
+              </button>
+            </div>
+          </div>
+
+          {wasmProgressText && (
+            <div style={{ padding: '8px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', border: '1px solid var(--border-muted)' }}>
+              <div style={{ fontSize: '10px', color: '#a855f7', fontWeight: 600, marginBottom: '2px' }}>
+                {wasmLoading ? '🔄 처리 중...' : 'ℹ️ 최근 로딩 상태'}
+              </div>
+              <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                {wasmProgressText}
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '6px' }}>
+            <Shield size={14} color="var(--text-muted)" style={{ marginTop: '2px', flexShrink: 0 }} />
+            <p style={{ margin: 0, fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+              <strong>100% 완전 독립 작동:</strong> Llama.cpp 네이티브 바이너리나 Ollama 서버가 필요하지 않으며,
+              그래픽 카드의 VRAM 및 셰이더를 사용하여 브라우저 렌더러 내부에서 독립 추론합니다. 다운로드된 모델은 브라우저 Cache Storage에 안전하게 보관됩니다.
             </p>
           </div>
         </div>

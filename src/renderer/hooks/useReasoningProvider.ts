@@ -30,6 +30,7 @@
 
 import { useCallback } from 'react'
 import * as ipc from '../services/ipc/electronApiAdapter'
+import { WebLLMEngine } from '../services/ai/WebLLMEngine'
 import type {
   ReasoningResult,
   ReasoningTraceEvent,
@@ -614,6 +615,17 @@ export function useReasoningProvider() {
    */
         const llmCall: LLMCallFn = async (prompt, systemPrompt, maxTok, temp) => {
           return new Promise<string>((resolve) => {
+            if (apiType === 'wasm') {
+              WebLLMEngine.getInstance().generateStream(
+                [{ role: 'user', content: prompt }],
+                {
+                  systemPrompt,
+                  maxTokens: maxTok ?? 512,
+                  temperature: temp ?? 0.5
+                }
+              ).then((res) => resolve(res.trim())).catch(() => resolve(''))
+              return
+            }
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `buffer`
@@ -653,7 +665,7 @@ export function useReasoningProvider() {
               systemPrompt,
               maxTokens: maxTok ?? 512,
               temperature: temp ?? 0.5,
-              apiType: apiType === 'wasm' ? 'local' : apiType,
+              apiType: apiType, // wasm 우회 코드 삭제 및 순수 apiType 전송
               apiKey,
             })
           })
@@ -692,6 +704,17 @@ export function useReasoningProvider() {
        */
       if (ipc.isElectronEnv()) {
         finalAnswer = await new Promise<string>((resolve) => {
+          if (apiType === 'wasm') {
+            WebLLMEngine.getInstance().generateStream(
+              [{ role: 'user', content: input }],
+              {
+                systemPrompt: 'You are an advanced reasoning AI.',
+                maxTokens: maxTokens ?? 512,
+                temperature: temperature ?? 0.7
+              }
+            ).then((res) => resolve(res.trim())).catch(() => resolve(''))
+            return
+          }
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `buf`
@@ -726,7 +749,7 @@ export function useReasoningProvider() {
             prompt: input,
             maxTokens: maxTokens ?? 512,
             temperature: temperature ?? 0.7,
-            apiType: apiType === 'wasm' ? 'local' : apiType,
+            apiType: apiType, // wasm 우회 코드 삭제 및 순수 apiType 전송
             apiKey,
             context,
           })

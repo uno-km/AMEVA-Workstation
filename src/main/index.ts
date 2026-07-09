@@ -451,7 +451,6 @@ app.whenReady().then(() => {
     (details, callback) => {
       details.requestHeaders['Referer'] = 'https://tistory.com/'
       // Origin 헤더는 건드리지 않고 표준 정책을 유지하여 CORS 403 에러 예방
-      callback({ requestHeaders: details.requestHeaders })
     }
   )
 
@@ -459,22 +458,50 @@ app.whenReady().then(() => {
   session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     const responseHeaders = { ...details.responseHeaders }
     
+    // 1. 대소문자 가리지 않고 모든 요청의 x-frame-options 제거
+    for (const key of Object.keys(responseHeaders)) {
+      if (key.toLowerCase() === 'x-frame-options') {
+        delete responseHeaders[key]
+      }
+    }
+
+    // 2. content-security-policy 내 frame-ancestors 규칙을 정규식으로 우회
+    for (const key of Object.keys(responseHeaders)) {
+      if (key.toLowerCase() === 'content-security-policy' || key.toLowerCase() === 'content-security-policy-report-only') {
+        const val = responseHeaders[key]
+        if (Array.isArray(val)) {
+          responseHeaders[key] = val.map(policy => 
+            policy.replace(/frame-ancestors\s+[^;]+(;?)/gi, '')
+          )
+        } else if (typeof val === 'string') {
+          responseHeaders[key] = (val as string).replace(/frame-ancestors\s+[^;]+(;?)/gi, '')
+        }
+      }
+    }
+
     // [FIX-CSP-BYPASS-003] openstreetmap.org로부터 날아오는 응답 헤더 중 외부 프레임 임베딩을 차단하는 헤더들을 가로채어 제거
     if (details.url.includes('openstreetmap.org')) {
       delete responseHeaders['content-security-policy']
       delete responseHeaders['content-security-policy-report-only']
       delete responseHeaders['x-frame-options']
+      for (const key of Object.keys(responseHeaders)) {
+        if (['content-security-policy', 'content-security-policy-report-only', 'x-frame-options'].includes(key.toLowerCase())) {
+          delete responseHeaders[key]
+        }
+      }
     } else {
-      // 일반 요청인 경우에만 기본 CSP 덮어씀
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `Content-Security-Policy`
-       * - 자료형 / 예상 값: string[] (CSP 헤더 값 목록)
-       * - 시나리오: 애플리케이션의 보안 통제를 위해 CSP 헤더 값을 주입하며, 외부 썸네일 이미지 로드가 차단되는 문제를 막기 위해 img-src 지시어에 https: 프로토콜을 명시적으로 허용함.
-       */
-      responseHeaders['Content-Security-Policy'] = [
-        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://* http://localhost:* http://127.0.0.1:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
-      ]
+      // 일반 요청인 경우에만 기본 CSP 덮어씀 (단, iframe 내부 서브 리소스가 아니라 최상단 앱 페이지인 경우에만 주입)
+      if (details.resourceType === 'mainFrame') {
+        /*
+         * [RUN-TIME STATE / INVARIANT]
+         * - 변수 명: `Content-Security-Policy`
+         * - 자료형 / 예상 값: string[] (CSP 헤더 값 목록)
+         * - 시나리오: 애플리케이션의 보안 통제를 위해 CSP 헤더 값을 주입하며, 외부 썸네일 이미지 로드가 차단되는 문제를 막기 위해 img-src 지시어에 https: 프로토콜을 명시적으로 허용함.
+         */
+        responseHeaders['Content-Security-Policy'] = [
+          "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: http://localhost:* http://127.0.0.1:* https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' ws://localhost:* ws://127.0.0.1:* wss://* http://localhost:* http://127.0.0.1:* https://* wss://demos.yjs.dev; worker-src blob:; frame-src 'self' https: http: data: blob:;"
+        ]
+      }
     }
     
     callback({ responseHeaders })

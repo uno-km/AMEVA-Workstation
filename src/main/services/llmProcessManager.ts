@@ -372,18 +372,21 @@ export class LLMProcessManager {
       
       const { BrowserWindow } = require('electron');
       BrowserWindow.getAllWindows().forEach((win: any) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!win.isDestroyed() && !win.webContents.isDestroyed()`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!win.isDestroyed() && !win.webContents.isDestroyed())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+        /*
+         * [ALGORITHM BRANCH / DECISION]
+         * - 조건 식: `!win.isDestroyed() && !win.webContents.isDestroyed()`
+         * - 만족 시: 렌더러 창이 정상 활성화 상태일 경우, 로그 스트리밍 채널로 실시간 전송합니다.
+         */
         if (!win.isDestroyed() && !win.webContents.isDestroyed()) {
           win.webContents.send('llm:log', { text: formattedLine });
         }
       });
-      process.stderr.write(formattedLine);
+      
+      // 개발 터미널 창 가독성 보존을 위해 백그라운드 AI 추론엔진 자체의 stderr는 출력을 생략하고,
+      // 중요 시스템 구동 및 모니터링 성격의 SYS 로그만 process.stderr에 출력합니다. (실제 UI 로그 뷰어로는 정상 수집됨)
+      if (prefix === 'SYS') {
+        process.stderr.write(formattedLine);
+      }
     });
   }
 

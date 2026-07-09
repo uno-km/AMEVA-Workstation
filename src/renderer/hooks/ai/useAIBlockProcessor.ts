@@ -34,6 +34,7 @@ import { useCallback } from 'react'
  * - ipc: 네이티브 쉘 LLM 연산 가동 및 단발 토큰 수신 이벤트 채널 바인더.
  */
 import * as ipc from '../../services/ipc/electronApiAdapter'
+import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
 
 /* 
  * [TYPES]
@@ -67,8 +68,32 @@ export function useAIBlockProcessor(settings: AISettings) {
       explain: `다음 내용을 쉽게 설명하세요:\n\n${content}`
     }
 
-    // 단발성 IPC 토큰 처리를 위한 Promise 비동기 래퍼 가동
+    // 단발성 IPC/WebGPU 처리를 위한 Promise 비동기 래퍼 가동
     return new Promise<string>((resolve) => {
+      /*
+       * [STRATEGY PATTERN & ROUTING ISOLATION]
+       * - apiType이 'wasm' 인 경우: 메인 프로세스(llama-server.exe)를 호출하지 않고 WebLLMEngine으로 즉시 처리.
+       * - 그 외(local, ollama, api): 기존 IPC 단발 추론 파이프라인(`ipc.llmGenerate`)을 100% 보존 실행.
+       */
+      if (settings.apiType === 'wasm') {
+        const webLLM = WebLLMEngine.getInstance()
+        webLLM.generateStream(
+          [{ role: 'user', content: prompts[action] || content }],
+          {
+            systemPrompt: 'You are a document editing assistant. Output only the requested content without any explanation or preamble.',
+            maxTokens: 512,
+            temperature: 0.5
+          }
+        ).then((res) => {
+          resolve(res.trim() || '')
+        }).catch((err: unknown) => {
+          const errorMsg = err instanceof Error ? err.message : String(err)
+          console.error('[useAIBlockProcessor] WebGPU 퀵 액션 처리 실패:', errorMsg)
+          resolve('')
+        })
+        return
+      }
+
       /*
        * [CONTRACT - Local Variables Initialization]
        * - result: 누적 수신된 텍스트 버퍼 변수.
@@ -76,32 +101,11 @@ export function useAIBlockProcessor(settings: AISettings) {
        * - sessId: 챗 세션과 격리하기 위한 단발성 세션 고유 키.
        */
       let result = ''
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `settled`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const settled = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       let settled = false
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `sessId`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const sessId = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       const sessId = `quick-${Date.now()}`
 
       // IPC 리스너 안전 해제를 위한 클린업 이너 헬퍼 함수
       const cleanup = (unsubToken: () => void, unsubDone: () => void) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!settled`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (!settled) {
           settled = true
           unsubToken()
@@ -111,30 +115,10 @@ export function useAIBlockProcessor(settings: AISettings) {
 
       // CONTRACT: llmGenerate 기동 전, 리스너를 먼저 선행 구독한다.
       const unsubToken = ipc.onLLMToken(sessId, (token) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!settled`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (!settled) result += token
       })
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `unsubDone`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const unsubDone = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+
       const unsubDone = ipc.onLLMDone(sessId, (data) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `settled`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (settled) return
         cleanup(unsubToken, unsubDone)
         resolve(data.success ? result.trim() : (data.error || ''))
@@ -142,13 +126,6 @@ export function useAIBlockProcessor(settings: AISettings) {
 
       // 3. 60초 글로벌 비정상 프리징 복구 타임아웃 세팅
       const timeoutId = setTimeout(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!settled`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!settled)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (!settled) {
           cleanup(unsubToken, unsubDone)
           resolve(result.trim() || '')
@@ -163,7 +140,7 @@ export function useAIBlockProcessor(settings: AISettings) {
         systemPrompt: 'You are a document editing assistant. Output only the requested content without any explanation or preamble.',
         maxTokens: 512,
         temperature: 0.5,
-        apiType: settings.apiType === 'wasm' ? 'local' : settings.apiType,
+        apiType: settings.apiType, // wasm 우회 코드 삭제 및 순수 apiType 전송
         apiKey: settings.apiKey,
         apiEndpoint: settings.apiEndpoint,
         apiModel: settings.apiModel,

@@ -44,6 +44,7 @@ import { determineIntent } from '../../services/ai/determineIntent'
 import { detectCodingRequest } from '../../services/ai/detectCodingRequest'
 import { checkUsageLimit, incrementUsageCount } from '../../services/ai/checkUsageLimit'
 import { buildSystemPrompt } from '../../services/ai/buildSystemPrompt'
+import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
 
 /* 
  * [ZUSTAND LOG STORE]
@@ -291,50 +292,105 @@ export function useAIGenerator(
       content: (m as any).finalAnswer ?? m.content
     }))
 
-    // IPC 통신 실시간 스트림 수신기 구독 등록
-    subscribeSession(
-      sessId,
-      (token) => processToken(token, sessId),
-      (data) => handleDone(data, sessId, assistantId, taggedBlocks, intent)
-    )
-
-    // Electron 주 프로세스로 LLM 비동기 가동 RPC 지시 전송
-    const result = await ipc.llmGenerate({
-      sessionId: sessId,
-      modelPath: finalSettings.modelPath,
-      prompt: userMessage,
-      context: (taggedBlocks && taggedBlocks.length > 0) ? undefined : (context || undefined),
-      systemPrompt: dynamicSystemPrompt,
-      maxTokens: finalSettings.maxTokens,
-      temperature: finalSettings.temperature,
-      apiType: finalSettings.apiType === 'wasm' ? 'local' : finalSettings.apiType,
-      apiKey: finalSettings.apiKey,
-      apiEndpoint: finalSettings.apiEndpoint,
-      apiModel: finalSettings.apiModel,
-      gpuOnly: finalSettings.gpuOnly,
-      history: historyPayload
-    })
-
     /*
-     * [CONTRACT - RPC Error Fallback Handling]
-     * - Rationale: IPC 호출 자체가 에러(예: Llama 프로세스 크래시 등)로 실패한 경우,
-     *   대화창에 실패 경고를 출력하고 강제 락을 해제한 뒤 즉각 다음 대기 큐를 실행한다. (무한 대기 프리징 방지).
+     * [STRATEGY PATTERN & ROUTING ISOLATION]
+     * - apiType이 'wasm' 인 경우: 메인 프로세스(llama-server.exe)로 전혀 보내지 않고, 렌더러단 WebLLMEngine으로 즉시 격리 라우팅.
+     * - 그 외(local, ollama, api): 기존 메인 프로세스 IPC 파이프라인(`ipc.llmGenerate`)을 100% 원본 유지하여 안전하게 전송.
      */
-    if (!result.success && result.error) {
-      console.error('[useAI] LLM 구동 실패:', result.error)
-      // IPC 에러 시 안전망 타이머를 즉시 해제하여 중복 실행을 방지한다.
-      clearTimeout(safetyTimeoutHandle)
-      setIsGenerating(false)
-      setMessages(useAILogStore.getState().messages.map((m) =>
-        m.id === assistantId
-          ? { ...m, content: `❌ ${result.error}`, isStreaming: false, error: true }
-          : m
-      ))
-      currentAssistantIdRef.current = null
-      setTimeout(() => processNextQueueRef.current?.(), 80)
+    if (finalSettings.apiType === 'wasm') {
+      try {
+        setEngineLogs('[System] WebGPU 가속 기반 온디바이스 Wasm 엔진 추론을 시작합니다...\n')
+        const webLLM = WebLLMEngine.getInstance()
+
+        /*
+         * [RUN-TIME STATE / INVARIANT]
+         * - 변수 명: `wasmHistory`
+         * - 자료형 / 예상 값: ChatCompletionMessageParam[] 배열.
+         * - 시나리오: WebLLMEngine에 전달할 대화 내역 포맷으로 변환.
+         */
+        const wasmHistory = historyPayload.map((h) => ({
+          role: h.role,
+          content: h.content
+        }))
+        wasmHistory.push({ role: 'user', content: userMessage })
+
+        /*
+         * [RUN-TIME STATE / INVARIANT]
+         * - 변수 명: `finalAnswer`
+         * - 자료형 / 예상 값: string.
+         * - 시나리오: WebGPU 스트리밍 토큰들을 수신하며 UI 말풍선 렌더링을 갱신하고 최종 텍스트 획득.
+         */
+        const finalAnswer = await webLLM.generateStream(
+          wasmHistory,
+          {
+            systemPrompt: dynamicSystemPrompt,
+            temperature: finalSettings.temperature,
+            maxTokens: finalSettings.maxTokens
+          },
+          (tokenText: string) => {
+            processToken(tokenText, sessId)
+          }
+        )
+
+        clearTimeout(safetyTimeoutHandle)
+        handleDone({ success: true, text: finalAnswer }, sessId, assistantId, taggedBlocks, intent)
+      } catch (err: unknown) {
+        clearTimeout(safetyTimeoutHandle)
+        const errorMsg = err instanceof Error ? err.message : String(err)
+        console.error('[useAI] WebGPU 온디바이스 구동 실패:', errorMsg)
+        setIsGenerating(false)
+        setMessages(useAILogStore.getState().messages.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: `❌ WebGPU 가속 실패: ${errorMsg}\n(설정의 AI 탭에서 WebGPU 모델을 먼저 로드하거나 VRAM 사양을 확인해주세요.)`, isStreaming: false, error: true }
+            : m
+        ))
+        currentAssistantIdRef.current = null
+        setTimeout(() => processNextQueueRef.current?.(), 80)
+      }
     } else {
-      // 정상 완료 시에도 안전망 타이머를 해제한다.
-      clearTimeout(safetyTimeoutHandle)
+      // IPC 통신 실시간 스트림 수신기 구독 등록 (메인 프로세스 기반 local, ollama, api 전용)
+      subscribeSession(
+        sessId,
+        (token) => processToken(token, sessId),
+        (data) => handleDone(data, sessId, assistantId, taggedBlocks, intent)
+      )
+
+      // Electron 주 프로세스로 LLM 비동기 가동 RPC 지시 전송
+      const result = await ipc.llmGenerate({
+        sessionId: sessId,
+        modelPath: finalSettings.modelPath,
+        prompt: userMessage,
+        context: (taggedBlocks && taggedBlocks.length > 0) ? undefined : (context || undefined),
+        systemPrompt: dynamicSystemPrompt,
+        maxTokens: finalSettings.maxTokens,
+        temperature: finalSettings.temperature,
+        apiType: finalSettings.apiType, // 우회 코드(? 'local' : ...) 삭제 및 순수 apiType 전송
+        apiKey: finalSettings.apiKey,
+        apiEndpoint: finalSettings.apiEndpoint,
+        apiModel: finalSettings.apiModel,
+        gpuOnly: finalSettings.gpuOnly,
+        history: historyPayload
+      })
+
+      /*
+       * [CONTRACT - RPC Error Fallback Handling]
+       * - Rationale: IPC 호출 자체가 에러(예: Llama 프로세스 크래시 등)로 실패한 경우,
+       *   대화창에 실패 경고를 출력하고 강제 락을 해제한 뒤 즉각 다음 대기 큐를 실행한다. (무한 대기 프리징 방지).
+       */
+      if (!result.success && result.error) {
+        console.error('[useAI] LLM 구동 실패:', result.error)
+        clearTimeout(safetyTimeoutHandle)
+        setIsGenerating(false)
+        setMessages(useAILogStore.getState().messages.map((m) =>
+          m.id === assistantId
+            ? { ...m, content: `❌ ${result.error}`, isStreaming: false, error: true }
+            : m
+        ))
+        currentAssistantIdRef.current = null
+        setTimeout(() => processNextQueueRef.current?.(), 80)
+      } else {
+        clearTimeout(safetyTimeoutHandle)
+      }
     }
 
     // 무료 플랜 사용량 누적 카운트 업
