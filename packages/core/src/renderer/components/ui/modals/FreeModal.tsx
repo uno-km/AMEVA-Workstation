@@ -30,6 +30,7 @@ export interface FreeModalProps extends BaseModalProps {
   initialWidth?: number
   initialHeight?: number
   hasBackdrop?: boolean
+  closeOnBackdropClick?: boolean
 }
 
   /*
@@ -39,7 +40,7 @@ export interface FreeModalProps extends BaseModalProps {
    * - 예시: `FreeModal(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
    */
 export function FreeModal(props: FreeModalProps) {
-  const { isOpen, initialX = 100, initialY = 100, initialWidth = 820, initialHeight = 580, hasBackdrop, ...rest } = props
+  const { isOpen, initialX = 100, initialY = 100, initialWidth = 820, initialHeight = 580, hasBackdrop, closeOnBackdropClick = true, ...rest } = props
   
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -76,8 +77,20 @@ export function FreeModal(props: FreeModalProps) {
     }
   }, [isOpen, bringToFront])
   
-  const { pos, handleMouseDown } = useDraggable({ x: initialX, y: initialY })
+  const { pos, setPos, handleMouseDown } = useDraggable({ x: initialX, y: initialY })
   const { modalSize, handleResizeMouseDown } = useModalResize(initialWidth, initialHeight)
+
+  /*
+   * [SIDE EFFECT]
+   * - 모달이 활성화(isOpen === true)되는 시점에 화면(window) 해상도 대비 모달 크기를 연산하여 항상 정중앙에 배치합니다.
+   */
+  useEffect(() => {
+    if (isOpen) {
+      const centerX = Math.max(0, (window.innerWidth - modalSize.width) / 2)
+      const centerY = Math.max(0, (window.innerHeight - modalSize.height) / 2)
+      setPos({ x: centerX, y: centerY })
+    }
+  }, [isOpen, modalSize.width, modalSize.height, setPos])
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -121,7 +134,7 @@ export function FreeModal(props: FreeModalProps) {
       {/* 선택적 백드롭 오버레이 */}
       {hasBackdrop && (
         <div
-          onClick={rest.onClose}
+          onClick={closeOnBackdropClick ? rest.onClose : undefined}
           style={{
             position: 'fixed',
             inset: 0,

@@ -22,6 +22,7 @@ import { Cpu, Zap, SlidersHorizontal, Shield, Server, ExternalLink, HardDriveDow
 import type { AISettings } from '../../types/aiTypes'
 import { PROVIDER_MODELS } from '../../../shared/constants/aiSettings'
 import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
+import { WebCPUEngine } from '../../services/ai/WebCPUEngine'
 
 export interface SettingsTabAIEngineProps {
   activeTab: string
@@ -110,15 +111,28 @@ export function SettingsTabAIEngine({
     ]},
   ] as const
 
-  // WebGPU 환경 자동 진단
+  // WPU(CPU/GPU) 환경 자동 진단 및 싱글톤 로드 상태 실시간 매핑
   useEffect(() => {
     if (apiType === 'wasm') {
       WebLLMEngine.getInstance().checkWebGPUSupport().then(res => {
         setWasmDiagnostic(res)
       })
-      setWasmLoaded(WebLLMEngine.getInstance().isModelLoaded())
+      
+      /*
+       * [SIDE EFFECT / POLLING]
+       * - 싱글톤인 WebLLMEngine/WebCPUEngine의 로딩 상태는 React 생명주기 외부에서 비동기로 완료됩니다.
+       * - 따라서 0.5초 주기로 실제 로드 여부 및 현재 활성화된 모델 ID와 프리셋 매칭을 감시하여 배지를 실시간 동기화합니다.
+       */
+      const interval = setInterval(() => {
+        const engine = gpuOnly ? WebLLMEngine.getInstance() : WebCPUEngine.getInstance()
+        const engineLoaded = engine.isModelLoaded()
+        const currentId = engine.getCurrentModelId()
+        setWasmLoaded(engineLoaded && currentId === apiModel)
+      }, 500)
+
+      return () => clearInterval(interval)
     }
-  }, [apiType])
+  }, [apiType, apiModel, gpuOnly])
 
   /**
    * [FEAT-WEBGPU-INIT] WebGPU 온디바이스 모델을 브라우저 캐시에 수동 로드/다운로드하는 핸들러
@@ -127,9 +141,14 @@ export function SettingsTabAIEngine({
     setWasmLoading(true)
     setWasmProgressText('초기화 준비 중...')
     try {
-      const success = await WebLLMEngine.getInstance().initModel(modelIdToLoad, (report) => {
-        setWasmProgressText(report.text)
-      })
+      const success = gpuOnly
+        ? await WebLLMEngine.getInstance().initModel(modelIdToLoad, (report) => {
+            setWasmProgressText(report.text)
+          })
+        : await WebCPUEngine.getInstance().initModel(modelIdToLoad, (report) => {
+            setWasmProgressText(report.text)
+          })
+
       if (success) {
         setWasmLoaded(true)
         onUpdateAISettings({ apiModel: modelIdToLoad })
@@ -137,11 +156,11 @@ export function SettingsTabAIEngine({
     } catch (e: unknown) {
       /*
        * [ERROR HANDLING - EXCEPTION LOGGING]
-       * - WebGPU 모델 다운로드/초기화 실패 시 에러 메시지를 로그로 기록하고 UI에 상태를 전파한다.
+       * - WPU 모델 다운로드/초기화 실패 시 에러 메시지를 로그로 기록하고 UI에 상태를 전파한다.
        * - e.message 접근 전 instanceof Error 타입 가드로 안전하게 메시지를 추출한다.
        */
       const errorMsg = e instanceof Error ? e.message : String(e)
-      console.error('[SettingsTabAIEngine] WebGPU 모델 로딩 실패:', errorMsg)
+      console.error('[SettingsTabAIEngine] WPU 모델 로딩 실패:', errorMsg)
       setWasmProgressText(`로딩 실패: ${errorMsg}`)
     } finally {
       setWasmLoading(false)
@@ -238,13 +257,13 @@ export function SettingsTabAIEngine({
               color: 'var(--text-main)', fontSize: '11.5px', outline: 'none'
             }}
           >
-            <option value="wasm">로컬 WebGPU 가속 (무설치)</option>
+            <option value="wasm">로컬 WPU 가속 (무설치, CPU/GPU)</option>
             <option value="local">로컬 고성능 엔진 (llama-cli)</option>
             <option value="ollama">로컬 백그라운드 서비스 (Ollama)</option>
             <option value="api">클라우드 외부 API (OpenAI 등)</option>
           </select>
           <p style={{ fontSize: '9.5px', color: 'var(--text-muted)', margin: 0 }}>
-            {apiType === 'wasm' && 'WGU 모드를 사용하면 브라우저 내부에서 안전하게 로컬 모델이 실행됩니다.'}
+            {apiType === 'wasm' && 'WPU 모드를 사용하면 브라우저 내부에서 안전하게 로컬 모델(CPU/GPU)이 실행됩니다.'}
             {apiType === 'local' && '사용자의 로컬 환경에 llama-cli를 구동하여 최대한의 고성능을 발휘합니다.'}
             {apiType === 'ollama' && '백그라운드에 구동 중인 Ollama 서버를 통해 외부 통신 없이 실행합니다.'}
             {apiType === 'api' && '보유하고 있는 API 키를 사용하여 강력한 클라우드 모델을 직접 호출합니다.'}

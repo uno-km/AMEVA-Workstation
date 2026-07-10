@@ -69,6 +69,17 @@ export function FindReplaceBar({
     performSearch
   } = useFindReplace({ isOpen, editor, onScrollToBlock })
 
+  /*
+   * [USER INPUT HANDLER / INTERACTION]
+   * - 역할: 찾기/바꾸기 인풋에서 Enter 키를 입력했을 때 찾기 모달창을 안전하게 종료(Close)합니다.
+   */
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      onClose()
+    }
+  }
+
   // 모드가 변경될 때 상태 동기화 및 인풋 포커스
   useEffect(() => {
       /*
@@ -198,6 +209,7 @@ export function FindReplaceBar({
           type="text"
           value={findQuery}
           onChange={e => setFindQuery(e.target.value)}
+          onKeyDown={handleInputKeyDown}
           placeholder="찾을 텍스트 입력..."
           style={{
             flex: 1,
@@ -225,6 +237,7 @@ export function FindReplaceBar({
             type="text"
             value={replaceQuery}
             onChange={e => setReplaceQuery(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             placeholder="바꿀 텍스트 입력..."
             style={{
               flex: 1,

@@ -43,7 +43,7 @@ import { useAILogStore } from '../stores/useAILogStore';
  * - ipc: Electron Preload IPC 스위치를 통해 네이티브 llama CLI 시작, 정지, 헬스 체크 등을 호출하는 모듈.
  */
 import * as ipc from '../services/ipc/electronApiAdapter';
-import { getPlatformAdapter } from '../shared/adapters/platformAdapter';
+import { getPlatformAdapter } from '../../shared/adapters/platformAdapter';
 
 /**
  * @hook useLocalAIEngine

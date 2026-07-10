@@ -33,7 +33,7 @@ import { useCallback } from 'react'
  * - ipc: OS 파일 다이얼로그(`openFile`, `saveFile`) 및 확인창(`showMessageBox`) 채널 어댑터.
  */
 import * as ipc from '../../services/ipc/electronApiAdapter'
-import { getPlatformAdapter } from '../../shared/adapters/platformAdapter'
+import { getPlatformAdapter } from '../../../shared/adapters/platformAdapter'
 
 /* 
  * [UTILITIES & CONSTANTS]

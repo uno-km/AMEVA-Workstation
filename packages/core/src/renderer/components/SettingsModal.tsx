@@ -533,9 +533,10 @@ export function SettingsModal({
       onClose={handleCancel}
       title="AMEVA Workstation Settings"
       icon={<Settings size={18} />}
-      initialWidth={820}
-      initialHeight={580}
+      initialWidth={970}
+      initialHeight={680}
       hasBackdrop={true}
+      closeOnBackdropClick={false}
     >
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         
@@ -587,7 +588,7 @@ export function SettingsModal({
                   padding: '8px 12px', borderRadius: '6px', border: 'none',
                   background: isSelected ? 'var(--bg-glass-active)' : 'transparent',
                   color: isSelected ? 'var(--text-on-active)' : 'var(--text-muted)',
-                  fontSize: '11px', fontWeight: isSelected ? 700 : 500,
+                  fontSize: '13px', fontWeight: isSelected ? 700 : 500,
                   cursor: 'pointer', textAlign: 'left',
                   transition: 'background 0.15s, color 0.15s',
                 }}
@@ -689,7 +690,7 @@ export function SettingsModal({
       >
         <button
           className="btn btn-secondary"
-          style={{ padding: '5px 16px', fontSize: '11px', borderRadius: '6px', fontWeight: 600, border: '1px solid var(--border-muted)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
+          style={{ padding: '5px 16px', fontSize: '13px', borderRadius: '6px', fontWeight: 600, border: '1px solid var(--border-muted)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}
           onClick={handleCancel}
           disabled={isApplying}
         >
@@ -697,7 +698,7 @@ export function SettingsModal({
         </button>
         <button
           className="btn btn-primary"
-          style={{ padding: '5px 16px', fontSize: '11px', borderRadius: '6px', fontWeight: 700, opacity: isApplying ? 0.7 : 1, cursor: isApplying ? 'wait' : 'pointer' }}
+          style={{ padding: '5px 16px', fontSize: '13px', borderRadius: '6px', fontWeight: 700, opacity: isApplying ? 0.7 : 1, cursor: isApplying ? 'wait' : 'pointer' }}
           onClick={handleSaveAndApply}
           disabled={isApplying}
         >

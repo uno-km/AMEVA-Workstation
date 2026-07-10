@@ -248,6 +248,9 @@ function createWindow() {
   // [SEC-W-022] 창 보호 및 단축키 방어 전담 모듈 적용
   WindowDefenseManager.applyDefenses(mainWindow, () => isShuttingDown)
 
+  // 디버깅을 위한 개발자 도구 강제 활성화
+  mainWindow.webContents.openDevTools()
+
   // 개발 서버 주소가 지정되어 있다면 로컬 서버를 로드하고, 아니면 dist 정적 마크업 파일을 마운트한다.
   if (process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)

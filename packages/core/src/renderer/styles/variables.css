@@ -18,9 +18,9 @@
   --border-glow: rgba(255, 255, 255, 0.12);
   --border-muted: rgba(255, 255, 255, 0.05);
   
-  --text-main: #e3e3e6;
-  --text-muted: #8e9196;
-  --text-dark: #52545c;
+  --text-main: #ffffff; /* 완전 백색 상향 */
+  --text-muted: #d1d5db; /* 밝은 회색 상향 */
+  --text-dark: #94a3b8;
   
   --primary: #94a3b8; /* Slate Silver */
   --primary-glow: rgba(148, 163, 184, 0.15);
@@ -70,9 +70,9 @@
   --bg-glass-active: rgba(255, 255, 255, 0.05);
   --border-glow: rgba(255, 255, 255, 0.12);
   --border-muted: rgba(255, 255, 255, 0.05);
-  --text-main: #e3e3e6;
-  --text-muted: #8e9196;
-  --text-dark: #52545c;
+  --text-main: #ffffff; /* 다크테마 메인 텍스트 완전백색 */
+  --text-muted: #d1d5db; /* 다크테마 보조 텍스트 밝은회색 */
+  --text-dark: #94a3b8;
   --primary: #94a3b8;
   --primary-glow: rgba(148, 163, 184, 0.15);
   --secondary: #475569;

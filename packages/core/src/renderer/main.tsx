@@ -66,7 +66,14 @@ if (window.electronAPI) {
   registerPlatformAdapter(mobileAdapter)
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const rootContainer = document.getElementById('root')!
+let root = (window as any).__reactRoot
+if (!root) {
+  root = ReactDOM.createRoot(rootContainer)
+  ;(window as any).__reactRoot = root
+}
+
+root.render(
   <React.StrictMode>
     <Suspense fallback={<SplashScreen />}>
       <App />

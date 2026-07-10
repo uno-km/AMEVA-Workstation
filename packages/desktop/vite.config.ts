@@ -58,6 +58,17 @@ export default defineConfig(({ mode }) => {
        * - 시나리오: 브라우저 실행 시에는 포트번호를 5174로, 일렉트론 팝업 실행 시에는 포트번호를 5173으로 할당하여 충돌을 회피함.
        */
       port: isBrowser ? 5174 : 5173,
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 모노레포 구조 상에서 packages/desktop 의 index.html 이 상위 디렉토리의 packages/core 소스를 참조합니다.
+       * - Vite 개발 서버의 보안 차단을 방지하기 위해 상위 packages/core 디렉토리를 허용 목록에 추가합니다.
+       */
+      fs: {
+        allow: [
+          resolve(__dirname),
+          resolve(__dirname, '../core')
+        ]
+      }
     },
     plugins: [
       /* 
@@ -129,6 +140,11 @@ export default defineConfig(({ mode }) => {
        */
       alias: {
         '@': resolve(__dirname, '../core/src/renderer'),
+        /*
+         * [PATH ALIAS CONTRACT]
+         * - index.html 내 모듈 진입점(src="../core/src/renderer/main.tsx")이 Vite 개발 서버에서 리졸브되도록 가상 경로 접두사를 실제 절대 경로로 매핑합니다.
+         */
+        '/core': resolve(__dirname, '../core'),
       },
     },
   }

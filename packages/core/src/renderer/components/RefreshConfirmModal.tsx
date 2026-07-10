@@ -129,10 +129,10 @@ export function RefreshConfirmModal({
             onClick={onConfirm}
             style={{
               padding: '8px 16px', borderRadius: '6px',
-              border: 'none', background: 'var(--primary)',
+              border: 'none', background: '#3b82f6', /* 기존 회색 대신 가시성 높은 파란색 브랜드 컬러 적용 */
               color: '#fff', fontSize: '12px', fontWeight: 600,
               cursor: 'pointer', transition: 'all 0.15s',
-              boxShadow: '0 0 10px var(--primary-glow)'
+              boxShadow: '0 0 12px rgba(59, 130, 246, 0.4)'
             }}
           >
             새로고침
