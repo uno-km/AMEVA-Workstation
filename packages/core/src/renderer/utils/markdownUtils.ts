@@ -145,6 +145,18 @@ export function convertJupyterToCodeBlocks(blocks: any[]): any[] {
       copy.props = {
         language: 'ameva-link'
       }
+    } else if (copy.type === 'presentation') {
+      copy.type = 'codeBlock'
+      const presentationData = JSON.stringify({
+        pptxPath: copy.props?.pptxPath || '',
+        slides: copy.props?.slides || '',
+        fallback: copy.props?.fallback || false,
+        slidesText: copy.props?.slidesText || '[]'
+      })
+      copy.content = [{ type: 'text', text: presentationData, styles: {} }]
+      copy.props = {
+        language: 'ameva-presentation'
+      }
     } else if (copy.children) {
       copy.children = convertJupyterToCodeBlocks(copy.children)
     }
@@ -237,7 +249,7 @@ export function cleanCodeBlocks(blocks: any[]) {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const supportedLangs = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing', 'ameva-map', 'ameva-youtube', 'ameva-link']
+  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing', 'ameva-map', 'ameva-youtube', 'ameva-link', 'ameva-presentation']
   blocks.forEach(block => {
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -447,6 +459,24 @@ export function cleanCodeBlocks(blocks: any[]) {
         } catch (err) {
           console.error('[cleanCodeBlocks] Failed to parse ameva-link json:', err)
           block.props = { url: '', title: 'Link Preview', description: '', thumbnail: '' }
+        }
+        block.content = undefined
+        return
+      }
+
+      if (lang === 'ameva-presentation') {
+        block.type = 'presentation'
+        try {
+          const parsed = JSON.parse(finalCode)
+          block.props = {
+            pptxPath: parsed.pptxPath || '',
+            slides: parsed.slides || '',
+            fallback: parsed.fallback || false,
+            slidesText: parsed.slidesText || '[]'
+          }
+        } catch (err) {
+          console.error('[cleanCodeBlocks] Failed to parse ameva-presentation json:', err)
+          block.props = { pptxPath: '', slides: '', fallback: false, slidesText: '[]' }
         }
         block.content = undefined
         return

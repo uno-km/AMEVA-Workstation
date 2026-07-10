@@ -130,7 +130,7 @@ export function useAppEditorInit({
                     }
                   } as any
                 ],
-                currentBlock,
+                currentBlock as any,
                 'after'
               )
             } else if (!res.success) {

@@ -20,7 +20,7 @@ interface PresentationBlockComponentProps {
  * @description PPTX 프레젠테이션 슬라이드를 캐러셀 형태로 뷰잉하고,
  *              전체 화면 슬라이드 쇼 형태로 재생할 수 있는 반응형 에디터 블록 컴포넌트입니다.
  */
-export const PresentationBlockComponent = ({ block, editor }: PresentationBlockComponentProps) => {
+export const PresentationBlockComponent = ({ block, editor: _editor }: PresentationBlockComponentProps) => {
   const props = block.props as any
 
   const { pptxPath = '', slides = '', fallback = false, slidesText = '[]' } = props

@@ -62,6 +62,22 @@ import { registerGoogleAuthIpc } from './ipc/googleAuthIpc.js'
 import { registerLlmIpc } from './ipc/llmIpc.js'
 import { registerTerminalIpc } from './ipc/terminalIpc.js'
 
+// [FEAT-MEDIA-PROTOCOL-PRIVILEGES] media 커스텀 프로토콜에 로컬 자원 접근 및 스트리밍 특권 부여
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'media',
+    privileges: {
+      standard: true,
+      secure: true,
+      bypassCSP: true,
+      allowServiceWorkers: true,
+      supportFetchAPI: true,
+      corsEnabled: true,
+      stream: true
+    }
+  }
+])
+
 // 개발용 일렉트론 보안 경고 비활성화
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
 
@@ -516,9 +532,21 @@ async function autoStartOllamaIfInstalled() {
     console.log('[OllamaAutoStart] Ollama 백데몬 서버 자동 기동을 개시합니다...')
     const child = spawn('ollama', ['serve'], {
       detached: true,
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       shell: process.platform === 'win32',
+      windowsHide: true,
     })
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      const text = chunk.toString('utf-8')
+      LLMProcessManager.broadcastLog('OLM', text)
+    })
+
+    child.stderr?.on('data', (chunk: Buffer) => {
+      const text = chunk.toString('utf-8')
+      LLMProcessManager.broadcastLog('OLM', text)
+    })
+
     child.unref()
   } catch (err) {
     console.error('[OllamaAutoStart] 자동 시작 도중 오류 발생:', err)
@@ -529,8 +557,27 @@ async function autoStartOllamaIfInstalled() {
 app.whenReady().then(() => {
   // [FEAT-MEDIA-PROTOCOL] 로컬 비디오/이미지 렌더링을 위한 커스텀 media:// 프로토콜 핸들러 등록
   protocol.handle('media', (request) => {
-    // media://C:/path/to/file.mp4 -> file:///C:/path/to/file.mp4 로 매핑 변환
-    const fileUrl = request.url.replace('media://', 'file:///')
+    // [BUG-FIX] Windows 크롬 커널 프로토콜 매핑 시 호스트 뒤 콜론(:) 유실 버그 대응 복원
+    let rawPath = request.url.replace(/^media:\/\/+/i, '')
+    rawPath = decodeURIComponent(rawPath)
+    
+    // 비디오 태그 요청 시 붙을 수 있는 쿼리(?...) 및 해시(#...) 스트링 제거
+    rawPath = rawPath.split('?')[0].split('#')[0]
+    
+    // Windows 환경에서 C/Users/... 같이 콜론(:)이 누락된 경로 복원
+    if (process.platform === 'win32') {
+      if (/^[a-zA-Z]\//.test(rawPath)) {
+        rawPath = rawPath[0] + ':' + rawPath.substring(1)
+      } else if (/^[a-zA-Z]\\/.test(rawPath)) {
+        rawPath = rawPath[0] + ':/' + rawPath.substring(2)
+      }
+    }
+    
+    const { pathToFileURL } = require('url') as typeof import('url')
+    const fileUrl = pathToFileURL(rawPath).toString()
+    
+    console.log(`[MediaProtocol] request: ${request.url} -> raw: ${rawPath} -> file: ${fileUrl}`)
+    
     return net.fetch(fileUrl)
   })
 

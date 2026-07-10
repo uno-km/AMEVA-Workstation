@@ -119,15 +119,23 @@ export async function packMarkdownToADC(markdown: string, metadata?: any): Promi
   let processedMarkdown = markdown
   let mediaIndex = 0
   
-  // 1) Electron 환경에서의 media:// 절대 경로 감지 및 파일 바인딩
-  const mediaUrlRegex = /media:\/\/([^\s"'()#?]+)/g
+  // 1) Electron 환경에서의 모든 로컬 미디어 절대 경로 (media://, file:///, 그리고 C:/ 등 절대경로) 감지 및 파일 바인딩
+  const localMediaRegex = /(media:\/\/|file:\/\/\/|[a-zA-Z]:[\\/])([^\s"'()#?,]+)/g
   const mediaMatches: { full: string; absolutePath: string; zipPath: string }[] = []
   let mediaMatch
   
-  const tempMediaRegex = new RegExp(mediaUrlRegex)
+  const tempMediaRegex = new RegExp(localMediaRegex)
   while ((mediaMatch = tempMediaRegex.exec(markdown)) !== null) {
     const full = mediaMatch[0]
-    const absolutePath = mediaMatch[1]
+    
+    // 순수 로컬 절대 경로 추출 및 윈도우 경로 정규화
+    let absolutePath = full
+    if (absolutePath.startsWith('media://')) {
+      absolutePath = absolutePath.substring(8)
+    } else if (absolutePath.startsWith('file:///')) {
+      absolutePath = absolutePath.substring(8)
+    }
+    absolutePath = absolutePath.replace(/\\/g, '/')
     
     if (mediaMatches.some(m => m.full === full)) continue
     
@@ -219,7 +227,7 @@ export async function unpackADCToMarkdown(arrayBuffer: ArrayBuffer): Promise<str
         try {
           const base64 = arrayBufferToBase64(buffer)
           const relativeTarget = `temp_media/${sessionUuid}/${path.split('/').pop()}`
-          const res = await window.electronAPI!.writeBinary(relativeTarget, base64)
+          const res = await window.electronAPI!.writeBinary(relativeTarget, base64) as any
           if (res.success && res.path) {
             const mediaUrl = `media://${res.path}`
             markdown = markdown.split(path).join(mediaUrl)

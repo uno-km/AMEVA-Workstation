@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Monitor, Download, X, ArrowRight, Shield, Terminal } from 'lucide-react'
 import { useUIStore } from '../stores/useUIStore'
 
