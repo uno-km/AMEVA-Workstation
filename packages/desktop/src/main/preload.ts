@@ -46,6 +46,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('dialog:selectLocalFile', filters),
   // 확인 경고 다이얼로그 띄우기
   showMessageBox: (options: any) => ipcRenderer.invoke('dialog:showMessageBox', options),
+  // [FEAT-PPTX-COMPILER] PPTX 파일을 백엔드 파이썬 서비스를 이용해 슬라이드 PNG 시퀀스로 변환하는 API
+  processPptx: (pptxPath: string) => ipcRenderer.invoke('pptx:process', pptxPath),
+  // [FEAT-BINARY-IO] 대용량 미디어를 .adc로 묶거나 복원할 때 바이너리 데이터를 안전하게 교환하기 위한 읽기 API
+  readBinary: (targetPath: string) => ipcRenderer.invoke('file:readBinary', targetPath),
+  // [FEAT-BINARY-IO] 대용량 미디어를 .adc로 묶거나 복원할 때 바이너리 데이터를 안전하게 교환하기 위한 쓰기 API
+  writeBinary: (targetPath: string, base64Content: string) => ipcRenderer.invoke('file:writeBinary', targetPath, base64Content),
 
   // ── PDF 출력 ──
   // 크로미움 headless 엔진 PDF 렌더러

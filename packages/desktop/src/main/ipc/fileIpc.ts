@@ -18,9 +18,13 @@
  */
 
 import { app, BrowserWindow, ipcMain, dialog, shell, net, safeStorage } from 'electron'
-import { join, resolve as resolvePath } from 'path'
+import { join, resolve as resolvePath, dirname, isAbsolute } from 'path'
 import { existsSync, writeFileSync, readFileSync } from 'fs'
-import { readFile, writeFile } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
+import { exec } from 'child_process'
+import { promisify } from 'util'
+
+const execPromise = promisify(exec)
 import { createRequire } from 'module'
 import * as exportersMain from '../exportersMain.js'
 import { CollabServerManager } from '../services/collabServer.js'
@@ -973,6 +977,69 @@ export function registerFileIpc(
 
   ipcMain.handle('action:fetchUrlMetadata', async (_event, targetUrl: string) => {
     return fetchHtmlMetadata(targetUrl)
+  })
+
+  // [FEAT-PPTX-COMPILER] PPTX 파일을 백엔드 파이썬 서비스를 이용해 슬라이드 PNG 시퀀스로 변환하는 IPC 핸들러
+  ipcMain.handle('pptx:process', async (_event, pptxPath: string) => {
+    try {
+      const tempId = Math.random().toString(36).substring(2, 10)
+      const outputDir = join(app.getPath('userData'), 'temp', 'pptx_slides', tempId)
+      
+      // 개발 환경 및 패키징 환경 모두를 고려한 python 스크립트 경로 획득
+      let scriptPath = join(app.getAppPath(), 'dist', 'main', 'services', 'pptxCompiler.py')
+      if (!existsSync(scriptPath)) {
+        scriptPath = join(app.getAppPath(), 'packages', 'desktop', 'src', 'main', 'services', 'pptxCompiler.py')
+      }
+      if (!existsSync(scriptPath)) {
+        scriptPath = join(app.getAppPath(), 'src', 'main', 'services', 'pptxCompiler.py')
+      }
+
+      const cmd = `py "${scriptPath}" "${pptxPath}" "${outputDir}"`
+      console.log(`[pptx:process] 실행 명령: ${cmd}`)
+
+      const { stdout, stderr } = await execPromise(cmd, { encoding: 'utf-8' })
+      if (stderr) {
+        console.warn(`[pptx:process] stderr 경고: ${stderr}`)
+      }
+
+      const result = JSON.parse(stdout.trim())
+      return { success: true, ...result }
+    } catch (err: any) {
+      console.error('[pptx:process] 오류 발생:', err)
+      return { success: false, error: err.message }
+    }
+  })
+
+  // [FEAT-BINARY-IO] 대용량 미디어를 .adc로 묶거나 복원할 때 바이너리 데이터를 안전하게 교환하기 위한 읽기 API
+  ipcMain.handle('file:readBinary', async (_event, targetPath: string) => {
+    try {
+      const buffer = await readFile(targetPath)
+      const base64 = buffer.toString('base64')
+      return { success: true, content: base64 }
+    } catch (err: any) {
+      console.error('[file:readBinary] 직접 읽기 실패:', err)
+      return { success: false, error: err.message }
+    }
+  })
+
+  // [FEAT-BINARY-IO] 대용량 미디어를 .adc로 묶거나 복원할 때 바이너리 데이터를 안전하게 교환하기 위한 쓰기 API
+  ipcMain.handle('file:writeBinary', async (_event, targetPath: string, base64Content: string) => {
+    try {
+      let finalPath = targetPath
+      if (!isAbsolute(targetPath)) {
+        finalPath = join(app.getPath('userData'), 'temp', targetPath)
+      }
+      const dir = dirname(finalPath)
+      if (!existsSync(dir)) {
+        await mkdir(dir, { recursive: true })
+      }
+      const buffer = Buffer.from(base64Content, 'base64')
+      await writeFile(finalPath, buffer)
+      return { success: true, path: finalPath.replace(/\\/g, '/') }
+    } catch (err: any) {
+      console.error('[file:writeBinary] 직접 쓰기 실패:', err)
+      return { success: false, error: err.message }
+    }
   })
 }
 

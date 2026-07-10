@@ -47,6 +47,7 @@ import { amevaSchema as schema, type AmevaEditor as AppEditor } from '../../edit
  * - ipc: 윈도우 로드 완료 통보(`appReady`) 채널 어댑터.
  */
 import * as ipc from '../../services/ipc/electronApiAdapter'
+import { resolveLocalMediaUrl } from '../../utils/markdownUtils'
 
 /**
  * 웰컴 카드 뷰 포화 시 출력할 기본 프론트 페이지 헤더 마크다운 리터럴.
@@ -108,6 +109,56 @@ export function useAppEditorInit({
     
     // 파일 업로드 요청 시 브라우저 FileReader API를 통해 base64 DataURL로 변환해 리턴하는 이너 헬퍼
     const uploadFileHandler = async (file: File): Promise<string> => {
+      // [FEAT-PPTX-COMPILER] PPTX 파일 업로드 인터셉트 처리
+      if (file && (file as any).path && (file.name.toLowerCase().endsWith('.pptx') || file.name.toLowerCase().endsWith('.ppt'))) {
+        const pptxPath = (file as any).path
+        
+        if (typeof window !== 'undefined' && window.electronAPI?.processPptx) {
+          // 백그라운드 컴파일 트리거
+          window.electronAPI.processPptx(pptxPath).then((res) => {
+            if (res.success && activeEditor) {
+              const currentBlock = activeEditor.getTextCursorPosition()
+              activeEditor.insertBlocks(
+                [
+                  {
+                    type: 'presentation',
+                    props: {
+                      pptxPath: pptxPath.replace(/\\/g, '/'),
+                      slides: res.slides.map((s: string) => `media://${s}`),
+                      fallback: res.fallback,
+                      slidesText: JSON.stringify(res.slides_text || [])
+                    }
+                  }
+                ],
+                currentBlock,
+                'after'
+              )
+            } else if (!res.success) {
+              console.error('[PPTX 컴파일 실패]:', res.error)
+              if (window.electronAPI?.showMessageBox) {
+                window.electronAPI.showMessageBox({
+                  type: 'error',
+                  title: 'PPTX 변환 실패',
+                  message: `프레젠테이션 컴파일 중 오류가 발생했습니다.\n${res.error}`
+                })
+              }
+            }
+          }).catch(e => {
+            console.error('[PPTX 컴파일 오류]:', e)
+          })
+        }
+        
+        // 순정 미디어 블록 삽입을 우회하기 위한 특수 식별자 반환
+        return 'media://presentation-placeholder'
+      }
+
+      // [FEAT-MEDIA-UPLOAD-PATH] Electron 환경이고, file.path(실제 물리 경로)가 제공되는 경우 로컬 프로토콜로 직접 바인딩
+      // DataURL로 대용량 미디어를 변환할 경우 렉 유발 및 Chromium 재생 제한이 발생하므로 이를 우회함
+      if (file && (file as any).path) {
+        const resolved = resolveLocalMediaUrl((file as any).path)
+        return resolved
+      }
+
       return new Promise((resolve, reject) => {
       /*
        * [RUN-TIME STATE / INVARIANT]

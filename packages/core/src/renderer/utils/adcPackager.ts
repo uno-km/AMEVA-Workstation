@@ -115,106 +115,63 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
  *   원문에는 상대 경로로 교체한 뒤 메타데이터 JSON(`meta.json`)과 함께 최종 ZIP Blob 객체를 구성해 리턴한다.
  */
 export async function packMarkdownToADC(markdown: string, metadata?: any): Promise<Blob> {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `zip`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const zip = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const zip = new JSZip()
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `processedMarkdown`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const processedMarkdown = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   let processedMarkdown = markdown
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `mediaIndex`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const mediaIndex = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   let mediaIndex = 0
   
-  // base64 Data URL 매칭용 정규식
-  const dataUrlRegex = /data:([a-zA-Z0-9/+\-_]+);base64,([a-zA-Z0-9+/=]+)/g
+  // 1) Electron 환경에서의 media:// 절대 경로 감지 및 파일 바인딩
+  const mediaUrlRegex = /media:\/\/([^\s"'()#?]+)/g
+  const mediaMatches: { full: string; absolutePath: string; zipPath: string }[] = []
+  let mediaMatch
   
-  const matches: { full: string; mime: string; base64: string; path: string }[] = []
-  let match
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `tempRegex`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const tempRegex = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const tempRegex = new RegExp(dataUrlRegex)
-  
-  // 정규식 매칭 루프
-  while ((match = tempRegex.exec(markdown)) !== null) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `full`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const full = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const full = match[0]
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `mime`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const mime = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const mime = match[1]
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `base64`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const base64 = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const base64 = match[2]
+  const tempMediaRegex = new RegExp(mediaUrlRegex)
+  while ((mediaMatch = tempMediaRegex.exec(markdown)) !== null) {
+    const full = mediaMatch[0]
+    const absolutePath = mediaMatch[1]
     
-    // 중복 매칭 제거
-    if (matches.some(m => m.full === full)) continue
+    if (mediaMatches.some(m => m.full === full)) continue
     
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `ext`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const ext = mime.split('/')[1] || 'png'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fileName`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fileName = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const fileName = `media/file_${mediaIndex++}.${ext}`
-    matches.push({ full, mime, base64, path: fileName })
+    const ext = absolutePath.split('.').pop()?.toLowerCase() || 'png'
+    const zipPath = `media/file_${mediaIndex++}.${ext}`
+    mediaMatches.push({ full, absolutePath, zipPath })
   }
   
-  // 수집한 미디어 바이트들을 개별 파일로 변환하여 jszip 아카이브에 기입
-  for (const item of matches) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `buffer`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const buffer = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  // Electron API를 이용해 로컬 미디어 바이너리를 읽어 zip 아카이브에 기입
+  if (mediaMatches.length > 0 && typeof window !== 'undefined' && window.electronAPI?.readBinary) {
+    for (const item of mediaMatches) {
+      try {
+        const res = await window.electronAPI.readBinary(item.absolutePath)
+        if (res.success && res.content) {
+          const buffer = base64ToArrayBuffer(res.content)
+          zip.file(item.zipPath, buffer)
+          processedMarkdown = processedMarkdown.split(item.full).join(item.zipPath)
+        }
+      } catch (err) {
+        console.error(`[packMarkdownToADC] 로컬 미디어 파일 읽기 실패: ${item.absolutePath}`, err)
+      }
+    }
+  }
+  
+  // 2) 기존 dataUrlRegex 매칭 (폴백 및 타 리소스용)
+  const dataUrlRegex = /data:([a-zA-Z0-9/+\-_]+);base64,([a-zA-Z0-9+/=]+)/g
+  const dataMatches: { full: string; mime: string; base64: string; path: string }[] = []
+  let dataMatch
+  const tempRegex = new RegExp(dataUrlRegex)
+  while ((dataMatch = tempRegex.exec(processedMarkdown)) !== null) {
+    const full = dataMatch[0]
+    const mime = dataMatch[1]
+    const base64 = dataMatch[2]
+    
+    if (dataMatches.some(m => m.full === full)) continue
+    
+    const ext = mime.split('/')[1] || 'png'
+    const fileName = `media/file_${mediaIndex++}.${ext}`
+    dataMatches.push({ full, mime, base64, path: fileName })
+  }
+  
+  for (const item of dataMatches) {
     const buffer = base64ToArrayBuffer(item.base64)
     zip.file(item.path, buffer)
-    // 원문 텍스트 내 base64 String을 상대 경로 문자열로 전역 치환
     processedMarkdown = processedMarkdown.split(item.full).join(item.path)
   }
   
@@ -234,142 +191,74 @@ export async function packMarkdownToADC(markdown: string, metadata?: any): Promi
   return await zip.generateAsync({ type: 'blob' })
 }
 
-/**
- * [CONTRACT - Unpack ADC Package to Base64 embedded Markdown]
- * - Rationale: 주입된 ArrayBuffer 패키지 zip 압축을 풀어 document.md를 독출하고, 
- *   media/ 하위의 파일들을 브라우저 렌더용 base64 Data URL로 완전히 재조립하여 리턴한다.
- */
 export async function unpackADCToMarkdown(arrayBuffer: ArrayBuffer): Promise<string> {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `zip`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const zip = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const zip = await JSZip.loadAsync(arrayBuffer)
-  
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `docFile`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const docFile = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const docFile = zip.file('document.md')
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!docFile`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!docFile)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
   if (!docFile) {
     throw new Error('Invalid .adc package: document.md not found')
   }
   
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `markdown`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   let markdown = await docFile.async('text')
   
   // 미디어 파일 경로 추출
   const mediaRegex = /media\/file_\d+\.[a-zA-Z0-9]+/g
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `matches`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const matches = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const matches = Array.from(markdown.matchAll(mediaRegex)).map(m => m[0])
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `uniquePaths`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const uniquePaths = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const uniquePaths = Array.from(new Set(matches))
   
-  // 수집된 상대 경로들을 하나씩 읽어서 base64 변환 후 본문에 역주입
+  const hasElectronIO = typeof window !== 'undefined' && window.electronAPI?.writeBinary
+  const sessionUuid = Math.random().toString(36).substring(2, 10)
+  
+  // 수집된 상대 경로들을 하나씩 읽어서 복원 진행
   for (const path of uniquePaths) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `file`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const file = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const file = zip.file(path)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `file`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (file)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if (file) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `buffer`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const buffer = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       const buffer = await file.async('arraybuffer')
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `base64`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const base64 = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const base64 = arrayBufferToBase64(buffer)
       
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `ext`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const ext = path.split('.').pop()?.toLowerCase() || ''
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `mime`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const mime = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      let mime = 'image/png'
-      
-      // 파일 확장자 기반 MIME 타입 검출 분기
-      if (['mp4', 'webm', 'mov', 'ogg'].includes(ext)) {
-        mime = `video/${ext === 'mov' ? 'quicktime' : ext}`
-      } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) {
-        mime = `audio/${ext === 'm4a' ? 'mp4' : ext}`
-      } else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
-        mime = `image/${ext === 'svg' ? 'svg+xml' : ext}`
+      if (hasElectronIO) {
+        // Electron 환경: 임시 폴더에 디스크 저장 후 media:// 복원
+        try {
+          const base64 = arrayBufferToBase64(buffer)
+          const relativeTarget = `temp_media/${sessionUuid}/${path.split('/').pop()}`
+          const res = await window.electronAPI!.writeBinary(relativeTarget, base64)
+          if (res.success && res.path) {
+            const mediaUrl = `media://${res.path}`
+            markdown = markdown.split(path).join(mediaUrl)
+          } else {
+            throw new Error(res.error || '실패')
+          }
+        } catch (err) {
+          console.error(`[unpackADCToMarkdown] Electron 로컬 복원 실패, DataURL 폴백 작동: ${path}`, err)
+          const base64 = arrayBufferToBase64(buffer)
+          const ext = path.split('.').pop()?.toLowerCase() || ''
+          const mime = getMimeType(ext)
+          const dataUrl = `data:${mime};base64,${base64}`
+          markdown = markdown.split(path).join(dataUrl)
+        }
+      } else {
+        // 일반 브라우저 환경: 기존 DataURL 변환 폴백
+        const base64 = arrayBufferToBase64(buffer)
+        const ext = path.split('.').pop()?.toLowerCase() || ''
+        const mime = getMimeType(ext)
+        const dataUrl = `data:${mime};base64,${base64}`
+        markdown = markdown.split(path).join(dataUrl)
       }
-      
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `dataUrl`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const dataUrl = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const dataUrl = `data:${mime};base64,${base64}`
-      // 상대경로 문자열을 브라우저 렌더용 Data URL로 전역 치환
-      markdown = markdown.split(path).join(dataUrl)
     }
   }
   
   return markdown
+}
+
+// 헬퍼: 확장자에 따른 MIME 타입 검출
+function getMimeType(ext: string): string {
+  if (['mp4', 'webm', 'mov', 'ogg'].includes(ext)) {
+    return `video/${ext === 'mov' ? 'quicktime' : ext}`
+  } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(ext)) {
+    return `audio/${ext === 'm4a' ? 'mp4' : ext}`
+  } else if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) {
+    return `image/${ext === 'svg' ? 'svg+xml' : ext}`
+  } else if (['pptx', 'ppt'].includes(ext)) {
+    return 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+  }
+  return 'application/octet-stream'
 }
 

@@ -63,6 +63,9 @@ export interface IElectronAPI {
   openExternalLink: (url: string) => void
   closeApp: () => void
   newWindow: () => void
+  processPptx?: (pptxPath: string) => Promise<{ success: boolean; slides: string[]; fallback: boolean; slides_text?: any[]; error?: string }>
+  readBinary?: (targetPath: string) => Promise<{ success: boolean; content?: string; error?: string }>
+  writeBinary?: (targetPath: string, base64Content: string) => Promise<{ success: boolean; error?: string }>
 
   // 홍 로컈 LLM
   llmGenerate: (payload: {

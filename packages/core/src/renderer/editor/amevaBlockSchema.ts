@@ -52,6 +52,7 @@ import { DrawingBlock } from '../components/DrawingBlock'
 import { LinkPreviewBlock } from '../components/LinkPreviewBlock'
 import { YoutubeBlock } from '../components/YoutubeBlock'
 import { MapBlock } from '../components/MapBlock'
+import { PresentationBlock } from '../components/PresentationBlock'
 
 /**
  * [CONTRACT - Root Custom Schema Configuration]
@@ -65,7 +66,8 @@ export const amevaSchema = BlockNoteSchema.create({
     drawing: DrawingBlock,
     linkPreview: LinkPreviewBlock,
     youtube: YoutubeBlock,
-    map: MapBlock
+    map: MapBlock,
+    presentation: PresentationBlock
   }
 })
 
