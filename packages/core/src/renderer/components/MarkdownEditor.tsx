@@ -167,7 +167,7 @@ export interface MarkdownEditorProps {
 
 /**
  * @component CustomAddBlockButton
- * @location src/renderer/components/MarkdownEditor.tsx
+ * @location packages/core/src/renderer/components/MarkdownEditor.tsx
  * @description BlockNote SideMenu 내에서 렌더링되는 커스텀 [+] 블록 추가 버튼 컴포넌트.
  *
  * [설계 핵심 이유 - WHY SEPARATED]
@@ -209,18 +209,40 @@ const CustomAddBlockButton = () => {
    * - 조건 불만족 시: 블록 내용 유무 판별 → 신규 단락 삽입 또는 기존 빈 블록 포커싱 → 슬래시 메뉴 오픈.
    */
   const onClick = useCallback(() => {
+    /*
+     * [ALGORITHM BRANCH / DECISION]
+     * - 조건 식: `block === undefined`
+     * - 만족 시: 사이드 메뉴가 대상 블록을 아직 추적하지 못한 상태이므로 즉시 탈출.
+     * - 불만족 시: 블록 내용 존재 여부를 판별하여 삽입 또는 포커싱 분기.
+     */
     if (block === undefined) return
 
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `blockContent`
+     * - 자료형 / 예상 값: InlineContent[] 배열 또는 undefined.
+     * - 시나리오: block.content가 존재하고 배열이며 길이가 0인 경우 빈 블록으로 판별.
+     */
     const blockContent = block.content
+
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `isBlockEmpty`
+     * - 자료형 / 예상 값: boolean.
+     * - 만족 시(true): 현재 블록에 커서를 놓고 슬래시 메뉴만 오픈.
+     * - 불만족 시(false): 현재 블록 아래에 새 단락을 삽입 후 커서 이동, 슬래시 메뉴 오픈.
+     */
     const isBlockEmpty =
       blockContent !== undefined &&
       Array.isArray(blockContent) &&
       blockContent.length === 0
 
     if (isBlockEmpty) {
+      // 빈 블록: 커서만 이동 후 슬래시 메뉴 트리거
       editor.setTextCursorPosition(block)
       suggestionMenu.openSuggestionMenu('/')
     } else {
+      // 내용 있는 블록: 새 단락 삽입 후 커서 이동, 슬래시 메뉴 트리거
       const insertedBlock = editor.insertBlocks(
         [{ type: 'paragraph' }],
         block,
@@ -231,6 +253,12 @@ const CustomAddBlockButton = () => {
     }
   }, [block, editor, suggestionMenu])
 
+  /*
+   * [ALGORITHM BRANCH / DECISION]
+   * - 조건 식: `block === undefined`
+   * - 만족 시: 사이드 메뉴가 미활성 상태이므로 null 반환 (렌더링 생략).
+   * - 불만족 시: 커스텀 [+] 버튼 DOM 반환.
+   */
   if (block === undefined) return null
 
   return (
@@ -257,6 +285,7 @@ const CustomAddBlockButton = () => {
       onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)' }}
       onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
     >
+      {/* SVG에 pointerEvents: none 처리로 클릭 이벤트 target이 svg로 씹히는 현상 방지 */}
       <svg
         stroke="currentColor"
         fill="currentColor"
@@ -274,8 +303,16 @@ const CustomAddBlockButton = () => {
 
 /**
  * @component CustomSideMenu
- * @location src/renderer/components/MarkdownEditor.tsx
+ * @location packages/core/src/renderer/components/MarkdownEditor.tsx
  * @description BlockNote SideMenuController에 주입되는 커스텀 SideMenu 조합 컴포넌트.
+ *
+ * [설계 핵심 이유 - WHY NAMED COMPONENT]
+ * - SideMenuController의 sideMenu prop은 컴포넌트 생성자(FC)를 받는다.
+ *   인라인 화살표 함수 `sideMenu={(props) => <SideMenu .../>}` 방식으로 넘기면,
+ *   MarkdownEditor가 리렌더될 때마다 새 함수 참조가 생성되어 React가 컴포넌트 타입이
+ *   바뀐 것으로 판단하고 SideMenu를 언마운트→리마운트한다.
+ *   결과적으로 마우스를 올릴 때마다 사이드 메뉴가 깜빡이는 현상이 발생한다.
+ * - Named 컴포넌트로 분리하면 참조가 안정적(stable)으로 유지되어 불필요한 리마운트가 사라진다.
  *
  * [소비처 - CONSUMERS / USAGE CONTEXT]
  * - 소비처 A (MarkdownEditor): BlockNoteView 내부 SideMenuController의 sideMenu prop으로 전달.
@@ -289,7 +326,9 @@ const CustomSideMenu = () => (
       </DragHandleMenu>
     )}
   >
+    {/* ➕ 커스텀 + 버튼: BlockNote Context 내부에서 공식 슬래시 메뉴 API 호출 */}
     <CustomAddBlockButton />
+    {/* ⁝⁝ 드래그 핸들 단추: 블록 순서 재배치 그랩 핸들 */}
     <DragHandleButton
       dragHandleMenu={(menuProps) => (
         <DragHandleMenu {...menuProps}>
@@ -547,7 +586,21 @@ export function MarkdownEditor({
             title="이 블록을 AI 채팅 컨텍스트로 태그하여 참조"
             onClick={(e) => {
               e.stopPropagation()
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `taggedBlocks.some(b => b.id === hoverBlock.id)`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (taggedBlocks.some(b => b.id === hoverBlock.id))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
               if (taggedBlocks.some(b => b.id === hoverBlock.id)) return
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `snippet`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const snippet = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
               const snippet = hoverBlock.text.length > 20
                 ? hoverBlock.text.slice(0, 20) + '...'
                 : hoverBlock.text || '본문 문단'
@@ -560,6 +613,13 @@ export function MarkdownEditor({
 
         {/* 협업 참여자 드래그 선택 범위 박스 실시간 투영 */}
         {peers.map((peer) => {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!peer.dragSelection?.rects`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!peer.dragSelection?.rects)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!peer.dragSelection?.rects) return null
           return peer.dragSelection.rects.map((rect, idx) => (
             <div
@@ -576,6 +636,13 @@ export function MarkdownEditor({
 
         {/* 협업 참여자 마우스 포인터 실시간 이동 투영 */}
         {peers.map((peer) => {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!peer.pointer`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (!peer.pointer)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
           if (!peer.pointer) return null
           return (
             <div
@@ -618,7 +685,9 @@ export function MarkdownEditor({
               * [CONTRACT - Stable Component Reference]
               * - sideMenu prop에 인라인 화살표 함수를 넘기면 부모 리렌더 시마다
               *   새 함수 참조가 생성되어 SideMenu가 언마운트→리마운트를 반복한다.
-              * - CustomSideMenu를 Named 컴포넌트로 분리하여 안정적인 참조를 보장한다.
+              *   (버그: 마우스를 움직일 때마다 사이드 메뉴가 깜빡이는 현상)
+              * - CustomSideMenu를 파일 최상단에 Named 컴포넌트로 분리하여
+              *   안정적인 참조를 보장하고 불필요한 리마운트를 차단한다.
               */}
             <SideMenuController sideMenu={CustomSideMenu} />
             {/* 1. 슬래시(/) 명령어 단축 팝업 제어 */}
