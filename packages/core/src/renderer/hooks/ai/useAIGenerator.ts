@@ -334,6 +334,7 @@ export function useAIGenerator(
         )
 
         clearTimeout(safetyTimeoutHandle)
+        setIsGenerating(false) // Wasm 로컬 추론 완료 즉시 생성 락 해제
         handleDone({ success: true, text: finalAnswer }, sessId, assistantId, taggedBlocks, intent)
       } catch (err: unknown) {
         clearTimeout(safetyTimeoutHandle)
@@ -342,7 +343,7 @@ export function useAIGenerator(
         setIsGenerating(false)
         setMessages(useAILogStore.getState().messages.map((m) =>
           m.id === assistantId
-            ? { ...m, content: `❌ WebGPU 가속 실패: ${errorMsg}\n(설정의 AI 탭에서 WebGPU 모델을 먼저 로드하거나 VRAM 사양을 확인해주세요.)`, isStreaming: false, error: true }
+            ? { ...m, content: `❌ 웹LM 가속 실패: ${errorMsg}\n(설정의 AI 탭에서 웹LM 모델을 먼저 로드하거나 VRAM/메모리 사양을 확인해주세요.)`, isStreaming: false, error: true }
             : m
         ))
         currentAssistantIdRef.current = null

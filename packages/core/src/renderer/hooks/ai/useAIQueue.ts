@@ -28,7 +28,7 @@
  * - useRef: 렌더 루프 동기화 밖에서 실시간 큐 어레이를 안전하게 push/shift하기 위한 Mutable 레퍼런스 훅.
  * - useCallback: 큐 조작 함수들이 자식 컴포넌트에 프롭스로 전달될 때 렌더링 렉을 유발하지 않도록 하는 메모이즈 훅.
  */
-import { useRef, useCallback } from 'react'
+import { useRef, useCallback, useEffect } from 'react'
 
 /* 
  * [ZUSTAND STORE]
@@ -93,6 +93,11 @@ export function useAIQueue(
    * - pendingQueueRef: 리액트 비동기 배치 업데이트 렉을 피해 동기적으로 `shift()` 및 `push()`를 판정하기 위한 실시간 큐 레퍼런스 어레이.
    */
   const pendingQueueRef = useRef<QueueItem[]>([])
+
+  // Zustand 스토어의 pendingQueue 상태 변경 시 로컬 동기용 Ref를 1:1 싱크 맞춤 (좀비 큐 부활 버그 차단)
+  useEffect(() => {
+    pendingQueueRef.current = [...pendingQueue]
+  }, [pendingQueue])
 
   /**
    * [CONTRACT - Add To Queue Lifecycle]

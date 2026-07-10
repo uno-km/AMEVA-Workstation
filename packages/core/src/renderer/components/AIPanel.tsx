@@ -24,9 +24,9 @@
 
 /* 
  * [IMPORT SEGMENTATION & CONTRACTS]
- * - useEffect: 터미널 선택 텍스트 자동 채우기 Custom Event 구독/해제 바인딩 훅.
+ * - useEffect, useState: React 상태 관리 훅.
  */
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 /* 
  * [LUCIDE ICONS]
@@ -83,6 +83,8 @@ import { useProcessStore } from '../stores/useProcessStore'
 import { useAI } from '../hooks/useAI'
 import { useAppContext } from '../contexts/AppContext'
 import { useAppAISuggestions } from '../hooks/app/useAppAISuggestions'
+import { WebLLMEngine } from '../services/ai/WebLLMEngine'
+import { WebCPUEngine } from '../services/ai/WebCPUEngine'
 
 /**
  * AI 패널 상단 환영 화면에 바인딩되는 빠른 작업 템플릿 목록.
@@ -142,6 +144,34 @@ export function AIPanel() {
     refreshModels, pendingQueue, removeFromQueue
   } = useAI()
   
+  const [wasmLoading, setWasmLoading] = useState(false)
+  const [wasmProgressText, setWasmProgressText] = useState('')
+
+  const handleLoadWasmModel = async () => {
+    if (wasmLoading) return
+    setWasmLoading(true)
+    setWasmProgressText('초기화 준비 중...')
+    const modelToLoad = settings.apiModel || 'Llama-3.2-1B-Instruct-q4f16_1-MLC'
+    const gpuOnly = settings.gpuOnly ?? true
+    try {
+      if (gpuOnly) {
+        await WebLLMEngine.getInstance().initModel(modelToLoad, (report) => {
+          setWasmProgressText(report.text)
+        })
+      } else {
+        await WebCPUEngine.getInstance().initModel(modelToLoad, (report) => {
+          setWasmProgressText(report.text)
+        })
+      }
+      setWasmProgressText('로딩 완료!')
+    } catch (err: any) {
+      console.error('AIPanel 웹LM 로딩 실패:', err)
+      setWasmProgressText(`실패: ${err.message || err}`)
+    } finally {
+      setWasmLoading(false)
+    }
+  }
+
   /*
    * [CONTRACT - Application Context Binding]
    * - editor: BlockNote API 참조.
@@ -333,7 +363,9 @@ export function AIPanel() {
    * [ENGINE LABEL DISPLAY]
    * - displayModelLabel: 화면 최상단에 마킹할 모델 명칭 지표.
    */
-  const displayModelLabel = settings.apiModel || (gpuName ? `GPU: ${gpuName}` : 'auto')
+  const displayModelLabel = settings.apiType === 'wasm' && !settings.gpuOnly
+    ? '경량 가상 CPU 안내 엔진'
+    : (settings.apiModel || (gpuName ? `GPU: ${gpuName}` : 'auto'))
 
   return (
     <div 
@@ -372,7 +404,13 @@ export function AIPanel() {
 
       <AIPanelHeader 
         title={settings.apiType === 'wasm' ? 'Local Edge' : settings.apiType === 'local' ? 'Native Core' : settings.apiType === 'ollama' ? 'Ollama' : 'Cloud API'}
-        providerLabel={settings.apiType === 'api' ? (settings.apiProvider === 'gemini' ? 'Google Gemini' : settings.apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT') : (settings.apiType === 'local' ? 'Llama.cpp' : settings.apiType === 'ollama' ? 'Local Server' : 'WebGPU')}
+        providerLabel={settings.apiType === 'api' 
+          ? (settings.apiProvider === 'gemini' ? 'Google Gemini' : settings.apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT') 
+          : (settings.apiType === 'local' 
+              ? 'Llama.cpp' 
+              : (settings.apiType === 'ollama' 
+                  ? 'Local Server' 
+                  : (settings.gpuOnly ? 'WebGPU' : 'Wasm CPU')))}
         modelLabel={displayModelLabel}
         isGenerating={isGenerating}
         onOpenSettings={() => onOpenGlobalSettings?.('AIEngine')}
@@ -409,6 +447,55 @@ export function AIPanel() {
           />
 
           <div style={{ padding: '12px 14px', borderTop: '1px solid var(--border-muted)', background: 'var(--bg-main)' }}>
+            {settings.apiType === 'wasm' && !isAvailable && (
+              <div style={{
+                marginBottom: '10px',
+                padding: '10px 12px',
+                background: 'rgba(168, 85, 247, 0.08)',
+                border: '1px solid rgba(168, 85, 247, 0.3)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '8px',
+                boxSizing: 'border-box'
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    ⚡ 웹LM 오프라인 모델 미연결
+                  </span>
+                  <span style={{ fontSize: '9.5px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={wasmProgressText}>
+                    {wasmLoading 
+                      ? `${wasmProgressText || '초기화 준비...'}` 
+                      : '오프라인 웹LM 모델을 로드해야 대화가 가능합니다.'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLoadWasmModel}
+                  disabled={wasmLoading}
+                  style={{
+                    background: '#a855f7',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '6px 12px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                    cursor: wasmLoading ? 'not-allowed' : 'pointer',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 8px rgba(168, 85, 247, 0.4)',
+                    transition: 'all 0.15s ease',
+                    flexShrink: 0
+                  }}
+                  onMouseEnter={e => !wasmLoading && (e.currentTarget.style.filter = 'brightness(1.15)')}
+                  onMouseLeave={e => !wasmLoading && (e.currentTarget.style.filter = 'none')}
+                >
+                  {wasmLoading ? '로딩 중...' : '모델 연결하기'}
+                </button>
+              </div>
+            )}
+
             <AIInputContextBar
               manualMode={manualMode} setManualMode={setManualMode}
               selectedText={selectedText} onClearSelectedText={onClearSelectedText}
@@ -422,7 +509,7 @@ export function AIPanel() {
               value={input}
               disabled={!isAvailable}
               isGenerating={isGenerating}
-              placeholder={isAvailable ? '메시지를 입력하세요...' : '준비중...'}
+              placeholder={isAvailable ? '메시지를 입력하세요...' : (settings.apiType === 'wasm' ? '웹LM 모델 연결이 필요합니다.' : '준비중...')}
               textareaRef={textareaRef}
               onChange={setInput}
               onSubmit={handleSend}

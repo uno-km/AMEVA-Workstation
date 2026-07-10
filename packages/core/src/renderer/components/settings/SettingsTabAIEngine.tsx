@@ -257,13 +257,13 @@ export function SettingsTabAIEngine({
               color: 'var(--text-main)', fontSize: '11.5px', outline: 'none'
             }}
           >
-            <option value="wasm">로컬 WPU 가속 (무설치, CPU/GPU)</option>
+            <option value="wasm">로컬 웹LM 가속 (무설치, CPU/GPU)</option>
             <option value="local">로컬 고성능 엔진 (llama-cli)</option>
             <option value="ollama">로컬 백그라운드 서비스 (Ollama)</option>
             <option value="api">클라우드 외부 API (OpenAI 등)</option>
           </select>
           <p style={{ fontSize: '9.5px', color: 'var(--text-muted)', margin: 0 }}>
-            {apiType === 'wasm' && 'WPU 모드를 사용하면 브라우저 내부에서 안전하게 로컬 모델(CPU/GPU)이 실행됩니다.'}
+            {apiType === 'wasm' && '웹LM 모드를 사용하면 브라우저 내부에서 안전하게 로컬 모델(CPU/GPU)이 실행됩니다.'}
             {apiType === 'local' && '사용자의 로컬 환경에 llama-cli를 구동하여 최대한의 고성능을 발휘합니다.'}
             {apiType === 'ollama' && '백그라운드에 구동 중인 Ollama 서버를 통해 외부 통신 없이 실행합니다.'}
             {apiType === 'api' && '보유하고 있는 API 키를 사용하여 강력한 클라우드 모델을 직접 호출합니다.'}
@@ -389,7 +389,7 @@ export function SettingsTabAIEngine({
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Cpu size={14} color="#a855f7" />
             <h4 style={{ fontSize: '11.5px', fontWeight: 700, margin: 0, color: '#a855f7' }}>
-              {gpuOnly ? 'WebGPU 가속 온디바이스 AI (@mlc-ai/web-llm)' : 'Wasm CPU 온디바이스 AI (경량 폴백 런타임)'}
+              {gpuOnly ? '웹LM (WebGPU 가속) 온디바이스 AI (@mlc-ai/web-llm)' : '웹LM (Wasm CPU) 온디바이스 AI (폴백 런타임)'}
             </h4>
             <span style={{ marginLeft: 'auto', fontSize: '9.5px', padding: '2px 8px', borderRadius: '99px',
               background: wasmLoaded ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
@@ -403,7 +403,7 @@ export function SettingsTabAIEngine({
               {wasmDiagnostic.supported ? <CheckCircle2 size={14} color="#10b981" /> : <AlertCircle size={14} color="#ef4444" />}
               <div style={{ fontSize: '10px', color: 'var(--text-main)', lineHeight: '1.4' }}>
                 <strong style={{ display: 'block', color: wasmDiagnostic.supported ? '#10b981' : '#ef4444' }}>
-                  {wasmDiagnostic.supported ? 'WebGPU 가속 사용 가능' : 'WebGPU 진단 알림'}
+                  {wasmDiagnostic.supported ? '웹LM (WebGPU 가속) 사용 가능' : '웹LM (WebGPU) 진단 알림'}
                 </strong>
                 <span>{wasmDiagnostic.message}</span>
               </div>
@@ -411,7 +411,7 @@ export function SettingsTabAIEngine({
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <label style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-main)' }}>온디바이스 모델 프리셋 선택</label>
+            <label style={{ fontSize: '10.5px', fontWeight: 600, color: 'var(--text-main)' }}>웹LM 온디바이스 모델 프리셋 선택</label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <select
                 value={WEBGPU_CATALOG.some(m => m.value === apiModel) ? apiModel : WEBGPU_CATALOG[0].value}
@@ -438,7 +438,7 @@ export function SettingsTabAIEngine({
                   const modelToLoad = WEBGPU_CATALOG.some(m => m.value === apiModel) ? apiModel : WEBGPU_CATALOG[0].value
                   handleLoadWebGPUModel(modelToLoad)
                 }}
-                disabled={wasmLoading || !wasmDiagnostic?.supported}
+                disabled={wasmLoading || (gpuOnly && !wasmDiagnostic?.supported)}
                 style={{
                   display: 'flex', alignItems: 'center', gap: '4px',
                   padding: '0 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,

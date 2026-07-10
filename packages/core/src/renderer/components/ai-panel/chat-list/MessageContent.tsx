@@ -312,7 +312,7 @@ export function renderMessageContent(
        * - 예시: `if (!part)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
       if (!part) return null;
-      return <span key={idx}>{part}</span>;
+      return <React.Fragment key={idx}>{parseTextToMarkdownJSX(part, String(idx))}</React.Fragment>;
     }
 
     // 홀수 번째 인덱스는 fenced code block 내부 영역을 의미합니다.
@@ -370,5 +370,203 @@ export function renderMessageContent(
       />
     );
   });
+}
+
+/**
+ * 일반 텍스트 내의 마크다운 요소(헤더, 리스트, 볼드, 인라인코드, 테이블)를 파싱하여 JSX 노드로 변환합니다.
+ * 
+ * [소비처 - CONSUMERS]
+ * - renderMessageContent의 텍스트 토큰 파싱 분기에서 전용 헬퍼로 호출됨.
+ */
+function parseTextToMarkdownJSX(text: string, keyPrefix: string): React.ReactNode {
+  const lines = text.split('\n');
+  const renderedElements: React.ReactNode[] = [];
+  
+  let inTable = false;
+  let tableRows: string[][] = [];
+  
+  // 테이블 파싱 및 렌더링 헬퍼
+  const renderTable = (rows: string[][], tableKey: string) => {
+    if (rows.length === 0) return null;
+    
+    // 구분선 제외 (:---, :---:, ---, |---| 등 구분 기호가 섞인 행 필터링)
+    const cleanRows = rows.filter(row => {
+      return !row.every(cell => {
+        const c = cell.trim();
+        return c === '' || /^[:\s-]*$/.test(c) || c.startsWith('-');
+      });
+    });
+    if (cleanRows.length === 0) return null;
+    
+    // 첫 행은 헤더로 간주
+    const headers = cleanRows[0];
+    const dataRows = cleanRows.slice(1);
+    
+    return (
+      <div key={tableKey} style={{
+        overflowX: 'auto',
+        margin: '12px 0',
+        borderRadius: '8px',
+        border: '1px solid var(--border-muted)',
+        background: 'rgba(255, 255, 255, 0.02)'
+      }}>
+        <table style={{
+          width: '100%',
+          borderCollapse: 'collapse',
+          fontSize: '11.5px',
+          textAlign: 'left'
+        }}>
+          <thead>
+            <tr style={{ background: 'rgba(255, 255, 255, 0.04)', borderBottom: '1px solid var(--border-muted)' }}>
+              {headers.map((h, i) => (
+                <th key={i} style={{ padding: '8px 12px', fontWeight: 700, color: 'var(--primary)', whiteSpace: 'nowrap' }}>{h.trim()}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {dataRows.map((row, ri) => (
+              <tr key={ri} style={{ borderBottom: ri === dataRows.length - 1 ? 'none' : '1px solid rgba(255, 255, 255, 0.04)' }}>
+                {row.map((cell, ci) => (
+                  <td key={ci} style={{ padding: '8px 12px', color: 'var(--text-main)', whiteSpace: 'nowrap' }}>
+                    {parseInlineMarkdown(cell.trim())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  // 인라인 볼드/코드 치환용 헬퍼
+  const parseInlineMarkdown = (str: string): React.ReactNode => {
+    const parts: React.ReactNode[] = [];
+    let currentStr = str;
+    let idx = 0;
+    
+    while (currentStr.length > 0) {
+      // 1. 볼드 매칭
+      const boldMatch = currentStr.match(/\*\*([^*]+)\*\*/);
+      // 2. 인라인 코드 매칭
+      const codeMatch = currentStr.match(/`([^`]+)`/);
+      
+      const boldIndex = boldMatch?.index ?? -1;
+      const codeIndex = codeMatch?.index ?? -1;
+      
+      if (boldIndex !== -1 && (codeIndex === -1 || boldIndex < codeIndex)) {
+        const prefix = currentStr.substring(0, boldIndex);
+        if (prefix) parts.push(prefix);
+        
+        parts.push(<strong key={`b-${idx++}`} style={{ color: 'var(--text-main)', fontWeight: 700 }}>{boldMatch![1]}</strong>);
+        currentStr = currentStr.substring(boldIndex + boldMatch![0].length);
+      } else if (codeIndex !== -1 && (boldIndex === -1 || codeIndex < boldIndex)) {
+        const prefix = currentStr.substring(0, codeIndex);
+        if (prefix) parts.push(prefix);
+        
+        parts.push(
+          <code key={`c-${idx++}`} style={{
+            background: 'rgba(255, 255, 255, 0.08)',
+            padding: '2px 4px',
+            borderRadius: '4px',
+            fontFamily: 'monospace',
+            color: 'var(--secondary)',
+            fontSize: '11px',
+            whiteSpace: 'nowrap',
+            display: 'inline-block'
+          }}>
+            {codeMatch![1]}
+          </code>
+        );
+        currentStr = currentStr.substring(codeIndex + codeMatch![0].length);
+      } else {
+        parts.push(currentStr);
+        break;
+      }
+    }
+    
+    return <>{parts}</>;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+    
+    // 테이블 라인 감지
+    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
+      inTable = true;
+      const cells = trimmed.split('|').slice(1, -1);
+      tableRows.push(cells);
+      continue;
+    } else if (inTable) {
+      renderedElements.push(renderTable(tableRows, `${keyPrefix}-t-${i}`));
+      tableRows = [];
+      inTable = false;
+    }
+    
+    // 헤더 처리 (H1 ~ H6)
+    if (trimmed.startsWith('#')) {
+      const match = trimmed.match(/^(#{1,6})\s+(.*)$/);
+      if (match) {
+        const level = match[1].length;
+        const text = match[2];
+        const fontSize = level === 1 ? '16px' : level === 2 ? '15px' : level === 3 ? '14px' : '13px';
+        const color = level === 3 ? 'var(--primary)' : 'var(--text-main)';
+        renderedElements.push(
+          <div key={`${keyPrefix}-h-${i}`} style={{
+            fontSize,
+            fontWeight: 800,
+            marginTop: '14px',
+            marginBottom: '6px',
+            color,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            {parseInlineMarkdown(text)}
+          </div>
+        );
+        continue;
+      }
+    }
+    
+    // 리스트 처리
+    if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+      const text = trimmed.substring(2);
+      renderedElements.push(
+        <div key={`${keyPrefix}-l-${i}`} style={{
+          display: 'flex',
+          gap: '6px',
+          paddingLeft: '8px',
+          margin: '4px 0',
+          alignItems: 'flex-start',
+          lineHeight: '1.5'
+        }}>
+          <span style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }}>•</span>
+          <span style={{ flex: 1 }}>{parseInlineMarkdown(text)}</span>
+        </div>
+      );
+      continue;
+    }
+    
+    // 일반 빈 줄
+    if (trimmed === '') {
+      renderedElements.push(<div key={`${keyPrefix}-br-${i}`} style={{ height: '8px' }} />);
+      continue;
+    }
+    
+    // 일반 텍스트 라인
+    renderedElements.push(
+      <div key={`${keyPrefix}-p-${i}`} style={{ margin: '4px 0', lineHeight: '1.5' }}>
+        {parseInlineMarkdown(line)}
+      </div>
+    );
+  }
+  
+  if (inTable && tableRows.length > 0) {
+    renderedElements.push(renderTable(tableRows, `${keyPrefix}-t-end`));
+  }
+  
+  return <div style={{ display: 'flex', flexDirection: 'column' }}>{renderedElements}</div>;
 }
 

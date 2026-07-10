@@ -41,6 +41,8 @@ import * as ipc from '../../services/ipc/electronApiAdapter'
  * - AISettings: AI 엔진 파라미터 구조체.
  */
 import type { AISettings } from '../../types/aiTypes'
+import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
+import { WebCPUEngine } from '../../services/ai/WebCPUEngine'
 
 /**
  * @hook useAIHealthCheck
@@ -70,10 +72,17 @@ export function useAIHealthCheck(
     // 세팅 변경 시 실패 횟수를 0으로 원자적 리셋
     failCountRef.current = 0
 
-    // [FIX-FLICKER-007] WASM 엔진은 브라우저 가상 샌드박스 내부 구동이므로 핑 체크 제외
+    // WASM 엔진은 로컬 ping 대신, 실제 WebLLM/WebCPU 모델 로드 여부를 확인하여 가용성 상태를 반영함
     if (settings.apiType === 'wasm') {
-      setIsAvailable(true)
-      return
+      const checkWasmLoaded = () => {
+        const isWasmLoaded = settings.gpuOnly
+          ? WebLLMEngine.getInstance().isLoaded()
+          : WebCPUEngine.getInstance().isLoaded()
+        setIsAvailable(isWasmLoaded)
+      }
+      checkWasmLoaded()
+      const timer = setInterval(checkWasmLoaded, 2000)
+      return () => clearInterval(timer)
     }
 
     // [FIX-FLICKER-API] 상용 클라우드 API도 사전 핑 없이 켜진 것으로 간주

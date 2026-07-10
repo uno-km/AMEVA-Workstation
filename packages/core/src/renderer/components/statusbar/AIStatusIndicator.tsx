@@ -17,8 +17,10 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import React from 'react'
+import React, { useState } from 'react'
 import * as ipc from '../../services/ipc/electronApiAdapter'
+import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
+import { WebCPUEngine } from '../../services/ai/WebCPUEngine'
 
 interface AIStatusIndicatorProps {
   aiSettings: any
@@ -43,54 +45,61 @@ export function AIStatusIndicator({
   handleMouseLeave,
   tooltipStyle
 }: AIStatusIndicatorProps) {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!aiSettings`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!aiSettings)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+  const [modelLoading, setModelLoading] = useState(false)
+  const [progressText, setProgressText] = useState('')
+
+  /*
+   * [ALGORITHM BRANCH / DECISION]
+   * - 조건 식: `!aiSettings`
+   * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+   * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+   * - 예시: `if (!aiSettings)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+   */
   if (!aiSettings) return null
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `type`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const type = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `type`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const type = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const type = aiSettings.apiType || 'local'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `label`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const label = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `label`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const label = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   let label = 'LMA'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `detail`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const detail = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `detail`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const detail = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   let detail = '로컬 온디바이스 llama.cpp 에이전트'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `portInfo`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const portInfo = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `portInfo`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const portInfo = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   let portInfo = '포트: 3010 (로컬)'
   
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `type === 'ollama'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (type === 'ollama')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+  /*
+   * [ALGORITHM BRANCH / DECISION]
+   * - 조건 식: `type === 'ollama'`
+   * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+   * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+   * - 예시: `if (type === 'ollama')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+   */
   if (type === 'ollama') {
     label = 'OLM'
     detail = '로컬 Ollama 에이전트 연동'
@@ -100,26 +109,29 @@ export function AIStatusIndicator({
     detail = '클라우드 LLM API 게이트웨이 연동'
     portInfo = '외부 HTTPS (API Key)'
   } else if (type === 'wasm') {
-    label = 'WGU'
-    detail = '브라우저 내부 WebAssembly (Wasm) 실행'
+    label = '웹LM'
+    detail = '브라우저 내부 WebAssembly (Wasm) 웹LM'
     portInfo = '포트 없음 (클라이언트 구동)'
   }
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `modelName`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const modelName = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const modelName = aiSettings.modelPath ? aiSettings.modelPath.split(/[\\/]/).pop() : '지정되지 않음'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `statusColor`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const statusColor = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `modelName`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const modelName = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
+  const modelName = !aiSettings.gpuOnly && type === 'wasm'
+    ? '경량 가상 CPU 안내 엔진'
+    : (aiSettings.apiModel || (aiSettings.modelPath ? aiSettings.modelPath.split(/[\\/]/).pop() : '지정되지 않음'))
+  
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `statusColor`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const statusColor = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const statusColor = aiAvailable ? '#10b981' : '#f87171'
 
   return (
@@ -175,7 +187,7 @@ export function AIStatusIndicator({
                   background: aiAvailable ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
                   padding: '1px 5px', borderRadius: '3px'
                 }}>
-                  {aiAvailable ? 'ACTIVE' : 'OFFLINE'}
+                  {aiAvailable ? (!aiSettings.gpuOnly && type === 'wasm' ? 'ACTIVE (가상 CPU)' : 'ACTIVE') : 'OFFLINE'}
                 </span>
               </div>
               
@@ -184,13 +196,6 @@ export function AIStatusIndicator({
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `type === 'ollama'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (type === 'ollama')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
                     if (type === 'ollama') {
                       ipc.llmAddLog({ text: '[System] Ollama 서버 상태를 확인합니다 (Ping)...', prefix: 'System' })
                       fetch(aiSettings?.apiEndpoint || 'http://localhost:11434/api/tags')
@@ -225,6 +230,57 @@ export function AIStatusIndicator({
                   }}
                 >
                   ↻ 서버 재구동
+                </button>
+              )}
+
+              {/* ⚡ 웹LM 모드 오프라인일 때 수동 모델 연결하기 버튼 노출 */}
+              {!aiAvailable && type === 'wasm' && (
+                <button
+                  disabled={modelLoading}
+                  onClick={async (e) => {
+                    e.stopPropagation()
+                    setModelLoading(true)
+                    setProgressText('준비 중...')
+                    ipc.llmAddLog({ text: `[System] 웹LM 모델(${modelName}) 로딩을 시작합니다...`, prefix: 'System' })
+                    
+                    try {
+                      const modelToLoad = aiSettings.apiModel || 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC'
+                      const success = aiSettings.gpuOnly
+                        ? await WebLLMEngine.getInstance().initModel(modelToLoad, (report) => {
+                            setProgressText(report.text)
+                            ipc.llmAddLog({ text: `[WebLM Loading] ${report.text}`, prefix: 'System' })
+                          })
+                        : await WebCPUEngine.getInstance().initModel(modelToLoad, (report) => {
+                            setProgressText(report.text)
+                            ipc.llmAddLog({ text: `[WebLM Loading] ${report.text}`, prefix: 'System' })
+                          })
+                          
+                      if (success) {
+                        ipc.llmAddLog({ text: `[System] 웹LM 모델 로딩이 완료되었습니다!`, prefix: 'System' })
+                      } else {
+                        ipc.llmAddLog({ text: `[Error] 웹LM 모델 로딩 실패`, prefix: 'System' })
+                      }
+                    } catch (err: any) {
+                      ipc.llmAddLog({ text: `[Error] 웹LM 로딩 예외 발생: ${err.message || String(err)}`, prefix: 'System' })
+                    } finally {
+                      setModelLoading(false)
+                      setProgressText('')
+                    }
+                  }}
+                  style={{
+                    background: modelLoading ? 'rgba(245,158,11,0.1)' : 'rgba(16,185,129,0.2)',
+                    border: modelLoading ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(16,185,129,0.4)',
+                    color: modelLoading ? '#f59e0b' : '#34d399',
+                    borderRadius: '4px',
+                    padding: '2px 6px',
+                    fontSize: '9px',
+                    cursor: modelLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '3px'
+                  }}
+                >
+                  {modelLoading ? `⚡ 로딩 중 (${progressText.slice(0, 8)}...)` : '⚡ 모델 연결하기'}
                 </button>
               )}
             </div>

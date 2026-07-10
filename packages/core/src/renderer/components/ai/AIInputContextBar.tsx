@@ -97,10 +97,22 @@ export function AIInputContextBar({
             <div key={item.id} style={{
               padding: '6px 10px', background: 'rgba(245,158,11,0.1)',
               border: '1px solid rgba(245,158,11,0.3)', borderRadius: '6px',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              gap: '8px'
             }}>
-              <span style={{ fontSize: '11px', color: '#f59e0b' }}>대기 중...</span>
-              <button onClick={() => removeFromQueue(item.id)} style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer' }}>취소</button>
+              <span style={{
+                fontSize: '11px', color: '#f59e0b', display: 'flex', alignItems: 'center',
+                gap: '6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                maxWidth: '80%'
+              }}>
+                <span style={{ fontWeight: 800 }}>[대기]</span>
+                <span>
+                  {item.userMessage && item.userMessage.length > 30
+                    ? item.userMessage.slice(0, 30) + '…'
+                    : (item.userMessage || '대기 중인 요청')}
+                </span>
+              </span>
+              <button onClick={() => removeFromQueue(item.id)} style={{ background: 'transparent', border: 'none', color: '#fca5a5', cursor: 'pointer', flexShrink: 0 }}>취소</button>
             </div>
           ))}
         </div>

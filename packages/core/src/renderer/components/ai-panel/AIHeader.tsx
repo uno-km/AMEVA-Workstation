@@ -72,7 +72,7 @@ export const AIHeader: React.FC<AIHeaderProps> = ({
     // 만약 type === 'wasm' 이 true 라면, WebGPU WASM 문자열을 반환하여 UI에 표시합니다.
     // 예상되는 값: type 파라미터가 'wasm'일 경우 'WebGPU WASM' 반환.
     if (type === 'wasm') {
-      return 'WebGPU WASM';
+      return 'WebLM';
     }
     
     // API 타입이 'api'인지 확인하는 조건문입니다.
@@ -143,6 +143,13 @@ export const AIHeader: React.FC<AIHeaderProps> = ({
    * 예상되는 값: apiType이 'api'이고 apiProvider가 'openai'이면 'OpenAI GPT 연결됨' 반환.
    */
   const getModelDescription = (): string => {
+    // API 타입이 'wasm' (웹LM) 인 경우의 모델명 매핑 분기
+    if (apiType === 'wasm') {
+      return !gpuOnly
+        ? '경량 가상 CPU 안내 엔진'
+        : (settings.apiModel || 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC');
+    }
+
     // API 타입이 'api'인 경우 클라우드 제공자 정보를 분석하는 조건문입니다.
     // 내부적으로 어떤 벤더의 API를 사용하는지에 따라 상세 문자열을 분기 처리합니다.
     // 이 조건문이 참이면 내부의 추가적인 분기 로직이 실행됩니다.
@@ -212,7 +219,7 @@ export const AIHeader: React.FC<AIHeaderProps> = ({
   };
 
   // 로컬 구동 여부를 판단하여 배지 렌더링에 사용할 논리 변수입니다.
-  const isLocalEngine = apiType === 'local' || apiType === 'ollama';
+  const isLocalEngine = apiType === 'local' || apiType === 'ollama' || apiType === 'wasm';
 
   return (
     <div style={{

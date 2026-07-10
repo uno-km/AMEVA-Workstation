@@ -64,6 +64,13 @@ import { registerTerminalIpc } from './ipc/terminalIpc.js'
 // 개발용 일렉트론 보안 경고 비활성화
 process.env.ELECTRON_DISABLE_SECURITY_WARNINGS = 'true'
 
+// WebGPU shader-f16 및 Dawn 불안정 API 기능 활성화 크롬 플래그 주입
+app.commandLine.appendSwitch('enable-dawn-features', 'allow_unsafe_apis')
+// WebGPU 가속과 WebAssembly SIMD 가속 및 공유 메모리 버퍼 활성화
+app.commandLine.appendSwitch('enable-features', 'SharedArrayBuffer,WebAssemblySimd,WebGPU')
+// GPU 샌드박스를 해제하여 Dawn API와 shader-f16의 하드웨어 수준 직접 연산 호환성 확보
+app.commandLine.appendSwitch('disable-gpu-sandbox')
+
 /*
  * [ESM / CJS COMPATIBILITY CONSTANTS]
  * - localFilename: 현재 ESM 파일 절대 경로.
