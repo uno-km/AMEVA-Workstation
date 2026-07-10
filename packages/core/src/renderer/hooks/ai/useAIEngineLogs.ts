@@ -42,8 +42,22 @@ import { useAILogStore } from '../../stores/useAILogStore'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 
 /**
+ * [GLOBAL REF COUNTING STATE FOR HOOK SINGLETON]
+ * - listenerRefReadCount: 현재 활성화되어 있는 useAIEngineLogs 훅의 인스턴스 총합.
+ * - globalIpcUnsubscribe: IPC 감청 중단을 위한 해제 콜백 객체.
+ * - 순순정 console 백업 참조 변수들.
+ */
+let listenerRefReadCount = 0;
+let globalIpcUnsubscribe: (() => void) | null = null;
+let origLog: ((...args: any[]) => void) | null = null;
+let origWarn: ((...args: any[]) => void) | null = null;
+let origErr: ((...args: any[]) => void) | null = null;
+
+/**
  * @hook useAIEngineLogs
  * @description Llama.cpp 엔진 로그 구독 및 WebGPU 브라우저 그래픽 진단 콘솔 로그를 인터셉트하는 훅.
+ *              다중 마운트 및 StrictMode HMR 시 로그가 중복 수집(3회씩 찍힘)되는 현상을 방지하고자,
+ *              레퍼런스 카운트 기반의 싱글톤 패턴을 적용하여 단 1개의 감청 리스너와 콘솔 인터셉터만 띄우도록 보증한다.
  */
 export function useAIEngineLogs() {
   /*
@@ -53,131 +67,101 @@ export function useAIEngineLogs() {
    */
   const { sensorLogs: engineLogs, addSensorLog: setEngineLogs } = useAILogStore()
 
-  /*
-   * [CONTRACT - Unsubscribe Callback Reference]
-   * - unsubLogRef: Electron IPC LLM 로그 리스너 해제를 위한 Callback 레퍼런스.
-   */
-  const unsubLogRef = useRef<(() => void) | null>(null)
-
   /**
    * [SIDE EFFECT - Console Hijack & IPC Subscription]
-   * - Rationale: 컴포넌트 마운트 즉시 메인 프로세스 실시간 로그를 바인딩하고, 브라우저 console 객체를 하이재킹한다.
+   * - Rationale: 최초 훅 마운트 시에만 전역 이벤트 채널을 1회 바인딩하고, console 객체를 하이재킹한다.
+   *   이후 컴포넌트 추가 마운트 시에는 참조 카운트만 늘리고 리스너는 공유한다.
    */
   useEffect(() => {
     // Electron 웹 뷰 런타임 환경이 아닐 경우 즉시 처리를 취소함
     if (!ipc.isElectronEnv()) return
 
-    // 1. 메인 프로세스 LLM 로그 실시간 수신 리스너 등록
-    const unsubLog = ipc.onLLMLog((data) => {
-      setEngineLogs(data.text)
-    })
+    // 1. 참조 카운트 증가
+    listenerRefReadCount++;
 
-    // 2. 렌더러 기동 이전에 발생한 초기 로그 버퍼 정보 일괄 획득 동기화
-    ipc.llmGetLogs().then((logs) => {
+    // 2. 최초 마운트된 훅 인스턴스인 경우에만 실제 바인딩 구동
+    if (listenerRefReadCount === 1) {
+      // 메인 프로세스 LLM 로그 실시간 수신 리스너 등록
+      globalIpcUnsubscribe = ipc.onLLMLog((data) => {
+        setEngineLogs(data.text)
+      })
+
+      // 렌더러 기동 이전에 발생한 초기 로그 버퍼 정보 일괄 획득 동기화
+      ipc.llmGetLogs().then((logs) => {
+        if (logs) {
+          /*
+           * [ALGORITHM BRANCH / DECISION]
+           * - 초기 수집된 로그 뭉치가 긴 단일 텍스트 형태이므로, 줄바꿈 단위로 쪼개어 각각 링버퍼에 추가한다.
+           * - 그렇지 않고 뭉치째 추가하면 화면 DOM 갱신 시 오작동 및 단일 줄 렌더링 계약이 깨진다.
+           */
+          const lines = logs.split(/\r?\n/);
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim()) {
+              setEngineLogs(line);
+            }
+          }
+        }
+      }).catch((err) => {
+        // CONTRACT: 초기 로딩 에러 누락 방지 로깅
+        console.error('[useAIEngineLogs] 초기 LLM 로그 불러오기 실패:', err)
+      })
+
+      // WebGPU/GPU 관련 브라우저 콘솔 로그 인터셉터 가동을 위한 순정 console 임시 보존
+      origLog = console.log
+      origWarn = console.warn
+      origErr = console.error
+
       /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `logs`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (logs)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * [INVARIANT - Intercept Console Logs]
+       * - Rationale: 콘솔 스트림에 유입되는 객체/문자열을 조인한 후, WebGPU/WebGL 등 그래픽 관련 로그만 추려 메인 로그 파일로 역전송한다.
        */
-      if (logs) {
-        setEngineLogs(logs)
+      const interceptAndSend = (_type: string, args: any[]) => {
+        const text = args
+          .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+          .join(' ')
+        const lower = text.toLowerCase()
+        if (
+          lower.includes('webgpu') ||
+          lower.includes('gpu') ||
+          lower.includes('webgl')
+        ) {
+          ipc.llmAddLog({ text, prefix: 'WGU' })
+        }
       }
-    }).catch((err) => {
-      // CONTRACT: 초기 로딩 에러 누락 방지 로깅
-      console.error('[useAIEngineLogs] 초기 LLM 로그 불러오기 실패:', err)
-    })
 
-    // 3. WebGPU/GPU 관련 브라우저 콘솔 로그 인터셉터 가동을 위한 순정 console 임시 보존
-    const origLog = console.log
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `origWarn`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const origWarn = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const origWarn = console.warn
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `origErr`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const origErr = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const origErr = console.error
-
-    /*
-     * [INVARIANT - Intercept Console Logs]
-     * - Rationale: 콘솔 스트림에 유입되는 객체/문자열을 조인한 후, WebGPU/WebGL 등 그래픽 관련 로그만 추려 메인 로그 파일로 역전송한다.
-     */
-    const interceptAndSend = (_type: string, args: any[]) => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `text`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const text = args
-        .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
-        .join(' ')
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `lower`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const lower = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const lower = text.toLowerCase()
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `조건 식`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (조건 식)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (
-        lower.includes('webgpu') ||
-        lower.includes('gpu') ||
-        lower.includes('webgl')
-      ) {
-        ipc.llmAddLog({ text, prefix: 'WGU' })
-      }
+      // 브라우저 기본 전역 console의 주입 오버라이드
+      console.log = (...args) => { if (origLog) origLog(...args); interceptAndSend('log', args) }
+      console.warn = (...args) => { if (origWarn) origWarn(...args); interceptAndSend('warn', args) }
+      console.error = (...args) => { if (origErr) origErr(...args); interceptAndSend('error', args) }
     }
 
-    // 브라우저 기본 전역 console의 주입 오버라이드
-    console.log = (...args) => { origLog(...args); interceptAndSend('log', args) }
-    console.warn = (...args) => { origWarn(...args); interceptAndSend('warn', args) }
-    console.error = (...args) => { origErr(...args); interceptAndSend('error', args) }
-
-    // cleanup 리스너 참조 주입
-    unsubLogRef.current = unsubLog
-
     /*
-     * [CLEANUP CONTRACT - Console Restoration]
-     * - Rationale: 컴포넌트 소멸 시, console 객체를 순정 메서드로 복구하지 않으면
-     *   브라우저가 꼬이거나 무한 호출 루프 데드락이 발생하므로 완벽히 원복(Restore)한다.
+     * [CLEANUP CONTRACT - Console & IPC Unbind]
+     * - Rationale: 참조 카운트를 낮추고, 마지막 마운트가 해제되었을 때에만
+     *   console 객체를 복구하고 메인 스레드 이벤트 채널을 제거한다.
      */
     return () => {
-      unsubLog()
-      console.log = origLog
-      console.warn = origWarn
-      console.error = origErr
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `unsubLogRef.current`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (unsubLogRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (unsubLogRef.current) {
-        unsubLogRef.current()
-        unsubLogRef.current = null
+      listenerRefReadCount--;
+
+      if (listenerRefReadCount === 0) {
+        // 리스너 바인딩 해제
+        if (globalIpcUnsubscribe) {
+          globalIpcUnsubscribe()
+          globalIpcUnsubscribe = null
+        }
+
+        // 전역 콘솔 순정 원상태 복구
+        if (origLog) console.log = origLog
+        if (origWarn) console.warn = origWarn
+        if (origErr) console.error = origErr
+
+        origLog = null
+        origWarn = null
+        origErr = null
       }
     }
-  }, [])
+  }, [setEngineLogs])
 
   return {
     engineLogs,

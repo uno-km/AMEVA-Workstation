@@ -7,6 +7,8 @@
  * [소비처 - CONSUMERS / USAGE CONTEXT]
  * - 소비처 A (src/renderer/App.tsx): AMEVA OS 최상위 마운트 레이어에서 의존성 로더로 연동 소비.
  * - 소비처 B (src/renderer/main.tsx): 렌더러 엔트리 라이프사이클의 기본 기능으로 수입 소비.
+ * - 소비처 C (src/renderer/stores/useAILogStore.ts): 로그 제한 개수 및 디바운스 속도 참조.
+ * - 소비처 D (src/renderer/components/ai/log-drawer/ConsoleLogTab.tsx): 검색 하이라이팅 스타일 및 커스텀 이벤트 채널 수신기 연동 시 참조.
  * 
  * [책임 범위 - RESPONSIBILITY]
  * - 본 파일은 AMEVA 시스템 내에서 도메인 목적에 부합하는 연산 및 데이터 처리 흐름을 안전하게 캡슐화한다.
@@ -35,5 +37,25 @@ export const AI_TERMINAL_CONSTANTS = {
   
   // 기본 LLM 추론 온도(Temperature)
   DEFAULT_TEMPERATURE: 0.7,
+
+  // [Tier 3 ADDITION] 커스텀 IPC 및 렌더러 간 통신 채널 이벤트 정의
+  EVENTS: {
+    // AI 패널 입력란에 텍스트를 즉각 주입하기 위한 단축 이벤트 채널
+    FILL_AI_INPUT: 'ameva:fill-ai-input',
+    // 에디터 본문 영역에 텍스트를 동적으로 기입하기 위한 단축 이벤트 채널
+    INSERT_TEXT: 'ameva:insert-text',
+  },
+
+  // [Tier 3 ADDITION] 검색어 일치 텍스트 하이라이팅 CSS 스타일 토큰
+  HIGHLIGHT: {
+    // 일치 단어 백그라운드 색상 (가시성이 높은 퍼플/글로우 계열)
+    BG: 'rgba(139, 92, 246, 0.4)',
+    // 일치 단어 전경색
+    COLOR: '#ffffff',
+    // 강조 영역 둥글기 경계값
+    BORDER_RADIUS: '2px',
+    // 여백 패딩
+    PADDING: '0px 2px',
+  }
 } as const;
 

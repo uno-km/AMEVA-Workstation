@@ -61,6 +61,10 @@ export interface AILogState {
   streamingText: string;
   setStreamingText: (text: string) => void;
 
+  // 4. [ADDITION] 로그 전용 실시간 검색 필터 쿼리 문자열 상태 및 액션
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+
   // 브로드캐스트를 통해 타창으로부터 수신된 로그 플러싱 내부 액션
   _flushExternalLogs: (logs: string[]) => void;
 }
@@ -202,5 +206,9 @@ export const useAILogStore = create<AILogState>((set) => ({
 
   streamingText: '',
   setStreamingText: (text: string) => set({ streamingText: text }),
+
+  // [ADDITION] 검색 쿼리 상태 기본값 및 액션 매핑
+  searchQuery: '',
+  setSearchQuery: (query: string) => set({ searchQuery: query }),
 }));
 

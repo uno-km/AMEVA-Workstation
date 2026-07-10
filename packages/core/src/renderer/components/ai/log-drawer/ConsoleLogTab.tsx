@@ -20,114 +20,56 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAILogStore } from '../../../stores/useAILogStore';
 import { ConsoleContextMenu } from './ConsoleContextMenu';
+import { AI_TERMINAL_CONSTANTS } from '../../../features/ai-terminal/constants';
 
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `ConsoleLogTab`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `ConsoleLogTab(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   * - 역할: Llama.cpp 및 WebGPU 진단 로그 표준 출력 버퍼링과 실시간 텍스트 매칭 하이라이트/필터링 검색창을 렌더링.
+   * - 예시: `ConsoleLogTab(...)` 호출 시 상태 바인딩 및 Transient DOM 업데이트 활성화.
    */
 export function ConsoleLogTab() {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `logContainerRef`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const logContainerRef = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, text: string } | null>(null);
 
+  // Zustand 전역 로그 검색 상태 및 액션 바인딩
+  const searchQuery = useAILogStore((state) => state.searchQuery);
+  const setSearchQuery = useAILogStore((state) => state.setSearchQuery);
+  const logs = useAILogStore((state) => state.sensorLogs);
+
+  // 검색어에 일치하는 매칭 로그 라인 개수 계산
+  const trimmedQuery = searchQuery.trim().toLowerCase();
+  const matchCount = trimmedQuery
+    ? logs.filter((log) => log.toLowerCase().includes(trimmedQuery)).length
+    : 0;
+
   useEffect(() => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `renderLogs`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const renderLogs = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const renderLogs = (logs: string[]) => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `container`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const container = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `renderLogs`
+     * - Rationale: React 리렌더링 루프를 거치지 않고 DOM innerHTML에 직접 HTML 스트링을 꽂아 과부하를 줄인다.
+     */
+    const renderLogs = (currentLogs: string[], query: string) => {
       const container = logContainerRef.current;
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!container`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!container)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
       if (!container) return;
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `htmlString`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const htmlString = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       let htmlString = '';
-      /*
-       * [LOOP CONTROL ITERATION]
-       * - 루프 조건: `for (let i = 0; i < logs.length; i++) {`
-       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
-       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
-       */
-      for (let i = 0; i < logs.length; i++) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `line`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const line = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const line = logs[i];
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `i > 0 && !line.trim()`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (i > 0 && !line.trim())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+      const filterQuery = query.trim().toLowerCase();
+
+      for (let i = 0; i < currentLogs.length; i++) {
+        const line = currentLogs[i];
         if (i > 0 && !line.trim()) continue;
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `color`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const color = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+        // 1. 검색어가 존재하고 라인에 미포함된 경우 필터 아웃
+        if (filterQuery && !line.toLowerCase().includes(filterQuery)) {
+          continue;
+        }
+
+        // 2. 기본 스타일 매핑 정의
         let color = 'var(--text-main)';
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `bg`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bg = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         let bg = 'transparent';
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fontWeight`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fontWeight = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         let fontWeight = '400';
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `line.includes('[System]')`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (line.includes('[System]'))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (line.includes('[System]')) { color = '#60a5fa'; fontWeight = '600'; }
         else if (line.includes('[Error]') || line.includes('error')) { color = '#fca5a5'; bg = 'rgba(239, 68, 68, 0.1)'; }
         else if (line.includes('[Plugin]')) { color = '#fde047'; }
@@ -135,52 +77,36 @@ export function ConsoleLogTab() {
         else if (line.includes('[API]') || line.includes('OpenAI') || line.includes('Gemini')) { color = '#fdba74'; }
         else if (line.includes('[Llama]')) { color = '#34d399'; }
 
-        htmlString += '<div style="color: ' + color + '; background: ' + bg + '; font-weight: ' + fontWeight + '; padding: 2px 4px; border-radius: 2px; min-height: 1.2em; user-select: text;">' + line + '</div>';
+        // 3. 검색 매치 키워드 하이라이팅 적용
+        let renderedText = line;
+        if (filterQuery) {
+          // 정규식 매칭을 위해 이스케이프 문자 처리 적용
+          const escapedQuery = filterQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+          const regex = new RegExp(`(${escapedQuery})`, 'gi');
+          renderedText = line.replace(
+            regex,
+            `<mark style="background: ${AI_TERMINAL_CONSTANTS.HIGHLIGHT.BG}; color: ${AI_TERMINAL_CONSTANTS.HIGHLIGHT.COLOR}; border-radius: ${AI_TERMINAL_CONSTANTS.HIGHLIGHT.BORDER_RADIUS}; padding: ${AI_TERMINAL_CONSTANTS.HIGHLIGHT.PADDING};">$1</mark>`
+          );
+        }
+
+        htmlString += `<div style="color: ${color}; background: ${bg}; font-weight: ${fontWeight}; padding: 2px 4px; border-radius: 2px; min-height: 1.2em; user-select: text;">${renderedText}</div>`;
       }
       container.innerHTML = htmlString;
       container.scrollTop = container.scrollHeight;
     };
 
-    renderLogs(useAILogStore.getState().sensorLogs);
+    // 최초 기동 마운트 렌더링
+    renderLogs(useAILogStore.getState().sensorLogs, useAILogStore.getState().searchQuery);
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `unsubscribe`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const unsubscribe = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const unsubscribe = useAILogStore.subscribe((state, prevState) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `state.sensorLogs !== prevState.sensorLogs`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (state.sensorLogs !== prevState.sensorLogs)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (state.sensorLogs !== prevState.sensorLogs) {
-        renderLogs(state.sensorLogs);
-      }
+    // Zustand 스토어 실시간 구독 바인딩
+    const unsubscribe = useAILogStore.subscribe((state) => {
+      renderLogs(state.sensorLogs, state.searchQuery);
     });
     return () => unsubscribe();
   }, []);
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleContextMenu`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleContextMenu = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `selection`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const selection = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const selection = window.getSelection();
     setContextMenu({
       x: e.clientX,
@@ -190,7 +116,56 @@ export function ConsoleLogTab() {
   };
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', overflow: 'hidden' }}>
+      {/* [FEAT] 상단 검색 바 디자인 통합 */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        padding: '6px 12px',
+        background: 'rgba(0, 0, 0, 0.2)',
+        borderBottom: '1px solid var(--border-muted)',
+        flexShrink: 0,
+      }}>
+        <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>🔍</span>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="검색할 로그 단어를 입력하세요..."
+          style={{
+            flex: 1,
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid var(--border-muted)',
+            borderRadius: '4px',
+            color: 'var(--text-main)',
+            fontSize: '11.5px',
+            padding: '4px 8px',
+            outline: 'none',
+          }}
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              fontSize: '11px',
+              padding: '0 4px',
+            }}
+          >
+            Clear
+          </button>
+        )}
+        {trimmedQuery && (
+          <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>
+            {matchCount} 건 매치됨
+          </span>
+        )}
+      </div>
+
       <div
         className="win98-font"
         ref={logContainerRef}
@@ -199,7 +174,8 @@ export function ConsoleLogTab() {
           flex: 1, overflowY: 'auto', padding: '12px',
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
           fontSize: '11.5px', lineHeight: '1.5', whiteSpace: 'pre-wrap',
-          userSelect: 'text', cursor: 'text', color: 'var(--term-text)'
+          userSelect: 'text', cursor: 'text', color: 'var(--term-text)',
+          background: '#070a13'
         }}
       />
 
@@ -209,45 +185,24 @@ export function ConsoleLogTab() {
           y={contextMenu.y}
           selectedText={contextMenu.text}
           onCopy={() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `contextMenu.text) navigator.clipboard.writeText(contextMenu.text`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (contextMenu.text) navigator.clipboard.writeText(contextMenu.text)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
             if (contextMenu.text) navigator.clipboard.writeText(contextMenu.text);
           }}
           onPaste={async () => {
             try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `text`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const text = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
               const text = await navigator.clipboard.readText();
-              window.dispatchEvent(new CustomEvent('ameva:fill-ai-input', { detail: text }));
+              window.dispatchEvent(new CustomEvent(AI_TERMINAL_CONSTANTS.EVENTS.FILL_AI_INPUT, { detail: text }));
             } catch (err) {
               console.error('[ConsoleLogTab] clipboard read failed:', err);
             }
           }}
           onInsertToBody={() => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `event`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const event = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const event = new CustomEvent('ameva:insert-text', { detail: contextMenu.text });
+            const event = new CustomEvent(AI_TERMINAL_CONSTANTS.EVENTS.INSERT_TEXT, { detail: contextMenu.text });
             window.dispatchEvent(event);
           }}
           onClose={() => setContextMenu(null)}
         />
       )}
-    </>
+    </div>
   );
 }
 
