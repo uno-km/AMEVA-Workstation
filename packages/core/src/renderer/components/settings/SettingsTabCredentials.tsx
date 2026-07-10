@@ -37,6 +37,7 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
     openai: false,
     claude: false,
     github: false,
+    googleClientId: false,
   })
 
   const [newKeyInput, setNewKeyInput] = useState<Record<string, string>>({
@@ -44,6 +45,7 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
     openai: '',
     claude: '',
     github: '',
+    googleClientId: '',
   })
 
       /*
@@ -95,12 +97,14 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
        * - 예시 코드: `const githubVal = ...` 형태로 안전 캐싱 후 가공 기동.
        */
     const githubVal = await ipc.keychainGet('github-token')
+    const googleClientIdVal = await ipc.keychainGet('google-client-id')
 
     setCredStatus({
       gemini: !!geminiVal,
       openai: !!openaiVal,
       claude: !!claudeVal,
       github: !!githubVal,
+      googleClientId: !!googleClientIdVal,
     })
   }
 
@@ -225,6 +229,7 @@ export function SettingsTabCredentials({ isOpen, activeTab }: SettingsTabCredent
           { id: 'openai', keyName: 'openai-api-key', label: 'OpenAI API Key', placeholder: 'sk-...' },
           { id: 'claude', keyName: 'claude-api-key', label: 'Anthropic Claude API Key', placeholder: 'sk-ant-...' },
           { id: 'github', keyName: 'github-token', label: 'GitHub Personal Access Token', placeholder: 'ghp_... 또는 github_pat_...' },
+          { id: 'googleClientId', keyName: 'google-client-id', label: 'Google OAuth Client ID', placeholder: '109283748293-...apps.googleusercontent.com' },
         ].map(cred => {
       /*
        * [RUN-TIME STATE / INVARIANT]

@@ -161,4 +161,3 @@ export function SettingsTransitionOverlay({ isVisible }: SettingsTransitionOverl
     </div>
   );
 }
-

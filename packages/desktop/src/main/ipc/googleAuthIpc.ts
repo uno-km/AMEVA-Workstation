@@ -17,8 +17,32 @@ import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'fs'
 // 구글 보안 토큰 보관소 경로
 const authStorePath = join(app.getPath('userData'), 'google_auth.json')
 
-// OAuth 2.0 클라이언트 자격 증명 (사용자 재정의 가능하도록 .env 및 process.env 바인딩 적용)
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '109283748293-abcdefg.apps.googleusercontent.com'
+// 🦾 [GOOGLE CLIENT ID DYNAMIC RESOLUTION] 키체인(credentials.json)으로부터 구글 Client ID 복호화 취득
+function getGoogleClientIdFromKeychain(): string {
+  try {
+    const credentialsPath = join(app.getPath('userData'), 'credentials.json')
+    if (existsSync(credentialsPath)) {
+      const data = JSON.parse(readFileSync(credentialsPath, 'utf8'))
+      const encryptedBase64 = data['google-client-id']
+      if (encryptedBase64 && safeStorage.isEncryptionAvailable()) {
+        const decrypted = safeStorage.decryptString(Buffer.from(encryptedBase64, 'base64'))
+        if (decrypted && decrypted.trim() !== '') {
+          return decrypted.trim()
+        }
+      } else if (encryptedBase64) {
+        const plain = Buffer.from(encryptedBase64, 'base64').toString('utf8')
+        if (plain && plain.trim() !== '') {
+          return plain.trim()
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[googleAuth] 키체인 Google Client ID 로딩 실패:', err)
+  }
+  // 폴백 기본 데모 ID
+  return process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID || '109283748293-abcdefg.apps.googleusercontent.com'
+}
+
 const REDIRECT_URI = 'http://localhost'
 
 // 🦾 [SECURE KEYCHAIN HELPER] safeStorage 기반 암호화 파일 입출력
@@ -93,7 +117,7 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
-        client_id: GOOGLE_CLIENT_ID,
+        client_id: getGoogleClientIdFromKeychain(),
         refresh_token: refreshToken,
         grant_type: 'refresh_token'
       })
@@ -145,7 +169,7 @@ export function registerGoogleAuthIpc() {
       ]
       
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
-        `client_id=${GOOGLE_CLIENT_ID}&` +
+        `client_id=${getGoogleClientIdFromKeychain()}&` +
         `redirect_uri=${encodeURIComponent(REDIRECT_URI)}&` +
         `response_type=code&` +
         `scope=${encodeURIComponent(scopes.join(' '))}&` +
@@ -154,6 +178,7 @@ export function registerGoogleAuthIpc() {
 
       // 2. 작은 구글 로그인 전용 서브 윈도우 팝업
       const authWindow = new BrowserWindow({
+        title: 'Google 로그인 - AMEVA Workstation',
         width: 500,
         height: 650,
         show: true,
@@ -185,7 +210,7 @@ export function registerGoogleAuthIpc() {
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               body: new URLSearchParams({
                 code,
-                client_id: GOOGLE_CLIENT_ID,
+                client_id: getGoogleClientIdFromKeychain(),
                 redirect_uri: REDIRECT_URI,
                 grant_type: 'authorization_code'
               })

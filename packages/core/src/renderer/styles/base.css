@@ -197,6 +197,10 @@ body {
   to   { transform: rotate(360deg); }
 }
 
+.animate-spin, .spin {
+  animation: spin 1s linear infinite;
+}
+
 /* [FEAT-ANIM] pulse — 스켈레톤 로딩 효과 */
 @keyframes pulse {
   0%, 100% { opacity: 0.6; }
