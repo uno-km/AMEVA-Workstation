@@ -657,28 +657,31 @@ export function MenuBar({}: MenuBarProps = {}) {
 
         {/* 유틸리티 액션 그룹 (크롬 브라우저, 설정, 구글 계정 아바타) */}
         <div className="toolbar-utility-group" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '2px' }}>
-          {/* (3) 구글 브라우저 탭 활성화 단추 */}
+          {/* (3) AMEVA Browser 앱 기동 단추 (로컬 AMEVA-Egde-Brower 실행) */}
           <button 
             className="layout-btn"
-            onClick={() => {
-              setActiveRightTab('google')
-              if (!showAIPanel) toggleAIPanel()
+            onClick={async () => {
+              try {
+                await ipc.executeTerminal(
+                  'Start-Process cmd.exe -ArgumentList "/c npm start" -WorkingDirectory "c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Egde-Brower" -WindowStyle Hidden'
+                )
+              } catch (err) {
+                console.error('[MenuBar] AMEVA-Egde-Brower 앱 기동 실패:', err)
+              }
             }}
-            title="아메바 웹 브라우저 열기"
+            title="AMEVA Browser 앱 실행"
             style={{ width: '26px', height: '26px' }}
           >
-            <svg viewBox="0 0 24 24" style={{ width: '13px', height: '13px' }}>
-              <path fill="#4caf50" d="M12 24c3.08 0 5.88-1.16 8.02-3.07l-3.9-6.75C15.14 15.65 13.66 16 12 16c-3.15 0-5.87-2.02-6.95-4.83l-5.61 9.71C2.51 22.84 7.01 24 12 24z"/>
-              <path fill="#ffeb3b" d="M20.02 20.93C22.45 18.73 24 15.55 24 12c0-5.82-4.15-10.67-9.66-11.75l3.85 6.67c2.32.74 4.09 2.76 4.7 5.25z"/>
-              <path fill="#f44336" d="M14.34.25C13.58.09 12.8.01 12.01.01 7.02.01 2.52 1.17.56 3.12l5.6 9.7C7.24 9.99 8.72 9.65 10.37 9.65c2.33 0 4.41.97 5.87 2.53z"/>
-              <path fill="#2196f3" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>
+            <svg viewBox="0 0 24 24" style={{ width: '13px', height: '13px', fill: 'none', stroke: '#a78bfa', strokeWidth: 2.5, strokeLinecap: 'round', strokeLinejoin: 'round' }}>
+              <polygon points="12 2 2 22 22 22" />
+              <line x1="12" y1="11" x2="12" y2="21" />
             </svg>
           </button>
 
           {/* (4) 설정 톱니바퀴 단추 */}
           <button 
             className="layout-btn"
-            onClick={onOpenSettings}
+            onClick={() => setIsSettingsOpen(true)}
             title="환경 설정"
             style={{ width: '26px', height: '26px' }}
           >

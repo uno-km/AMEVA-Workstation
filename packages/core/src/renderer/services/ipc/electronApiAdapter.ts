@@ -142,6 +142,7 @@ declare global {
       googleAuthLogout?: () => Promise<{ success: boolean }>
       googleAuthGetStatus?: () => Promise<{ success: boolean; user?: any; error?: string; message?: string }>
       setBypassNativeContextMenu?: (bypass: boolean) => void
+      executeTerminal?: (cmd: string, cwd?: string) => Promise<{ stdout: string; stderr: string; newCwd: string }>
     }
   }
 }
@@ -150,6 +151,13 @@ export function setBypassNativeContextMenu(bypass: boolean): void {
   if (window.electronAPI?.setBypassNativeContextMenu) {
     window.electronAPI.setBypassNativeContextMenu(bypass);
   }
+}
+
+export function executeTerminal(cmd: string, cwd?: string): Promise<{ stdout: string; stderr: string; newCwd: string }> {
+  if (window.electronAPI?.executeTerminal) {
+    return window.electronAPI.executeTerminal(cmd, cwd);
+  }
+  return Promise.resolve({ stdout: '', stderr: 'Not in electron environment', newCwd: '' });
 }
 
 /*

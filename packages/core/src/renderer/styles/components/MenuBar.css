@@ -79,6 +79,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
+  padding-right: 130px; /* Windows 창 제어 오버레이(최소화/최대화/닫기) 영역 회피를 위한 여백 */
   -webkit-app-region: no-drag; /* 클릭 동작 허용 */
 }
 
