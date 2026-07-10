@@ -269,8 +269,10 @@ export class LLMProcessManager {
        * - 예시: `if (process.platform === 'win32')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
       if (process.platform === 'win32') {
-        exec('taskkill /f /im llama-server.exe', () => {
-          exec('taskkill /f /im llama-cli.exe', () => {
+        // - Expected Value Flow: exec -> llama-server.exe 프로세스 킬 -> llama-cli.exe 프로세스 킬 -> resolve()
+        // - Rationale: 윈도우 환경에서 taskkill 실행 시 임시 콘솔창이 뜨는 현상을 방지하기 위해 windowsHide: true를 전달한다.
+        exec('taskkill /f /im llama-server.exe', { windowsHide: true }, () => {
+          exec('taskkill /f /im llama-cli.exe', { windowsHide: true }, () => {
             resolve()
           })
         })
@@ -527,7 +529,10 @@ export class LLMProcessManager {
           env: {
             ...process.env,
             PATH: `${process.env.PATH};${llamaDir}`
-          }
+          },
+          // - Expected Value Flow: llamaPath & cmdArgs -> spawn -> ChildProcess proc 반환
+          // - Rationale: llama 백그라운드 서버 기동 시 Windows 환경에서 cmd 도스창이 발생하는 것을 방지하기 위해 windowsHide: true를 지정한다.
+          windowsHide: true
         })
 
         // stdout 리스너 감청

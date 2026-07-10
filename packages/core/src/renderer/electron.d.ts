@@ -100,6 +100,7 @@ export interface IElectronAPI {
   llmListModels: (type?: 'llm' | 'code' | 'ollama') => Promise<LLMModel[]>
   selectLocalFile: (filters?: { name: string; extensions: string[] }[]) => Promise<{ filePath: string; base64: string } | null>
   llmGetGpuName: () => Promise<string>
+  clipboardWriteImage: (dataUrl: string) => Promise<boolean>
 
   // 홍 Whisper STT
   sttTranscribe: (payload: { audioPath: string; language?: string }) => Promise<{ success: boolean; text?: string; error?: string }>

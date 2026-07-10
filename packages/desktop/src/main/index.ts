@@ -381,6 +381,19 @@ ipcMain.handle('finance:get-quotes', async (_event, symbols: string[]) => {
   }
 })
 
+// 클립보드에 이미지 쓰기 IPC 핸들러
+ipcMain.handle('clipboard:write-image', async (_event, dataUrl: string) => {
+  try {
+    const { clipboard, nativeImage } = require('electron')
+    const img = nativeImage.createFromDataURL(dataUrl)
+    clipboard.writeImage(img)
+    return true
+  } catch (err) {
+    console.error('Failed to write image to clipboard:', err)
+    return false
+  }
+})
+
 /*
  * [FEAT-OLLAMA-001] Ollama 라이프사이클 IPC 채널 그룹
  * - ollama:check-installed: Ollama CLI 바이너리 설치 여부를 검사한다.
@@ -395,7 +408,9 @@ ipcMain.handle('ollama:check-installed', async () => {
     const { execSync } = require('child_process') as typeof import('child_process')
     // Windows: where ollama / Linux·macOS: which ollama
     const cmd = process.platform === 'win32' ? 'where ollama' : 'which ollama'
-    const result = execSync(cmd, { encoding: 'utf-8', timeout: 5000 }).trim()
+    // - Expected Value Flow: cmd -> execSync -> string result 반환
+    // - Rationale: Ollama 탐색 명령어 실행 시 Windows에서 콘솔 창 깜빡임 현상을 완벽히 차단한다.
+    const result = execSync(cmd, { encoding: 'utf-8', timeout: 5000, windowsHide: true }).trim()
     return { installed: !!result, path: result }
   } catch {
     return { installed: false, path: '' }
@@ -449,6 +464,8 @@ ipcMain.handle('ollama:pull-model', async (event, modelName: string) => {
       const child = spawn('ollama', ['pull', modelName], {
         shell: process.platform === 'win32',
         stdio: ['ignore', 'pipe', 'pipe'],
+        // - Rationale: 모델 다운로드 백그라운드 프로세스 기동 시 Windows CMD 창 팝업 방지.
+        windowsHide: true,
       })
       let lastProgress = 0
 
@@ -517,7 +534,9 @@ async function autoStartOllamaIfInstalled() {
     
     const ollamaPath = await new Promise<string>((resolve) => {
       try {
-        const result = execSync(cmd, { encoding: 'utf-8', timeout: 3000 })
+        // - Expected Value Flow: cmd -> execSync -> string result
+        // - Rationale: 백데몬 시작 검사 시 Windows CMD 창 깜빡임 차단.
+        const result = execSync(cmd, { encoding: 'utf-8', timeout: 3000, windowsHide: true })
         const lines = result.trim().split('\n')
         if (lines.length > 0 && lines[0].trim()) {
           resolve(lines[0].trim())
@@ -840,7 +859,8 @@ const handleGracefulExit = async () => {
   if (process.env.VITE_DEV_SERVER_URL) {
     try {
       const { execSync } = require('child_process')
-      execSync(`taskkill /pid ${process.ppid} /T /F`, { stdio: 'ignore' })
+      // - Rationale: 앱 종료 taskkill 연동 시 Windows CMD 창 깜빡임 방지.
+      execSync(`taskkill /pid ${process.ppid} /T /F`, { stdio: 'ignore', windowsHide: true })
     } catch {}
   }
   app.exit(0)
@@ -883,7 +903,8 @@ app.on('will-quit', (e) => {
     if (process.env.VITE_DEV_SERVER_URL) {
       try {
         const { execSync } = require('child_process')
-        execSync(`taskkill /pid ${process.ppid} /T /F`, { stdio: 'ignore' })
+        // - Rationale: 앱 종료 taskkill 연동 시 Windows CMD 창 깜빡임 방지.
+        execSync(`taskkill /pid ${process.ppid} /T /F`, { stdio: 'ignore', windowsHide: true })
       } catch {}
     }
     app.exit(0)

@@ -59,7 +59,9 @@ export class MCPProcessManager {
 
       try {
         // 프로세스 생성 (stdin/stdout 파이프 바인딩, stderr는 메인 프로세스로 위임)
-        const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'] })
+        // - Expected Value Flow: cmd & args -> spawn -> ChildProcess proc 반환
+        // - Rationale: Windows 환경에서 콘솔 윈도우가 노출되어 사용성을 해치는 현상을 완전 차단하기 위해 windowsHide: true를 주입한다.
+        const proc = spawn(command, args, { stdio: ['pipe', 'pipe', 'inherit'], windowsHide: true })
         
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -251,7 +253,9 @@ export class MCPProcessManager {
       try {
         // 윈도우 플랫폼 트리 킬 계약 준수
         if (process.platform === 'win32' && state.process.pid) {
-          execSync(`taskkill /pid ${state.process.pid} /T /F`, { stdio: 'ignore', timeout: 1000 })
+          // - Expected Value Flow: state.process.pid -> taskkill 명령어 실행 -> 결과 무시(ignore)
+          // - Rationale: taskkill CLI가 윈도우 환경에서 실행될 때 CMD 콘솔창이 팝업되는 현상을 완전히 숨기기 위해 windowsHide: true를 지정한다.
+          execSync(`taskkill /pid ${state.process.pid} /T /F`, { stdio: 'ignore', timeout: 1000, windowsHide: true })
         } else {
           state.process.kill()
         }

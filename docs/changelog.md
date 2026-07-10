@@ -3,6 +3,16 @@
 ## 2026-07-10 (Right Tab Strip UI/UX 고도화 & DrawingBlock 4대 결함 해결 리팩토링)
 
 ### 🚀 주요 아키텍처 변경 사항
+- **Windows CMD창 깜빡임(해킹 오인 UX 결함) 긴급 해결**:
+  - Windows 환경에서 백그라운드 프로세스(Ollama, GPU 감지, MCP 서버, 터미널 실행, taskkill 등) 기동 시 윈도우 창이 빠르게 깜빡거리며 해킹 프로그램처럼 오작동하던 심각한 결함을 해결했습니다.
+  - 백엔드 `child_process` API(`spawn`, `exec`, `execSync`) 호출부에 일괄적으로 `{ windowsHide: true }` 옵션을 이식하여 백그라운드 쉘 명령어 실행 시 콘솔 창이 화면에 보이지 않도록 전면 차단했습니다.
+- **AIPanel.tsx 런타임 Import 에러 및 컴파일 경고 해결**:
+  - `AIPanel.tsx`에서 일렉트론 IPC 통신 모듈(`ipc`)이 명시적으로 임포트되지 않고 참조되어 브라우저에서 `ReferenceError: ipc is not defined`가 발생해 동적 임포트에 실패하는 런타임 오류를 수정했습니다.
+  - 파일 최상단에 `import * as ipc from '../services/ipc/electronApiAdapter'`를 추가하고, IPC 커넥터 사용 목적과 OS 통신 계약에 대한 고밀도 JSDoc 및 Expected Value Flow 주석을 보강했습니다.
+  - 이미지 캡처 크롭 콜백(`img.onload`) 함수에 `async` 키워드를 부여하여 비동기 `await ipc.clipboardWriteImage` 구문 사용을 허용했으며, `handleCropMouseUp` 함수에서 사용되지 않던 마우스 이벤트 매개변수 `e`를 제거하여 `noUnusedLocals` 규칙에 부합하게 수정했습니다.
+- **electronApiAdapter.ts 타입 정의 누락 보완**:
+  - `Window['electronAPI']` 타입 정의 인터페이스에 `clipboardWriteImage` 함수 선언이 누락되어 `appAdapter.ts` 등에서 `Property 'clipboardWriteImage' does not exist on type '{ ... }'` 라는 타입스크립트 컴파일 에러가 나던 문제를 해결했습니다.
+  - `electronApiAdapter.ts`에 JSDoc 및 Expected Value Flow, 사용 시나리오를 명확히 작성한 `clipboardWriteImage?: (dataUrl: string) => Promise<boolean>` 타입을 이식했습니다.
 - **우측 패널 조건부 렌더링 버그 수정**:
   - `activeTab`이 `'ai'` 가 아닐 때도 AI 헤더(`AIPanelHeader`)와 AI 관련 구성요소가 고정 노출되던 렌더링 버그를 해결했습니다.
   - `activeTab === 'ai'` 일 때만 AI 전용 UI를 렌더링하고, 이외의 유틸리티 탭일 때는 AI 챗 레이아웃을 완전히 숨긴 뒤 새롭게 추가된 **공통 헤더 툴바** 아래에만 탭 내용물(`<AIDocumentOutline>` 또는 `<AIPluginViews>`)이 마운트되도록 조건부 렌더링 구조를 바로잡았습니다.
@@ -42,12 +52,17 @@
 ### 📁 수정된 파일 목록
 - `[NEW]` [constants.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/constants.ts) - 주식별 금융 Mock 뉴스 및 유틸 라벨, 검색 스타일 등 3단계 도메인 지역 상수 선언.
 - `[NEW]` [InlineDrawingRenderer.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/markdown/InlineDrawingRenderer.tsx) - 뷰모드(MarkdownPreview) 상에서 ameva-drawing JSON 데이터를 엑스칼리드로우 캔버스로 재조립해 보여주는 뷰어.
-- `[MODIFY]` [AIPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/AIPanel.tsx) - 탭 전환 조건부 렌더링 수정, 공통 헤더 툴바(캡처/검색/삽입) 상태와 핸들러 통합 및 webview 메타 정보 동적 연동 구현.
+- `[MODIFY]` [AIPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/AIPanel.tsx) - 탭 전환 조건부 렌더링 수정, 공통 헤더 툴바(캡처/검색/삽입) 상태와 핸들러 통합 및 webview 메타 정보 동적 연동 구현. 미선언된 `ipc` 임포트 구문을 추가하여 ReferenceError 해결.
+- `[MODIFY]` [electronApiAdapter.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ipc/electronApiAdapter.ts) - Window['electronAPI'] 인터페이스 타입 정의에 `clipboardWriteImage`를 보강하여 컴파일 에러 해결.
 - `[MODIFY]` [FinanceDashboardView.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/FinanceDashboardView.tsx) - QuoteRow 우클릭 contextMenu 바인딩, 아코디언 뷰 트랜지션 효과 주입 및 Mock 뉴스 렌더링, 본문 스크랩 함수 이식.
 - `[MODIFY]` [DrawingBlock.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/DrawingBlock.tsx) - 4대 결함 해결 및 10초 타임아웃, 재시도 제어 포트, 언마운트 flush, css 임포트 보정 완료.
 - `[MODIFY]` [MarkdownPreview.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/MarkdownPreview.tsx) - ameva-drawing 렌더링 분기를 추가하여 뷰모드에서 드로잉 캔버스가 정상 출력되도록 수정.
 - `[MODIFY]` [useAppGlobalApi.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/app/useAppGlobalApi.ts) - ameva:insert-text 이벤트 리스너 이식 및 마크다운 파싱을 통한 구조화된 에디터 블록 삽입 구현.
-- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - 앱 최초 기동 시점 Ollama 설치/가동 유무 백데몬 자동 서브 스폰 헬퍼 추가.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - 앱 최초 기동 시점 Ollama 설치/가동 유무 백데몬 자동 서브 스폰 헬퍼 추가 및 Ollama/taskkill 백그라운드 호출 시 `windowsHide: true` 옵션 적용으로 검은 콘솔창 팝업 제거.
+- `[MODIFY]` [mcpProcessManager.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/services/mcpProcessManager.ts) - MCP 서버 프로세스 스폰 및 트리 강제 종료(`taskkill`) 시 `windowsHide: true` 적용.
+- `[MODIFY]` [llmProcessManager.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/services/llmProcessManager.ts) - 로컬 llama 서버 기동 및 종료(`taskkill`) 호출 시 `windowsHide: true` 적용.
+- `[MODIFY]` [llmLifecycleIpc.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/ipc/llm/llmLifecycleIpc.ts) - 시스템 GPU 감지(`wmic`) 백그라운드 명령어 호출 시 `windowsHide: true` 적용.
+- `[MODIFY]` [terminalIpc.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/ipc/terminalIpc.ts) - 터미널 명령어 실행(`execAsync`) 시 `windowsHide: true` 적용.
 - `[MODIFY]` [SettingsTabAIEngine.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/settings/SettingsTabAIEngine.tsx) - 모델 카탈로그 원클릭 다운로드 순차 대기열 스케줄러(triggerNextQueueDownload) 및 UI 현황판, 개별 상태 뱃지 구현.
 - `[MODIFY]` [MarkdownEditor.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/MarkdownEditor.tsx) - (src 및 packages/core 둘 다) CP949 인코딩 유실로 인한 한글 깨짐 및 따옴표 닫기 구문오류 복구.
 - `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - 앱 최초 기동 시점 Ollama 설치/가동 유무 백데몬 자동 서브 스폰 헬퍼 추가.

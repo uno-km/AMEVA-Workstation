@@ -31,6 +31,12 @@
 import { useEffect, useState, useRef } from 'react'
 import html2canvas from 'html2canvas'
 import { UTILITY_TAB_LABELS, HIGHLIGHT_STYLE } from './ai/constants'
+/*
+ * [IPC CONNECTOR BRIDGE IMPORT]
+ * - ipc: Electron Preload IPC 스위치를 통해 캡쳐 이미지 클립보드 복사(clipboardWriteImage) 등을 호출하는 모듈.
+ * - Rationale: 일렉트론 네이티브 운영체제 클립보드에 바인딩하여 렌더러와 OS 간 데이터 중계를 안전하게 위임받는다.
+ */
+import * as ipc from '../services/ipc/electronApiAdapter'
 
 /* 
  * [LUCIDE ICONS]
@@ -238,7 +244,7 @@ export function AIPanel() {
     setCropEnd({ x, y })
   }
 
-  const handleCropMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleCropMouseUp = async () => {
     if (!isDrawing || !cropStart || !cropEnd) return
     setIsDrawing(false)
 
@@ -273,7 +279,12 @@ export function AIPanel() {
       if (!fullUrl) throw new Error('캡쳐 데이터를 생성하지 못했습니다.')
 
       const img = new Image()
-      img.onload = () => {
+      /**
+       * 이미지 로드가 완료되었을 때 실행할 콜백 함수
+       * - Expected Value Flow: img.onload 이벤트 발생 -> crop 영역에 따른 canvas 그리기 작업 비동기 시작 -> 클립보드 복사 혹은 다운로드 수행
+       * - Rationale: canvas.drawImage 및 clipboardWriteImage 등의 비동기 동작 처리를 위해 async로 핸들러를 바인딩한다.
+       */
+      img.onload = async () => {
         const canvas = document.createElement('canvas')
         const scaleX = img.width / contentRef.current!.getBoundingClientRect().width
         const scaleY = img.height / contentRef.current!.getBoundingClientRect().height
@@ -296,15 +307,24 @@ export function AIPanel() {
           )
           
           const cropUrl = canvas.toDataURL('image/png')
-          const a = document.createElement('a')
-          a.href = cropUrl
-          const tabName = UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab
-          a.download = `${tabName}_선택캡쳐.png`
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
           
-          setToastMessage('선택한 영역이 성공적으로 캡쳐되었습니다!')
+          let copied = false
+          if (ipc.isElectronEnv()) {
+            copied = await ipc.clipboardWriteImage(cropUrl)
+          }
+
+          if (copied) {
+            setToastMessage('선택 영역이 클립보드에 복사되었습니다! (Ctrl+V로 에디터에 붙여넣기 가능)')
+          } else {
+            const a = document.createElement('a')
+            a.href = cropUrl
+            const tabName = UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab
+            a.download = `${tabName}_선택캡쳐.png`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            setToastMessage('선택 영역이 파일로 다운로드되었습니다!')
+          }
           setTimeout(() => setToastMessage(null), 3000)
         }
       }
@@ -417,7 +437,7 @@ export function AIPanel() {
     })
   }, [activeIndex, highlights])
 
-  // [📸 캡쳐 기능 구현] - html2canvas로 탭 본문 영역 캡쳐 후 파일 저장
+  // [📸 캡쳐 기능 구현] - html2canvas로 탭 본문 영역 캡쳐 후 클립보드 복사
   const handleCapture = async () => {
     if (!contentRef.current) return
     try {
@@ -439,15 +459,23 @@ export function AIPanel() {
       
       if (!url) throw new Error('캡쳐 데이터를 생성하지 못했습니다.')
       
-      const a = document.createElement('a')
-      a.href = url
-      const tabName = UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab
-      a.download = `${tabName}_캡쳐.png`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      
-      setToastMessage('화면이 성공적으로 캡쳐되었습니다!')
+      let copied = false
+      if (ipc.isElectronEnv()) {
+        copied = await ipc.clipboardWriteImage(url)
+      }
+
+      if (copied) {
+        setToastMessage('화면 캡쳐본이 클립보드에 복사되었습니다! (Ctrl+V로 에디터에 붙여넣기 가능)')
+      } else {
+        const a = document.createElement('a')
+        a.href = url
+        const tabName = UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab
+        a.download = `${tabName}_캡쳐.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        setToastMessage('화면이 파일로 다운로드되었습니다!')
+      }
       setTimeout(() => setToastMessage(null), 3000)
     } catch (err: any) {
       console.error('[AIPanel] Capture failed:', err)

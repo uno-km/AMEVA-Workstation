@@ -165,7 +165,9 @@ export function registerTerminalIpc(): void {
         const res = await execAsync(finalCmd, {
           cwd: execCwd,
           shell: shellOption,
-          env: execEnv
+          env: execEnv,
+          // - Rationale: 윈도우 환경에서 터미널 실행 시 CMD/PowerShell 창 팝업 방지.
+          windowsHide: true
         });
         stdout = res.stdout;
         stderr = res.stderr;
@@ -192,7 +194,9 @@ export function registerTerminalIpc(): void {
           const res = await execAsync(fallbackCmd, {
             cwd: execCwd,
             shell: fallbackShell,
-            env: execEnv
+            env: execEnv,
+            // - Rationale: Fallback CMD 기동 시 Windows CMD 창 깜빡임 방지.
+            windowsHide: true
           });
           stdout = res.stdout;
           stderr = res.stderr;

@@ -189,7 +189,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   llmRestart: () => ipcRenderer.invoke('llm:restart'),
 
   // 로컬 기기에 다운로드 되어 적재된 gguf 목록 리스트업
-  llmListModels: (type?: 'llm' | 'code') => ipcRenderer.invoke('llm:listModels', type),
+  llmListModels: (type?: 'llm' | 'code' | 'ollama') => ipcRenderer.invoke('llm:listModels', type),
   // 사용 중인 NVIDIA / Intel GPU 하드웨어 정보 문자열 취득
   llmGetGpuName: () => ipcRenderer.invoke('llm:getGpuName'),
   // 허깅페이스 등 외부 모델 파일 다이렉트 백그라운드 다운로드
@@ -225,6 +225,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   appReady: () => ipcRenderer.invoke('app:ready'),
   // MCP 서버 및 시스템 명령 수행 시 구글 웹 서칭
   webSearch: (query: string) => ipcRenderer.invoke('action:webSearch', query),
+  // 클립보드에 이미지 쓰기 (Base64 Data URL)
+  clipboardWriteImage: (dataUrl: string) => ipcRenderer.invoke('clipboard:write-image', dataUrl),
 
   // ── 🤖 동적 MCP 연동 브릿지 ──
   // 외부 MCP 도구 자식 프로세스 기동

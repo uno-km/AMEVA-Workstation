@@ -99,6 +99,11 @@ export async function getZoomFactor(): Promise<number> {
   return window.electronAPI.getZoomFactor()
 }
 
+export async function clipboardWriteImage(dataUrl: string): Promise<boolean> {
+  if (!window.electronAPI?.clipboardWriteImage) return false
+  return window.electronAPI.clipboardWriteImage(dataUrl)
+}
+
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `setZoomFactor`

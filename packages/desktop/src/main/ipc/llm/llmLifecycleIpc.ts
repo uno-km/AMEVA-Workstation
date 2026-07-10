@@ -400,7 +400,9 @@ export function registerLlmLifecycleIpc(): void {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const out = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-        const out = execSync('wmic path win32_VideoController get name', { encoding: 'utf8' })
+        // - Expected Value Flow: execSync -> string out
+        // - Rationale: GPU 정보를 가져올 때 Windows에서 CMD 검은 창이 깜빡이는 현상을 해결하기 위해 windowsHide: true를 지정한다.
+        const out = execSync('wmic path win32_VideoController get name', { encoding: 'utf8', windowsHide: true })
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `lines`

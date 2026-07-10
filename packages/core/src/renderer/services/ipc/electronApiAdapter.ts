@@ -93,6 +93,12 @@ declare global {
       setZoomLevel?: (level: number) => void
       getZoomLevel?: () => Promise<number>
       showMessageBox?: (options: MessageBoxOptions) => Promise<{ response: number }>
+      /**
+       * 클립보드에 이미지 데이터를 기록하는 함수
+       * - Expected Value Flow: dataUrl (base64 PNG string) -> IPC 통신 -> Electron Native Clipboard API -> boolean 성공 여부 반환
+       * - 시나리오: 사용자가 웹뷰 화면 혹은 유틸리티 탭의 일부 영역을 캡처한 이미지 데이터를 에디터 붙여넣기용 클립보드에 저장할 때 소비됨.
+       */
+      clipboardWriteImage?: (dataUrl: string) => Promise<boolean>
       
       // 5. OS 키체인 자격증명 보관소
       keychainGet?: (key: string) => Promise<string | null>
