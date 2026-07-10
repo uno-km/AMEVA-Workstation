@@ -22,13 +22,17 @@ import { useAILogStore } from '../../../stores/useAILogStore';
 import { ConsoleContextMenu } from './ConsoleContextMenu';
 import { AI_TERMINAL_CONSTANTS } from '../../../features/ai-terminal/constants';
 
+export interface ConsoleLogTabProps {
+  fontSize?: number;
+}
+
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `ConsoleLogTab`
    * - 역할: Llama.cpp 및 WebGPU 진단 로그 표준 출력 버퍼링과 실시간 텍스트 매칭 하이라이트/필터링 검색창을 렌더링.
    * - 예시: `ConsoleLogTab(...)` 호출 시 상태 바인딩 및 Transient DOM 업데이트 활성화.
    */
-export function ConsoleLogTab() {
+export function ConsoleLogTab({ fontSize = 12.0 }: ConsoleLogTabProps) {
   const logContainerRef = useRef<HTMLDivElement>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number, text: string } | null>(null);
 
@@ -89,7 +93,7 @@ export function ConsoleLogTab() {
           );
         }
 
-        htmlString += `<div style="color: ${color}; background: ${bg}; font-weight: ${fontWeight}; padding: 2px 4px; border-radius: 2px; min-height: 1.2em; user-select: text;">${renderedText}</div>`;
+        htmlString += `<div style="color: ${color}; background: ${bg}; font-size: ${fontSize}px; font-weight: ${fontWeight}; padding: 2px 4px; border-radius: 2px; min-height: 1.2em; user-select: text;">${renderedText}</div>`;
       }
       container.innerHTML = htmlString;
       container.scrollTop = container.scrollHeight;
@@ -103,7 +107,7 @@ export function ConsoleLogTab() {
       renderLogs(state.sensorLogs, state.searchQuery);
     });
     return () => unsubscribe();
-  }, []);
+  }, [fontSize]);
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -173,7 +177,7 @@ export function ConsoleLogTab() {
         style={{
           flex: 1, overflowY: 'auto', padding: '12px',
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
-          fontSize: '11.5px', lineHeight: '1.5', whiteSpace: 'pre-wrap',
+          fontSize: `${fontSize}px`, lineHeight: '1.5', whiteSpace: 'pre-wrap',
           userSelect: 'text', cursor: 'text', color: 'var(--term-text)',
           background: 'var(--term-bg)'
         }}

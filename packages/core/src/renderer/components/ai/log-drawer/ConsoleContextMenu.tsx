@@ -42,6 +42,27 @@ export function ConsoleContextMenu({
   x, y, selectedText, onCopy, onPaste, onInsertToBody, onAskAI, onClose
 }: ConsoleContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - mountTimeRef: 우클릭 마운트 시점의 밀리초 타임스탬프.
+   * - Rationale: 우클릭 시점에 팝업과 투명 백드롭이 동시 마운트되면서, 사용자가 손가락을 떼는(mouseup/click)
+   *   연쇄 물리 신호가 즉각 백드롭의 onClick을 격발해 메뉴가 껌뻑이듯 즉시 소멸하는 현상을 방어하기 위해
+   *   최소 150ms 쿨다운 가드를 부여한다.
+   */
+  const mountTimeRef = useRef<number>(0);
+
+  React.useEffect(() => {
+    mountTimeRef.current = Date.now();
+  }, []);
+
+  const handleCloseSafely = () => {
+    // 마운트 후 150ms 이내에 들어오는 신호는 마우스 클릭 뗄 때의 연쇄 잔여 이벤트로 보고 무시
+    if (Date.now() - mountTimeRef.current < 150) {
+      return;
+    }
+    onClose();
+  };
 
   // Prevent menu from going off-screen (최대 넓이 180px, 높이 200px 기준 마진 방어)
   const safeX = Math.min(x, window.innerWidth - 180);
@@ -70,11 +91,11 @@ export function ConsoleContextMenu({
       {/* 
         [BACKDROP OVERLAY LAYER]
         - Rationale: window.click 리스너는 우클릭 mouseup 연쇄 click 신호와 충돌하여 팝업이 즉시 닫히는 오작동을 유발하므로,
-          메뉴 영역 뒷단 전체를 채우는 투명 div 오버레이를 배치해 클릭 시 부드럽게 닫히도록 완벽히 방어한다.
+          메뉴 영역 뒷단 전체를 채우는 투명 div 오버레이를 배치하되 타임 게이트 가드로 연쇄 즉시 소멸 오작동을 원천 봉쇄한다.
       */}
       <div 
-        onClick={onClose}
-        onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+        onClick={handleCloseSafely}
+        onContextMenu={(e) => { e.preventDefault(); handleCloseSafely(); }}
         style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,

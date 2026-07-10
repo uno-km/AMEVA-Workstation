@@ -130,10 +130,10 @@
   --text-on-primary: #ffffff;
   --text-on-active: var(--text-main);
 
-  --term-bg: #f8fafc;
-  --term-text: #0f172a;
-  --term-border: #cbd5e1;
-  --term-icon-color: #0f172a;
+  --term-bg: #0c0f17;
+  --term-text: #cbd5e1;
+  --term-border: rgba(109, 40, 217, 0.2);
+  --term-icon-color: #6d28d9;
 }
 
 /* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */
@@ -181,10 +181,10 @@
   --text-on-primary: #ffffff;
   --text-on-active: var(--text-main);
 
-  --term-bg: #e8f5e9;
-  --term-text: #1b5e20;
-  --term-border: rgba(76, 175, 80, 0.5);
-  --term-icon-color: #1b5e20;
+  --term-bg: #070f08;
+  --term-text: #8bf67d;
+  --term-border: rgba(76, 175, 80, 0.25);
+  --term-icon-color: #4caf50;
 }
 
 /* [CSS SELECTOR RULE] - 렌더러 DOM 매핑 레이아웃 스타일 룰 정의 */

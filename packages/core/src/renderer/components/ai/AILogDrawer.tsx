@@ -22,25 +22,27 @@ import { Terminal, ListTree, Plus, Minus, Maximize2, Minimize2 } from 'lucide-re
 import { ConsoleLogTab } from './log-drawer/ConsoleLogTab';
 import { ConsoleCommandTab } from './log-drawer/ConsoleCommandTab';
 
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `AILogDrawer`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `AILogDrawer(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
+/*
+ * [FUNCTION CONTRACT]
+ * - 함수 명: `AILogDrawer`
+ * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+ * - 예시: `AILogDrawer(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+ */
 export function AILogDrawer({ isExpanded, onToggle }: any) {
   const [isHovered, setIsHovered] = useState(false);
   const [activeTab, setActiveTab] = useState<'log' | 'cmd'>('log');
   // [FEAT-3] 드로어 높이 조절 상태 — 기본값 35vh (픽셀)
   const [drawerHeight, setDrawerHeight] = useState<number | null>(null);
-  
+
   /*
    * [RUN-TIME STATE / INVARIANT]
    * - isMaximized: 터미널 전체 화면 최대화 여부 플래그.
    * - terminalFontSize: 웹콘솔 전용 내부 폰트 크기 상태 (기본 12px).
+   * - isHandleHovered: 상단 경계 조절 라인 마우스 호버 여부.
    */
   const [isMaximized, setIsMaximized] = useState(false);
   const [terminalFontSize, setTerminalFontSize] = useState(12.0);
+  const [isHandleHovered, setIsHandleHovered] = useState(false);
 
   /*
    * [FUNCTION CONTRACT]
@@ -49,55 +51,55 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
   const adjustFontSize = (delta: number) => {
     setTerminalFontSize(prev => Math.max(9, Math.min(24, prev + delta)));
   };
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `isDraggingRef`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isDraggingRef = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `isDraggingRef`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const isDraggingRef = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const isDraggingRef = useRef(false);
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `startYRef`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const startYRef = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `startYRef`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const startYRef = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const startYRef = useRef(0);
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `startHeightRef`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const startHeightRef = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `startHeightRef`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const startHeightRef = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const startHeightRef = useRef(0);
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `scale`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const scale = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `scale`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const scale = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const scale = isHovered ? '1.1' : '1';
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `opacity`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const opacity = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `opacity`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const opacity = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const opacity = isHovered || isExpanded ? 1 : 0.4;
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `tabStyle`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const tabStyle = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `tabStyle`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const tabStyle = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
   const tabStyle = (isActive: boolean): React.CSSProperties => ({
     padding: '4px 12px',
     background: isActive ? 'var(--bg-glass-active)' : 'transparent',
@@ -124,13 +126,13 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
     const drawerEl = (e.target as HTMLElement).closest('[data-drawer-root]') as HTMLElement | null;
     startHeightRef.current = drawerEl?.offsetHeight ?? (window.innerHeight * 0.35);
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `onMouseMove`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const onMouseMove = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `onMouseMove`
+     * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+     * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+     * - 예시 코드: `const onMouseMove = ...` 형태로 안전 캐싱 후 가공 기동.
+     */
     const onMouseMove = (me: MouseEvent) => {
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -157,14 +159,15 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
        */
       const newHeight = Math.max(120, Math.min(window.innerHeight * 0.8, startHeightRef.current + delta));
       setDrawerHeight(newHeight);
+      setIsMaximized(false);
     };
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `onMouseUp`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const onMouseUp = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `onMouseUp`
+     * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+     * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+     * - 예시 코드: `const onMouseUp = ...` 형태로 안전 캐싱 후 가공 기동.
+     */
     const onMouseUp = () => {
       isDraggingRef.current = false;
       window.removeEventListener('mousemove', onMouseMove);
@@ -187,16 +190,19 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
       const base = prev ?? (window.innerHeight * 0.35);
       return Math.max(120, Math.min(window.innerHeight * 0.8, base + delta));
     });
+    setIsMaximized(false);
   };
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `resolvedHeight`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const resolvedHeight = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const resolvedHeight = drawerHeight ? `${drawerHeight}px` : '35vh';
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `resolvedHeight`
+   * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+   * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+   * - 예시 코드: `const resolvedHeight = ...` 형태로 안전 캐싱 후 가공 기동.
+   */
+  const resolvedHeight = isMaximized 
+    ? '90vh' 
+    : (drawerHeight ? `${drawerHeight}px` : '35vh');
 
   return (
     <div
@@ -212,17 +218,24 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
         display: 'flex', flexDirection: 'column',
         height: resolvedHeight,
       }}>
-      {/* [FEAT-3] 리사이즈 드래그 핸들 (상단) */}
+      {/* 
+       * [FEAT] 리사이즈 드래그 핸들 (상단)
+       * - Rationale: 마우스가 경계선 근처로 접근하면 스르르륵 은은하고 세련되게 하이라이트(보라색)되도록 
+       *   opacity와 transition을 설계하여 네이티브 사이드메뉴 드래그와 일관된 사용성을 구현한다.
+       */}
       <div
         onMouseDown={handleResizeMouseDown}
+        onMouseEnter={() => setIsHandleHovered(true)}
+        onMouseLeave={() => setIsHandleHovered(false)}
         style={{
           position: 'absolute',
           top: 0, left: 0, right: 0,
-          height: '5px',
+          height: '8px',
           cursor: 'ns-resize',
-          background: isDraggingRef.current ? 'var(--primary)' : 'transparent',
-          zIndex: 102,
-          transition: 'background 0.15s',
+          background: 'var(--primary)',
+          opacity: (isHandleHovered || isDraggingRef.current) ? 0.8 : 0,
+          zIndex: 105,
+          transition: 'opacity 0.25s ease-in-out, background 0.25s ease-in-out',
         }}
         title="드래그하여 높이 조절"
       />
@@ -246,7 +259,7 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
           pointerEvents: 'auto'
         }}
       >
-        <div 
+        <div
           onClick={onToggle}
           title={isExpanded ? '터미널 닫기' : '터미널 열기'}
           style={{
@@ -256,10 +269,10 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
             borderRadius: '50%',
             background: isHovered ? 'var(--primary)' : 'var(--bg-glass-active)',
             padding: '2px',
-            boxShadow: isHovered 
-              ? '0 0 20px var(--primary-glow)' 
+            boxShadow: isHovered
+              ? '0 0 20px var(--primary-glow)'
               : '0 4px 12px rgba(0,0,0,0.15)',
-            cursor: 'pointer', 
+            cursor: 'pointer',
             opacity: opacity,
             transition: 'all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)',
             border: '1px solid var(--border-muted)',
@@ -276,7 +289,7 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
           </div>
         </div>
       </div>
-      
+
       {/* Tab Header */}
       <div style={{
         padding: '0 12px', background: 'var(--bg-glass)',
@@ -324,12 +337,12 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
           </button>
         </div>
       </div>
-      
+
       {/* Drawer Content */}
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: 'column', 
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
         overflow: 'hidden',
         background: 'var(--term-bg)',
       }}>

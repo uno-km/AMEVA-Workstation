@@ -28,13 +28,17 @@ interface HistoryItem {
   text: string;
 }
 
+export interface ConsoleCommandTabProps {
+  fontSize?: number;
+}
+
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `ConsoleCommandTab`
    * - 역할: Host OS 커맨드 실행용 가상 터미널 환경을 렌더링하고, 실시간 로그 검색 및 텍스트 하이라이팅을 제공.
    * - 예시: `ConsoleCommandTab(...)` 호출 시 GUI 커맨드 패널 구성 및 상태 구독.
    */
-export function ConsoleCommandTab() {
+export function ConsoleCommandTab({ fontSize = 12.0 }: ConsoleCommandTabProps) {
   const [history, setHistory] = useState<HistoryItem[]>([
     { type: 'out', text: 'AMEVA Virtual Terminal [Host OS RPC]' },
     { type: 'out', text: 'Type standard Linux or Windows commands here.' }
@@ -244,7 +248,7 @@ export function ConsoleCommandTab() {
           overflowY: 'auto', 
           padding: '12px', 
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace", 
-          fontSize: '11.5px', 
+          fontSize: `${fontSize}px`, 
           color: 'var(--term-text)',
           transition: 'box-shadow 0.2s',
           boxShadow: isFocused ? 'inset 0 0 0 1px var(--primary), inset 0 0 10px var(--primary-glow)' : 'none',
