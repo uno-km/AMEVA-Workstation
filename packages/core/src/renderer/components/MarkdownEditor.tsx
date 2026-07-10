@@ -203,46 +203,36 @@ const CustomAddBlockButton = () => {
 
   /**
    * [EVENT HANDLER - onClick]
-   * - Rationale: 빈 블록이면 해당 블록에서, 내용이 있는 블록이면 새 단락을 아래에 삽입 후
-   *   커서를 이동하고 슬래시 메뉴를 열어 사용자 명령 선택을 유도한다.
-   * - 조건 만족 시: block이 undefined이면 즉각 early return으로 탈출.
-   * - 조건 불만족 시: 블록 내용 유무 판별 → 신규 단락 삽입 또는 기존 빈 블록 포커싱 → 슬래시 메뉴 오픈.
+   * - Rationale: 클릭 시 항상 현재 블록 아래에 새 빈 단락을 삽입하고 커서를 이동한 후
+   *   슬래시 메뉴를 열어 사용자 명령 선택을 유도한다.
+   * - 조건 만족 시 (block === undefined): 사이드 메뉴가 대상 블록을 아직 추적하지 못한 상태이므로 즉시 탈출.
+   * - 조건 불만족 시: 현재 블록 아래에 새 빈 단락 삽입 → 커서 이동 → 슬래시 메뉴 오픈.
    */
   const onClick = useCallback(() => {
     /*
      * [ALGORITHM BRANCH / DECISION]
      * - 조건 식: `block === undefined`
-     * - 만족 시: 사이드 메뉴가 대상 블록을 아직 추적하지 못한 상태이므로 즉시 탈출.
-     * - 불만족 시: 블록 내용 존재 여부를 판별하여 삽입 또는 포커싱 분기.
+     * - 만족 시: 즉시 탈출.
      */
     if (block === undefined) return
 
     /*
      * [RUN-TIME STATE / INVARIANT]
-     * - 변수 명: `blockContent`
-     * - 자료형 / 예상 값: InlineContent[] 배열 또는 undefined.
-     * - 시나리오: block.content가 존재하고 배열이며 길이가 0인 경우 빈 블록으로 판별.
+     * - blockContent: 현재 대상 블록의 콘텐츠 배열.
+     * - isBlockEmpty: 대상 블록이 비어있는지 여부 판별.
      */
     const blockContent = block.content
-
-    /*
-     * [RUN-TIME STATE / INVARIANT]
-     * - 변수 명: `isBlockEmpty`
-     * - 자료형 / 예상 값: boolean.
-     * - 만족 시(true): 현재 블록에 커서를 놓고 슬래시 메뉴만 오픈.
-     * - 불만족 시(false): 현재 블록 아래에 새 단락을 삽입 후 커서 이동, 슬래시 메뉴 오픈.
-     */
     const isBlockEmpty =
       blockContent !== undefined &&
       Array.isArray(blockContent) &&
       blockContent.length === 0
 
     if (isBlockEmpty) {
-      // 빈 블록: 커서만 이동 후 슬래시 메뉴 트리거
+      // 빈 블록인 경우: 기존 위치에 커서 포커싱하고 슬래시 메뉴 열기
       editor.setTextCursorPosition(block)
       suggestionMenu.openSuggestionMenu('/')
     } else {
-      // 내용 있는 블록: 새 단락 삽입 후 커서 이동, 슬래시 메뉴 트리거
+      // 내용이 있는 블록인 경우: 아래에 새 빈 단락을 삽입하고 커서 이동 후 슬래시 메뉴 열기
       const insertedBlock = editor.insertBlocks(
         [{ type: 'paragraph' }],
         block,

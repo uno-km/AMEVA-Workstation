@@ -203,10 +203,10 @@ const CustomAddBlockButton = () => {
 
   /**
    * [EVENT HANDLER - onClick]
-   * - Rationale: 빈 블록이면 해당 블록에서, 내용이 있는 블록이면 새 단락을 아래에 삽입 후
-   *   커서를 이동하고 슬래시 메뉴를 열어 사용자 명령 선택을 유도한다.
-   * - 조건 만족 시: block이 undefined이면 즉각 early return으로 탈출.
-   * - 조건 불만족 시: 블록 내용 유무 판별 → 신규 단락 삽입 또는 기존 빈 블록 포커싱 → 슬래시 메뉴 오픈.
+   * - Rationale: 클릭 시 항상 현재 블록 아래에 새 빈 단락을 삽입하고 커서를 이동한 후
+   *   슬래시 메뉴를 열어 사용자 명령 선택을 유도한다.
+   * - 조건 만족 시 (block === undefined): 즉시 탈출.
+   * - 조건 불만족 시: 현재 블록 아래에 새 빈 단락 삽입 → 커서 이동 → 슬래시 메뉴 오픈.
    */
   const onClick = useCallback(() => {
     if (block === undefined) return
@@ -218,9 +218,11 @@ const CustomAddBlockButton = () => {
       blockContent.length === 0
 
     if (isBlockEmpty) {
+      // 빈 블록인 경우: 기존 위치에 커서 포커싱하고 슬래시 메뉴 열기
       editor.setTextCursorPosition(block)
       suggestionMenu.openSuggestionMenu('/')
     } else {
+      // 내용이 있는 블록인 경우: 아래에 새 빈 단락을 삽입하고 커서 이동 후 슬래시 메뉴 열기
       const insertedBlock = editor.insertBlocks(
         [{ type: 'paragraph' }],
         block,
