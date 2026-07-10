@@ -325,7 +325,8 @@ export function useAIGenerator(
           {
             systemPrompt: dynamicSystemPrompt,
             temperature: finalSettings.temperature,
-            maxTokens: finalSettings.maxTokens
+            maxTokens: finalSettings.maxTokens,
+            gpuOnly: finalSettings.gpuOnly
           },
           (tokenText: string) => {
             processToken(tokenText, sessId)

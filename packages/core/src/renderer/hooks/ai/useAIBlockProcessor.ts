@@ -82,7 +82,8 @@ export function useAIBlockProcessor(settings: AISettings) {
           {
             systemPrompt: 'You are a document editing assistant. Output only the requested content without any explanation or preamble.',
             maxTokens: 512,
-            temperature: 0.5
+            temperature: 0.5,
+            gpuOnly: settings.gpuOnly
           }
         ).then((res) => {
           resolve(res.trim() || '')

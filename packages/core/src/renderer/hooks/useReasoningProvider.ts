@@ -58,6 +58,8 @@ export interface ReasoningRunOptions {
   onTraceEvent?: (event: ReasoningTraceEvent) => void
   /** onFinalChunk: final answer 스트리밍 토큰 콜백 */
   onFinalChunk?: (chunk: string) => void
+  /** GPU 가속 강제 여부 (false일 때 WPU CPU 폴백 구동) */
+  gpuOnly?: boolean
 }
 
 type LLMCallFn = (
@@ -621,7 +623,8 @@ export function useReasoningProvider() {
                 {
                   systemPrompt,
                   maxTokens: maxTok ?? 512,
-                  temperature: temp ?? 0.5
+                  temperature: temp ?? 0.5,
+                  gpuOnly: options.gpuOnly
                 }
               ).then((res) => resolve(res.trim())).catch(() => resolve(''))
               return
@@ -710,7 +713,8 @@ export function useReasoningProvider() {
               {
                 systemPrompt: 'You are an advanced reasoning AI.',
                 maxTokens: maxTokens ?? 512,
-                temperature: temperature ?? 0.7
+                temperature: temperature ?? 0.7,
+                gpuOnly: options.gpuOnly
               }
             ).then((res) => resolve(res.trim())).catch(() => resolve(''))
             return

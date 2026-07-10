@@ -61,6 +61,8 @@ declare global {
   }
 }
 
+import { WebCPUEngine } from './WebCPUEngine'
+
 /**
  * WebLLM 추론 생성 옵션 규격 인터페이스
  */
@@ -71,6 +73,8 @@ export interface WebLLMGenerateOptions {
   temperature?: number
   /** 시스템 프롬프트 문구 */
   systemPrompt?: string
+  /** GPU 전용 가속 강제 여부 (false일 경우 WebCPUEngine 위임) */
+  gpuOnly?: boolean
 }
 
 /**
@@ -211,8 +215,14 @@ export class WebLLMEngine {
    */
   public async initModel(
     modelId: string,
-    onProgress?: (progress: InitProgressReport) => void
+    onProgress?: (progress: InitProgressReport) => void,
+    gpuOnly: boolean = true
   ): Promise<boolean> {
+    if (!gpuOnly) {
+      console.info(`[WebLLMEngine] CPU 모드 감지: WebCPUEngine으로 로드 위임 (${modelId})`)
+      return WebCPUEngine.getInstance().initModel(modelId, onProgress)
+    }
+
     /*
      * [ALGORITHM BRANCH / DECISION]
      * - 조건 식: `this.loaded && this.currentModelId === modelId && this.engine`
@@ -299,6 +309,15 @@ export class WebLLMEngine {
     options: WebLLMGenerateOptions = {},
     onToken?: (tokenText: string) => void
   ): Promise<string> {
+    if (options.gpuOnly === false) {
+      console.info('[WebLLMEngine] CPU 모드 감지: WebCPUEngine으로 추론 생성 위임')
+      const formattedHistory = messages.map(m => ({
+        role: m.role,
+        content: typeof m.content === 'string' ? m.content : ''
+      }))
+      return WebCPUEngine.getInstance().generateStream(formattedHistory, options, onToken)
+    }
+
     /*
      * [ALGORITHM BRANCH / DECISION]
      * - 조건 식: `!this.engine || !this.loaded`
@@ -386,19 +405,22 @@ export class WebLLMEngine {
    * 진행 중인 생성 작업을 강제 중단하고 필요 시 VRAM 버퍼를 정리한다.
    */
   public async abort(): Promise<void> {
+    console.info('[WebLLMEngine] 추론 중단 요청 접수 (CPU/GPU 동시 전파)')
+    await WebCPUEngine.getInstance().abort()
+    
     /*
      * [ALGORITHM BRANCH / DECISION]
      * - 조건 식: `this.engine`
      * - 만족 시: 엔진의 interrupt 또는 unload 인터페이스가 있다면 호출하여 안전하게 중지한다.
      * - 불만족 시: 엔진이 없으므로 조용히 리턴한다.
      */
-    if (this.engine && typeof this.engine.interruptGenerate === 'function') {
+    if (this.engine) {
       try {
         await this.engine.interruptGenerate()
         console.info('[WebLLMEngine] 현재 진행 중인 WebGPU 연산을 중단했습니다.')
       } catch (err: unknown) {
         const errorMsg = err instanceof Error ? err.message : String(err)
-        console.error('[WebLLMEngine] 중단 요청 중 예외 발생:', errorMsg)
+        console.warn('[WebLLMEngine] WebLLM 생성 중단 시도 중 실패(이미 완료되었을 수 있음):', errorMsg)
       }
     }
   }

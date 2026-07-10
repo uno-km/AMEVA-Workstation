@@ -454,6 +454,7 @@ app.whenReady().then(() => {
     (details, callback) => {
       details.requestHeaders['Referer'] = 'https://tistory.com/'
       // Origin 헤더는 건드리지 않고 표준 정책을 유지하여 CORS 403 에러 예방
+      callback({ requestHeaders: details.requestHeaders })
     }
   )
 
@@ -477,7 +478,7 @@ app.whenReady().then(() => {
             policy.replace(/frame-ancestors\s+[^;]+(;?)/gi, '')
           )
         } else if (typeof val === 'string') {
-          responseHeaders[key] = (val as string).replace(/frame-ancestors\s+[^;]+(;?)/gi, '')
+          responseHeaders[key] = [(val as string).replace(/frame-ancestors\s+[^;]+(;?)/gi, '')]
         }
       }
     }

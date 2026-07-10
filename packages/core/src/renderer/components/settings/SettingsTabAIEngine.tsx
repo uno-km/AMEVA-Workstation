@@ -383,20 +383,22 @@ export function SettingsTabAIEngine({
         </div>
       )}
 
-      {/* 1.5 WebGPU 온디바이스 설정 */}
+      {/* 1.5 WPU 온디바이스 설정 */}
       {apiType === 'wasm' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', background: 'rgba(168, 85, 247, 0.03)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '8px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Cpu size={14} color="#a855f7" />
-            <h4 style={{ fontSize: '11.5px', fontWeight: 700, margin: 0, color: '#a855f7' }}>WebGPU 가속 온디바이스 AI (@mlc-ai/web-llm)</h4>
+            <h4 style={{ fontSize: '11.5px', fontWeight: 700, margin: 0, color: '#a855f7' }}>
+              {gpuOnly ? 'WebGPU 가속 온디바이스 AI (@mlc-ai/web-llm)' : 'Wasm CPU 온디바이스 AI (경량 폴백 런타임)'}
+            </h4>
             <span style={{ marginLeft: 'auto', fontSize: '9.5px', padding: '2px 8px', borderRadius: '99px',
               background: wasmLoaded ? 'rgba(16,185,129,0.15)' : 'rgba(245,158,11,0.15)',
               color: wasmLoaded ? '#10b981' : '#f59e0b', fontWeight: 700 }}>
-              {wasmLoaded ? '⚡ 캐시 로드됨 (준비 완료)' : '⏳ 미초기화 / 다운로드 필요'}
+              {wasmLoaded ? (gpuOnly ? '⚡ GPU 캐시 로드됨 (준비 완료)' : '🟢 CPU Wasm 가동 중 (준비 완료)') : '⏳ 미초기화 / 다운로드 필요'}
             </span>
           </div>
 
-          {wasmDiagnostic && (
+          {gpuOnly && wasmDiagnostic && (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center', background: wasmDiagnostic.supported ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)', padding: '8px 10px', borderRadius: '6px', border: `1px solid ${wasmDiagnostic.supported ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}` }}>
               {wasmDiagnostic.supported ? <CheckCircle2 size={14} color="#10b981" /> : <AlertCircle size={14} color="#ef4444" />}
               <div style={{ fontSize: '10px', color: 'var(--text-main)', lineHeight: '1.4' }}>
@@ -415,7 +417,8 @@ export function SettingsTabAIEngine({
                 value={WEBGPU_CATALOG.some(m => m.value === apiModel) ? apiModel : WEBGPU_CATALOG[0].value}
                 onChange={e => {
                   onUpdateAISettings({ apiModel: e.target.value })
-                  setWasmLoaded(WebLLMEngine.getInstance().isModelLoaded() && WebLLMEngine.getInstance().getCurrentModelId() === e.target.value)
+                  const engine = gpuOnly ? WebLLMEngine.getInstance() : WebCPUEngine.getInstance()
+                  setWasmLoaded(engine.isModelLoaded() && engine.getCurrentModelId() === e.target.value)
                 }}
                 disabled={wasmLoading}
                 style={{

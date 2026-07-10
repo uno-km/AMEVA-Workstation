@@ -92,6 +92,10 @@ export class WebCPUEngine {
       throw new Error('Wasm CPU 모델이 로드되지 않았습니다. 먼저 모델을 로드해주세요.')
     }
 
+    const maxTokens = options.maxTokens ?? 1024
+    const temperature = options.temperature ?? 0.7
+    console.info(`[WebCPUEngine] CPU 텍스트 생성 시작 (maxTokens: ${maxTokens}, temperature: ${temperature})`)
+
     /*
      * [RUN-TIME STATE / INVARIANT]
      * - 변수 명: `userPrompt`
