@@ -18,7 +18,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Check, LayoutGrid, PanelLeft, PanelBottom, PanelRight, Search, Globe, Settings, ChevronDown, RefreshCw, LogOut } from 'lucide-react'
+import { Check, LayoutGrid, PanelLeft, PanelBottom, PanelRight, Search, Settings, ChevronDown, RefreshCw, LogOut } from 'lucide-react'
 
 import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 
@@ -52,7 +52,7 @@ export function MenuBar({}: MenuBarProps = {}) {
     settings,
     handleUpdateSettings,
     isProPlan,
-    username,
+    setUsername,
   } = useAppContext()
   
   const {
@@ -655,46 +655,57 @@ export function MenuBar({}: MenuBarProps = {}) {
         {/* 세로 구분선 */}
         <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-muted)', margin: '0 2px' }} />
 
-        {/* (3) 구글 브라우저 탭 활성화 단추 */}
-        <button 
-          className="layout-btn"
-          onClick={() => {
-            setActiveRightTab('google')
-            if (!showAIPanel) toggleAIPanel()
-          }}
-          title="구글 웹 브라우저 열기"
-        >
-          <Globe size={13} style={{ color: '#4285f4' }} />
-        </button>
+        {/* 유틸리티 액션 그룹 (크롬 브라우저, 설정, 구글 계정 아바타) */}
+        <div className="toolbar-utility-group" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '2px' }}>
+          {/* (3) 구글 브라우저 탭 활성화 단추 */}
+          <button 
+            className="layout-btn"
+            onClick={() => {
+              setActiveRightTab('google')
+              if (!showAIPanel) toggleAIPanel()
+            }}
+            title="아메바 웹 브라우저 열기"
+            style={{ width: '26px', height: '26px' }}
+          >
+            <svg viewBox="0 0 24 24" style={{ width: '13px', height: '13px' }}>
+              <path fill="#4caf50" d="M12 24c3.08 0 5.88-1.16 8.02-3.07l-3.9-6.75C15.14 15.65 13.66 16 12 16c-3.15 0-5.87-2.02-6.95-4.83l-5.61 9.71C2.51 22.84 7.01 24 12 24z"/>
+              <path fill="#ffeb3b" d="M20.02 20.93C22.45 18.73 24 15.55 24 12c0-5.82-4.15-10.67-9.66-11.75l3.85 6.67c2.32.74 4.09 2.76 4.7 5.25z"/>
+              <path fill="#f44336" d="M14.34.25C13.58.09 12.8.01 12.01.01 7.02.01 2.52 1.17.56 3.12l5.6 9.7C7.24 9.99 8.72 9.65 10.37 9.65c2.33 0 4.41.97 5.87 2.53z"/>
+              <path fill="#2196f3" d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/>
+            </svg>
+          </button>
 
-        {/* (4) 설정 톱니바퀴 단추 */}
-        <button 
-          className="layout-btn"
-          onClick={onOpenSettings}
-          title="환경 설정"
-        >
-          <Settings size={13} />
-        </button>
+          {/* (4) 설정 톱니바퀴 단추 */}
+          <button 
+            className="layout-btn"
+            onClick={onOpenSettings}
+            title="환경 설정"
+            style={{ width: '26px', height: '26px' }}
+          >
+            <Settings size={13} style={{ color: 'var(--text-muted)' }} />
+          </button>
 
-        {/* (5) 구글 계정 로그인 관리 아바타 (주황색 E 또는 이미지 + 아래화살표 v) */}
-        <div 
-          className="google-profile-btn"
-          onClick={() => setGooglePopoverOpen(!googlePopoverOpen)}
-          title="Google 계정 관리"
-        >
-          {googleProfile?.picture ? (
-            <img 
-              src={googleProfile.picture} 
-              alt="Avatar" 
-              style={{ width: '23px', height: '23px', borderRadius: '50%' }}
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="google-profile-avatar">
-              {googleProfile ? googleProfile.name.slice(0, 1).toUpperCase() : 'G'}
-            </div>
-          )}
-          <ChevronDown size={11} style={{ color: 'var(--text-muted)' }} />
+          {/* (5) 구글 계정 로그인 관리 아바타 (주황색 G 또는 이미지 + 아래화살표 v) */}
+          <div 
+            className="google-profile-btn"
+            onClick={() => setGooglePopoverOpen(!googlePopoverOpen)}
+            title="Google 계정 관리"
+            style={{ padding: '2px', gap: '3px' }}
+          >
+            {googleProfile?.picture ? (
+              <img 
+                src={googleProfile.picture} 
+                alt="Avatar" 
+                style={{ width: '20px', height: '20px', borderRadius: '50%' }}
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <div className="google-profile-avatar" style={{ width: '20px', height: '20px', fontSize: '9.5px' }}>
+                {googleProfile ? googleProfile.name.slice(0, 1).toUpperCase() : 'G'}
+              </div>
+            )}
+            <ChevronDown size={10} style={{ color: 'var(--text-muted)' }} />
+          </div>
         </div>
 
         {/* 구글 계정 팝오버 드롭다운 카드 */}

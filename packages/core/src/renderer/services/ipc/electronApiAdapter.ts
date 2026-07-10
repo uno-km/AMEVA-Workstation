@@ -141,7 +141,14 @@ declare global {
       googleAuthLogin?: (connectDrive: boolean) => Promise<{ success: boolean; user?: any; error?: string }>
       googleAuthLogout?: () => Promise<{ success: boolean }>
       googleAuthGetStatus?: () => Promise<{ success: boolean; user?: any; error?: string; message?: string }>
+      setBypassNativeContextMenu?: (bypass: boolean) => void
     }
+  }
+}
+
+export function setBypassNativeContextMenu(bypass: boolean): void {
+  if (window.electronAPI?.setBypassNativeContextMenu) {
+    window.electronAPI.setBypassNativeContextMenu(bypass);
   }
 }
 

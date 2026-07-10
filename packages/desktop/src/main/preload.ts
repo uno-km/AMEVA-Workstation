@@ -287,5 +287,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   googleAuthLogin: (connectDrive: boolean) => ipcRenderer.invoke('google-auth:login', connectDrive),
   googleAuthLogout: () => ipcRenderer.invoke('google-auth:logout'),
   googleAuthGetStatus: () => ipcRenderer.invoke('google-auth:get-status'),
+  setBypassNativeContextMenu: (bypass: boolean) => ipcRenderer.send('set-bypass-native-context-menu', bypass),
 })
 

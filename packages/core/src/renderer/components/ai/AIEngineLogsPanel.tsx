@@ -23,6 +23,7 @@ import { X } from 'lucide-react'
 import { useAILogStore } from '../../stores/useAILogStore'
 import { ConsoleContextMenu } from './log-drawer/ConsoleContextMenu'
 import { AI_TERMINAL_CONSTANTS } from '../../features/ai-terminal/constants'
+import * as ipc from '../../services/ipc/electronApiAdapter'
 
 export interface AIEngineLogsPanelProps {
   /** 패널 닫기 콜백 */
@@ -97,6 +98,12 @@ export const AIEngineLogsPanel: React.FC<AIEngineLogsPanelProps> = ({ onClose, o
    * - handleContextMenu
    * - Rationale: 기본 마우스 우클릭을 차단(e.preventDefault())하고 마우스 클라이언트 좌표를 획득하여 커스텀 메뉴 팝업 활성화.
    */
+  useEffect(() => {
+    return () => {
+      ipc.setBypassNativeContextMenu(false);
+    };
+  }, []);
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     const selection = window.getSelection();
@@ -110,6 +117,8 @@ export const AIEngineLogsPanel: React.FC<AIEngineLogsPanelProps> = ({ onClose, o
   return (
     <div 
       onContextMenu={handleContextMenu}
+      onMouseEnter={() => ipc.setBypassNativeContextMenu(true)}
+      onMouseLeave={() => ipc.setBypassNativeContextMenu(false)}
       style={{
         position: 'absolute',
         bottom: 0, left: 0, right: 0,

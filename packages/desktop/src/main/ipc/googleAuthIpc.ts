@@ -261,11 +261,11 @@ export function registerGoogleAuthIpc() {
       }
 
       // 리디렉션 진행 및 인가 코드 낚아채기용 웹 브라우저 네비게이션 감지 훅
-      authWindow.webContents.on('will-navigate', (event, url) => {
+      authWindow.webContents.on('will-navigate', (_event, url) => {
         handleCallback(url)
       })
 
-      authWindow.webContents.on('will-redirect', (event, url) => {
+      authWindow.webContents.on('will-redirect', (_event, url) => {
         handleCallback(url)
       })
 

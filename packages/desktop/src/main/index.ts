@@ -256,12 +256,22 @@ function createWindow() {
   // [SEC-W-022] 창 보호 및 단축키 방어 전담 모듈 적용
   WindowDefenseManager.applyDefenses(mainWindow, () => isShuttingDown)
 
+  let bypassNativeContextMenu = false;
+
+  ipcMain.on('set-bypass-native-context-menu', (_e, value) => {
+    bypassNativeContextMenu = !!value;
+  });
+
   /*
    * [SIDE EFFECT - Global Context Menu Binding]
    * - Rationale: 일렉트론 샌드박스에서 기본 마우스 우클릭 메뉴가 원천 차단되는 사용성 오류를 극복하기 위해,
    *   마우스 우클릭 시 드래그 텍스트 유무에 따라 Copy/Cut/Paste/Select All 등의 OS 기본 편집 행동 메뉴를 동적으로 표출한다.
+   *   단, React 단에서 커스텀 메뉴 영역(터미널 등)을 다룰 때 겹침 오류를 피하고자 bypassNativeContextMenu 플래그가 켜진 경우 무시한다.
    */
   mainWindow.webContents.on('context-menu', (_e, params) => {
+    if (bypassNativeContextMenu) {
+      return;
+    }
     const menu = new Menu();
 
     if (params.selectionText && params.selectionText.trim() !== '') {

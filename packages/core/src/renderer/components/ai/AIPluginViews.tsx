@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { MapPin, Search } from 'lucide-react'
+import { MapPin, Search, ArrowLeft, ArrowRight, RotateCw, Home } from 'lucide-react'
 import { FinanceDashboardView } from './FinanceDashboardView'
 
 // ─────────────────────────────────────────────────────────────
@@ -541,11 +541,11 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
     case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />
     /*
      * [CASE ROUTING DECISION BINDING]
-     * - 분기 타겟: `case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />`
+     * - 분기 타겟: `case 'google': return <AmevaBrowserView />`
      * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
-     * - 예시: `case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     * - 예시: `case 'google': return <AmevaBrowserView />` 만족 시 해당 포맷 바이너리 빌더 호출.
      */
-    case 'google': return <div id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />
+    case 'google': return <AmevaBrowserView />
     /*
      * [CASE ROUTING DECISION BINDING]
      * - 분기 타겟: `case 'calendar': return <div id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />`
@@ -570,5 +570,184 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
      */
     default: return null;
   }
+}
+
+// ─────────────────────────────────────────────────────────────
+// 아메바 내장 웹 브라우저 컴포넌트 (AmevaBrowserView)
+// 주소창(input), 뒤로/앞으로가기, 새로고침, 홈 기능 지원
+// ─────────────────────────────────────────────────────────────
+function AmevaBrowserView() {
+  const [url, setUrl] = useState('https://google.com')
+  const [inputUrl, setInputUrl] = useState('https://google.com')
+  const webviewRef = useRef<any>(null)
+
+  const handleNavigate = (e: React.FormEvent) => {
+    e.preventDefault()
+    let targetUrl = inputUrl.trim()
+    if (!targetUrl) return
+
+    if (!/^https?:\/\//i.test(targetUrl)) {
+      if (targetUrl.includes('.') && !targetUrl.includes(' ')) {
+        targetUrl = 'https://' + targetUrl
+      } else {
+        targetUrl = 'https://www.google.com/search?q=' + encodeURIComponent(targetUrl)
+      }
+    }
+    setUrl(targetUrl)
+    setInputUrl(targetUrl)
+    if (webviewRef.current) {
+      webviewRef.current.src = targetUrl
+    }
+  }
+
+  const goBack = () => {
+    if (webviewRef.current && webviewRef.current.canGoBack()) {
+      webviewRef.current.goBack()
+    }
+  }
+
+  const goForward = () => {
+    if (webviewRef.current && webviewRef.current.canGoForward()) {
+      webviewRef.current.goForward()
+    }
+  }
+
+  const reload = () => {
+    if (webviewRef.current) {
+      webviewRef.current.reload()
+    }
+  }
+
+  const goHome = () => {
+    setUrl('https://google.com')
+    setInputUrl('https://google.com')
+    if (webviewRef.current) {
+      webviewRef.current.src = 'https://google.com'
+    }
+  }
+
+  useEffect(() => {
+    const webview = webviewRef.current
+    if (!webview) return
+
+    const handleLoadCommit = (e: any) => {
+      if (e.isMainFrame) {
+        setInputUrl(e.url)
+        setUrl(e.url)
+      }
+    }
+
+    webview.addEventListener('load-commit', handleLoadCommit)
+    return () => {
+      webview.removeEventListener('load-commit', handleLoadCommit)
+    }
+  }, [])
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg-main)' }}>
+      {/* 브라우저 상단 제어 바 */}
+      <div 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          padding: '6px 10px',
+          background: '#16161a',
+          borderBottom: '1px solid var(--border-muted)',
+          flexShrink: 0
+        }}
+      >
+        <button 
+          onClick={goBack}
+          style={{
+            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '24px', height: '24px', borderRadius: '4px'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <ArrowLeft size={13} />
+        </button>
+        <button 
+          onClick={goForward}
+          style={{
+            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '24px', height: '24px', borderRadius: '4px'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <ArrowRight size={13} />
+        </button>
+        <button 
+          onClick={reload}
+          style={{
+            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '24px', height: '24px', borderRadius: '4px'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <RotateCw size={12} />
+        </button>
+        <button 
+          onClick={goHome}
+          style={{
+            background: 'transparent', border: 'none', color: 'var(--text-muted)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '24px', height: '24px', borderRadius: '4px'
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        >
+          <Home size={13} />
+        </button>
+
+        {/* 주소창 */}
+        <form onSubmit={handleNavigate} style={{ flex: 1, display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: '100%', display: 'flex', alignItems: 'center' }}>
+            <input 
+              type="text"
+              value={inputUrl}
+              onChange={e => setInputUrl(e.target.value)}
+              placeholder="URL을 입력하거나 검색어를 입력하세요..."
+              style={{
+                width: '100%',
+                padding: '4px 28px 4px 8px',
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid var(--border-muted)',
+                borderRadius: '4px',
+                color: 'var(--text-main)',
+                fontSize: '11px',
+                outline: 'none',
+                height: '24px'
+              }}
+            />
+            <button 
+              type="submit"
+              style={{
+                position: 'absolute', right: '4px', background: 'transparent', border: 'none',
+                color: 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                height: '100%', padding: '0 4px'
+              }}
+            >
+              <Search size={11} />
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* 내장 웹뷰 */}
+      <webview 
+        ref={webviewRef}
+        src={url} 
+        style={{ flex: 1, border: 'none', background: '#fff' }} 
+        useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      />
+    </div>
+  )
 }
 
