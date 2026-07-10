@@ -455,10 +455,53 @@ ipcMain.handle('ollama:pull-model', async (event, modelName: string) => {
   }
 })
 
+// 🦙 Ollama 백그라운드 서버가 설치되어 있고 꺼져 있는 경우, 시작 시 자동 기동하는 백데몬 헬퍼
+async function autoStartOllamaIfInstalled() {
+  try {
+    // 1. 이미 Ollama 포트가 열려 있는지 (켜져 있는지) 사전 감사
+    const checkRes = await fetch('http://127.0.0.1:11434/api/tags').catch(() => null)
+    if (checkRes && checkRes.ok) {
+      console.log('[OllamaAutoStart] Ollama 데몬이 이미 백그라운드에서 동작 중입니다.')
+      return
+    }
+
+    // 2. Ollama CLI의 설치 유무 판단
+    const { execSync, spawn } = require('child_process') as typeof import('child_process')
+    const cmd = process.platform === 'win32' ? 'where ollama' : 'which ollama'
+    const hasOllama = await new Promise<boolean>((resolve) => {
+      try {
+        const result = execSync(cmd, { encoding: 'utf-8', timeout: 3000 })
+        resolve(!!result)
+      } catch {
+        resolve(false)
+      }
+    })
+
+    if (!hasOllama) {
+      console.log('[OllamaAutoStart] Ollama가 시스템에 설치되어 있지 않습니다. 자동 기동 생략.')
+      return
+    }
+
+    // 3. 백그라운드로 독립 spawn serve 기동
+    console.log('[OllamaAutoStart] Ollama 백데몬 서버 자동 기동을 개시합니다...')
+    const child = spawn('ollama', ['serve'], {
+      detached: true,
+      stdio: 'ignore',
+      shell: process.platform === 'win32',
+    })
+    child.unref()
+  } catch (err) {
+    console.error('[OllamaAutoStart] 자동 시작 도중 오류 발생:', err)
+  }
+}
+
 // Electron 준비 완료 시점의 윈도우 기동 및 CSP 보안 구성
 app.whenReady().then(() => {
   // [PERF] 1. 가장 먼저 윈도우 생성 (블로킹 방지 및 즉각적인 UI 피드백 제공)
   createWindow()
+
+  // [FEAT-OLLAMA-AUTO] 올라마가 감지되면 백그라운드 백데몬 기동 연쇄
+  autoStartOllamaIfInstalled()
 
   // [FIX-USER-AGENT-001] 유튜브 등 외부 임베드 웹 브라우저 호환성 및 재생 제한 우회 설정
   /*

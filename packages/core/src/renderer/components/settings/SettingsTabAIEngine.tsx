@@ -17,7 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Cpu, Zap, SlidersHorizontal, Shield, Server, ExternalLink, HardDriveDownload, CheckCircle2, AlertCircle } from 'lucide-react'
 import type { AISettings } from '../../types/aiTypes'
 import { PROVIDER_MODELS } from '../../../shared/constants/aiSettings'
@@ -84,9 +84,27 @@ export function SettingsTabAIEngine({
   const [ollamaInstalled, setOllamaInstalled] = useState<boolean | null>(null)
   const [ollamaServerStarting, setOllamaServerStarting] = useState(false)
   const [ollamaPulling, setOllamaPulling] = useState<string | null>(null)
-  const [ollamaPullPercent, setOllamaPullPercent] = useState(0)
-  const [ollamaPullLog, setOllamaPullLog] = useState('')
   const [installedModelNames, setInstalledModelNames] = useState<string[]>([])
+
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `downloadQueue`, `queueStatus`
+   * - 자료형: string[], Record<string, { percent: number, log: string, status: 'queued' | 'downloading' }>
+   * - 시나리오: 여러 개의 모델 다운로드 클릭 시 즉시 큐 대기열에 적재하고 순차적으로 풀(pull) 처리를 관리하는 시스템.
+   */
+  const [downloadQueue, setDownloadQueue] = useState<string[]>([])
+  const [queueStatus, setQueueStatus] = useState<Record<string, { percent: number; log: string; status: 'queued' | 'downloading' }>>({})
+
+  const queueRef = useRef<string[]>([])
+  const queueStatusRef = useRef<Record<string, { percent: number; log: string; status: 'queued' | 'downloading' }>>({})
+
+  useEffect(() => {
+    queueRef.current = downloadQueue
+  }, [downloadQueue])
+
+  useEffect(() => {
+    queueStatusRef.current = queueStatus
+  }, [queueStatus])
 
   /*
    * [FEAT-OLLAMA-CATALOG] 다운로드 가능한 대표 모델 카탈로그 상수 (3종 × 3사이즈)
@@ -167,6 +185,110 @@ export function SettingsTabAIEngine({
     }
   }
 
+  // 📥 [FEAT-OLLAMA-QUEUE] 다운로드 대기열 순차 처리기
+  const triggerNextQueueDownload = useCallback(async () => {
+    const currentQueue = queueRef.current
+    if (currentQueue.length === 0) return
+
+    const nextModel = currentQueue[0]
+    
+    // 현재 진행 중인 다운로드 활성화
+    setOllamaPulling(nextModel)
+
+    setQueueStatus(prev => ({
+      ...prev,
+      [nextModel]: { percent: 0, log: '다운로드 준비 중...', status: 'downloading' }
+    }))
+
+    const eAPI = (window as Window & { electronAPI?: { pullOllamaModel?: (model: string) => Promise<{ success: boolean; error?: string }> } }).electronAPI
+    if (!eAPI?.pullOllamaModel) {
+      setOllamaPulling(null)
+      return
+    }
+
+    try {
+      const res = await eAPI.pullOllamaModel(nextModel)
+      if (res.success) {
+        // 다운로드 완료 시 1초 후 대기열에서 제거하고 목록 갱신 및 후속 다운로드 트리거
+        setTimeout(async () => {
+          setDownloadQueue(prev => prev.filter(m => m !== nextModel))
+          setQueueStatus(prev => {
+            const nextMap = { ...prev }
+            delete nextMap[nextModel]
+            return nextMap
+          })
+          setOllamaPulling(null)
+
+          // 모델 목록 갱신
+          try {
+            const tagsRes = await fetch('http://127.0.0.1:11434/api/tags')
+            if (tagsRes.ok) {
+              const tagsData = await tagsRes.json()
+              if (tagsData.models) {
+                setOllamaModels(tagsData.models)
+                setInstalledModelNames(tagsData.models.map((m: any) => m.name))
+              }
+            }
+          } catch (err) {
+            console.error('모델 목록 자동 갱신 실패:', err)
+          }
+
+          // 재귀적 다음 다운로드 스케줄링
+          setTimeout(() => {
+            triggerNextQueueDownload()
+          }, 100)
+        }, 1000)
+      } else {
+        console.error('[OllamaDownload] 실패:', res.error)
+        handleQueueFailure(nextModel)
+      }
+    } catch (e) {
+      console.error('[OllamaDownload] 예외:', e)
+      handleQueueFailure(nextModel)
+    }
+  }, [])
+
+  // 다운로드 중 오류 발생 시의 예외 대기열 건너뛰기
+  const handleQueueFailure = (model: string) => {
+    setDownloadQueue(prev => prev.filter(m => m !== model))
+    setQueueStatus(prev => {
+      const nextMap = { ...prev }
+      delete nextMap[model]
+      return nextMap
+    })
+    setOllamaPulling(null)
+
+    // 실패하더라도 멈추지 않고 대기열 내 다음 모델로 진행
+    setTimeout(() => {
+      triggerNextQueueDownload()
+    }, 500)
+  }
+
+  // 📥 [FEAT-OLLAMA-QUEUE] 사용자의 다운로드 버튼 클릭 시 대기열에 적재
+  const handleAddToDownloadQueue = useCallback((model: string) => {
+    if (installedModelNames.includes(model) || queueRef.current.includes(model)) {
+      return
+    }
+
+    setDownloadQueue(prev => {
+      const nextQueue = [...prev, model]
+      
+      setQueueStatus(qs => ({
+        ...qs,
+        [model]: { percent: 0, log: '대기열 등록 완료 (대기 중...)', status: 'queued' }
+      }))
+
+      // 현재 다운로드 중인 모델이 없다면 즉시 트리거 개시
+      if (!ollamaPulling) {
+        setTimeout(() => {
+          triggerNextQueueDownload()
+        }, 50)
+      }
+
+      return nextQueue
+    })
+  }, [installedModelNames, ollamaPulling, triggerNextQueueDownload])
+
   // apiType이 ollama로 진입할 때 설치 여부 자동 체크 및 모델 목록 조회
   useEffect(() => {
     if (apiType === 'ollama') {
@@ -210,31 +332,28 @@ export function SettingsTabAIEngine({
       // pull 진행률 구독 등록
       if (api?.onOllamaPullProgress) {
         const unsub = api.onOllamaPullProgress((d) => {
-          setOllamaPullPercent(d.percent)
-          setOllamaPullLog(d.text)
-          // 100%에 도달하면 완료 처리 (1초 후 상태 초기화)
-          if (d.percent >= 100) {
-            setTimeout(() => {
-              setOllamaPulling(null)
-              setOllamaPullPercent(0)
-              setOllamaPullLog('')
-              // 모델 목록 자동 갱신
-              fetch('http://127.0.0.1:11434/api/tags')
-                .then(r => r.json())
-                .then(d2 => {
-                  if (d2.models) {
-                    setOllamaModels(d2.models)
-                    setInstalledModelNames((d2.models as { name: string }[]).map((m: { name: string }) => m.name))
-                  }
-                })
-                .catch(() => {})
-            }, 1000)
-          }
+
+
+          // 대기열 세부 맵 정보 실시간 업데이트
+          setQueueStatus(prev => {
+            if (prev[d.modelName]) {
+              return {
+                ...prev,
+                [d.modelName]: {
+                  ...prev[d.modelName],
+                  percent: d.percent,
+                  log: d.text,
+                  status: 'downloading'
+                }
+              }
+            }
+            return prev
+          })
         })
         return unsub
       }
     }
-  }, [apiType])
+  }, [apiType, triggerNextQueueDownload])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '100%', overflowY: 'auto', paddingRight: '4px' }}>
@@ -609,26 +728,50 @@ export function SettingsTabAIEngine({
           </div>
 
           {/* 모델 카탈로그 다운로드 카드 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderTop: '1px solid var(--border-muted)', paddingTop: '10px' }}>
               <span style={{ fontSize: '10.5px', fontWeight: 700, color: 'var(--text-main)' }}>📦 모델 카탈로그 — 원클릭 다운로드</span>
             </div>
 
-            {/* 다운로드 진행 바 (pull 중에만 표시) */}
-            {ollamaPulling && (
-              <div style={{ padding: '8px 10px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '10px', color: '#6366f1', fontWeight: 700 }}>⬇️ {ollamaPulling} 다운로드 중...</span>
-                  <span style={{ fontSize: '10px', color: '#6366f1' }}>{ollamaPullPercent}%</span>
-                </div>
-                <div style={{ height: '4px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${ollamaPullPercent}%`, background: '#6366f1', borderRadius: '99px', transition: 'width 0.3s ease' }} />
-                </div>
-                {ollamaPullLog && (
-                  <p style={{ margin: '4px 0 0', fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {ollamaPullLog}
-                  </p>
-                )}
+            {/* 다운로드 진행 바 대기열 현황판 (대기열에 한 개 이상 모델이 존재할 때 표시) */}
+            {downloadQueue.length > 0 && (
+              <div style={{ padding: '10px 12px', background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <span style={{ fontSize: '10.5px', color: '#6366f1', fontWeight: 700 }}>
+                  📥 모델 다운로드 대기열 관리 ({downloadQueue.length}개 모델)
+                </span>
+                
+                {downloadQueue.map((qModel, idx) => {
+                  const info = queueStatus[qModel]
+                  const isCurrent = qModel === ollamaPulling
+                  const percent = info ? info.percent : 0
+                  const logText = info ? info.log : '대기 중...'
+                  
+                  return (
+                    <div key={qModel} style={{ padding: '6px 8px', background: isCurrent ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.02)', border: `1px solid ${isCurrent ? 'rgba(99,102,241,0.3)' : 'var(--border-muted)'}`, borderRadius: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                        <span style={{ fontSize: '10px', color: isCurrent ? '#818cf8' : 'var(--text-muted)', fontWeight: isCurrent ? 700 : 500 }}>
+                          {idx + 1}. {isCurrent ? '▶ 다운로드 중' : '⏳ 대기 중'}: {qModel}
+                        </span>
+                        <span style={{ fontSize: '10px', color: isCurrent ? '#818cf8' : 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                          {percent}%
+                        </span>
+                      </div>
+                      
+                      {isCurrent && (
+                        <>
+                          <div style={{ height: '3px', background: 'rgba(255,255,255,0.1)', borderRadius: '99px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${percent}%`, background: '#6366f1', borderRadius: '99px', transition: 'width 0.3s ease' }} />
+                          </div>
+                          {logText && (
+                            <p style={{ margin: '4px 0 0', fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'monospace', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {logText}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -638,37 +781,57 @@ export function SettingsTabAIEngine({
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   {group.models.map(m => {
                     const isInstalled = installedModelNames.includes(m.model)
+                    const isQueued = downloadQueue.includes(m.model) && ollamaPulling !== m.model
                     const isPulling = ollamaPulling === m.model
+                    const statusInfo = queueStatus[m.model]
+                    const percent = statusInfo ? statusInfo.percent : 0
+                    
+                    const isDisabled = isInstalled || isQueued || isPulling
+
+                    let buttonLabel = `⬇ ${m.label} (${m.sizeGb})`
+                    if (isInstalled) {
+                      buttonLabel = `✅ ${m.label}`
+                    } else if (isQueued) {
+                      buttonLabel = `⏳ 대기 중 (${m.label})`
+                    } else if (isPulling) {
+                      buttonLabel = `⬇️ 다운로드 중 ${percent}% (${m.label})`
+                    }
+
                     return (
                       <button
                         key={m.model}
-                        disabled={!!ollamaPulling || isInstalled}
-                        onClick={async () => {
-                          const eAPI = (window as Window & { electronAPI?: { pullOllamaModel?: (model: string) => Promise<{ success: boolean; error?: string }> } }).electronAPI
-                          if (!eAPI?.pullOllamaModel) return
-                          setOllamaPulling(m.model)
-                          setOllamaPullPercent(0)
-                          setOllamaPullLog('다운로드 준비 중...')
-                          try {
-                            const res = await eAPI.pullOllamaModel(m.model)
-                            if (!res.success) {
-                              console.error('[OllamaDownload] 실패:', res.error)
-                              setOllamaPulling(null)
-                            }
-                          } catch (e) {
-                            console.error('[OllamaDownload] 예외:', e)
-                            setOllamaPulling(null)
-                          }
-                        }}
+                        disabled={isDisabled}
+                        onClick={() => handleAddToDownloadQueue(m.model)}
                         style={{
-                          padding: '5px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, cursor: (!!ollamaPulling || isInstalled) ? 'not-allowed' : 'pointer',
-                          background: isInstalled ? 'rgba(16,185,129,0.12)' : isPulling ? 'rgba(99,102,241,0.2)' : 'rgba(255,255,255,0.04)',
-                          border: `1px solid ${isInstalled ? 'rgba(16,185,129,0.4)' : isPulling ? 'rgba(99,102,241,0.5)' : 'var(--border-muted)'}`,
-                          color: isInstalled ? '#10b981' : isPulling ? '#6366f1' : 'var(--text-main)',
+                          padding: '5px 10px', borderRadius: '6px', fontSize: '10px', fontWeight: 600, 
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          background: isInstalled 
+                            ? 'rgba(16,185,129,0.12)' 
+                            : isQueued 
+                              ? 'rgba(245,158,11,0.08)' 
+                              : isPulling 
+                                ? 'rgba(99,102,241,0.2)' 
+                                : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${
+                            isInstalled 
+                              ? 'rgba(16,185,129,0.4)' 
+                              : isQueued 
+                                ? 'rgba(245,158,11,0.35)' 
+                                : isPulling 
+                                  ? 'rgba(99,102,241,0.5)' 
+                                  : 'var(--border-muted)'
+                          }`,
+                          color: isInstalled 
+                            ? '#10b981' 
+                            : isQueued 
+                              ? '#f59e0b' 
+                              : isPulling 
+                                ? '#6366f1' 
+                                : 'var(--text-main)',
                           transition: 'all 0.15s'
                         }}
                       >
-                        {isInstalled ? `✅ ${m.label}` : isPulling ? `⬇️ ${m.label} ${ollamaPullPercent}%` : `⬇ ${m.label} (${m.sizeGb})`}
+                        {buttonLabel}
                       </button>
                     )
                   })}

@@ -1,5 +1,53 @@
 # AMEVA OS Changelog
 
+## 2026-07-10 (Right Tab Strip UI/UX 고도화 & DrawingBlock 4대 결함 해결 리팩토링)
+
+### 🚀 주요 아키텍처 변경 사항
+- **우측 패널 조건부 렌더링 버그 수정**:
+  - `activeTab`이 `'ai'` 가 아닐 때도 AI 헤더(`AIPanelHeader`)와 AI 관련 구성요소가 고정 노출되던 렌더링 버그를 해결했습니다.
+  - `activeTab === 'ai'` 일 때만 AI 전용 UI를 렌더링하고, 이외의 유틸리티 탭일 때는 AI 챗 레이아웃을 완전히 숨긴 뒤 새롭게 추가된 **공통 헤더 툴바** 아래에만 탭 내용물(`<AIDocumentOutline>` 또는 `<AIPluginViews>`)이 마운트되도록 조건부 렌더링 구조를 바로잡았습니다.
+- **Non-AI 유틸리티 탭 공통 헤더 툴바 (`UtilityPanelHeader`) 추가**:
+  - AI 탭이 아닌 다른 탭(TOC 구조도, 계산기, 주식 등)의 상단에 📸 캡쳐, 🔍 검색, 📝 본문에 넣기 버튼을 제공하는 고품질 헤더 툴바를 신설했습니다.
+  - **📸 캡쳐 (Capture)**: `html2canvas` 라이브러리를 바인딩하여 탭 내용부 영역(`contentRef`)만 2배 스케일로 스크린샷 이미지화하고 다운로드해주는 기능을 구현했습니다.
+  - **🔍 검색 (Search)**: 클릭 시 인라인 검색바를 토글하고, 탭 영역 내 텍스트 노드를 실시간 순회하며 `<mark>` 엘리먼트로 하이라이팅 처리하는 DOM 유틸을 구축했습니다. 매치 인덱스 표기 및 다음/이전 화살표 이동(`scrollIntoView`)을 지원하며, 닫을 때 하이라이트를 깨끗이 원복(Clean Up)시킵니다.
+  - **📝 본문에 넣기 (Insert)**: 활성화된 탭의 내용물(TOC 목차, 계산 결과, 주식 대시보드 시세 표)을 용도별로 최적화된 마크다운 데이터로 자동 가공하여, `window.dispatchEvent` 이벤트를 통해 에디터의 현재 커서 위치로 즉시 삽입합니다.
+- **주식(Stocks) 탭 우클릭 커스텀 메뉴 및 아코디언 뉴스 상세 뷰**:
+  - `FinanceDashboardView.tsx` 내부 개별 주식 항목(`QuoteRow`)에 `onContextMenu` 핸들러를 주입하여, 우클릭 시 `[본문에 넣기, 자세히 보기]` 커스텀 메뉴(`StockContextMenu`)를 띄우도록 개선했습니다.
+  - '자세히 보기' 또는 종목 클릭 시, `@keyframes` 애니메이션 효과를 가미하여 종목 상세 `DetailPanel`이 아코디언처럼 부드럽게 확장 오픈되도록 스타일을 개선했습니다.
+  - 종목 하단 아코디언 창 내부에 **실시간 종목 뉴스 리스트**를 연동했으며, 뉴스를 클릭하면 요약 인용구 형식으로 본문 스크랩(마크다운 삽입)을 처리해주는 프리미엄 마이크로 인터랙션을 설계했습니다.
+- **DrawingBlock.tsx 4대 결함 해결 리팩토링**:
+  - **투명 오버레이 이벤트 블로킹 수정**: 보기 모드(`!isEditing`)일 때 엑스칼리드로우 캔버스 동작을 막는 투명 `div` 오버레이에 `pointer-events: none`을 선언하여, 사용자가 보기 모드 캔버스를 클릭했을 때 BlockNote 에디터의 기본 클릭/포커스 이벤트가 정상 전파되도록 개선했습니다.
+  - **Excalidraw 타임아웃 폴백 로직 안정화**: 비동기 모듈 로딩 타임아웃을 10초로 연장하고, 로드 실패 시 강제 경량 캔버스 전환 대신 "다시 시도(Retry)" 및 "경량 스케치패드로 그리기" 수동 선택 분기를 제공하는 `failed` 전용 뷰포트를 신설했습니다.
+  - **데이터 유실 방지 (Debounce flush)**: 최신 캔버스 노드들을 `latestElementsRef`에 실시간 미러링해두고, 컴포넌트 언마운트(`useEffect` 클린업) 시점에 디바운스 대기 중인 타이머를 해제함과 동시에 최후의 획 데이터를 즉시 에디터 블록에 즉각 저장(flush)하도록 수정했습니다.
+  - **자물쇠 아이콘 버그 및 스타일 붕괴 해결**: `@excalidraw/excalidraw/index.css`를 명시적으로 최상단에 임포트하여 번들에 포함시켰으며, 래퍼 div 스타일에 `overflow: 'hidden'`, `position: 'relative'` 속성을 확고히 지정하여 Excalidraw UI 구조가 깨지지 않도록 해결했습니다.
+  - **마크다운 뷰모드(미리보기) 드로잉 렌더러 지원**: 뷰모드 시 `ameva-drawing` 코드블록이 JSON 생 텍스트로 노출되던 결함을 발견하고, `MarkdownPreview.tsx` 파서에 `ameva-drawing` 인식 분기를 구축하여, 뷰모드 전용 `InlineDrawingRenderer.tsx`가 해당 JSON 데이터를 토대로 읽기전용 Excalidraw 캔버스를 화면에 복원하도록 고도화했습니다.
+- **본문 삽입(ameva:insert-text) 이벤트 연동 및 마크다운 파싱 고도화**:
+  - 탭 툴바 및 주식/뉴스 등에서 발생시킨 `ameva:insert-text` 전역 이벤트를 수신하는 리스너가 등록되지 않아 본문 삽입 기능이 오동작하던 이슈를 해결했습니다.
+  - `useAppGlobalApi.ts` 내에 `ameva:insert-text` 리스너를 결합하여 `window.AMEVA_INSERT_TEXT_TO_EDITOR` 브릿지를 자동 연계하도록 구조화했으며, 유입된 텍스트를 단순 paragraph 문자열로 뭉개 넣는 대신 `editor.tryParseMarkdownToBlocks`를 거쳐 테이블, 인용구 등 정교한 마크다운 블록 구조로 파싱 후 삽입되도록 고도화했습니다.
+  - **웹 브라우저(webview) 메타데이터 자동 추출 연동**: 구글 검색 등 브라우저 플러그인 탭에서 "본문에 넣기" 실행 시, 기존의 고정 UI 안내용 텍스트 레이어가 긁혀 들어가던 문제를 치료하여, 현재 활성화된 `<webview>`의 실제 웹페이지 제목(Title)과 URL 주소를 동적으로 획득해 수려한 마크다운 하이퍼링크 카드로 본문에 자동 생성해주는 영리한 웹뷰 필터를 구현했습니다.
+- **Ollama 백그라운드 데몬 서버 자동 기동 연계**:
+  - Electron 앱 구동(`app.whenReady()`) 시점에 사용자의 로컬 환경에 Ollama 설치 여부를 진단하고, 포트 `11434`가 닫혀있다면 백그라운드 스레드로 `ollama serve`를 자동 호출하여 사용자가 일일이 터미널에서 구동할 필요가 없도록 개선했습니다.
+- **모델 카탈로그 다운로드 순차 큐(Queue) 시스템 구축**:
+  - 대표 모델 다운로드 카드를 여러 개 연속 클릭했을 때 동시 병렬 요청으로 인한 커넥션 에러나 메모리 과부하가 발생하지 않도록 렌더러단에 **다운로드 대기열 스케줄러**를 설계했습니다.
+  - 클릭 시 즉시 큐(Array)에 적재되어 UI상에는 `⏳ 대기 중` 배지가 표출되고, 먼저 들어간 모델 다운로드가 완전히 완료되면 자동으로 다음 대기 모델을 디스패치하여 순차적으로 풀링(`ollama pull`)하는 고급 매니저 기능을 이식했습니다.
+- **MarkdownEditor.tsx 한글 인코딩 유실 및 홑따옴표 누락 구문 복구**:
+  - `src/renderer/components/MarkdownEditor.tsx` 및 `packages/core/.../MarkdownEditor.tsx` 파일이 CP949 인코딩으로 저장되어 한글 유니코드 주석이 깨지면서 홑따옴표가 유실되어 발생하던 치명적인 TypeScript 구문 에러(`Unterminated string literal`, `Declaration or statement expected`)들을 완벽히 정복했습니다.
+  - 두 파일 모두 UTF-8 BOM 인코딩으로 완전히 안전 전환하고, 미사용 임포트(`useSideMenuHoverSync`) 및 깨진 멘션 라벨 문자열을 정상 한글('이름없는 사용자', '작업 참여자 멘션')로 복구했습니다.
+
+### 📁 수정된 파일 목록
+- `[NEW]` [constants.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/constants.ts) - 주식별 금융 Mock 뉴스 및 유틸 라벨, 검색 스타일 등 3단계 도메인 지역 상수 선언.
+- `[NEW]` [InlineDrawingRenderer.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/markdown/InlineDrawingRenderer.tsx) - 뷰모드(MarkdownPreview) 상에서 ameva-drawing JSON 데이터를 엑스칼리드로우 캔버스로 재조립해 보여주는 뷰어.
+- `[MODIFY]` [AIPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/AIPanel.tsx) - 탭 전환 조건부 렌더링 수정, 공통 헤더 툴바(캡처/검색/삽입) 상태와 핸들러 통합 및 webview 메타 정보 동적 연동 구현.
+- `[MODIFY]` [FinanceDashboardView.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/FinanceDashboardView.tsx) - QuoteRow 우클릭 contextMenu 바인딩, 아코디언 뷰 트랜지션 효과 주입 및 Mock 뉴스 렌더링, 본문 스크랩 함수 이식.
+- `[MODIFY]` [DrawingBlock.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/DrawingBlock.tsx) - 4대 결함 해결 및 10초 타임아웃, 재시도 제어 포트, 언마운트 flush, css 임포트 보정 완료.
+- `[MODIFY]` [MarkdownPreview.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/MarkdownPreview.tsx) - ameva-drawing 렌더링 분기를 추가하여 뷰모드에서 드로잉 캔버스가 정상 출력되도록 수정.
+- `[MODIFY]` [useAppGlobalApi.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/app/useAppGlobalApi.ts) - ameva:insert-text 이벤트 리스너 이식 및 마크다운 파싱을 통한 구조화된 에디터 블록 삽입 구현.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - 앱 최초 기동 시점 Ollama 설치/가동 유무 백데몬 자동 서브 스폰 헬퍼 추가.
+- `[MODIFY]` [SettingsTabAIEngine.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/settings/SettingsTabAIEngine.tsx) - 모델 카탈로그 원클릭 다운로드 순차 대기열 스케줄러(triggerNextQueueDownload) 및 UI 현황판, 개별 상태 뱃지 구현.
+- `[MODIFY]` [MarkdownEditor.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/MarkdownEditor.tsx) - (src 및 packages/core 둘 다) CP949 인코딩 유실로 인한 한글 깨짐 및 따옴표 닫기 구문오류 복구.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - 앱 최초 기동 시점 Ollama 설치/가동 유무 백데몬 자동 서브 스폰 헬퍼 추가.
+- `[MODIFY]` [SettingsTabAIEngine.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/settings/SettingsTabAIEngine.tsx) - 모델 카탈로그 원클릭 다운로드 순차 대기열 스케줄러(triggerNextQueueDownload) 및 UI 현황판, 개별 상태 뱃지 구현.
+
 ## 2026-07-09 (YouTube & Link Block Playback / Preview Refactoring & Decomposition)
 
 ### 🚀 주요 아키텍처 변경 사항

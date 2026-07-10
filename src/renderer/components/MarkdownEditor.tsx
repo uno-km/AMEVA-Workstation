@@ -4,48 +4,48 @@
  * @location packages/core/src/renderer/components/MarkdownEditor.tsx
  * @role Core Markdown Block-Note Editor Presentational View Component
  * 
- * [책임 범위 - RESPONSIBILITY]
- * - BlockNoteView 라이브러리를 바인딩하여 WYSIWYG 마크다운 문서 편집 영역을 렌더링한다.
- * - 사이드바 및 AI 패널로부터 주입받은 텍스트 및 블록 하이라이트(Peers 드래그 범위, 포인터, taggedBlocks 별표) 지표들을 화면에 투영한다.
- * - 사용자 입력 도중 단축 기호 트리거('/', '@', '#')에 맞추어 슬래시 명령, 사용자 멘션, 헤더 참조 링크 팝업을 라우팅 실행한다.
- * - 웰컴 배너, 서치바, 원문 마크다운 에어리어 등 에디터 모드(welcome/edit/preview/raw)별 분기 화면을 제어한다.
+ * [梨낆엫 踰붿쐞 - RESPONSIBILITY]
+ * - BlockNoteView ?쇱씠釉뚮윭由щ? 諛붿씤?⑺븯??WYSIWYG 留덊겕?ㅼ슫 臾몄꽌 ?몄쭛 ?곸뿭???뚮뜑留곹븳??
+ * - ?ъ씠?쒕컮 諛?AI ?⑤꼸濡쒕???二쇱엯諛쏆? ?띿뒪??諛?釉붾줉 ?섏씠?쇱씠??Peers ?쒕옒洹?踰붿쐞, ?ъ씤?? taggedBlocks 蹂꾪몴) 吏?쒕뱾???붾㈃???ъ쁺?쒕떎.
+ * - ?ъ슜???낅젰 ?꾩쨷 ?⑥텞 湲고샇 ?몃━嫄?'/', '@', '#')??留욎텛???щ옒??紐낅졊, ?ъ슜??硫섏뀡, ?ㅻ뜑 李몄“ 留곹겕 ?앹뾽???쇱슦???ㅽ뻾?쒕떎.
+ * - ?곗뺨 諛곕꼫, ?쒖튂諛? ?먮Ц 留덊겕?ㅼ슫 ?먯뼱由ъ뼱 ???먮뵒??紐⑤뱶(welcome/edit/preview/raw)蹂?遺꾧린 ?붾㈃???쒖뼱?쒕떎.
  * 
- * [책임이 아닌 것 - NON-RESPONSIBILITY]
- * - Yjs CRDT 데이터 교환 서버 통신 직접 조작 (useCollaboration 훅에 위임).
- * - AI 제안 수락 시 에디터 API 직접 패치 (useAIResponseHandler 훅에 위임).
+ * [梨낆엫???꾨땶 寃?- NON-RESPONSIBILITY]
+ * - Yjs CRDT ?곗씠??援먰솚 ?쒕쾭 ?듭떊 吏곸젒 議곗옉 (useCollaboration ?낆뿉 ?꾩엫).
+ * - AI ?쒖븞 ?섎씫 ???먮뵒??API 吏곸젒 ?⑥튂 (useAIResponseHandler ?낆뿉 ?꾩엫).
  * 
- * [절대 깨면 안 되는 계약 - CONTRACT]
- * - MUST: 리스너 누수 방지를 위해 '+' 버튼 가로채기 캡처 이벤트(`handleMouseDownCapture`) 등록 시,
- *   useEffect 클린업 단계에서 반드시 `removeEventListener` 계약을 보존할 것. (커스텀 버튼 도입으로 해당 리스너는 제거됨)
- * - MUST NOT bypass isProPlan: AI 컨텍스트 태깅용 반짝이(✨) 단추는 Pro 전용 기능이므로,
- *   반드시 `isProPlan === true` 일 때만 렌더링하도록 조건식을 유지할 것.
+ * [?덈? 源⑤㈃ ???섎뒗 怨꾩빟 - CONTRACT]
+ * - MUST: 由ъ뒪???꾩닔 諛⑹?瑜??꾪빐 '+' 踰꾪듉 媛濡쒖콈湲?罹≪쿂 ?대깽??`handleMouseDownCapture`) ?깅줉 ??
+ *   useEffect ?대┛???④퀎?먯꽌 諛섎뱶??`removeEventListener` 怨꾩빟??蹂댁〈??寃? (而ㅼ뒪? 踰꾪듉 ?꾩엯?쇰줈 ?대떦 由ъ뒪?덈뒗 ?쒓굅??
+ * - MUST NOT bypass isProPlan: AI 而⑦뀓?ㅽ듃 ?쒓퉭??諛섏쭩???? ?⑥텛??Pro ?꾩슜 湲곕뒫?대?濡?
+ *   諛섎뱶??`isProPlan === true` ???뚮쭔 ?뚮뜑留곹븯?꾨줉 議곌굔?앹쓣 ?좎???寃?
  
- * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - 소비처 A (src/renderer/AppLayout.tsx): 레이아웃 그리드 내부 또는 플로팅 레이어 영역 내에서 그리기로 소비.
- * - 소비처 B (src/renderer/App.tsx): 전역 모달 매니저 및 뷰포트 상태 스위칭에 따라 동적 마운트되어 소비.
+ * [?뚮퉬泥?- CONSUMERS / USAGE CONTEXT]
+ * - ?뚮퉬泥?A (src/renderer/AppLayout.tsx): ?덉씠?꾩썐 洹몃━???대? ?먮뒗 ?뚮줈???덉씠???곸뿭 ?댁뿉??洹몃━湲곕줈 ?뚮퉬.
+ * - ?뚮퉬泥?B (src/renderer/App.tsx): ?꾩뿭 紐⑤떖 留ㅻ땲? 諛?酉고룷???곹깭 ?ㅼ쐞移?뿉 ?곕씪 ?숈쟻 留덉슫?몃릺???뚮퉬.
  */
 
 /* 
  * [IMPORT SEGMENTATION & CONTRACTS]
- * - React, useState, useEffect: 상태 바인딩 및 HMR 라이프사이클 구동용 React 코어 API.
+ * - React, useState, useEffect: ?곹깭 諛붿씤??諛?HMR ?쇱씠?꾩궗?댄겢 援щ룞??React 肄붿뼱 API.
  */
 import React, { useState, useEffect, useCallback } from 'react'
 
 /* 
  * [BLOCKNOTE MANTINE WYSIWYG LAYOUT]
- * - BlockNoteView: 블록노트 에디터 핵심 프레임워크 Mantine 뷰.
+ * - BlockNoteView: 釉붾줉?명듃 ?먮뵒???듭떖 ?꾨젅?꾩썙??Mantine 酉?
  */
 import { BlockNoteView } from '@blocknote/mantine'
 
 /* 
  * [BLOCKNOTE REACT CONTROLLERS]
- * - SuggestionMenuController: 슬래시(/), 멘션(@), 헤더(#) 입력 감지 팝업 컨트롤러.
- * - SideMenuController: 블록 좌측의 [+] 및 [::] 드래그 그랩 영역 제어기.
- * - SideMenu: 블록 그랩 포털 사이드 메뉴 컴포넌트.
- * - RemoveBlockItem: 드래그 메뉴 내 블록 삭제 액션.
- * - DragHandleMenu: 드래그 핸들 전용 메뉴 래퍼.
- * - BlockColorsItem: 블록 배경/글자 색상 지정 액션.
- * - DragHandleButton: 사이드 메뉴 내부에서 드래그 핸들을 그리는 공식 컴포넌트.
+ * - SuggestionMenuController: ?щ옒??/), 硫섏뀡(@), ?ㅻ뜑(#) ?낅젰 媛먯? ?앹뾽 而⑦듃濡ㅻ윭.
+ * - SideMenuController: 釉붾줉 醫뚯륫??[+] 諛?[::] ?쒕옒洹?洹몃옪 ?곸뿭 ?쒖뼱湲?
+ * - SideMenu: 釉붾줉 洹몃옪 ?ы꽭 ?ъ씠??硫붾돱 而댄룷?뚰듃.
+ * - RemoveBlockItem: ?쒕옒洹?硫붾돱 ??釉붾줉 ??젣 ?≪뀡.
+ * - DragHandleMenu: ?쒕옒洹??몃뱾 ?꾩슜 硫붾돱 ?섑띁.
+ * - BlockColorsItem: 釉붾줉 諛곌꼍/湲???됱긽 吏???≪뀡.
+ * - DragHandleButton: ?ъ씠??硫붾돱 ?대??먯꽌 ?쒕옒洹??몃뱾??洹몃━??怨듭떇 而댄룷?뚰듃.
  */
 import {
   SuggestionMenuController,
@@ -62,45 +62,45 @@ import {
 
 /*
  * [BLOCKNOTE CORE EXTENSIONS - INTERNAL API ACCESS]
- * - SuggestionMenu: 슬래시 명령어 팝업 Extension 인스턴스 접근용.
- *   openSuggestionMenu('/') 공식 메서드를 통해 슬래시 메뉴를 트리거함.
- * - SideMenuExtension: 현재 사이드 메뉴가 가리키는 블록(block) 상태를 추적하는 Extension.
- *   useExtensionState로 block 객체를 읽어와 + 버튼 클릭 대상 식별에 사용.
+ * - SuggestionMenu: ?щ옒??紐낅졊???앹뾽 Extension ?몄뒪?댁뒪 ?묎렐??
+ *   openSuggestionMenu('/') 怨듭떇 硫붿꽌?쒕? ?듯빐 ?щ옒??硫붾돱瑜??몃━嫄고븿.
+ * - SideMenuExtension: ?꾩옱 ?ъ씠??硫붾돱媛 媛由ы궎??釉붾줉(block) ?곹깭瑜?異붿쟻?섎뒗 Extension.
+ *   useExtensionState濡?block 媛앹껜瑜??쎌뼱? + 踰꾪듉 ?대┃ ????앸퀎???ъ슜.
  */
 import { SuggestionMenu, SideMenuExtension } from '@blocknote/core/extensions'
 
 /* 
  * [STYLESHEET]
- * - style.css: BlockNote Mantine 기본 레이아웃 및 폰트 CSS.
+ * - style.css: BlockNote Mantine 湲곕낯 ?덉씠?꾩썐 諛??고듃 CSS.
  */
 import '@blocknote/mantine/style.css'
 
 /* 
  * [LUCIDE ICONS]
- * - X: 닫기 아이콘.
- * - Users: 멘션 시 참여 피어 목록 아이콘.
- * - FileText: 멘션 시 타 문서 링크 아이콘.
- * - Sparkles: 헤더 참조 링크 아이콘.
+ * - X: ?リ린 ?꾩씠肄?
+ * - Users: 硫섏뀡 ??李몄뿬 ?쇱뼱 紐⑸줉 ?꾩씠肄?
+ * - FileText: 硫섏뀡 ??? 臾몄꽌 留곹겕 ?꾩씠肄?
+ * - Sparkles: ?ㅻ뜑 李몄“ 留곹겕 ?꾩씠肄?
  */
 import { X, Users, FileText, Sparkles } from 'lucide-react'
 
 /* 
  * [MERMAID GRAPH ENGINE]
- * - mermaid: Jupyter 및 마크다운 내부 텍스트 플로우차트/다이어그램 실시간 컴파일러.
+ * - mermaid: Jupyter 諛?留덊겕?ㅼ슫 ?대? ?띿뒪???뚮줈?곗감???ㅼ씠?닿렇???ㅼ떆媛?而댄뙆?쇰윭.
  */
 import mermaid from 'mermaid'
 
 /* 
  * [SUB-HOOKS FOR SEPARATE LOGICS]
- * - useBacktickFence: 세번 백틱(```) 입력 시 Jupyter 코드 블록으로 자동 파싱 전환하는 도우미 훅.
- * - useCollaborationHighlight: Yjs 피어 편집 시 블록 포커스 테두리 깜빡임 연출 훅.
- * - useNativeUploadIntercept: 이미지 드래그 드롭 업로드 시 로컬 VFS 복사 인터셉트 훅.
+ * - useBacktickFence: ?몃쾲 諛깊떛(```) ?낅젰 ??Jupyter 肄붾뱶 釉붾줉?쇰줈 ?먮룞 ?뚯떛 ?꾪솚?섎뒗 ?꾩슦誘???
+ * - useCollaborationHighlight: Yjs ?쇱뼱 ?몄쭛 ??釉붾줉 ?ъ빱???뚮몢由?源쒕묀???곗텧 ??
+ * - useNativeUploadIntercept: ?대?吏 ?쒕옒洹??쒕∼ ?낅줈????濡쒖뺄 VFS 蹂듭궗 ?명꽣?됲듃 ??
  */
 import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
 import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
-// Mermaid 초기화 시도
+// Mermaid 珥덇린???쒕룄
 try {
   mermaid.initialize({
     startOnLoad: false,
@@ -113,12 +113,12 @@ try {
 
 /* 
  * [COMPONENTS]
- * - MarkdownPreview: 읽기 전용 최종 HTML 미리보기 컴포넌트.
- * - PeerBlockHighlightLayer: 타 피어들의 텍스트 드래그 및 마우스 캐럿 위치 투영 오버레이 레이어.
- * - getCustomSlashMenuItems: 커스텀 입점 플러그인(Jupyter, Drawing 등) 추가용 슬래시 메뉴 리스트 빌더.
- * - WelcomeBanner: 최초 로딩 환영 카드 뷰.
- * - RichStyleToolbar: 폰트 및 폰트크기 강제 커스텀 툴바.
- * - ImageLightbox: 이미지 클릭 시 풀스크린 확대 뷰 모달.
+ * - MarkdownPreview: ?쎄린 ?꾩슜 理쒖쥌 HTML 誘몃━蹂닿린 而댄룷?뚰듃.
+ * - PeerBlockHighlightLayer: ? ?쇱뼱?ㅼ쓽 ?띿뒪???쒕옒洹?諛?留덉슦??罹먮읉 ?꾩튂 ?ъ쁺 ?ㅻ쾭?덉씠 ?덉씠??
+ * - getCustomSlashMenuItems: 而ㅼ뒪? ?낆젏 ?뚮윭洹몄씤(Jupyter, Drawing ?? 異붽????щ옒??硫붾돱 由ъ뒪??鍮뚮뜑.
+ * - WelcomeBanner: 理쒖큹 濡쒕뵫 ?섏쁺 移대뱶 酉?
+ * - RichStyleToolbar: ?고듃 諛??고듃?ш린 媛뺤젣 而ㅼ뒪? ?대컮.
+ * - ImageLightbox: ?대?吏 ?대┃ ????ㅽ겕由??뺣? 酉?紐⑤떖.
  */
 import { MarkdownPreview } from './MarkdownPreview'
 import { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
@@ -129,15 +129,14 @@ import { ImageLightbox } from './ImageLightbox'
 
 /* 
  * [INTERACTION HOOKS]
- * - useHoverBlock: 마우스 커서 아래 블록 정보 및 좌표 영역 실시간 추적 훅.
- * - useSideMenuHoverSync: Mantine 포털 메뉴 호버 전파 보정 훅.
- * - useEditorDragDrop: 마크다운 파일/URL 외부 드롭 캡처 훅.
- * - useEditorPaste: 클립보드 이미지 및 코드 원문 가로채기 훅.
- * - useImageLightbox: 이미지 팝업 제어 훅.
- * - useSelectionTracking: 선택 영역 문자열 캡처 전파 훅.
+ * - useHoverBlock: 留덉슦??而ㅼ꽌 ?꾨옒 釉붾줉 ?뺣낫 諛?醫뚰몴 ?곸뿭 ?ㅼ떆媛?異붿쟻 ??
+ * - useSideMenuHoverSync: Mantine ?ы꽭 硫붾돱 ?몃쾭 ?꾪뙆 蹂댁젙 ??
+ * - useEditorDragDrop: 留덊겕?ㅼ슫 ?뚯씪/URL ?몃? ?쒕∼ 罹≪쿂 ??
+ * - useEditorPaste: ?대┰蹂대뱶 ?대?吏 諛?肄붾뱶 ?먮Ц 媛濡쒖콈湲???
+ * - useImageLightbox: ?대?吏 ?앹뾽 ?쒖뼱 ??
+ * - useSelectionTracking: ?좏깮 ?곸뿭 臾몄옄??罹≪쿂 ?꾪뙆 ??
  */
 import { useHoverBlock } from '../hooks/editor/useHoverBlock'
-import { useSideMenuHoverSync } from '../hooks/editor/useSideMenuHoverSync'
 import { useEditorDragDrop } from '../hooks/editor/useEditorDragDrop'
 import { useEditorPaste } from '../hooks/editor/useEditorPaste'
 import { useImageLightbox } from '../hooks/editor/useImageLightbox'
@@ -145,15 +144,15 @@ import { useSelectionTracking } from '../hooks/editor/useSelectionTracking'
 
 /* 
  * [CONTEXT & STORE]
- * - useAppContext: 에디터 인스턴스, 설정을 들고 있는 최상위 Context.
- * - useWorkspaceStore: 탭 관리 및 버퍼 정보 스토어.
+ * - useAppContext: ?먮뵒???몄뒪?댁뒪, ?ㅼ젙???ㅺ퀬 ?덈뒗 理쒖긽??Context.
+ * - useWorkspaceStore: ??愿由?諛?踰꾪띁 ?뺣낫 ?ㅽ넗??
  */
 import { useAppContext } from '../contexts/AppContext'
 import { useWorkspaceStore } from '../stores/useWorkspaceStore'
 
 /**
  * @interface MarkdownEditorProps
- * @description 에디터 드래그 및 포인터 이동 콜백 등 외부 레이아웃 바인딩을 위한 Props.
+ * @description ?먮뵒???쒕옒洹?諛??ъ씤???대룞 肄쒕갚 ???몃? ?덉씠?꾩썐 諛붿씤?⑹쓣 ?꾪븳 Props.
  */
 export interface MarkdownEditorProps {
   onMouseMove?: (e: React.MouseEvent) => void
@@ -168,31 +167,30 @@ export interface MarkdownEditorProps {
 /**
  * @component CustomAddBlockButton
  * @location src/renderer/components/MarkdownEditor.tsx
- * @description BlockNote SideMenu 내에서 렌더링되는 커스텀 [+] 블록 추가 버튼 컴포넌트.
+ * @description BlockNote SideMenu ?댁뿉???뚮뜑留곷릺??而ㅼ뒪? [+] 釉붾줉 異붽? 踰꾪듉 而댄룷?뚰듃.
  *
- * [설계 핵심 이유 - WHY SEPARATED]
- * - BlockNote의 slashMenu를 열기 위해서는 `suggestionMenu.openSuggestionMenu('/')` 공식 API가
- *   반드시 필요하다. 이 API는 `useExtension(SuggestionMenu)` 훅을 통해서만 접근 가능하며,
- *   이 훅은 BlockNote Context 내부에서만 유효하게 호출된다.
- * - MarkdownEditor 함수 외부에 정의하는 이유: SideMenuController의 sideMenu prop으로 넘길 때
- *   인라인 화살표 함수를 사용하면 부모 리렌더마다 새 함수 참조가 생성되어 SideMenu가
- *   언마운트→리마운트를 반복하는 심각한 visual flicker 버그가 발생하기 때문이다.
+ * [?ㅺ퀎 ?듭떖 ?댁쑀 - WHY SEPARATED]
+ * - BlockNote??slashMenu瑜??닿린 ?꾪빐?쒕뒗 `suggestionMenu.openSuggestionMenu('/')` 怨듭떇 API媛
+ *   諛섎뱶???꾩슂?섎떎. ??API??`useExtension(SuggestionMenu)` ?낆쓣 ?듯빐?쒕쭔 ?묎렐 媛?ν븯硫?
+ *   ???낆? BlockNote Context ?대??먯꽌留??좏슚?섍쾶 ?몄텧?쒕떎.
+ * - MarkdownEditor ?⑥닔 ?몃????뺤쓽?섎뒗 ?댁쑀: SideMenuController??sideMenu prop?쇰줈 ?섍만 ?? *   ?몃씪???붿궡???⑥닔瑜??ъ슜?섎㈃ 遺紐?由щ젋?붾쭏?????⑥닔 李몄“媛 ?앹꽦?섏뼱 SideMenu媛
+ *   ?몃쭏?댄듃?믩━留덉슫?몃? 諛섎났?섎뒗 ?ш컖??visual flicker 踰꾧렇媛 諛쒖깮?섍린 ?뚮Ц?대떎.
  *
- * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - 소비처 A (CustomSideMenu): 아래 정의된 CustomSideMenu 컴포넌트가 children으로 포함.
+ * [?뚮퉬泥?- CONSUMERS / USAGE CONTEXT]
+ * - ?뚮퉬泥?A (CustomSideMenu): ?꾨옒 ?뺤쓽??CustomSideMenu 而댄룷?뚰듃媛 children?쇰줈 ?ы븿.
  *
  * [CONTRACT]
- * - MUST: 이 컴포넌트는 반드시 BlockNoteView 하위(BlockNote Context 내부)에서 렌더링되어야 함.
- *   Context 외부에서 렌더링 시 useBlockNoteEditor / useExtension 훅이 에러를 발생시킴.
+ * - MUST: ??而댄룷?뚰듃??諛섎뱶??BlockNoteView ?섏쐞(BlockNote Context ?대?)?먯꽌 ?뚮뜑留곷릺?댁빞 ??
+ *   Context ?몃??먯꽌 ?뚮뜑留???useBlockNoteEditor / useExtension ?낆씠 ?먮윭瑜?諛쒖깮?쒗궡.
  */
 const CustomAddBlockButton = () => {
   /*
    * [BLOCKNOTE CONTEXT HOOKS]
-   * - editor: 현재 BlockNote 에디터 인스턴스 (블록 삽입/커서 이동 API 접근용).
-   * - suggestionMenu: SuggestionMenu Extension 인스턴스.
-   *   openSuggestionMenu('/') 메서드로 슬래시 팝업을 프로그래매틱하게 열 수 있음.
-   * - block: SideMenuExtension 상태에서 현재 사이드 메뉴가 가리키는 블록 객체.
-   *   Expected value: BlockNote Block 객체 또는 undefined (메뉴 미표시 상태).
+   * - editor: ?꾩옱 BlockNote ?먮뵒???몄뒪?댁뒪 (釉붾줉 ?쎌엯/而ㅼ꽌 ?대룞 API ?묎렐??.
+   * - suggestionMenu: SuggestionMenu Extension ?몄뒪?댁뒪.
+   *   openSuggestionMenu('/') 硫붿꽌?쒕줈 ?щ옒???앹뾽???꾨줈洹몃옒留ㅽ떛?섍쾶 ?????덉쓬.
+   * - block: SideMenuExtension ?곹깭?먯꽌 ?꾩옱 ?ъ씠??硫붾돱媛 媛由ы궎??釉붾줉 媛앹껜.
+   *   Expected value: BlockNote Block 媛앹껜 ?먮뒗 undefined (硫붾돱 誘명몴???곹깭).
    */
   const editor = useBlockNoteEditor()
   const suggestionMenu = useExtension(SuggestionMenu)
@@ -203,10 +201,9 @@ const CustomAddBlockButton = () => {
 
   /**
    * [EVENT HANDLER - onClick]
-   * - Rationale: 클릭 시 항상 현재 블록 아래에 새 빈 단락을 삽입하고 커서를 이동한 후
-   *   슬래시 메뉴를 열어 사용자 명령 선택을 유도한다.
-   * - 조건 만족 시 (block === undefined): 즉시 탈출.
-   * - 조건 불만족 시: 현재 블록 아래에 새 빈 단락 삽입 → 커서 이동 → 슬래시 메뉴 오픈.
+   * - Rationale: ?대┃ ????긽 ?꾩옱 釉붾줉 ?꾨옒????鍮??⑤씫???쎌엯?섍퀬 而ㅼ꽌瑜??대룞????   *   ?щ옒??硫붾돱瑜??댁뼱 ?ъ슜??紐낅졊 ?좏깮???좊룄?쒕떎.
+   * - 議곌굔 留뚯” ??(block === undefined): 利됱떆 ?덉텧.
+   * - 議곌굔 遺덈쭔議??? ?꾩옱 釉붾줉 ?꾨옒????鍮??⑤씫 ?쎌엯 ??而ㅼ꽌 ?대룞 ???щ옒??硫붾돱 ?ㅽ뵂.
    */
   const onClick = useCallback(() => {
     if (block === undefined) return
@@ -218,11 +215,11 @@ const CustomAddBlockButton = () => {
       blockContent.length === 0
 
     if (isBlockEmpty) {
-      // 빈 블록인 경우: 기존 위치에 커서 포커싱하고 슬래시 메뉴 열기
+      // 鍮?釉붾줉??寃쎌슦: 湲곗〈 ?꾩튂??而ㅼ꽌 ?ъ빱?깊븯怨??щ옒??硫붾돱 ?닿린
       editor.setTextCursorPosition(block)
       suggestionMenu.openSuggestionMenu('/')
     } else {
-      // 내용이 있는 블록인 경우: 아래에 새 빈 단락을 삽입하고 커서 이동 후 슬래시 메뉴 열기
+      // ?댁슜???덈뒗 釉붾줉??寃쎌슦: ?꾨옒????鍮??⑤씫???쎌엯?섍퀬 而ㅼ꽌 ?대룞 ???щ옒??硫붾돱 ?닿린
       const insertedBlock = editor.insertBlocks(
         [{ type: 'paragraph' }],
         block,
@@ -277,17 +274,17 @@ const CustomAddBlockButton = () => {
 /**
  * @component CustomSideMenu
  * @location src/renderer/components/MarkdownEditor.tsx
- * @description BlockNote SideMenuController에 주입되는 커스텀 SideMenu 조합 컴포넌트.
+ * @description BlockNote SideMenuController??二쇱엯?섎뒗 而ㅼ뒪? SideMenu 議고빀 而댄룷?뚰듃.
  *
- * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - 소비처 A (MarkdownEditor): BlockNoteView 내부 SideMenuController의 sideMenu prop으로 전달.
+ * [?뚮퉬泥?- CONSUMERS / USAGE CONTEXT]
+ * - ?뚮퉬泥?A (MarkdownEditor): BlockNoteView ?대? SideMenuController??sideMenu prop?쇰줈 ?꾨떖.
  */
 const CustomSideMenu = () => (
   <SideMenu
     dragHandleMenu={(menuProps) => (
       <DragHandleMenu {...menuProps}>
-        <RemoveBlockItem {...menuProps}>삭제 (Delete)</RemoveBlockItem>
-        <BlockColorsItem {...menuProps}>색상 (Colors)</BlockColorsItem>
+        <RemoveBlockItem {...menuProps}>??젣 (Delete)</RemoveBlockItem>
+        <BlockColorsItem {...menuProps}>?됱긽 (Colors)</BlockColorsItem>
       </DragHandleMenu>
     )}
   >
@@ -295,8 +292,8 @@ const CustomSideMenu = () => (
     <DragHandleButton
       dragHandleMenu={(menuProps) => (
         <DragHandleMenu {...menuProps}>
-          <RemoveBlockItem {...menuProps}>삭제 (Delete)</RemoveBlockItem>
-          <BlockColorsItem {...menuProps}>색상 (Colors)</BlockColorsItem>
+          <RemoveBlockItem {...menuProps}>??젣 (Delete)</RemoveBlockItem>
+          <BlockColorsItem {...menuProps}>?됱긽 (Colors)</BlockColorsItem>
         </DragHandleMenu>
       )}
     />
@@ -305,18 +302,18 @@ const CustomSideMenu = () => (
 
 /**
  * @component MarkdownEditor
- * @description WYSIWYG 에디터 영역 렌더러 및 사용자 단축 팝업 액션을 통제하는 코어 컴포넌트.
+ * @description WYSIWYG ?먮뵒???곸뿭 ?뚮뜑??諛??ъ슜???⑥텞 ?앹뾽 ?≪뀡???듭젣?섎뒗 肄붿뼱 而댄룷?뚰듃.
  */
 export function MarkdownEditor({
   /*
    * [PROPERTY MAPPINGS]
-   * - onMouseMove: 마우스 위치 트래킹 전송 핸들러.
-   * - onSelectionChange: 캐럿 범위 변경 감지 핸들러.
-   * - onBlockHighlight: 블록 포커싱 동기화 콜백.
-   * - editorContainerRef: 최상위 DOM 마운트용 참조 레퍼런스.
-   * - onSelectedTextChange: 선택 텍스트 저장 스토어 연계 핸들러.
-   * - taggedBlocks: 지시용 태그 블록 정보 목록.
-   * - setTaggedBlocks: 지시용 태그 블록 갱신 세터.
+   * - onMouseMove: 留덉슦???꾩튂 ?몃옒???꾩넚 ?몃뱾??
+   * - onSelectionChange: 罹먮읉 踰붿쐞 蹂寃?媛먯? ?몃뱾??
+   * - onBlockHighlight: 釉붾줉 ?ъ빱???숆린??肄쒕갚.
+   * - editorContainerRef: 理쒖긽??DOM 留덉슫?몄슜 李몄“ ?덊띁?곗뒪.
+   * - onSelectedTextChange: ?좏깮 ?띿뒪??????ㅽ넗???곌퀎 ?몃뱾??
+   * - taggedBlocks: 吏?쒖슜 ?쒓렇 釉붾줉 ?뺣낫 紐⑸줉.
+   * - setTaggedBlocks: 吏?쒖슜 ?쒓렇 釉붾줉 媛깆떊 ?명꽣.
    */
   onMouseMove = () => {},
   onSelectionChange = () => {},
@@ -328,122 +325,121 @@ export function MarkdownEditor({
 }: MarkdownEditorProps) {
   /*
    * [CONTEXT VALUES]
-   * - editor: BlockNote API 기동 본체.
-   * - editorMode: welcome/edit/preview/raw 화면 모드 지표.
-   * - peers: 현재 편집실 참여 협업자 레코드.
-   * - settings: 렌더러 일반 세팅 정보.
-   * - isProPlan: 프로 요금제 가입 여부.
-   * - handleOpenFile: 파일 열기 트리거.
-   * - handleStartWelcomeEdit: 웰컴 화면 종료 및 에디터 로드 콜백.
-   * - handleStartNewDocument: 빈 문서 생성 콜백.
+   * - editor: BlockNote API 湲곕룞 蹂몄껜.
+   * - editorMode: welcome/edit/preview/raw ?붾㈃ 紐⑤뱶 吏??
+   * - peers: ?꾩옱 ?몄쭛??李몄뿬 ?묒뾽???덉퐫??
+   * - settings: ?뚮뜑???쇰컲 ?명똿 ?뺣낫.
+   * - isProPlan: ?꾨줈 ?붽툑??媛???щ?.
+   * - handleOpenFile: ?뚯씪 ?닿린 ?몃━嫄?
+   * - handleStartWelcomeEdit: ?곗뺨 ?붾㈃ 醫낅즺 諛??먮뵒??濡쒕뱶 肄쒕갚.
+   * - handleStartNewDocument: 鍮?臾몄꽌 ?앹꽦 肄쒕갚.
    */
   const { editor, editorMode, peers, settings, isProPlan, handleOpenFile, handleStartWelcomeEdit, handleStartNewDocument } = useAppContext()
   
   /*
    * [ZUSTAND STORE PROPERTIES]
-   * - currentContent: 원문 텍스트 버퍼.
-   * - setCurrentContent: 원문 텍스트 변경 세터.
-   * - tabs: 다중 문서 탭 정보 목록.
+   * - currentContent: ?먮Ц ?띿뒪??踰꾪띁.
+   * - setCurrentContent: ?먮Ц ?띿뒪??蹂寃??명꽣.
+   * - tabs: ?ㅼ쨷 臾몄꽌 ???뺣낫 紐⑸줉.
    */
   const { currentContent, setCurrentContent, tabs } = useWorkspaceStore()
   
   /*
    * [LOCAL CONFIG VARIABLES]
-   * - wordWrap: 줄바꿈 허용 세팅 여부.
-   * - showCodeRunner: 하단 주피터 콘솔 출력창 노출 여부.
-   * - theme: 화이트/다크 테마 정보.
-   * - installedPlugins: 폰트 강제 변경 등 설치 완료된 플러그인 리스트.
+   * - wordWrap: 以꾨컮轅??덉슜 ?명똿 ?щ?.
+   * - showCodeRunner: ?섎떒 二쇳뵾??肄섏넄 異쒕젰李??몄텧 ?щ?.
+   * - theme: ?붿씠???ㅽ겕 ?뚮쭏 ?뺣낫.
+   * - installedPlugins: ?고듃 媛뺤젣 蹂寃????ㅼ튂 ?꾨즺???뚮윭洹몄씤 由ъ뒪??
    */
   const wordWrap = settings?.wordWrap || false
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `showCodeRunner`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const showCodeRunner = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `showCodeRunner`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const showCodeRunner = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
   const showCodeRunner = settings?.showCodeConsole || false
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `theme`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const theme = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `theme`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const theme = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
   const theme = settings?.theme || 'dark'
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `installedPlugins`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const installedPlugins = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `installedPlugins`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const installedPlugins = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
   const installedPlugins = settings?.installedPlugins || []
 
-  // Rationale: console.debug 경고 누락 및 미사용 변수 체크 해결
+  // Rationale: console.debug 寃쎄퀬 ?꾨씫 諛?誘몄궗??蹂??泥댄겕 ?닿껐
   console.debug("Unused vars (MarkdownEditor):", { X, showCodeRunner, taggedBlocks });
 
   /*
    * [RICH STYLE VARIABLES]
-   * - selectedFont: 사용자가 툴바에서 지정한 커스텀 폰트명.
-   * - selectedSize: 사용자가 툴바에서 지정한 커스텀 크기 px.
+   * - selectedFont: ?ъ슜?먭? ?대컮?먯꽌 吏?뺥븳 而ㅼ뒪? ?고듃紐?
+   * - selectedSize: ?ъ슜?먭? ?대컮?먯꽌 吏?뺥븳 而ㅼ뒪? ?ш린 px.
    */
   const [selectedFont, setSelectedFont] = useState('Pretendard')
   const [selectedSize, setSelectedSize] = useState('14px')
 
   /*
    * [HOVER CONTROLLER VARIABLES]
-   * - hoverBlock: 현재 마우스가 올라가 있는 블록의 ID, 내용, 좌표(rect) 정보.
-   * - handleEditorMouseMove: 에디터 캔버스 내 마우스 이동 실시간 감지 핸들러.
+   * - hoverBlock: ?꾩옱 留덉슦?ㅺ? ?щ씪媛 ?덈뒗 釉붾줉??ID, ?댁슜, 醫뚰몴(rect) ?뺣낫.
+   * - handleEditorMouseMove: ?먮뵒??罹붾쾭????留덉슦???대룞 ?ㅼ떆媛?媛먯? ?몃뱾??
    */
   const { hoverBlock, handleEditorMouseMove } = useHoverBlock(
     editor, editorMode, editorContainerRef, onMouseMove, isProPlan
   )
 
-  // JS 기반 포털 마운트 호버 동기화 훅 가동
-  useSideMenuHoverSync()
+  // JS 湲곕컲 ?ы꽭 留덉슫???몃쾭 ?숆린????媛??  useSideMenuHoverSync()
 
   /*
    * [PLUGIN FLAG]
-   * - hasRichStyling: 리치 폰팅 커스텀 툴바 입점 여부.
+   * - hasRichStyling: 由ъ튂 ?고똿 而ㅼ뒪? ?대컮 ?낆젏 ?щ?.
    */
   const hasRichStyling = installedPlugins.includes('rich-styling')
 
   /**
    * [SIDE EFFECT - Font Style Injection]
-   * - Rationale: rich-styling 플러그인이 로드되어 있을 때에만 선택된 폰트와 크기를 에디터 에디터 본문 DOM에 강제 인젝션한다.
+   * - Rationale: rich-styling ?뚮윭洹몄씤??濡쒕뱶?섏뼱 ?덉쓣 ?뚯뿉留??좏깮???고듃? ?ш린瑜??먮뵒???먮뵒??蹂몃Ц DOM??媛뺤젣 ?몄젥?섑븳??
    */
   useEffect(() => {
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editorContainerRef.current`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!editorContainerRef.current)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 議곌굔 ?? `!editorContainerRef.current`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (!editorContainerRef.current)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
        */
     if (!editorContainerRef.current) return
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `editorDom`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const editorDom = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `editorDom`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const editorDom = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
     const editorDom = editorContainerRef.current.querySelector('.bn-editor') as HTMLElement
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `editorDom`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (editorDom)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 議곌굔 ?? `editorDom`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (editorDom)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
        */
     if (editorDom) {
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `hasRichStyling`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (hasRichStyling)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 議곌굔 ?? `hasRichStyling`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (hasRichStyling)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
        */
       if (hasRichStyling) {
         editorDom.style.fontFamily = selectedFont
@@ -455,39 +451,39 @@ export function MarkdownEditor({
     }
   }, [selectedFont, selectedSize, editor, editorMode, hasRichStyling, editorContainerRef])
 
-  // 코드 펜스, 협업 깜빡임 및 파일 드롭 이미지 가로채기 훅 구동
+  // 肄붾뱶 ?쒖뒪, ?묒뾽 源쒕묀??諛??뚯씪 ?쒕∼ ?대?吏 媛濡쒖콈湲???援щ룞
   useBacktickFence(editor)
   useCollaborationHighlight(editor, onBlockHighlight, editorContainerRef)
   useNativeUploadIntercept(editor, editorContainerRef)
 
   /*
    * [DRAG DROP & CLIPBOARD PASTE CAPTURES]
-   * - onDropCapture: 드래그 드롭 이미지/파일 인터셉트.
-   * - onPasteCapture: 클립보드 붙여넣기 인터셉트.
+   * - onDropCapture: ?쒕옒洹??쒕∼ ?대?吏/?뚯씪 ?명꽣?됲듃.
+   * - onPasteCapture: ?대┰蹂대뱶 遺숈뿬?ｊ린 ?명꽣?됲듃.
    */
   const { onDropCapture } = useEditorDragDrop(editor, editorMode)
   const { onPasteCapture } = useEditorPaste(editor, editorMode)
 
   /*
    * [LIGHTBOX & SELECTION VARIABLES]
-   * - selectedImg: 확대 팝업된 이미지 파일 URL.
-   * - setSelectedImg: 이미지 확대 팝업 세터.
-   * - handleSelection: 마우스 드래그 선택 시 텍스트 내용 캡처 및 전송.
+   * - selectedImg: ?뺣? ?앹뾽???대?吏 ?뚯씪 URL.
+   * - setSelectedImg: ?대?吏 ?뺣? ?앹뾽 ?명꽣.
+   * - handleSelection: 留덉슦???쒕옒洹??좏깮 ???띿뒪???댁슜 罹≪쿂 諛??꾩넚.
    */
   const { selectedImg, setSelectedImg } = useImageLightbox(editorContainerRef)
   const { handleSelection } = useSelectionTracking(editor, onSelectedTextChange, onSelectionChange)
 
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editor`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 議곌굔 ?? `!editor`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (!editor)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
        */
   if (!editor) {
     return (
       <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-        에디터를 준비 중입니다...
+        ?먮뵒?곕? 以鍮?以묒엯?덈떎...
       </div>
     )
   }
@@ -520,8 +516,7 @@ export function MarkdownEditor({
       >
         <PeerBlockHighlightLayer peers={peers} containerRef={editorContainerRef} />
 
-        {/* 🤖 컨텍스트 연동 호버 에이전트 별표(✨) 버튼 레이어
-          * [CONTRACT] isProPlan 조건 적용 위치: ✨ 별표 버튼은 Pro 전용 기능(블록 컨텍스트 태깅)이므로 isProPlan=true일 때만 표시.
+        {/* ?쨼 而⑦뀓?ㅽ듃 ?곕룞 ?몃쾭 ?먯씠?꾪듃 蹂꾪몴(?? 踰꾪듉 ?덉씠??          * [CONTRACT] isProPlan 議곌굔 ?곸슜 ?꾩튂: ??蹂꾪몴 踰꾪듉? Pro ?꾩슜 湲곕뒫(釉붾줉 而⑦뀓?ㅽ듃 ?쒓퉭)?대?濡?isProPlan=true???뚮쭔 ?쒖떆.
           */}
         {hoverBlock && editorMode === 'edit' && isProPlan && (
           <button
@@ -546,21 +541,20 @@ export function MarkdownEditor({
               padding: 0,
               transition: 'transform 0.15s',
             }}
-            title="이 블록을 AI 채팅 컨텍스트로 태그하여 참조"
+            title="??釉붾줉??AI 梨꾪똿 而⑦뀓?ㅽ듃濡??쒓렇?섏뿬 李몄“"
             onClick={(e) => {
               e.stopPropagation()
               if (taggedBlocks.some(b => b.id === hoverBlock.id)) return
               const snippet = hoverBlock.text.length > 20
                 ? hoverBlock.text.slice(0, 20) + '...'
-                : hoverBlock.text || '본문 문단'
+                : hoverBlock.text || '蹂몃Ц 臾몃떒'
               setTaggedBlocks([...taggedBlocks, { id: hoverBlock.id, text: snippet }])
             }}
           >
-            ✨
-          </button>
+            ??          </button>
         )}
 
-        {/* 협업 참여자 드래그 선택 범위 박스 실시간 투영 */}
+        {/* ?묒뾽 李몄뿬???쒕옒洹??좏깮 踰붿쐞 諛뺤뒪 ?ㅼ떆媛??ъ쁺 */}
         {peers.map((peer) => {
           if (!peer.dragSelection?.rects) return null
           return peer.dragSelection.rects.map((rect, idx) => (
@@ -576,7 +570,7 @@ export function MarkdownEditor({
           ))
         })}
 
-        {/* 협업 참여자 마우스 포인터 실시간 이동 투영 */}
+        {/* ?묒뾽 李몄뿬??留덉슦???ъ씤???ㅼ떆媛??대룞 ?ъ쁺 */}
         {peers.map((peer) => {
           if (!peer.pointer) return null
           return (
@@ -605,7 +599,7 @@ export function MarkdownEditor({
           )
         })}
 
-        {/* 에디터 모드 전환 분기 렌더 */}
+        {/* ?먮뵒??紐⑤뱶 ?꾪솚 遺꾧린 ?뚮뜑 */}
         {editorMode === 'welcome' ? (
           <WelcomeBanner
             onStartWelcomeEdit={handleStartWelcomeEdit}
@@ -618,21 +612,20 @@ export function MarkdownEditor({
           <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
             {/*
               * [CONTRACT - Stable Component Reference]
-              * - sideMenu prop에 인라인 화살표 함수를 넘기면 부모 리렌더 시마다
-              *   새 함수 참조가 생성되어 SideMenu가 언마운트→리마운트를 반복한다.
-              * - CustomSideMenu를 Named 컴포넌트로 분리하여 안정적인 참조를 보장한다.
+              * - sideMenu prop???몃씪???붿궡???⑥닔瑜??섍린硫?遺紐?由щ젋???쒕쭏??              *   ???⑥닔 李몄“媛 ?앹꽦?섏뼱 SideMenu媛 ?몃쭏?댄듃?믩━留덉슫?몃? 諛섎났?쒕떎.
+              * - CustomSideMenu瑜?Named 而댄룷?뚰듃濡?遺꾨━?섏뿬 ?덉젙?곸씤 李몄“瑜?蹂댁옣?쒕떎.
               */}
             <SideMenuController sideMenu={CustomSideMenu} />
-            {/* 1. 슬래시(/) 명령어 단축 팝업 제어 */}
+            {/* 1. ?щ옒??/) 紐낅졊???⑥텞 ?앹뾽 ?쒖뼱 */}
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `items`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const items = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `items`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const items = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                 const items = getCustomSlashMenuItems(editor, installedPlugins)
                 return items.filter(item =>
@@ -641,28 +634,28 @@ export function MarkdownEditor({
                 )
               }}
             />
-            {/* 2. 골뱅이(@) 참여자 멘션 및 타 문서 링크 단축 팝업 제어 */}
+            {/* 2. 怨⑤콉??@) 李몄뿬??硫섏뀡 諛?? 臾몄꽌 留곹겕 ?⑥텞 ?앹뾽 ?쒖뼱 */}
             <SuggestionMenuController
               triggerCharacter="@"
               getItems={async (query) => {
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editor`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 議곌굔 ?? `!editor`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (!editor)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
        */
                 if (!editor) return []
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `peerItems`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const peerItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `peerItems`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const peerItems = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                 const peerItems = peers.map(p => ({
-                  title: p.name || '알 수 없는 사용자',
-                  subtext: '협업 참가자 멘션',
+                  title: p.name || '이름없는 사용자',
+                  subtext: '작업 참여자 멘션',
                   icon: <Users size={14} color={p.color || '#a855f7'} />,
                   onItemClick: () => {
                     editor.insertInlineContent([{ type: 'text', text: `@${p.name} `, styles: { bold: true } as any }])
@@ -670,23 +663,23 @@ export function MarkdownEditor({
                 }))
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `docItems`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const docItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `docItems`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const docItems = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                 const docItems = tabs.map(t => {
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `title`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const title = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `title`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const title = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
-                  const title = t.filePath ? t.filePath.split(/[\\/]/).pop() || '문서' : '제목 없음'
+                  const title = t.filePath ? t.filePath.split(/[\\/]/).pop() || '臾몄꽌' : '?쒕ぉ ?놁쓬'
                   return {
                     title: title,
-                    subtext: t.filePath ? `문서 경로: ${t.filePath}` : '저장되지 않은 문서',
+                    subtext: t.filePath ? `臾몄꽌 寃쎈줈: ${t.filePath}` : '??λ릺吏 ?딆? 臾몄꽌',
                     icon: <FileText size={14} color="#3b82f6" />,
                     onItemClick: () => {
                       editor.insertInlineContent([
@@ -701,64 +694,64 @@ export function MarkdownEditor({
                 })
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `allItems`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const allItems = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `allItems`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const allItems = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                 const allItems = [...peerItems, ...docItems]
                 return allItems.filter(item => item.title.toLowerCase().includes(query.toLowerCase()))
               }}
             />
-            {/* 3. 우물정(#) 헤더 참조 링크 단축 팝업 제어 */}
+            {/* 3. ?곕Ъ??#) ?ㅻ뜑 李몄“ 留곹겕 ?⑥텞 ?앹뾽 ?쒖뼱 */}
             <SuggestionMenuController
               triggerCharacter="#"
               getItems={async (query) => {
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editor`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 議곌굔 ?? `!editor`
+       * - 留뚯” ?? 鍮꾩쫰?덉뒪 ?붽뎄?ы빆??留뚯”?섏뿬 ????대? 遺꾧린 釉붾줉??援щ룞??
+       * - 遺덈쭔議??? 諛붿씠?⑥뒪(Bypass)?섏뿬 ?섏쐞 ?곗궛?쇰줈 ?대갚?섍굅??議곌굔 ?ㅽ깮???덉텧??
+       * - ?덉떆: `if (!editor)` 留뚯” ???고????댄룷 ?곗궛 諛??곗씠??留ㅽ븨 利됱떆 ?쒖꽦??
        */
                 if (!editor) return []
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `headingBlocks`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const headingBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `headingBlocks`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const headingBlocks = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                 const headingBlocks = editor.document.filter(b => b.type === 'heading')
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `items`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const items = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `items`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const items = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                 const items = headingBlocks.map(b => {
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `textContent`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const textContent = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `textContent`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const textContent = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                   const textContent = b.content && Array.isArray(b.content) 
                     ? b.content.map((c: any) => c.text).join('') 
-                    : '제목 없음'
+                    : '?쒕ぉ ?놁쓬'
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `level`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const level = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 蹂??紐? `level`
+       * - ?먮즺??/ ?덉긽 媛? ?곕? ??怨꾩궛 寃곌낵???곕씪 ?고????좊떦?섎뒗 ?곴꺽 ?곗씠?????(?? string, number, boolean, Object ??.
+       * - ?쒕굹由ъ삤: 蹂??⑥닔 ?곸뿭 ?댁뿉???곹깭 ?앸챸二쇨린瑜??좎??섎ŉ ?곗씠??蹂댁〈 諛??꾩냽 遺꾧린 ?곗궛???뚮퉬??
+       * - ?덉떆 肄붾뱶: `const level = ...` ?뺥깭濡??덉쟾 罹먯떛 ??媛怨?湲곕룞.
        */
                   const level = b.props?.level || 1
                   return {
                     title: textContent,
-                    subtext: `H${level} 헤더 참조 링크`,
+                    subtext: `H${level} ?ㅻ뜑 李몄“ 留곹겕`,
                     icon: <Sparkles size={14} color="#10b981" />,
                     onItemClick: () => {
                       editor.insertInlineContent([
@@ -778,7 +771,7 @@ export function MarkdownEditor({
         ) : editorMode === 'preview' ? (
           <MarkdownPreview markdown={currentContent} editor={editor} />
         ) : (
-          /* RAW 마크다운 원문 텍스트 에어리어 제어 뷰 */
+          /* RAW 留덊겕?ㅼ슫 ?먮Ц ?띿뒪???먯뼱由ъ뼱 ?쒖뼱 酉?*/
           <div style={{
             width: '100%',
             height: '100%',
@@ -790,7 +783,7 @@ export function MarkdownEditor({
             <textarea
               value={currentContent}
               onChange={(e) => setCurrentContent(e.target.value)}
-              placeholder="여기에 마크다운 원문이 표시됩니다. 직접 수정할 수도 있습니다."
+              placeholder="?ш린??留덊겕?ㅼ슫 ?먮Ц???쒖떆?⑸땲?? 吏곸젒 ?섏젙???섎룄 ?덉뒿?덈떎."
               style={{
                 width: '100%',
                 height: 'calc(100vh - 120px)',

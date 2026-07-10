@@ -17,8 +17,9 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, TrendingDown, RefreshCw, Search, X, ChevronDown, ChevronUp, FileText } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { TrendingUp, TrendingDown, RefreshCw, Search, X, ChevronDown, ChevronUp, FileText, Eye } from 'lucide-react';
+import { STOCK_MOCK_NEWS, DEFAULT_MOCK_NEWS } from './constants';
 
 interface StockQuote {
   symbol: string;
@@ -199,34 +200,33 @@ function SectionTitle({ label, icon }: { label: string; icon: string }) {
    * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
    * - 예시: `QuoteRow(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
    */
-function QuoteRow({ symbol, label, price, pct, currency = '', isUp, onClick, isActive }: {
+function QuoteRow({ symbol, label, price, pct, currency = '', isUp, onClick, isActive, onContextMenu }: {
   symbol: string; label: string; price: number; pct: number
-  currency?: string; isUp: boolean; onClick?: () => void; isActive?: boolean
+  currency?: string; isUp: boolean; onClick?: () => void; isActive?: boolean; onContextMenu?: (e: React.MouseEvent) => void
 }) {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `bg`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bg = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: 활성 여부 및 등락 상태에 따른 동적 배경색 값.
        */
   const bg = isActive
     ? (isUp ? 'rgba(52,211,153,0.12)' : 'rgba(239,68,68,0.12)')
     : (isUp ? 'rgba(52,211,153,0.03)' : 'rgba(239,68,68,0.03)');
+
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `border`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const border = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: 활성 여부 및 등락 상태에 따른 동적 테두리 색상 값.
        */
   const border = isActive
     ? (isUp ? 'rgba(52,211,153,0.4)' : 'rgba(239,68,68,0.4)')
     : (isUp ? 'rgba(52,211,153,0.08)' : 'rgba(239,68,68,0.08)');
+
   return (
     <div
       onClick={onClick}
-      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: '7px', background: bg, border: '1px solid ' + border, cursor: onClick ? 'pointer' : 'default', transition: 'background 0.12s', marginBottom: '3px' }}
+      onContextMenu={onContextMenu}
+      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', borderRadius: '7px', background: bg, border: '1px solid ' + border, cursor: (onClick || onContextMenu) ? 'pointer' : 'default', transition: 'background 0.12s', marginBottom: '3px' }}
       onMouseEnter={e => onClick && (e.currentTarget.style.background = isUp ? 'rgba(52,211,153,0.09)' : 'rgba(239,68,68,0.09)')}
       onMouseLeave={e => onClick && (e.currentTarget.style.background = bg)}
     >
@@ -259,34 +259,26 @@ function DetailPanel({ q, onClose }: { q: StockQuote; onClose: () => void }) {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `isUp`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isUp = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: q.regularMarketChangePercent가 0 이상인지 판단한 boolean 값.
+       * - 시나리오: 본 패널의 색상 테마 및 화살표 방향 결정에 소비됨.
        */
   const isUp = q.regularMarketChangePercent >= 0;
+
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleInsert`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleInsert = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 변수 명: `newsList`
+       * - 자료형 / 예상 값: STOCK_MOCK_NEWS 맵에서 찾은 해당 심볼의 뉴스 목록 또는 기본 default 뉴스 목록.
+       * - 시나리오: 하단 뉴스 리스트 렌더링에 반복적으로 맵핑되어 노출됨.
+       */
+  const newsList = STOCK_MOCK_NEWS[q.symbol] || DEFAULT_MOCK_NEWS;
+
+      /*
+       * [FUNCTION CONTRACT]
+       * - 함수 명: `handleInsert`
+       * - 역할: 현재가, 고가, 거래량 등 시세 정보를 마크다운 표로 만들어 에디터에 삽입한다.
        */
   const handleInsert = () => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `now`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const now = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const now = new Date().toLocaleString('ko-KR');
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `md`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const md = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const md = [
       '### 📊 ' + (q.shortName || q.symbol) + ' (' + q.symbol + ') 시세 스냅샷',
       '> 기준: ' + now,
@@ -307,11 +299,27 @@ function DetailPanel({ q, onClose }: { q: StockQuote; onClose: () => void }) {
   };
 
       /*
+       * [FUNCTION CONTRACT]
+       * - 함수 명: `handleInsertNews`
+       * - 역할: 선택한 뉴스의 헤드라인과 요약을 인용구 형식 마크다운으로 에디터에 전파한다.
+       */
+  const handleInsertNews = (news: typeof newsList[0]) => {
+    const md = [
+      `### 📰 [뉴스] ${news.title}`,
+      `> 출처: ${news.source} · 스크랩 시점: ${new Date().toLocaleString('ko-KR')}`,
+      `>`,
+      `> ${news.summary}`,
+      `>`,
+      `> *본 뉴스 정보는 금융 탭에서 본문으로 스크랩되었습니다.*`
+    ].join('\n');
+    window.dispatchEvent(new CustomEvent('ameva:insert-text', { detail: md }));
+  };
+
+      /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `rows`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const rows = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: 라벨과 가공된 포맷 가격의 튜플 쌍 2차원 배열.
+       * - 시나리오: 상세 지표 테이블 렌더링에 반복적으로 소비됨.
        */
   const rows = [
     ['시가', fmt(q.regularMarketOpen)], ['고가', fmt(q.regularMarketDayHigh)],
@@ -321,13 +329,29 @@ function DetailPanel({ q, onClose }: { q: StockQuote; onClose: () => void }) {
   ];
 
   return (
-    <div style={{ margin: '0 0 6px', padding: '10px', borderRadius: '8px', background: 'var(--bg-glass)', border: '1px solid ' + (isUp ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)') }}>
+    <div 
+      style={{ 
+        margin: '0 0 6px', padding: '10px', borderRadius: '8px', 
+        background: 'var(--bg-glass, rgba(15, 15, 20, 0.4))', 
+        border: '1px solid ' + (isUp ? 'rgba(52,211,153,0.25)' : 'rgba(239,68,68,0.25)'),
+        animation: 'financeAccordionOpen 0.25s ease-out forwards',
+        overflow: 'hidden'
+      }}
+    >
+      <style>{`
+        @keyframes financeAccordionOpen {
+          from { max-height: 0; opacity: 0; transform: translateY(-5px); }
+          to { max-height: 1200px; opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-main)' }}>{(q.shortName || q.symbol) + ' 상세'}</span>
+        <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-main)' }}>{(q.shortName || q.symbol) + ' 상세 정보'}</span>
         <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: 0, display: 'flex' }}>
           <X size={13} />
         </button>
       </div>
+      
+      {/* 상세 수치 그리드 */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 12px', marginBottom: '10px' }}>
         {rows.map(([label, value]) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
@@ -336,14 +360,55 @@ function DetailPanel({ q, onClose }: { q: StockQuote; onClose: () => void }) {
           </div>
         ))}
       </div>
+
+      {/* 시세 표 삽입 버튼 */}
       <button
         onClick={handleInsert}
-        style={{ width: '100%', padding: '6px', borderRadius: '6px', cursor: 'pointer', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', color: 'var(--primary)', fontSize: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', transition: 'background 0.15s' }}
+        style={{ width: '100%', padding: '6px', borderRadius: '6px', cursor: 'pointer', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', color: 'var(--primary)', fontSize: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', transition: 'background 0.15s', marginBottom: '10px' }}
         onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.22)')}
         onMouseLeave={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.12)')}
       >
         <FileText size={11} /> 본문에 시세 삽입 (마크다운 표)
       </button>
+
+      {/* 실시간 종목 뉴스 목록 섹션 */}
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '8px' }}>
+        <span style={{ fontSize: '9.5px', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+          📰 실시간 종목 뉴스 (클릭 시 본문 스크랩)
+        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {newsList.map(n => (
+            <div
+              key={n.id}
+              onClick={() => handleInsertNews(n)}
+              style={{
+                padding: '6px 8px', borderRadius: '6px', background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.04)', cursor: 'pointer', transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = 'rgba(139,92,246,0.06)';
+                e.currentTarget.style.borderColor = 'rgba(139,92,246,0.2)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
+                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)';
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                <span style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '80%' }}>{n.title}</span>
+                <span style={{ fontSize: '8px', color: 'var(--text-muted)' }}>{n.time}</span>
+              </div>
+              <p style={{ fontSize: '8.5px', color: 'var(--text-muted)', margin: 0, lineHeight: 1.3, textOverflow: 'ellipsis', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                {n.summary}
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '3px' }}>
+                <span style={{ fontSize: '7.5px', color: 'var(--primary)' }}>{n.source}</span>
+                <span style={{ fontSize: '7.5px', color: 'var(--text-muted)', opacity: 0.6 }}>스크랩하기 →</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -365,6 +430,54 @@ export function FinanceDashboardView() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState('');
   const [expandedSymbol, setExpandedSymbol] = useState<string | null>(null);
+
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `contextMenu`
+   * - 자료형 / 예상 값: 우클릭 마우스 좌표 및 대상 종목 쿼리를 포함한 Object 또는 null.
+   * - 시나리오: 커스텀 우클릭 팝업 창의 노출 조율에 소비됨.
+   */
+  const [contextMenu, setContextMenu] = useState<{
+    x: number; y: number; symbol: string; q: StockQuote
+  } | null>(null);
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `handleContextMenu`
+   * - 역할: 주식 항목 우클릭 이벤트를 차단하고 해당 마우스 좌표에 컨텍스트 메뉴 데이터를 수립한다.
+   */
+  const handleContextMenu = useCallback((e: React.MouseEvent, symbol: string, q: StockQuote) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu({ x: e.clientX, y: e.clientY, symbol, q });
+  }, []);
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `handleInsertDirect`
+   * - 역할: 우클릭 메뉴 액션 트리거 시, 디테일 패널 개방 없이 바로 해당 시세 정보를 마크다운 표로 에디터에 삽입한다.
+   */
+  const handleInsertDirect = (q: StockQuote) => {
+    const isUp = q.regularMarketChangePercent >= 0;
+    const now = new Date().toLocaleString('ko-KR');
+    const md = [
+      '### 📊 ' + (q.shortName || q.symbol) + ' (' + q.symbol + ') 시세 스냅샷',
+      '> 기준: ' + now,
+      '',
+      '| 항목 | 값 |',
+      '|------|------|',
+      '| 현재가 | **' + fmt(q.regularMarketPrice) + ' ' + q.currency + '** |',
+      '| 등락 | ' + (isUp ? '▲' : '▼') + ' ' + fmt(Math.abs(q.regularMarketChange || 0)) + ' (' + (isUp ? '+' : '') + fmt(q.regularMarketChangePercent || 0) + '%) |',
+      '| 시가 | ' + fmt(q.regularMarketOpen) + ' |',
+      '| 고가 | ' + fmt(q.regularMarketDayHigh) + ' |',
+      '| 저가 | ' + fmt(q.regularMarketDayLow) + ' |',
+      '| 거래량 | ' + fmtVol(q.regularMarketVolume) + ' |',
+      '| 시가총액 | ' + fmtCap(q.marketCap) + ' |',
+      q.trailingPE ? '| PER | ' + fmt(q.trailingPE) + ' |' : null,
+      '| 52주 범위 | ' + fmt(q.fiftyTwoWeekLow) + ' ~ ' + fmt(q.fiftyTwoWeekHigh) + ' |',
+    ].filter(Boolean).join('\n');
+    window.dispatchEvent(new CustomEvent('ameva:insert-text', { detail: md }));
+  };
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -466,23 +579,23 @@ export function FinanceDashboardView() {
 
       <div className="finance-scroll" style={{ flex: 1, overflowY: 'auto', padding: '10px 12px' }}>
         {error && <div style={{ padding: '8px 10px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px', fontSize: '10px', color: '#ef4444', marginBottom: '8px' }}>⚠️ {error}</div>}
-
+ 
         <SectionTitle label="세계 주요 지수" icon="🌐" />
         {isLoading && indexQ.length === 0 ? skel(6) : indexQ.map(q => (
-          <QuoteRow key={q.symbol} symbol={q.symbol} label={INDEX_LABELS[q.symbol] || q.symbol} price={q.regularMarketPrice} pct={q.regularMarketChangePercent} currency={q.currency} isUp={q.regularMarketChangePercent >= 0} />
+          <QuoteRow key={q.symbol} symbol={q.symbol} label={INDEX_LABELS[q.symbol] || q.symbol} price={q.regularMarketPrice} pct={q.regularMarketChangePercent} currency={q.currency} isUp={q.regularMarketChangePercent >= 0} onContextMenu={(e) => handleContextMenu(e, q.symbol, q)} />
         ))}
-
+ 
         <div style={{ marginTop: '12px' }}>
           <SectionTitle label="주요 환율" icon="💱" />
           {isLoading && fxQ.length === 0 ? skel(4) : fxQ.map(q => (
-            <QuoteRow key={q.symbol} symbol={q.symbol} label={FX_LABELS[q.symbol] || q.symbol} price={q.regularMarketPrice} pct={q.regularMarketChangePercent} isUp={q.regularMarketChangePercent >= 0} />
+            <QuoteRow key={q.symbol} symbol={q.symbol} label={FX_LABELS[q.symbol] || q.symbol} price={q.regularMarketPrice} pct={q.regularMarketChangePercent} isUp={q.regularMarketChangePercent >= 0} onContextMenu={(e) => handleContextMenu(e, q.symbol, q)} />
           ))}
         </div>
-
+ 
         <div style={{ marginTop: '12px' }}>
           <SectionTitle label="주요 금리" icon="📊" />
           {bondQ && (
-            <QuoteRow symbol="^TNX" label="미 10Y 국채 수익률" price={bondQ.regularMarketPrice} pct={bondQ.regularMarketChangePercent} currency="%" isUp={bondQ.regularMarketChangePercent >= 0} />
+            <QuoteRow symbol="^TNX" label="미 10Y 국채 수익률" price={bondQ.regularMarketPrice} pct={bondQ.regularMarketChangePercent} currency="%" isUp={bondQ.regularMarketChangePercent >= 0} onContextMenu={(e) => handleContextMenu(e, bondQ.symbol, bondQ)} />
           )}
           {INTEREST_RATES.map(r => (
             <div key={r.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 8px', borderRadius: '7px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', marginBottom: '3px' }}>
@@ -494,7 +607,7 @@ export function FinanceDashboardView() {
             </div>
           ))}
         </div>
-
+ 
         <div style={{ marginTop: '12px' }}>
           <SectionTitle label="관심 종목" icon="🔍" />
           <form onSubmit={handleAdd} style={{ display: 'flex', gap: '5px', marginBottom: '8px' }}>
@@ -507,22 +620,18 @@ export function FinanceDashboardView() {
               <Search size={10} /> 추가
             </button>
           </form>
-
+ 
           {stockQ.map(q => {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `isUp`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isUp = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: 등락 여부 boolean.
        */
             const isUp = q.regularMarketChangePercent >= 0;
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `isExpanded`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isExpanded = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: 아코디언 확장 상태 boolean.
        */
             const isExpanded = expandedSymbol === q.symbol;
             return (
@@ -535,6 +644,7 @@ export function FinanceDashboardView() {
                       currency={q.currency} isUp={isUp}
                       onClick={() => setExpandedSymbol(p => p === q.symbol ? null : q.symbol)}
                       isActive={isExpanded}
+                      onContextMenu={(e) => handleContextMenu(e, q.symbol, q)}
                     />
                   </div>
                   <button onClick={() => setExpandedSymbol(p => p === q.symbol ? null : q.symbol)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px', display: 'flex' }} title={isExpanded ? '접기' : '상세 보기'}>
@@ -548,13 +658,104 @@ export function FinanceDashboardView() {
               </div>
             );
           })}
-
+ 
           {stockQ.length === 0 && !isLoading && (
             <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '10px', padding: '16px' }}>위에서 종목 코드를 추가하세요.</div>
           )}
         </div>
         <div style={{ height: '20px' }} />
       </div>
+
+      {/* 우클릭 사제 컨텍스트 메뉴 팝업 */}
+      {contextMenu && (
+        <StockContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          symbol={contextMenu.symbol}
+          onInsert={() => handleInsertDirect(contextMenu.q)}
+          onDetail={() => setExpandedSymbol(contextMenu.symbol)}
+          onDismiss={() => setContextMenu(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+interface StockContextMenuProps {
+  x: number;
+  y: number;
+  symbol: string;
+  onInsert: () => void;
+  onDetail: () => void;
+  onDismiss: () => void;
+}
+
+/*
+ * [FUNCTION CONTRACT]
+ * - 함수 명: `StockContextMenu`
+ * - 역할: 주식 항목 우클릭 시 호출되며 [본문에 넣기, 자세히 보기] 기능을 제안하는 컨텍스트 윈도우를 띄운다.
+ */
+function StockContextMenu({ x, y, symbol, onInsert, onDetail, onDismiss }: StockContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const safeX = Math.min(x, window.innerWidth - 160);
+  const safeY = Math.min(y, window.innerHeight - 100);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onDismiss();
+      }
+    };
+    const id = setTimeout(() => window.addEventListener('mousedown', handler), 10);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener('mousedown', handler);
+    };
+  }, [onDismiss]);
+
+  const btnStyle: React.CSSProperties = {
+    background: 'transparent', border: 'none', color: 'var(--text-main)',
+    padding: '8px 12px', textAlign: 'left', cursor: 'pointer',
+    fontSize: '11px', borderRadius: '4px', width: '100%',
+    display: 'flex', alignItems: 'center', gap: '8px',
+    transition: 'background 0.12s',
+  };
+
+  return (
+    <div
+      ref={menuRef}
+      style={{
+        position: 'fixed', top: safeY, left: safeX,
+        background: 'var(--bg-glass, rgba(15, 15, 20, 0.85))',
+        border: '1px solid var(--border-muted, rgba(255,255,255,0.1))',
+        borderRadius: '8px', padding: '4px', display: 'flex', flexDirection: 'column',
+        zIndex: 99999, boxShadow: '0 8px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.08)',
+        fontFamily: 'var(--font-sans)', minWidth: '150px', backdropFilter: 'blur(12px)',
+      }}
+    >
+      <div style={{ padding: '4px 10px 6px', borderBottom: '1px solid var(--border-muted, rgba(255,255,255,0.1))', marginBottom: '2px' }}>
+        <span style={{ fontSize: '9.5px', color: 'var(--text-muted)', fontWeight: 600 }}>{symbol} 작업</span>
+      </div>
+
+      <button
+        style={btnStyle}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-glass-active, rgba(255,255,255,0.1))')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        onClick={() => { onInsert(); onDismiss(); }}
+      >
+        <FileText size={12} style={{ color: 'var(--primary)' }} />
+        본문에 시세 넣기
+      </button>
+
+      <button
+        style={btnStyle}
+        onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-glass-active, rgba(255,255,255,0.1))')}
+        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        onClick={() => { onDetail(); onDismiss(); }}
+      >
+        <Eye size={12} style={{ color: '#34d399' }} />
+        자세히 보기 (뉴스)
+      </button>
     </div>
   );
 }

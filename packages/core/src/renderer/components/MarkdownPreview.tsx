@@ -27,6 +27,7 @@ import { InlineMermaidRenderer } from './markdown/InlineMermaidRenderer'
 import { InlineLinkPreviewRenderer } from './markdown/InlineLinkPreviewRenderer'
 import { InlineMapRenderer } from './markdown/InlineMapRenderer'
 import { InlineYoutubeRenderer } from './markdown/InlineYoutubeRenderer'
+import { InlineDrawingRenderer } from './markdown/InlineDrawingRenderer'
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -403,6 +404,19 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             return (
               <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
                 <InlineLinkPreviewRenderer code={seg.code} />
+              </div>
+            )
+          }
+
+          /* 
+           * [ALGORITHM BRANCH / DECISION]
+           * - 조건 식: `seg.language === 'ameva-drawing'`
+           * - 만족 시: 그림판 캔버스를 렌더링하는 ameva-drawing 컴포넌트로 전달함.
+           */
+          if (seg.language === 'ameva-drawing') {
+            return (
+              <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
+                <InlineDrawingRenderer code={seg.code} />
               </div>
             )
           }

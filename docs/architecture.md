@@ -21,16 +21,20 @@ AMEVA OS is a serverless local AI & WASM hybrid operating system that executes c
 - **`FreeModal` z-index 가드 규칙**: `FreeModal` 컴포넌트 내부 포커스 핸들러에서 중복 `bringToFront()` 호출로 인한 무한 렌더링 루프를 차단하기 위해, 모달의 현재 z-index가 전역 최상위 z-index(`baseZIndex`)보다 작을 때만 상태 업데이트를 수행하는 방어 가드를 적용합니다.
 
 ### 2.3 Presentation Layer
-- **`AIPanel.tsx`**: The main terminal interface. Acts as a layout wrapper and orchestrator for tabs.
+- **`AIPanel.tsx`**: The main terminal interface. Acts as a layout wrapper and orchestrator for tabs. Includes the `UtilityPanelHeader` for Non-AI tabs providing screen capture, text search, and editor text insertion.
 - **`AIChatInput.tsx`**: (Presentational + Direct Subscription) Handles prompt input and AI generation triggering. Directly subscribes to `useAI()`.
 - **`AIChatList.tsx`**: (Container) Renders the virtualized list of AI messages.
 - **`MessageBubble.tsx`**: (Presentational) Renders individual chat messages and parses markdown.
 - **`InsertPreviewCard.tsx`**: (Presentational) Renders the inline UI for AI text insertion/modification suggestions.
 - **`AppLayout.tsx`**: (Container + Layout) Root presentation container rendering `MenuBar`, `Sidebar`, `MarkdownEditor`, `Minimap`, `AIPanel`, `RightTabStrip`, `StatusBar`, and modals.
+- **`FinanceDashboardView.tsx`**: (Container) Renders global stock indices, currency rates, bonds, and custom watchlists. Features custom context menus (`StockContextMenu`) and smooth accordion news feeds.
+- **`DrawingBlock.tsx`**: (Presentational + Dynamic Import) BlockNote editor plugin block displaying either the rich vector-based Excalidraw canvas with dynamic chunk retry handlers, or a canvas API-based drawing pad fallback when offline or timed out.
+- **`InlineDrawingRenderer.tsx`**: (Presentational) MarkdownPreview sub-component parsing `ameva-drawing` JSON codeblocks and restoring read-only Excalidraw layouts or fallback sketchpads in preview mode.
 
 ### 2.4 Utility Layer
 - **`fileConverters.ts`**: Standalone utility module encapsulating base64 conversions, file parsing, and docx/xlsx/hwpx/pdf exporters to keep React hooks lightweight and focused.
 - **`analyzeApiKey.ts`**: Centralized API key parser evaluating provided credentials against strict patterns to automatically extract provider endpoints and default models.
+- **`constants.ts` (src/renderer/components/ai/)**: Domain-specific local constants (3-Tier Constants Rule) hosting mock news feeds, utility tab labels, and search highlighting CSS styles.
 
 ### 2.5 IPC Bridge Layer
 - **`electronApiAdapter.ts`**: Unifies and wraps all IPC invocations to safe Electron contexts. Restricts renderer code from bypassing this layer to directly access the global window API.

@@ -24,9 +24,13 @@
 
 /* 
  * [IMPORT SEGMENTATION & CONTRACTS]
- * - useEffect, useState: React 상태 관리 훅.
+ * - useEffect, useState, useRef, useCallback: React 상태 관리 및 DOM 접근 훅.
+ * - html2canvas: 탭 스크린샷 캡쳐 라이브러리.
+ * - constants: 탭 번역 라벨 및 검색 스타일 상수.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import html2canvas from 'html2canvas'
+import { UTILITY_TAB_LABELS, HIGHLIGHT_STYLE } from './ai/constants'
 
 /* 
  * [LUCIDE ICONS]
@@ -35,8 +39,9 @@ import { useEffect, useState } from 'react'
  * - Languages: 번역 액션 아이콘.
  * - Expand: 문장 확장 액션 아이콘.
  * - Lightbulb: 개념 설명 액션 아이콘.
+ * - Camera, SearchIcon, ArrowUp, ArrowDown, CloseIcon: 유틸 툴바 제어 아이콘.
  */
-import { FileText, Wand2, Languages, Expand, Lightbulb } from 'lucide-react'
+import { FileText, Wand2, Languages, Expand, Lightbulb, Camera, Search as SearchIcon, ArrowUp, ArrowDown, X as CloseIcon, FileText as FileTextIcon } from 'lucide-react'
 
 /* 
  * [PRESENTATION & LOGIC HOOKS]
@@ -111,8 +116,9 @@ export function AIPanel() {
    * - activeTab: 현재 AI 패널 내부 활성 탭 (ai/outline/plugins).
    * - setIsSettingsOpen: 글로벌 설정 모달 가시성 세터.
    * - showModelHub: 로컬 모델 설치 허브 뷰 토글 플래그.
+   * - setToastMessage: 글로벌 토스트 알림 메세지 세터.
    */
-  const { showAIPanel: isOpen, setShowAIPanel, activeRightTab: activeTab, setIsSettingsOpen, showModelHub } = useUIStore()
+  const { showAIPanel: isOpen, setShowAIPanel, activeRightTab: activeTab, setIsSettingsOpen, showModelHub, setToastMessage } = useUIStore()
   
   /*
    * [CONTRACT - Workspace Buffer States]
@@ -178,6 +184,232 @@ export function AIPanel() {
    * - appSettings: 자연 테마 등 렌더러 설정값.
    */
   const { editor, settings: appSettings } = useAppContext()
+
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - contentRef: Non-AI 유틸리티 탭의 DOM 컨테이너를 가리키는 React Ref. 캡쳐 및 검색어 파싱용.
+   * - searchOpen: 검색 입력바의 노출 여부.
+   * - searchQuery: 검색어 입력 문자열.
+   * - activeIndex: 현재 포커싱된 하이라이트 노드의 인덱스.
+   * - highlights: 검색 매칭되어 임시 생성된 mark 엘리먼트 노드 어레이.
+   */
+  const contentRef = useRef<HTMLDivElement>(null)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [activeIndex, setActiveIndex] = useState(0)
+  const [highlights, setHighlights] = useState<HTMLSpanElement[]>([])
+
+  // 탭이 전환되면 검색과 하이라이트 상태를 청결히 리셋한다
+  useEffect(() => {
+    setSearchOpen(false)
+    setSearchQuery('')
+    setHighlights([])
+    setActiveIndex(0)
+  }, [activeTab])
+
+  // 검색어 입력에 맞춰 텍스트 노드를 실시간 순회하여 하이라이팅하는 이펙트
+  useEffect(() => {
+    if (!contentRef.current) return
+
+    // 1. 기존 하이라이트 노드 전부 복원 (청소 작업)
+    const marks = contentRef.current.querySelectorAll('.search-highlight')
+    marks.forEach(mark => {
+      const parent = mark.parentNode
+      if (parent) {
+        const textNode = document.createTextNode(mark.textContent || '')
+        parent.replaceChild(textNode, mark)
+      }
+    })
+    contentRef.current.normalize()
+
+    // 2. 검색 조건 미달 시 스킵
+    if (!searchQuery.trim() || !searchOpen) {
+      setHighlights([])
+      setActiveIndex(0)
+      return
+    }
+
+    // 3. 신규 텍스트 노드 탐색 및 mark 태그 인젝션
+    const foundMarks: HTMLSpanElement[] = []
+    const walk = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const val = node.nodeValue || ''
+        const idx = val.toLowerCase().indexOf(searchQuery.toLowerCase())
+        if (idx >= 0) {
+          const parent = node.parentNode
+          if (
+            parent &&
+            parent.nodeName !== 'MARK' &&
+            parent.nodeName !== 'SCRIPT' &&
+            parent.nodeName !== 'STYLE' &&
+            parent.nodeName !== 'TEXTAREA' &&
+            parent.nodeName !== 'INPUT'
+          ) {
+            const mark = document.createElement('mark')
+            Object.assign(mark.style, HIGHLIGHT_STYLE)
+            mark.className = 'search-highlight'
+            
+            const matchedText = val.substring(idx, idx + searchQuery.length)
+            mark.textContent = matchedText
+            
+            const afterText = document.createTextNode(val.substring(idx + searchQuery.length))
+            node.nodeValue = val.substring(0, idx)
+            
+            parent.insertBefore(afterText, node.nextSibling)
+            parent.insertBefore(mark, afterText)
+            foundMarks.push(mark)
+            
+            // 재귀적으로 남은 영역 파싱
+            walk(afterText)
+          }
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const el = node as Element
+        if (
+          el.tagName !== 'SCRIPT' &&
+          el.tagName !== 'STYLE' &&
+          !el.classList.contains('search-exclude')
+        ) {
+          Array.from(node.childNodes).forEach(walk)
+        }
+      }
+    }
+
+    walk(contentRef.current)
+    setHighlights(foundMarks)
+    setActiveIndex(0)
+  }, [searchQuery, searchOpen, activeTab])
+
+  // 활성 하이라이트 인덱스 이동 시 포커싱 스타일 주입 및 스크롤 포커스 이동
+  useEffect(() => {
+    if (highlights.length === 0) return
+    highlights.forEach((h, idx) => {
+      if (idx === activeIndex) {
+        h.style.backgroundColor = 'var(--primary, #8b5cf6)'
+        h.style.color = '#ffffff'
+        h.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      } else {
+        const defaultBg = HIGHLIGHT_STYLE.backgroundColor
+        h.style.backgroundColor = typeof defaultBg === 'string' ? defaultBg : 'rgba(250, 204, 21, 0.4)'
+        h.style.color = '#ffffff'
+      }
+    })
+  }, [activeIndex, highlights])
+
+  // [📸 캡쳐 기능 구현] - html2canvas로 탭 본문 영역 캡쳐 후 파일 저장
+  const handleCapture = async () => {
+    if (!contentRef.current) return
+    try {
+      const canvas = await html2canvas(contentRef.current, {
+        useCORS: true,
+        backgroundColor: 'var(--bg-main, #0f0f12)',
+        scale: 2
+      })
+      const url = canvas.toDataURL('image/png')
+      const a = document.createElement('a')
+      a.href = url
+      const tabName = UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab
+      a.download = `${tabName}_캡쳐.png`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      
+      setToastMessage('화면이 성공적으로 캡쳐되었습니다!')
+      setTimeout(() => setToastMessage(null), 3000)
+    } catch (err: any) {
+      console.error('[AIPanel] Capture failed:', err)
+      setToastMessage(`캡쳐 실패: ${err.message || err}`)
+      setTimeout(() => setToastMessage(null), 3000)
+    }
+  }
+
+  // [📝 본문에 넣기 기능 구현] - 각 유틸리티 탭별 정보 추출 후 에디터 전달
+  const handleInsertToEditor = () => {
+    if (!contentRef.current) return
+    let text = ''
+    
+    if (activeTab === 'outline') {
+      const items = contentRef.current.querySelectorAll('[class*="outline-item"], [data-outline-item]');
+      if (items.length > 0) {
+        text = '### 📝 문서 목차 구조도\n\n' + Array.from(items).map(el => {
+          const style = el.getAttribute('style') || ''
+          const padMatch = style.match(/paddingLeft:\s*['"]?(\d+)px['"]?/) || style.match(/padding-left:\s*(\d+)px/)
+          const pad = padMatch ? parseInt(padMatch[1], 10) : 0
+          const level = Math.floor(pad / 12)
+          const prefix = '  '.repeat(level) + '- '
+          return prefix + (el.textContent || '').trim()
+        }).join('\n')
+      } else {
+        text = `### 📝 문서 목차\n\n> ${contentRef.current.innerText.trim().replace(/\n/g, '\n> ')}`
+      }
+    } else if (activeTab === 'calculator') {
+      const textLines = contentRef.current.innerText.split('\n').map(l => l.trim()).filter(Boolean);
+      if (textLines.length > 0) {
+        text = '### 🧮 계산기 연산 기록 및 결과\n\n' + textLines.map(l => `> ${l}`).join('\n')
+      } else {
+        text = `### 🧮 계산 결과: **${contentRef.current.innerText.trim()}**`
+      }
+    } else if (activeTab === 'finance' || activeTab === 'finance-dashboard') {
+      const rows = contentRef.current.querySelectorAll('div[style*="justify-content: space-between"], [class*="QuoteRow"]');
+      const tableLines: string[] = [];
+      rows.forEach(row => {
+        const textContent = (row.textContent || '').trim();
+        const parts = textContent.split(/\s+/).filter(Boolean);
+        if (parts.length >= 3) {
+          const price = parts[parts.length - 2];
+          const change = parts[parts.length - 1];
+          const name = parts.slice(0, parts.length - 2).join(' ');
+          tableLines.push(`| ${name} | ${price} | ${change} |`);
+        }
+      });
+      if (tableLines.length > 0) {
+        text = [
+          '### 📊 금융 시장 시세 현황',
+          `> 조회 기준: ${new Date().toLocaleString('ko-KR')}`,
+          '',
+          '| 종목/지수 | 현재가 | 등락률 |',
+          '| :--- | :--- | :--- |',
+          ...tableLines
+        ].join('\n')
+      } else {
+        text = `### 📊 금융 대시보드\n\n> ${contentRef.current.innerText.trim().replace(/\n/g, '\n> ')}`
+      }
+    } else {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `webviewEl`
+       * - 자료형 / 예상 값: contentRef 하위에서 검색된 HTML webview 엘리먼트 객체 또는 null.
+       * - 시나리오: 동적 브라우저 플러그인 내부의 활성 웹페이지 제목 및 URL 추출에 소비됨.
+       */
+      const webviewEl = contentRef.current.querySelector('webview') as any
+      if (webviewEl) {
+        try {
+          const currentUrl = webviewEl.getURL ? webviewEl.getURL() : ''
+          const currentTitle = webviewEl.getTitle ? webviewEl.getTitle() : ''
+          if (currentUrl) {
+            text = [
+              `### 🌐 [웹 정보] ${currentTitle || '참조 페이지'}`,
+              `> 출처: [바로가기](${currentUrl}) · 수집 시점: ${new Date().toLocaleString('ko-KR')}`,
+              `>`,
+              `> *브라우저 플러그인 탭에서 활성화된 웹 정보가 에디터 본문으로 연동되었습니다.*`
+            ].join('\n')
+          }
+        } catch (e) {
+          console.error('[Webview Info Extraction Failed]', e)
+        }
+      }
+
+      if (!text) {
+        text = `### ℹ️ ${UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab} 정보\n\n> ${contentRef.current.innerText.trim().replace(/\n/g, '\n> ')}`
+      }
+    }
+
+    if (text) {
+      window.dispatchEvent(new CustomEvent('ameva:insert-text', { detail: text }))
+      setToastMessage('에디터 본문에 정보가 정상적으로 삽입되었습니다!')
+      setTimeout(() => setToastMessage(null), 3000)
+    }
+  }
 
   /*
    * [INVARIANT - Editor Document Sync]
@@ -402,24 +634,24 @@ export function AIPanel() {
         fontFamily: 'var(--font-sans)', zIndex: 100,
       }}>
 
-      <AIPanelHeader 
-        title={settings.apiType === 'wasm' ? 'Local Edge' : settings.apiType === 'local' ? 'Native Core' : settings.apiType === 'ollama' ? 'Ollama' : 'Cloud API'}
-        providerLabel={settings.apiType === 'api' 
-          ? (settings.apiProvider === 'gemini' ? 'Google Gemini' : settings.apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT') 
-          : (settings.apiType === 'local' 
-              ? 'Llama.cpp' 
-              : (settings.apiType === 'ollama' 
-                  ? 'Local Server' 
-                  : (settings.gpuOnly ? 'WebGPU' : 'Wasm CPU')))}
-        modelLabel={displayModelLabel}
-        isGenerating={isGenerating}
-        onOpenSettings={() => onOpenGlobalSettings?.('AIEngine')}
-        onClearMessages={onClear}
-        onClose={onClose}
-      />
-
-      {activeTab === 'ai' && (
+      {activeTab === 'ai' ? (
         <>
+          <AIPanelHeader 
+            title={settings.apiType === 'wasm' ? 'Local Edge' : settings.apiType === 'local' ? 'Native Core' : settings.apiType === 'ollama' ? 'Ollama' : 'Cloud API'}
+            providerLabel={settings.apiType === 'api' 
+              ? (settings.apiProvider === 'gemini' ? 'Google Gemini' : settings.apiProvider === 'anthropic' ? 'Anthropic Claude' : 'OpenAI GPT') 
+              : (settings.apiType === 'local' 
+                  ? 'Llama.cpp' 
+                  : (settings.apiType === 'ollama' 
+                      ? 'Local Server' 
+                      : (settings.gpuOnly ? 'WebGPU' : 'Wasm CPU')))}
+            modelLabel={displayModelLabel}
+            isGenerating={isGenerating}
+            onOpenSettings={() => onOpenGlobalSettings?.('AIEngine')}
+            onClearMessages={onClear}
+            onClose={onClose}
+          />
+
           {messages.length === 0 ? (
             <AIWelcomeScreen QUICK_ACTIONS={QUICK_ACTIONS} isAvailable={isAvailable} onAction={handleQuickAction} />
           ) : (
@@ -519,12 +751,112 @@ export function AIPanel() {
             />
           </div>
         </>
-      )}
+      ) : (
+        <>
+          {/* Non-AI 유틸리티 탭 공통 헤더 툴바 */}
+          <div style={{ display: 'flex', flexDirection: 'column', borderBottom: '1px solid var(--border-muted)', background: 'var(--bg-main)', flexShrink: 0 }}>
+            {/* 상단 툴바 행 */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', height: '40px', boxSizing: 'border-box' }}>
+              <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--text-main)' }}>
+                {UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab}
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <button
+                  onClick={handleCapture}
+                  title="📸 화면 캡쳐"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text-main)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <Camera size={14} />
+                </button>
+                <button
+                  onClick={() => setSearchOpen(!searchOpen)}
+                  title="🔍 텍스트 검색"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: searchOpen ? 'var(--primary)' : 'var(--text-muted)', padding: '4px', display: 'flex', transition: 'color 0.15s' }}
+                  onMouseEnter={e => !searchOpen && (e.currentTarget.style.color = 'var(--text-main)')}
+                  onMouseLeave={e => !searchOpen && (e.currentTarget.style.color = 'var(--text-muted)')}
+                >
+                  <SearchIcon size={14} />
+                </button>
+                <button
+                  onClick={handleInsertToEditor}
+                  title="📝 본문에 넣기"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = 'var(--text-main)'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <FileTextIcon size={14} />
+                </button>
+                <div style={{ width: '1px', height: '12px', background: 'var(--border-muted)', margin: '0 2px' }} />
+                <button
+                  onClick={onClose}
+                  title="닫기"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', transition: 'color 0.15s' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#ef4444'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
+                >
+                  <CloseIcon size={14} />
+                </button>
+              </div>
+            </div>
 
-      {activeTab === 'outline' && <AIDocumentOutline blocks={blocks} />}
+            {/* 검색 입력바 행 (토글 시 노출) */}
+            {searchOpen && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px 8px', borderTop: '1px solid var(--border-muted)', background: 'var(--bg-glass)', animation: 'slideDown 0.15s ease-out' }}>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="검색어 입력..."
+                  autoFocus
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (e.shiftKey) {
+                        setActiveIndex(prev => highlights.length > 0 ? (prev - 1 + highlights.length) % highlights.length : 0);
+                      } else {
+                        setActiveIndex(prev => highlights.length > 0 ? (prev + 1) % highlights.length : 0);
+                      }
+                    }
+                  }}
+                  style={{
+                    flex: 1, padding: '4px 8px', borderRadius: '4px',
+                    background: 'var(--bg-main)', border: '1px solid var(--border-muted)',
+                    color: 'var(--text-main)', fontSize: '10.5px', outline: 'none'
+                  }}
+                />
+                {highlights.length > 0 && (
+                  <span style={{ fontSize: '9.5px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono)' }}>
+                    {activeIndex + 1} / {highlights.length}
+                  </span>
+                )}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                  <button
+                    disabled={highlights.length === 0}
+                    onClick={() => setActiveIndex(prev => highlights.length > 0 ? (prev - 1 + highlights.length) % highlights.length : 0)}
+                    style={{ background: 'none', border: 'none', cursor: highlights.length > 0 ? 'pointer' : 'not-allowed', color: highlights.length > 0 ? 'var(--text-main)' : 'var(--text-muted)', padding: '2px', display: 'flex' }}
+                  >
+                    <ArrowUp size={12} />
+                  </button>
+                  <button
+                    disabled={highlights.length === 0}
+                    onClick={() => setActiveIndex(prev => highlights.length > 0 ? (prev + 1) % highlights.length : 0)}
+                    style={{ background: 'none', border: 'none', cursor: highlights.length > 0 ? 'pointer' : 'not-allowed', color: highlights.length > 0 ? 'var(--text-main)' : 'var(--text-muted)', padding: '2px', display: 'flex' }}
+                  >
+                    <ArrowDown size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
-      {activeTab !== 'ai' && activeTab !== 'outline' && (
-        <AIPluginViews activeTab={activeTab} />
+          {/* 유틸 탭 내용부 (ref 바인딩으로 캡쳐 및 검색 범위 적용) */}
+          <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+            {activeTab === 'outline' && <AIDocumentOutline blocks={blocks} />}
+            {activeTab !== 'outline' && <AIPluginViews activeTab={activeTab} />}
+          </div>
+        </>
       )}
     </div>
   )
