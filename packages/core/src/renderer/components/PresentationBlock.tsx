@@ -21,14 +21,11 @@ interface PresentationBlockComponentProps {
  *              전체 화면 슬라이드 쇼 형태로 재생할 수 있는 반응형 에디터 블록 컴포넌트입니다.
  */
 export const PresentationBlockComponent = ({ block, editor }: PresentationBlockComponentProps) => {
-  const props = block.props as {
-    pptxPath: string
-    slides: string[]
-    fallback: boolean
-    slidesText?: string // JSON string encoded slides outline text
-  }
+  const props = block.props as any
 
-  const { pptxPath, slides = [], fallback = false, slidesText = '[]' } = props
+  const { pptxPath = '', slides = '', fallback = false, slidesText = '[]' } = props
+
+  const slidesArray = typeof slides === 'string' ? (slides ? slides.split(',') : []) : (Array.isArray(slides) ? slides : [])
 
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -42,7 +39,7 @@ export const PresentationBlockComponent = ({ block, editor }: PresentationBlockC
     }
   })()
 
-  const totalSlides = fallback ? parsedSlidesText.length : slides.length
+  const totalSlides = fallback ? parsedSlidesText.length : slidesArray.length
 
   const handlePrev = useCallback(() => {
     setCurrentSlide((prev) => (prev > 0 ? prev - 1 : totalSlides - 1))
@@ -159,7 +156,7 @@ export const PresentationBlockComponent = ({ block, editor }: PresentationBlockC
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', opacity: 0.7 }}>
               <AlertCircle size={16} color="#8b5cf6" />
-              <span style={{ fontSize: '11px', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', tracking: '0.1em' }}>
+              <span style={{ fontSize: '11px', fontWeight: 600, color: '#8b5cf6', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 Text Outline Fallback Mode
               </span>
             </div>
@@ -180,7 +177,7 @@ export const PresentationBlockComponent = ({ block, editor }: PresentationBlockC
         ) : (
           /* PNG 이미지 컴파일 렌더러 */
           <img 
-            src={slides[currentSlide]} 
+            src={slidesArray[currentSlide]} 
             alt={`Slide ${currentSlide + 1}`}
             style={{
               maxWidth: '100%',
@@ -258,7 +255,6 @@ export const PresentationBlockComponent = ({ block, editor }: PresentationBlockC
             position: 'absolute',
             top: '16px',
             right: '16px',
-            border: 'none',
             background: 'rgba(15, 15, 20, 0.75)',
             backdropFilter: 'blur(8px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
@@ -315,12 +311,12 @@ export const PresentationBlockComponent = ({ block, editor }: PresentationBlockC
 /**
  * BlockNote amevaSchema 에 병합할 Presentation 커스텀 블록 사양 정의
  */
-export const PresentationBlock = createReactBlockSpec(
+export const PresentationBlockSpec = createReactBlockSpec(
   {
     type: 'presentation',
     propSchema: {
       pptxPath: { default: '' },
-      slides: { default: [] },
+      slides: { default: '' },
       fallback: { default: false },
       slidesText: { default: '[]' }
     },
@@ -328,7 +324,9 @@ export const PresentationBlock = createReactBlockSpec(
   },
   {
     render: (props) => (
-      <PresentationBlockComponent block={props.block} editor={props.editor} />
+      <PresentationBlockComponent block={props.block as any} editor={props.editor as any} />
     )
   }
 )
+
+export const PresentationBlock = PresentationBlockSpec()

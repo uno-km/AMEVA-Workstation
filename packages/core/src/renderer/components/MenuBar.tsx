@@ -60,7 +60,6 @@ export function MenuBar({}: MenuBarProps = {}) {
     showSidebar, setShowSidebar,
     showAIPanel, toggleAIPanel,
     showFindReplace, toggleFindReplace,
-    setActiveRightTab,
     setIsSettingsOpen, setIsAboutOpen, setIsGuideOpen,
     setShowMarketplaceModal, setShowPricingModal
   } = useUIStore()

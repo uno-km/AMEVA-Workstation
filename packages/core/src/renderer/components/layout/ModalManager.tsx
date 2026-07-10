@@ -26,6 +26,7 @@ import { MarketplaceModal } from '../MarketplaceModal'
 import { PricingModal } from '../PricingModal'
 import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
 import { QuitConfirmModal } from '../QuitConfirmModal'
+import { InstallDesktopModal } from '../InstallDesktopModal'
 
 import { RefreshConfirmModal } from '../RefreshConfirmModal'
 
@@ -55,7 +56,8 @@ export function ModalManager({}: ModalManagerProps = {}) {
     isDiffOpen, setIsDiffOpen, isSettingsOpen, settingsInitialTab, setIsSettingsOpen,
     setShowModelHub, isAboutOpen, setIsAboutOpen, isGuideOpen, setIsGuideOpen,
     showMarketplaceModal, setShowMarketplaceModal, showPricingModal, setShowPricingModal,
-    isQuitConfirmOpen, setIsQuitConfirmOpen, isRefreshConfirmOpen, setIsRefreshConfirmOpen
+    isQuitConfirmOpen, setIsQuitConfirmOpen, isRefreshConfirmOpen, setIsRefreshConfirmOpen,
+    isInstallPromptOpen, setIsInstallPromptOpen
   } = useUIStore(useShallow((s) => ({
     isDiffOpen: s.isDiffOpen,
     setIsDiffOpen: s.setIsDiffOpen,
@@ -74,7 +76,9 @@ export function ModalManager({}: ModalManagerProps = {}) {
     isQuitConfirmOpen: s.isQuitConfirmOpen,
     setIsQuitConfirmOpen: s.setIsQuitConfirmOpen,
     isRefreshConfirmOpen: s.isRefreshConfirmOpen,
-    setIsRefreshConfirmOpen: s.setIsRefreshConfirmOpen
+    setIsRefreshConfirmOpen: s.setIsRefreshConfirmOpen,
+    isInstallPromptOpen: s.isInstallPromptOpen,
+    setIsInstallPromptOpen: s.setIsInstallPromptOpen
   })))
 
   const { selectedSnapshot, currentContent } = useWorkspaceStore()
@@ -180,6 +184,10 @@ export function ModalManager({}: ModalManagerProps = {}) {
         isOpen={isQuitConfirmOpen}
         onClose={() => setIsQuitConfirmOpen(false)}
         onConfirm={handleQuitConfirm}
+      />
+      <InstallDesktopModal
+        isOpen={isInstallPromptOpen}
+        onClose={() => setIsInstallPromptOpen(false)}
       />
       {isRefreshConfirmOpen && setIsRefreshConfirmOpen && handleRefreshConfirm && (
         <RefreshConfirmModal

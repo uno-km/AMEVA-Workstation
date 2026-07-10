@@ -399,7 +399,7 @@ export function useAppFileOperations(
       const newBlock: AmevaPartialBlock = {
         id: Math.random().toString(36).substring(2, 10),
         type: 'paragraph',
-        content: []
+        content: [] as any
       }
       editor.replaceBlocks(editor.document, [newBlock])
     }
@@ -655,7 +655,12 @@ export function useAppFileOperations(
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const hasMedia = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const hasMedia = markdown.includes('data:video/') || markdown.includes('data:audio/')
+    const hasMedia = 
+      markdown.includes('data:video/') || 
+      markdown.includes('data:audio/') || 
+      markdown.includes('media://') || 
+      markdown.includes('type: "presentation"') ||
+      markdown.includes('type: "youtube"')
     
     // 1) 동영상/오디오 포함 시 아메바 .adc 패키징 강제/권장 팝업 조건 노드
     if (hasMedia && ['md', 'markdown', 'txt'].includes(ext)) {
@@ -684,71 +689,22 @@ export function useAppFileOperations(
         
         // 예 선택 시 adc 패키지 변환 저장
         if (boxRes.response === 0) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `saveResult`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const saveResult = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-          const saveResult = await ipc.saveFile('', undefined)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `saveResult && saveResult.success && saveResult.filePath`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (saveResult && saveResult.success && saveResult.filePath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+          // 기본 저장 파일명 뒤에 .adc 확장자를 미리 바인딩하여 다이얼로그의 디폴트 가이드로 제공
+          const defaultAdcPath = filePath ? filePath.split('.').slice(0, -1).join('.') + '.adc' : 'document.adc'
+          const saveResult = await ipc.saveFile('', defaultAdcPath)
+          
           if (saveResult && saveResult.success && saveResult.filePath) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `savedPath`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const savedPath = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const savedPath = saveResult.filePath
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `newExt`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const newExt = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const newExt = savedPath.split('.').pop()?.toLowerCase() || 'md'
-            let contentToSave: string
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `newExt === 'adc'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (newExt === 'adc')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-            if (newExt === 'adc') {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `blob`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const blob = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-              const blob = await packMarkdownToADC(markdown)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `arrayBuffer`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const arrayBuffer = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-              const arrayBuffer = await blob.arrayBuffer()
-              contentToSave = arrayBufferToBase64(arrayBuffer)
-            } else if (newExt === 'ipynb') {
-              contentToSave = convertMarkdownToIpynb(markdown)
-            } else if (['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(newExt)) {
-              contentToSave = await convertMarkdownToBinary(editor, savedPath)
-            } else {
-              contentToSave = markdown
+            let savedPath = saveResult.filePath
+            // [BUG-FIX] 사용자가 대화상자에서 확장자를 md 등으로 실수했어도, 팝업에서 예(adc로 저장)를 골랐으므로 무조건 .adc 강제 고정
+            if (!savedPath.toLowerCase().endsWith('.adc')) {
+              savedPath = savedPath.split('.').slice(0, -1).join('.') + '.adc'
             }
+
+            const blob = await packMarkdownToADC(markdown)
+            const arrayBuffer = await blob.arrayBuffer()
+            const contentToSave = arrayBufferToBase64(arrayBuffer)
+
+            // 보정된 경로로 최종 저장 기입 실행
             await ipc.saveFile(contentToSave, savedPath)
             setFilePath(savedPath)
             setOriginalContent(rawMarkdown)

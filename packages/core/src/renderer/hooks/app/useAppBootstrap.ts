@@ -33,6 +33,7 @@
 
 import { useState, useEffect } from 'react'
 import { useProcessStore } from '../../stores/useProcessStore'
+import { useUIStore } from '../../stores/useUIStore'
 import type { AppSettings } from '../../components/SettingsModal'
 
 /** 기본 MCP 서버 목록 (초기값) */
@@ -245,6 +246,15 @@ export function useAppBootstrap(
 
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // 5. Electron 네이티브 쉘 미설치 감지 및 다운로드 모달 권장 가동
+  useEffect(() => {
+    const isElectron = typeof window !== 'undefined' && !!(window as any).electronAPI
+    const dismissed = localStorage.getItem('ameva_desktop_install_prompt_dismissed') === 'true'
+    if (!isElectron && !dismissed) {
+      useUIStore.getState().setIsInstallPromptOpen(true)
+    }
   }, [])
 
   return {

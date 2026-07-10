@@ -124,11 +124,11 @@ export function useAppEditorInit({
                     type: 'presentation',
                     props: {
                       pptxPath: pptxPath.replace(/\\/g, '/'),
-                      slides: res.slides.map((s: string) => `media://${s}`),
+                      slides: res.slides.map((s: string) => `media://${s}`).join(','),
                       fallback: res.fallback,
                       slidesText: JSON.stringify(res.slides_text || [])
                     }
-                  }
+                  } as any
                 ],
                 currentBlock,
                 'after'

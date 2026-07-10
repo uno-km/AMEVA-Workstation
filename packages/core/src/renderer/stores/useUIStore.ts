@@ -96,6 +96,9 @@ export interface UIState {
   setShowPricingModal: (val: boolean) => void
   togglePricingModal: () => void
 
+  isInstallPromptOpen: boolean
+  setIsInstallPromptOpen: (val: boolean) => void
+
   /*
    * [LOCAL LLM HUB MODAL STATES]
    * - showModelHub: 로컬 모델 설치 및 기동 매니저 노출 여부.
@@ -232,6 +235,9 @@ export const useUIStore = create<UIState>((set, get) => ({
   showPricingModal: false,
   setShowPricingModal: (val) => set({ showPricingModal: val }),
   togglePricingModal: () => set((state) => ({ showPricingModal: !state.showPricingModal })),
+
+  isInstallPromptOpen: false,
+  setIsInstallPromptOpen: (val) => set({ isInstallPromptOpen: val }),
 
   showModelHub: false,
   setShowModelHub: (val) => set({ showModelHub: val }),

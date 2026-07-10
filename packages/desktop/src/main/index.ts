@@ -390,12 +390,25 @@ ipcMain.handle('ollama:check-installed', async () => {
 ipcMain.handle('ollama:start-server', async () => {
   try {
     const { spawn } = require('child_process') as typeof import('child_process')
-    // detached + unref()로 부모(Electron) 종료와 무관하게 독립 프로세스로 기동한다.
+    // [BUG-FIX] Windows에서 CMD 검은 창이 직접 팝업되는 현상을 방지하기 위해 windowsHide: true 추가
+    // stdio를 ignore하지 않고 pipe로 가두어, 실시간 출력 로그를 AMEVA 웹 CLI/콘솔 화면(OLM 프리픽스)에 전달
     const child = spawn('ollama', ['serve'], {
       detached: true,
-      stdio: 'ignore',
+      stdio: ['ignore', 'pipe', 'pipe'],
       shell: process.platform === 'win32',
+      windowsHide: true,
     })
+
+    child.stdout?.on('data', (chunk: Buffer) => {
+      const text = chunk.toString('utf-8')
+      LLMProcessManager.broadcastLog('OLM', text)
+    })
+
+    child.stderr?.on('data', (chunk: Buffer) => {
+      const text = chunk.toString('utf-8')
+      LLMProcessManager.broadcastLog('OLM', text)
+    })
+
     child.unref()
     // 2초 대기 후 헬스체크를 수행하여 실제 기동 성공 여부를 확인한다.
     await new Promise<void>(resolve => setTimeout(resolve, 2000))
