@@ -126,32 +126,27 @@ export function useAIHealthCheck(
         }
       }
 
-      // 1. Ollama 엔드포인트 헬스 체크
+      // 1. Ollama 엔드포인트 헬스 체크 (렌더러측 콘솔 ERR_CONNECTION_REFUSED 도배 방지를 위해 메인 프로세스로 위임)
       if (type === 'ollama') {
         try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `ep`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const ep = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-          const ep = settings.apiEndpoint || 'http://127.0.0.1:11434'
-          
-          // CONTRACT: 3초 타임아웃 GET fetch
-          const res = await fetch(`${ep}/api/tags`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(3000)
-          })
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `res.ok) handleSuccess(`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (res.ok) handleSuccess()` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-          if (res.ok) handleSuccess()
-          else handleFail()
+          const api = (window as Window & { electronAPI?: { checkOllamaHealth?: () => Promise<{ success: boolean }> } }).electronAPI
+          if (api?.checkOllamaHealth) {
+            const health = await api.checkOllamaHealth()
+            if (health.success) {
+              handleSuccess()
+            } else {
+              handleFail()
+            }
+          } else {
+            // 데스크톱 브릿지가 누락되었거나 웹 환경일 때의 폴백 fetch
+            const ep = settings.apiEndpoint || 'http://127.0.0.1:11434'
+            const res = await fetch(`${ep}/api/tags`, {
+              method: 'GET',
+              signal: AbortSignal.timeout(2000)
+            })
+            if (res.ok) handleSuccess()
+            else handleFail()
+          }
         } catch {
           // 커넥션 오류 발생 시 실패 처리
           handleFail()

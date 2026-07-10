@@ -272,11 +272,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   pullOllamaModel: (modelName: string) =>
     ipcRenderer.invoke('ollama:pull-model', modelName),
 
+  // 메인 프로세스 대행 Ollama 헬스 체크
+  checkOllamaHealth: () =>
+    ipcRenderer.invoke('ollama:check-health'),
+
   // Ollama pull 실시간 진행률 수신 리스너 (percent, text 스트리밍)
   onOllamaPullProgress: (callback: (data: { modelName: string; percent: number; text: string }) => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, data: { modelName: string; percent: number; text: string }) => callback(data)
     ipcRenderer.on('ollama:pull-progress', subscription)
     return () => ipcRenderer.removeListener('ollama:pull-progress', subscription)
   },
+
+  // ── 🌐 Google OAuth 2.0 & Google Drive ──
+  googleAuthLogin: (connectDrive: boolean) => ipcRenderer.invoke('google-auth:login', connectDrive),
+  googleAuthLogout: () => ipcRenderer.invoke('google-auth:logout'),
+  googleAuthGetStatus: () => ipcRenderer.invoke('google-auth:get-status'),
 })
 

@@ -33,6 +33,11 @@
 - **MarkdownEditor.tsx 한글 인코딩 유실 및 홑따옴표 누락 구문 복구**:
   - `src/renderer/components/MarkdownEditor.tsx` 및 `packages/core/.../MarkdownEditor.tsx` 파일이 CP949 인코딩으로 저장되어 한글 유니코드 주석이 깨지면서 홑따옴표가 유실되어 발생하던 치명적인 TypeScript 구문 에러(`Unterminated string literal`, `Declaration or statement expected`)들을 완벽히 정복했습니다.
   - 두 파일 모두 UTF-8 BOM 인코딩으로 완전히 안전 전환하고, 미사용 임포트(`useSideMenuHoverSync`) 및 깨진 멘션 라벨 문자열을 정상 한글('이름없는 사용자', '작업 참여자 멘션')로 복구했습니다.
+- **Ollama 헬스체크 메인 프로세스(IPC) 위임을 통한 브라우저 콘솔 에러 도배 해결**:
+  - Ollama 오프라인 시 렌더러가 직접 `fetch`를 보내다가 개발자 도구 콘솔에 빨간색 `net::ERR_CONNECTION_REFUSED` 에러가 무진장 도배되는 현상을 발견하고, 이를 해결하기 위해 메인 프로세스 단에 `ollama:check-health` 채널을 신설했습니다.
+  - 렌더러의 `useAIHealthCheck.ts`가 Node.js 백그라운드 핑을 통해 결과만 boolean으로 받아오도록 설계하여 브라우저 콘솔 창을 완전히 깨끗하고 무오류 상태로 정비했습니다.
+- **전체 소스코드 인코딩 오염 롤백 및 한글 완벽 복구**:
+  - 전체 인코딩 변환 과정에서 원래 정상적인 UTF-8 파일의 한글 주석이 외계어로 꼬이는 오염 현상이 확인되어, 변경된 593개 파일들을 Git HEAD 버전으로 즉시 되돌리고 100% 온전한 한국어 주석 상태로 복구 완료했습니다.
 
 ### 📁 수정된 파일 목록
 - `[NEW]` [constants.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/constants.ts) - 주식별 금융 Mock 뉴스 및 유틸 라벨, 검색 스타일 등 3단계 도메인 지역 상수 선언.

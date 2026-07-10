@@ -136,6 +136,11 @@ declare global {
       // 13. STT (Speech-to-Text) 휘스퍼 가상 브릿지
       sttTranscribe?: (payload: { audioPath: string; language?: string }) => Promise<{ success: boolean; text?: string; error?: string }>
       sttGetTempPath?: () => Promise<string | null>
+
+      // 14. Google OAuth 2.0 & Google Drive
+      googleAuthLogin?: (connectDrive: boolean) => Promise<{ success: boolean; user?: any; error?: string }>
+      googleAuthLogout?: () => Promise<{ success: boolean }>
+      googleAuthGetStatus?: () => Promise<{ success: boolean; user?: any; error?: string; message?: string }>
     }
   }
 }

@@ -58,6 +58,7 @@ import { WindowDefenseManager } from './services/windowDefenseManager.js'
 import { registerFileIpc } from './ipc/fileIpc.js'
 import { registerMcpIpc } from './ipc/mcpIpc.js'
 import { registerPythonIpc } from './ipc/pythonIpc.js'
+import { registerGoogleAuthIpc } from './ipc/googleAuthIpc.js'
 import { registerLlmIpc } from './ipc/llmIpc.js'
 import { registerTerminalIpc } from './ipc/terminalIpc.js'
 
@@ -295,6 +296,7 @@ registerMcpIpc()
 registerPythonIpc()
 registerLlmIpc()
 registerTerminalIpc()
+registerGoogleAuthIpc()
 
 /*
  * [FIX-FINANCE-001] Finance IPC 채널: CORS 우회 Yahoo Finance 주식/지수 조회
@@ -452,6 +454,16 @@ ipcMain.handle('ollama:pull-model', async (event, modelName: string) => {
   } catch (err: unknown) {
     console.error('[ollama:pull-model] 실패:', err)
     return { success: false, error: String(err) }
+  }
+})
+
+// (4) Ollama 포트 11434 헬스 체크 대행 채널 (렌더러측 콘솔 ERR_CONNECTION_REFUSED 도배 회피용)
+ipcMain.handle('ollama:check-health', async () => {
+  try {
+    const res = await fetch('http://127.0.0.1:11434/api/tags', { signal: AbortSignal.timeout(1500) })
+    return { success: res.ok }
+  } catch {
+    return { success: false }
   }
 })
 

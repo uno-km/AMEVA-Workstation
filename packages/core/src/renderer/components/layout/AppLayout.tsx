@@ -151,10 +151,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
         backgroundColor: 'var(--bg-deep)', overflow: 'hidden',
       }}
     >
-      {/* OS 타이틀 바 영역 확보용 더미 스페이서 */}
-      <div className="titlebar-spacer" />
-
-      {/* 최상단 파일/설정 시스템 풀다운 메뉴바 */}
+      {/* 최상단 파일/설정 시스템 풀다운 메뉴바 (통합 타이틀바로 기능) */}
       <MenuBar />
 
       {/* 사이드바, 에디터 및 우측 AI 패널을 수평으로 나열하는 메인 레이아웃 행 */}

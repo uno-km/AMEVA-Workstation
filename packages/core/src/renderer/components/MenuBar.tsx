@@ -18,12 +18,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import { Check } from 'lucide-react'
+import { Check, LayoutGrid, PanelLeft, PanelBottom, PanelRight, Search, Globe, Settings, ChevronDown, RefreshCw, LogOut } from 'lucide-react'
 
 import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 
 import { useAppContext } from '../contexts/AppContext'
 import { useUIStore } from '../stores/useUIStore'
+import { useWorkspaceStore } from '../stores/useWorkspaceStore'
 import * as ipc from '../services/ipc/electronApiAdapter'
 
 export interface MenuBarProps {}
@@ -51,14 +52,40 @@ export function MenuBar({}: MenuBarProps = {}) {
     settings,
     handleUpdateSettings,
     isProPlan,
+    username,
   } = useAppContext()
   
   const {
     showStatusBar, setShowStatusBar,
     showSidebar, setShowSidebar,
+    showAIPanel, toggleAIPanel,
+    showFindReplace, toggleFindReplace,
+    setActiveRightTab,
     setIsSettingsOpen, setIsAboutOpen, setIsGuideOpen,
     setShowMarketplaceModal, setShowPricingModal
   } = useUIStore()
+
+  const filePath = useWorkspaceStore((state) => state.filePath)
+  const [googlePopoverOpen, setGooglePopoverOpen] = useState(false)
+  const [googleProfile, setGoogleProfile] = useState<any | null>(null)
+
+  // 🦾 [AUTO AUTH RETRIEVAL] 마운트 시 구글 로그인 영속 세션 자동 수신
+  useEffect(() => {
+    const checkGoogleSession = async () => {
+      if (window.electronAPI?.googleAuthGetStatus) {
+        try {
+          const res = await window.electronAPI.googleAuthGetStatus()
+          if (res.success && res.user) {
+            setGoogleProfile(res.user)
+            setUsername(res.user.name)
+          }
+        } catch (err) {
+          console.error('[MenuBar] 자동 구글 세션 체크 오류:', err)
+        }
+      }
+    }
+    checkGoogleSession()
+  }, [])
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -216,6 +243,7 @@ export function MenuBar({}: MenuBarProps = {}) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setActiveMenu(null)
         setIsAltMode(false)
+        setGooglePopoverOpen(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -374,187 +402,387 @@ export function MenuBar({}: MenuBarProps = {}) {
   return (
     <div
       ref={containerRef}
-      style={{
-        height: '28px',
-        backgroundColor: 'var(--bg-deep)',
-        borderBottom: '1px solid var(--border-muted)',
-        display: 'flex',
-        alignItems: 'center',
-        padding: '0 10px',
-        gap: '6px',
-        userSelect: 'none',
-        zIndex: 998,
-      }}
+      className="menu-bar-container"
     >
-      {/* 1. File 메뉴 */}
-      <div style={{ position: 'relative' }}>
-        <button
-          style={{
-            ...menuStyle,
-            backgroundColor: activeMenu === 'file' ? 'var(--bg-glass-active)' : 'transparent',
-          }}
-          onClick={() => handleMenuClick('file')}
-        >
-          {renderLabel('File', 'f')}
-        </button>
-        {activeMenu === 'file' && (
-          <div style={dropdownStyle}>
-            <button style={itemStyle} onClick={() => triggerAction(onNewWindow)}>
-              {renderLabel('새 창 열기', 'n')}
-              <span style={shortcutStyle}>{formatHotkey(hkeys.newFile)}</span>
-            </button>
-            <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-            <button style={itemStyle} onClick={() => triggerAction(onOpenFile)}>
-              {renderLabel('열기...', 'o')}
-              <span style={shortcutStyle}>{formatHotkey(hkeys.open)}</span>
-            </button>
-            <button style={itemStyle} onClick={() => triggerAction(onSaveFile)}>
-              {renderLabel('저장', 's')}
-              <span style={shortcutStyle}>{formatHotkey(hkeys.save)}</span>
-            </button>
-            <button style={itemStyle} onClick={() => triggerAction(onSaveAs)}>
-              {renderLabel('다른 이름으로 저장...', 'a')}
-            </button>
-            <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-            <button style={itemStyle} onClick={() => triggerAction(onPrint)}>
-              {renderLabel('인쇄 (PDF 변환)', 'p')}
-              <span style={shortcutStyle}>{formatHotkey(hkeys.pdfExport)}</span>
-            </button>
-            <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-            <button style={{ ...itemStyle, color: 'var(--danger)' }} onClick={() => triggerAction(onCloseApp)}>
-              {renderLabel('종료', 'x')}
-              <span style={shortcutStyle}>Alt+F4</span>
-            </button>
-          </div>
-        )}
-      </div>
+      {/* 1. 좌측 영역: 앱 로고 + 풀다운 메뉴바 */}
+      <div className="menu-bar-left">
+        {/* AMEVA OS 로고 (삼각형 폴리곤) */}
+        <div className="menu-bar-logo">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 22 22 22" />
+          </svg>
+        </div>
 
-      {/* 2. View 메뉴 */}
-      <div style={{ position: 'relative' }}>
-        <button
-          style={{
-            ...menuStyle,
-            backgroundColor: activeMenu === 'view' ? 'var(--bg-glass-active)' : 'transparent',
-          }}
-          onClick={() => handleMenuClick('view')}
-        >
-          {renderLabel('View', 'v')}
-        </button>
-        {activeMenu === 'view' && (
-          <div style={dropdownStyle}>
+        <div className="menu-items-row">
+          {/* 1.1 File 메뉴 */}
+          <div style={{ position: 'relative' }}>
             <button
-              style={itemStyle}
-              onClick={() => triggerAction(() => setEditorMode(editorMode === 'preview' ? 'edit' : 'preview'))}
+              style={{
+                ...menuStyle,
+                backgroundColor: activeMenu === 'file' ? 'var(--bg-glass-active)' : 'transparent',
+              }}
+              onClick={() => handleMenuClick('file')}
             >
-              {renderLabel(editorMode === 'preview' ? '편집 모드로 전환' : '뷰어 모드로 전환', 'e')}
+              {renderLabel('File', 'f')}
             </button>
-            <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-            <button style={itemStyle} onClick={() => triggerAction(() => setShowStatusBar(!showStatusBar))}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {showStatusBar ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
-                {renderLabel('상태바 표시', 't')}
-              </span>
+            {activeMenu === 'file' && (
+              <div style={dropdownStyle}>
+                <button style={itemStyle} onClick={() => triggerAction(onNewWindow)}>
+                  {renderLabel('새 창 열기', 'n')}
+                  <span style={shortcutStyle}>{formatHotkey(hkeys.newFile)}</span>
+                </button>
+                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+                <button style={itemStyle} onClick={() => triggerAction(onOpenFile)}>
+                  {renderLabel('열기...', 'o')}
+                  <span style={shortcutStyle}>{formatHotkey(hkeys.open)}</span>
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(onSaveFile)}>
+                  {renderLabel('저장', 's')}
+                  <span style={shortcutStyle}>{formatHotkey(hkeys.save)}</span>
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(onSaveAs)}>
+                  {renderLabel('다른 이름으로 저장...', 'a')}
+                </button>
+                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+                <button style={itemStyle} onClick={() => triggerAction(onPrint)}>
+                  {renderLabel('인쇄 (PDF 변환)', 'p')}
+                  <span style={shortcutStyle}>{formatHotkey(hkeys.pdfExport)}</span>
+                </button>
+                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+                <button style={{ ...itemStyle, color: 'var(--danger)' }} onClick={() => triggerAction(onCloseApp)}>
+                  {renderLabel('종료', 'x')}
+                  <span style={shortcutStyle}>Alt+F4</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 1.2 View 메뉴 */}
+          <div style={{ position: 'relative' }}>
+            <button
+              style={{
+                ...menuStyle,
+                backgroundColor: activeMenu === 'view' ? 'var(--bg-glass-active)' : 'transparent',
+              }}
+              onClick={() => handleMenuClick('view')}
+            >
+              {renderLabel('View', 'v')}
             </button>
-            <button style={itemStyle} onClick={() => triggerAction(() => setShowSidebar(!showSidebar))}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {showSidebar ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
-                {renderLabel('사이드바 표시', 'b')}
-              </span>
+            {activeMenu === 'view' && (
+              <div style={dropdownStyle}>
+                <button
+                  style={itemStyle}
+                  onClick={() => triggerAction(() => setEditorMode(editorMode === 'preview' ? 'edit' : 'preview'))}
+                >
+                  {renderLabel(editorMode === 'preview' ? '편집 모드로 전환' : '뷰어 모드로 전환', 'e')}
+                </button>
+                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+                <button style={itemStyle} onClick={() => triggerAction(() => setShowStatusBar(!showStatusBar))}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {showStatusBar ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
+                    {renderLabel('상태바 표시', 't')}
+                  </span>
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(() => setShowSidebar(!showSidebar))}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {showSidebar ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
+                    {renderLabel('사이드바 표시', 'b')}
+                  </span>
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(() => setShowConsole(!showConsole))}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {showConsole ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
+                    {renderLabel('코드 콘솔 표시', 'c')}
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 1.3 Window 메뉴 */}
+          <div style={{ position: 'relative' }}>
+            <button
+              style={{
+                ...menuStyle,
+                backgroundColor: activeMenu === 'window' ? 'var(--bg-glass-active)' : 'transparent',
+              }}
+              onClick={() => handleMenuClick('window')}
+            >
+              {renderLabel('Window', 'w')}
             </button>
-            <button style={itemStyle} onClick={() => triggerAction(() => setShowConsole(!showConsole))}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {showConsole ? <Check size={12} style={{ color: 'var(--primary)' }} /> : <span style={{ width: '12px' }} />}
-                {renderLabel('코드 콘솔 표시', 'c')}
-              </span>
+            {activeMenu === 'window' && (
+              <div style={dropdownStyle}>
+                <button style={itemStyle} onClick={() => triggerAction(onZoomIn)}>
+                  {renderLabel('확대', 'i')}
+                  <span style={shortcutStyle}>{formatHotkey(hkeys.zoomIn)}</span>
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(onZoomOut)}>
+                  {renderLabel('축소', 'o')}
+                  <span style={shortcutStyle}>{formatHotkey(hkeys.zoomOut)}</span>
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(onZoomReset)}>
+                  {renderLabel('원래 크기로', 'r')}
+                  <span style={shortcutStyle}>{formatHotkey(hkeys.zoomReset)}</span>
+                </button>
+                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+                <button style={itemStyle} onClick={() => triggerAction(onToggleFullscreen)}>
+                  {renderLabel('전체 화면 토글', 'f')}
+                  <span style={shortcutStyle}>F11</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* 1.4 Settings 메뉴 */}
+          <div style={{ position: 'relative' }}>
+            <button
+              style={menuStyle}
+              onClick={() => triggerAction(onOpenSettings)}
+            >
+              {renderLabel('Settings', 's')}
             </button>
           </div>
-        )}
-      </div>
 
-      {/* 3. Window 메뉴 */}
-      <div style={{ position: 'relative' }}>
-        <button
-          style={{
-            ...menuStyle,
-            backgroundColor: activeMenu === 'window' ? 'var(--bg-glass-active)' : 'transparent',
-          }}
-          onClick={() => handleMenuClick('window')}
-        >
-          {renderLabel('Window', 'w')}
-        </button>
-        {activeMenu === 'window' && (
-          <div style={dropdownStyle}>
-            <button style={itemStyle} onClick={() => triggerAction(onZoomIn)}>
-              {renderLabel('확대', 'i')}
-              <span style={shortcutStyle}>{formatHotkey(hkeys.zoomIn)}</span>
+          {/* 1.5 Marketplace 메뉴 */}
+          {isProPlan && (
+            <div style={{ position: 'relative' }}>
+              <button
+                style={menuStyle}
+                onClick={() => triggerAction(onOpenMarketplace)}
+              >
+                {renderLabel('Marketplace', 'm')}
+              </button>
+            </div>
+          )}
+
+          {/* 1.6 Help 메뉴 */}
+          <div style={{ position: 'relative' }}>
+            <button
+              style={{
+                ...menuStyle,
+                backgroundColor: activeMenu === 'help' ? 'var(--bg-glass-active)' : 'transparent',
+              }}
+              onClick={() => handleMenuClick('help')}
+            >
+              {renderLabel('Help', 'h')}
             </button>
-            <button style={itemStyle} onClick={() => triggerAction(onZoomOut)}>
-              {renderLabel('축소', 'o')}
-              <span style={shortcutStyle}>{formatHotkey(hkeys.zoomOut)}</span>
-            </button>
-            <button style={itemStyle} onClick={() => triggerAction(onZoomReset)}>
-              {renderLabel('원래 크기로', 'r')}
-              <span style={shortcutStyle}>{formatHotkey(hkeys.zoomReset)}</span>
-            </button>
-            <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-            <button style={itemStyle} onClick={() => triggerAction(onToggleFullscreen)}>
-              {renderLabel('전체 화면 토글', 'f')}
-              <span style={shortcutStyle}>F11</span>
-            </button>
+            {activeMenu === 'help' && (
+              <div style={dropdownStyle}>
+                <button style={itemStyle} onClick={() => triggerAction(onOpenAbout)}>
+                  {renderLabel('아메바 생태계 소개...', 'a')}
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(onOpenGuide)}>
+                  {renderLabel('마크다운 작성 가이드', 'g')}
+                </button>
+                <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
+                <button style={itemStyle} onClick={() => triggerAction(onOpenPricing)}>
+                  <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
+                    {renderLabel('💰 Pricing Plans...', 'p')}
+                  </span>
+                </button>
+                <button style={itemStyle} onClick={() => triggerAction(onOpenGithub)}>
+                  {renderLabel('문의하기 (Contact Us)...', 'c')}
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* 4. Settings 메뉴 */}
-      <div style={{ position: 'relative' }}>
-        <button
-          style={menuStyle}
-          onClick={() => triggerAction(onOpenSettings)}
-        >
-          {renderLabel('Settings', 's')}
-        </button>
+      {/* 2. 중앙 영역: 현재 열린 파일 경로 표기 (Antigravity 스타일 대시 구분선 적용) */}
+      <div className="menu-bar-center">
+        <span style={{ color: 'var(--text-dark)' }}>AMEVA Workstation</span>
+        <span style={{ color: 'var(--text-dark)', opacity: 0.6, fontSize: '10px' }}>-</span>
+        <span className="file-name">
+          {filePath ? filePath.split(/[/\\]/).pop() : '이름없는 문서.md'}
+        </span>
       </div>
 
-      {/* 4.5 Marketplace 메뉴 */}
-      {isProPlan && (
-        <div style={{ position: 'relative' }}>
-          <button
-            style={menuStyle}
-            onClick={() => triggerAction(onOpenMarketplace)}
+      {/* 3. 우측 영역: Antigravity 레이아웃 구성 + 검색 + 브라우저열기 + 설정 + 구글계정관리 */}
+      <div className="menu-bar-right">
+        {/* (1) 레이아웃 전환 버튼 그룹 (4개) */}
+        <div className="layout-btn-group">
+          {/* 전체 패널 복원 / 리셋 */}
+          <button 
+            className={`layout-btn ${(showSidebar && showAIPanel) ? 'active' : ''}`}
+            onClick={() => {
+              const target = !(showSidebar && showAIPanel)
+              setShowSidebar(target)
+              if (showAIPanel !== target) toggleAIPanel()
+            }}
+            title="전체 레이아웃 토글"
           >
-            {renderLabel('Marketplace', 'm')}
+            <LayoutGrid size={13} />
+          </button>
+
+          {/* 사이드바 토글 */}
+          <button 
+            className={`layout-btn ${showSidebar ? 'active' : ''}`}
+            onClick={() => setShowSidebar(!showSidebar)}
+            title="사이드바 토글"
+          >
+            <PanelLeft size={13} />
+          </button>
+          
+          {/* 하단 코드 콘솔 토글 */}
+          <button 
+            className={`layout-btn ${showConsole ? 'active' : ''}`}
+            onClick={() => setShowConsole(!showConsole)}
+            title="하단 콘솔 토글"
+          >
+            <PanelBottom size={13} />
+          </button>
+
+          {/* AI 패널 토글 */}
+          <button 
+            className={`layout-btn ${showAIPanel ? 'active' : ''}`}
+            onClick={toggleAIPanel}
+            title="AI 패널 토글"
+          >
+            <PanelRight size={13} />
           </button>
         </div>
-      )}
 
-      {/* 5. Help 메뉴 */}
-      <div style={{ position: 'relative' }}>
-        <button
-          style={{
-            ...menuStyle,
-            backgroundColor: activeMenu === 'help' ? 'var(--bg-glass-active)' : 'transparent',
-          }}
-          onClick={() => handleMenuClick('help')}
+        {/* (2) 검색 돋보기 단추 */}
+        <button 
+          className={`layout-btn ${showFindReplace ? 'active' : ''}`}
+          onClick={toggleFindReplace}
+          title="텍스트 찾기/바꾸기 (검색)"
         >
-          {renderLabel('Help', 'h')}
+          <Search size={13} />
         </button>
-        {activeMenu === 'help' && (
-          <div style={dropdownStyle}>
-            <button style={itemStyle} onClick={() => triggerAction(onOpenAbout)}>
-              {renderLabel('아메바 생태계 소개...', 'a')}
-            </button>
-            <button style={itemStyle} onClick={() => triggerAction(onOpenGuide)}>
-              {renderLabel('마크다운 작성 가이드', 'g')}
-            </button>
-            <div style={{ height: '1px', backgroundColor: 'var(--border-muted)', margin: '4px 0' }} />
-            <button style={itemStyle} onClick={() => triggerAction(onOpenPricing)}>
-              <span style={{ color: 'var(--primary)', fontWeight: 700 }}>
-                {renderLabel('💰 Pricing Plans...', 'p')}
-              </span>
-            </button>
-            <button style={itemStyle} onClick={() => triggerAction(onOpenGithub)}>
-              {renderLabel('문의하기 (Contact Us)...', 'c')}
-            </button>
+
+        {/* 세로 구분선 */}
+        <div style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-muted)', margin: '0 2px' }} />
+
+        {/* (3) 구글 브라우저 탭 활성화 단추 */}
+        <button 
+          className="layout-btn"
+          onClick={() => {
+            setActiveRightTab('google')
+            if (!showAIPanel) toggleAIPanel()
+          }}
+          title="구글 웹 브라우저 열기"
+        >
+          <Globe size={13} style={{ color: '#4285f4' }} />
+        </button>
+
+        {/* (4) 설정 톱니바퀴 단추 */}
+        <button 
+          className="layout-btn"
+          onClick={onOpenSettings}
+          title="환경 설정"
+        >
+          <Settings size={13} />
+        </button>
+
+        {/* (5) 구글 계정 로그인 관리 아바타 (주황색 E 또는 이미지 + 아래화살표 v) */}
+        <div 
+          className="google-profile-btn"
+          onClick={() => setGooglePopoverOpen(!googlePopoverOpen)}
+          title="Google 계정 관리"
+        >
+          {googleProfile?.picture ? (
+            <img 
+              src={googleProfile.picture} 
+              alt="Avatar" 
+              style={{ width: '23px', height: '23px', borderRadius: '50%' }}
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="google-profile-avatar">
+              {googleProfile ? googleProfile.name.slice(0, 1).toUpperCase() : 'G'}
+            </div>
+          )}
+          <ChevronDown size={11} style={{ color: 'var(--text-muted)' }} />
+        </div>
+
+        {/* 구글 계정 팝오버 드롭다운 카드 */}
+        {googlePopoverOpen && (
+          <div className="google-popover">
+            <div className="google-popover-header">
+              {googleProfile?.picture ? (
+                <img 
+                  src={googleProfile.picture} 
+                  alt="Avatar" 
+                  style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid var(--border-glow)' }}
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div 
+                  className="google-popover-avatar-big"
+                  style={{
+                    backgroundColor: '#f97316',
+                    color: '#fff',
+                  }}
+                >
+                  {googleProfile ? googleProfile.name.slice(0, 1).toUpperCase() : 'G'}
+                </div>
+              )}
+              <div className="google-popover-info">
+                <div className="google-popover-name">{googleProfile?.name || '구글 미연결'}</div>
+                <div className="google-popover-email">{googleProfile?.email || '로그인하여 서비스를 시작하세요'}</div>
+                <div className="google-popover-badge">
+                  {googleProfile?.isDriveConnected ? 'Drive Connected 🟢' : 'Drive Disconnected 🔴'}
+                </div>
+              </div>
+            </div>
+            <div className="google-popover-body">
+              {googleProfile ? (
+                <>
+                  <button 
+                    className="google-popover-btn google-popover-btn-primary"
+                    onClick={async () => {
+                      if (window.electronAPI?.googleAuthGetStatus) {
+                        const res = await window.electronAPI.googleAuthGetStatus()
+                        if (res.success && res.user) {
+                          setGoogleProfile(res.user)
+                          setUsername(res.user.name)
+                          alert('Google 계정 동기화가 성공적으로 완료되었습니다!')
+                        } else {
+                          setGoogleProfile(null)
+                          setUsername('')
+                          alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
+                        }
+                      }
+                      setGooglePopoverOpen(false)
+                    }}
+                  >
+                    <RefreshCw size={12} />
+                    구글 계정 동기화
+                  </button>
+                  <button 
+                    className="google-popover-btn google-popover-btn-secondary"
+                    onClick={async () => {
+                      if (window.electronAPI?.googleAuthLogout) {
+                        if (confirm('정말로 로그아웃하고 계정 연결을 해제하시겠습니까?')) {
+                          await window.electronAPI.googleAuthLogout()
+                          setGoogleProfile(null)
+                          setUsername('')
+                          alert('로그아웃이 완료되었습니다.')
+                        }
+                      }
+                      setGooglePopoverOpen(false)
+                    }}
+                  >
+                    <LogOut size={12} />
+                    Sign Out (로그아웃)
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="google-popover-btn google-popover-btn-primary"
+                  style={{ justifyContent: 'center' }}
+                  onClick={() => {
+                    setIsSettingsOpen(true)
+                    setGooglePopoverOpen(false)
+                    alert('설정 모달의 계정(Account) 탭에서 안전한 구글 로그인을 진행할 수 있습니다!')
+                  }}
+                >
+                  구글 연동 로그인 시작하기
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>
