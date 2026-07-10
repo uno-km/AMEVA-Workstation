@@ -511,29 +511,35 @@ async function autoStartOllamaIfInstalled() {
       return
     }
 
-    // 2. Ollama CLI의 설치 유무 판단
+    // 2. Ollama CLI의 설치 유무 판단 및 실제 실행파일 경로 조회
     const { execSync, spawn } = require('child_process') as typeof import('child_process')
     const cmd = process.platform === 'win32' ? 'where ollama' : 'which ollama'
-    const hasOllama = await new Promise<boolean>((resolve) => {
+    
+    const ollamaPath = await new Promise<string>((resolve) => {
       try {
         const result = execSync(cmd, { encoding: 'utf-8', timeout: 3000 })
-        resolve(!!result)
+        const lines = result.trim().split('\n')
+        if (lines.length > 0 && lines[0].trim()) {
+          resolve(lines[0].trim())
+        } else {
+          resolve('')
+        }
       } catch {
-        resolve(false)
+        resolve('')
       }
     })
 
-    if (!hasOllama) {
+    if (!ollamaPath) {
       console.log('[OllamaAutoStart] Ollama가 시스템에 설치되어 있지 않습니다. 자동 기동 생략.')
       return
     }
 
-    // 3. 백그라운드로 독립 spawn serve 기동
-    console.log('[OllamaAutoStart] Ollama 백데몬 서버 자동 기동을 개시합니다...')
-    const child = spawn('ollama', ['serve'], {
+    // 3. 백그라운드로 독립 spawn serve 기동 (shell: false 옵션을 통해 CMD 검은 도스창 완전 차단)
+    console.log(`[OllamaAutoStart] Ollama 백데몬 서버 자동 기동을 개시합니다... (Path: ${ollamaPath})`)
+    const child = spawn(ollamaPath, ['serve'], {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
+      shell: false,
       windowsHide: true,
     })
 
@@ -651,8 +657,11 @@ app.whenReady().then(() => {
         }
       }
     } else {
-      // 일반 요청인 경우에만 기본 CSP 덮어씀 (단, iframe 내부 서브 리소스가 아니라 최상단 앱 페이지인 경우에만 주입)
-      if (details.resourceType === 'mainFrame') {
+      // 일반 요청인 경우에만 기본 CSP 덮어씀 (단, iframe 내부 서브 리소스가 아니라 최상단 AMEVA 앱 페이지인 경우에만 주입)
+      const isAppFrame = details.url.startsWith('http://localhost') || 
+                         details.url.startsWith('http://127.0.0.1') || 
+                         details.url.startsWith('file:///');
+      if (details.resourceType === 'mainFrame' && isAppFrame) {
         /*
          * [RUN-TIME STATE / INVARIANT]
          * - 변수 명: `Content-Security-Policy`

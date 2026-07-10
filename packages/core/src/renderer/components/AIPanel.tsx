@@ -41,7 +41,7 @@ import { UTILITY_TAB_LABELS, HIGHLIGHT_STYLE } from './ai/constants'
  * - Lightbulb: 개념 설명 액션 아이콘.
  * - Camera, SearchIcon, ArrowUp, ArrowDown, CloseIcon: 유틸 툴바 제어 아이콘.
  */
-import { FileText, Wand2, Languages, Expand, Lightbulb, Camera, Search as SearchIcon, ArrowUp, ArrowDown, X as CloseIcon, FileText as FileTextIcon } from 'lucide-react'
+import { FileText, Wand2, Languages, Expand, Lightbulb, Camera, Search as SearchIcon, ArrowUp, ArrowDown, X as CloseIcon, FileText as FileTextIcon, Crop } from 'lucide-react'
 
 /* 
  * [PRESENTATION & LOGIC HOOKS]
@@ -199,6 +199,127 @@ export function AIPanel() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [highlights, setHighlights] = useState<HTMLSpanElement[]>([])
 
+  // [FEAT-CROP-CAPTURE] 선택 캡쳐용 마우스 드래그 상태들
+  const [isCropMode, setIsCropMode] = useState(false)
+  const [isDrawing, setIsDrawing] = useState(false)
+  const [cropStart, setCropStart] = useState<{ x: number; y: number } | null>(null)
+  const [cropEnd, setCropEnd] = useState<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isCropMode) {
+        setIsCropMode(false)
+        setCropStart(null)
+        setCropEnd(null)
+        setIsDrawing(false)
+        setToastMessage('캡쳐가 취소되었습니다.')
+        setTimeout(() => setToastMessage(null), 2000)
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [isCropMode])
+
+  const handleCropMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    setCropStart({ x, y })
+    setCropEnd({ x, y })
+    setIsDrawing(true)
+  }
+
+  const handleCropMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !cropStart) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width))
+    const y = Math.max(0, Math.min(e.clientY - rect.top, rect.height))
+    setCropEnd({ x, y })
+  }
+
+  const handleCropMouseUp = async (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDrawing || !cropStart || !cropEnd) return
+    setIsDrawing(false)
+
+    const x1 = Math.min(cropStart.x, cropEnd.x)
+    const y1 = Math.min(cropStart.y, cropEnd.y)
+    const w = Math.abs(cropStart.x - cropEnd.x)
+    const h = Math.abs(cropStart.y - cropEnd.y)
+
+    if (w < 10 || h < 10) {
+      setCropStart(null)
+      setCropEnd(null)
+      setIsCropMode(false)
+      return
+    }
+
+    try {
+      const webviewEl = contentRef.current?.querySelector('webview') as any
+      let fullUrl = ''
+      
+      if (webviewEl && typeof webviewEl.capturePage === 'function') {
+        const nativeImage = await webviewEl.capturePage()
+        fullUrl = nativeImage.toDataURL()
+      } else if (contentRef.current) {
+        const canvas = await html2canvas(contentRef.current, {
+          useCORS: true,
+          backgroundColor: 'var(--bg-main, #0f0f12)',
+          scale: 2
+        })
+        fullUrl = canvas.toDataURL('image/png')
+      }
+
+      if (!fullUrl) throw new Error('캡쳐 데이터를 생성하지 못했습니다.')
+
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const scaleX = img.width / contentRef.current!.getBoundingClientRect().width
+        const scaleY = img.height / contentRef.current!.getBoundingClientRect().height
+
+        canvas.width = w * scaleX
+        canvas.height = h * scaleY
+
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(
+            img,
+            x1 * scaleX,
+            y1 * scaleY,
+            w * scaleX,
+            h * scaleY,
+            0,
+            0,
+            w * scaleX,
+            h * scaleY
+          )
+          
+          const cropUrl = canvas.toDataURL('image/png')
+          const a = document.createElement('a')
+          a.href = cropUrl
+          const tabName = UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab
+          a.download = `${tabName}_선택캡쳐.png`
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          
+          setToastMessage('선택한 영역이 성공적으로 캡쳐되었습니다!')
+          setTimeout(() => setToastMessage(null), 3000)
+        }
+      }
+      img.src = fullUrl
+    } catch (err: any) {
+      console.error('[AIPanel] Crop capture failed:', err)
+      setToastMessage(`선택 캡쳐 실패: ${err.message || err}`)
+      setTimeout(() => setToastMessage(null), 3000)
+    } finally {
+      setCropStart(null)
+      setCropEnd(null)
+      setIsCropMode(false)
+    }
+  }
+
   // 탭이 전환되면 검색과 하이라이트 상태를 청결히 리셋한다
   useEffect(() => {
     setSearchOpen(false)
@@ -300,12 +421,24 @@ export function AIPanel() {
   const handleCapture = async () => {
     if (!contentRef.current) return
     try {
-      const canvas = await html2canvas(contentRef.current, {
-        useCORS: true,
-        backgroundColor: 'var(--bg-main, #0f0f12)',
-        scale: 2
-      })
-      const url = canvas.toDataURL('image/png')
+      const webviewEl = contentRef.current.querySelector('webview') as any
+      let url = ''
+      
+      if (webviewEl && typeof webviewEl.capturePage === 'function') {
+        // [FEAT-WEBVIEW-CAPTURE] 일렉트론 webview 내장 API를 사용하여 Same-Origin 차단을 우회 캡쳐
+        const nativeImage = await webviewEl.capturePage()
+        url = nativeImage.toDataURL()
+      } else {
+        const canvas = await html2canvas(contentRef.current, {
+          useCORS: true,
+          backgroundColor: 'var(--bg-main, #0f0f12)',
+          scale: 2
+        })
+        url = canvas.toDataURL('image/png')
+      }
+      
+      if (!url) throw new Error('캡쳐 데이터를 생성하지 못했습니다.')
+      
       const a = document.createElement('a')
       a.href = url
       const tabName = UTILITY_TAB_LABELS[activeTab as keyof typeof UTILITY_TAB_LABELS] || activeTab
@@ -728,6 +861,54 @@ export function AIPanel() {
               </div>
             )}
 
+            {/* [FEAT-MODEL-SELECT] 가용 로컬/Ollama AI 모델 선택기 */}
+            {models && models.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '6px 10px',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--border-muted)',
+                borderRadius: '6px',
+                marginBottom: '8px',
+                flexShrink: 0
+              }}>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  🤖 모델 선택:
+                </span>
+                <select
+                  value={settings.modelPath || ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    updateSettings({ modelPath: val })
+                    if (settings.apiType === 'ollama') {
+                      updateSettings({ apiModel: val })
+                    }
+                    setToastMessage(`추론 모델이 변경되었습니다: ${val.split('/').pop() || val}`)
+                    setTimeout(() => setToastMessage(null), 2000)
+                  }}
+                  style={{
+                    flex: 1,
+                    background: 'var(--bg-main, #0f0f12)',
+                    border: 'none',
+                    color: 'var(--text-main)',
+                    fontSize: '11px',
+                    padding: '2px 4px',
+                    outline: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {models.map((m: any) => (
+                    <option key={m.path} value={m.path} style={{ background: 'var(--bg-main, #0f0f12)' }}>
+                      {m.name || m.filename}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <AIInputContextBar
               manualMode={manualMode} setManualMode={setManualMode}
               selectedText={selectedText} onClearSelectedText={onClearSelectedText}
@@ -763,12 +944,30 @@ export function AIPanel() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <button
                   onClick={handleCapture}
-                  title="📸 화면 캡쳐"
+                  title="📸 전체 캡쳐"
                   style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', display: 'flex', transition: 'color 0.15s' }}
                   onMouseEnter={e => e.currentTarget.style.color = 'var(--text-main)'}
                   onMouseLeave={e => e.currentTarget.style.color = 'var(--text-muted)'}
                 >
                   <Camera size={14} />
+                </button>
+                <button
+                  onClick={() => setIsCropMode(true)}
+                  title="✂️ 선택 영역 캡쳐"
+                  style={{ 
+                    background: isCropMode ? 'var(--primary-glow, rgba(99, 102, 241, 0.2))' : 'none', 
+                    border: 'none', 
+                    cursor: 'pointer', 
+                    color: isCropMode ? 'var(--primary)' : 'var(--text-muted)', 
+                    padding: '4px', 
+                    display: 'flex', 
+                    transition: 'color 0.15s',
+                    borderRadius: '4px'
+                  }}
+                  onMouseEnter={e => !isCropMode && (e.currentTarget.style.color = 'var(--text-main)')}
+                  onMouseLeave={e => !isCropMode && (e.currentTarget.style.color = 'var(--text-muted)')}
+                >
+                  <Crop size={14} />
                 </button>
                 <button
                   onClick={() => setSearchOpen(!searchOpen)}
@@ -852,7 +1051,68 @@ export function AIPanel() {
           </div>
 
           {/* 유틸 탭 내용부 (ref 바인딩으로 캡쳐 및 검색 범위 적용) */}
-          <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          <div 
+            ref={contentRef} 
+            style={{ 
+              flex: 1, 
+              overflowY: 'auto', 
+              display: 'flex', 
+              flexDirection: 'column',
+              position: 'relative'
+            }}
+          >
+            {/* [FEAT-CROP-CAPTURE-UI] 선택 영역 캡쳐 드래그 오버레이 */}
+            {isCropMode && (
+              <div
+                onMouseDown={handleCropMouseDown}
+                onMouseMove={handleCropMouseMove}
+                onMouseUp={handleCropMouseUp}
+                style={{
+                  position: 'absolute',
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  zIndex: 999,
+                  background: 'rgba(0, 0, 0, 0.45)',
+                  cursor: 'crosshair',
+                  userSelect: 'none'
+                }}
+              >
+                {/* 헬퍼 안내 문구 */}
+                <div style={{
+                  position: 'absolute',
+                  top: '10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'rgba(0,0,0,0.85)',
+                  color: '#fff',
+                  padding: '4px 10px',
+                  borderRadius: '12px',
+                  fontSize: '10.5px',
+                  pointerEvents: 'none',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  zIndex: 1000
+                }}>
+                  마우스로 캡쳐할 영역을 드래그하세요 (Esc로 취소)
+                </div>
+
+                {/* 드래그 크롭 영역 하이라이트 */}
+                {cropStart && cropEnd && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: Math.min(cropStart.x, cropEnd.x),
+                      top: Math.min(cropStart.y, cropEnd.y),
+                      width: Math.abs(cropStart.x - cropEnd.x),
+                      height: Math.abs(cropStart.y - cropEnd.y),
+                      border: '2px solid #a855f7',
+                      boxShadow: '0 0 12px rgba(168,85,247,0.6), 0 0 0 9999px rgba(0,0,0,0.3)',
+                      pointerEvents: 'none',
+                      boxSizing: 'border-box'
+                    }}
+                  />
+                )}
+              </div>
+            )}
+
             {activeTab === 'outline' && <AIDocumentOutline blocks={blocks} />}
             {activeTab !== 'outline' && <AIPluginViews activeTab={activeTab} />}
           </div>

@@ -18,7 +18,7 @@
  */
 
 import { useEffect, useRef, useState, useMemo } from 'react'
-import { MapPin, Search, ArrowLeft, ArrowRight, RotateCw, Home } from 'lucide-react'
+import { MapPin, Search, ArrowLeft, ArrowRight, RotateCw, Home, X, ChevronUp, ChevronDown } from 'lucide-react'
 import { FinanceDashboardView } from './FinanceDashboardView'
 
 // ─────────────────────────────────────────────────────────────
@@ -581,6 +581,12 @@ function AmevaBrowserView() {
   const [inputUrl, setInputUrl] = useState('https://google.com')
   const webviewRef = useRef<any>(null)
 
+  // [FEAT-FIND-IN-PAGE] 페이지 내 단어 찾기 상태 변수들
+  const [showFind, setShowFind] = useState(false)
+  const [findText, setFindText] = useState('')
+  const [currentMatch, setCurrentMatch] = useState(0)
+  const [totalMatches, setTotalMatches] = useState(0)
+
   const handleNavigate = (e: React.FormEvent) => {
     e.preventDefault()
     let targetUrl = inputUrl.trim()
@@ -626,6 +632,44 @@ function AmevaBrowserView() {
     }
   }
 
+  const startFind = (text: string, forward = true, findNext = false) => {
+    if (!text || !webviewRef.current) return
+    webviewRef.current.findInPage(text, { forward, findNext })
+  }
+
+  const stopFind = () => {
+    if (webviewRef.current) {
+      webviewRef.current.stopFindInPage('clear')
+    }
+    setFindText('')
+    setCurrentMatch(0)
+    setTotalMatches(0)
+    setShowFind(false)
+  }
+
+  const handleFindInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    setFindText(val)
+    if (val) {
+      startFind(val, true, false)
+    } else {
+      if (webviewRef.current) {
+        webviewRef.current.stopFindInPage('clear')
+      }
+      setCurrentMatch(0)
+      setTotalMatches(0)
+    }
+  }
+
+  const handleFindKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      startFind(findText, !e.shiftKey, true)
+    } else if (e.key === 'Escape') {
+      stopFind()
+    }
+  }
+
   useEffect(() => {
     const webview = webviewRef.current
     if (!webview) return
@@ -637,9 +681,18 @@ function AmevaBrowserView() {
       }
     }
 
+    const handleFoundInPage = (e: any) => {
+      if (e.result) {
+        setCurrentMatch(e.result.activeMatchOrdinal || 0)
+        setTotalMatches(e.result.matches || 0)
+      }
+    }
+
     webview.addEventListener('load-commit', handleLoadCommit)
+    webview.addEventListener('found-in-page', handleFoundInPage)
     return () => {
       webview.removeEventListener('load-commit', handleLoadCommit)
+      webview.removeEventListener('found-in-page', handleFoundInPage)
     }
   }, [])
 
@@ -738,7 +791,111 @@ function AmevaBrowserView() {
             </button>
           </div>
         </form>
+
+        {/* [FEAT] 페이지 내 찾기 토글 버튼 */}
+        <button 
+          onClick={() => {
+            if (showFind) {
+              stopFind()
+            } else {
+              setShowFind(true)
+            }
+          }}
+          style={{
+            background: showFind ? 'var(--primary-glow, rgba(99, 102, 241, 0.2))' : 'transparent', 
+            border: 'none', 
+            color: showFind ? 'var(--primary, #6366f1)' : 'var(--text-muted)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: '24px', height: '24px', borderRadius: '4px'
+          }}
+          onMouseEnter={e => !showFind && (e.currentTarget.style.background = 'var(--bg-glass-active)')}
+          onMouseLeave={e => !showFind && (e.currentTarget.style.background = 'transparent')}
+          title="페이지 내 단어 찾기"
+        >
+          <Search size={12} />
+        </button>
       </div>
+
+      {/* [FEAT] 페이지 내 찾기 미니 패널 */}
+      {showFind && (
+        <div 
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '6px 12px',
+            background: 'var(--bg-glass, rgba(30, 30, 35, 0.85))',
+            borderBottom: '1px solid var(--border-muted)',
+            backdropFilter: 'blur(8px)',
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>페이지 검색:</span>
+          <input 
+            type="text"
+            value={findText}
+            onChange={handleFindInput}
+            onKeyDown={handleFindKeyDown}
+            placeholder="찾을 단어를 입력하고 Enter..."
+            autoFocus
+            style={{
+              flex: 1,
+              padding: '3px 8px',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid var(--border-muted)',
+              borderRadius: '4px',
+              color: 'var(--text-main)',
+              fontSize: '11px',
+              outline: 'none',
+              height: '22px'
+            }}
+          />
+          <span style={{ fontSize: '11px', color: 'var(--text-muted)', minWidth: '40px', textAlign: 'center' }}>
+            {totalMatches > 0 ? `${currentMatch}/${totalMatches}` : '0/0'}
+          </span>
+          <button 
+            onClick={() => startFind(findText, false, true)}
+            disabled={!findText}
+            style={{
+              background: 'transparent', border: 'none', color: findText ? 'var(--text-main)' : 'var(--text-muted)',
+              cursor: findText ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '20px', height: '20px', borderRadius: '4px'
+            }}
+            onMouseEnter={e => findText && (e.currentTarget.style.background = 'var(--bg-glass-active)')}
+            onMouseLeave={e => findText && (e.currentTarget.style.background = 'transparent')}
+            title="이전 찾기 (Shift+Enter)"
+          >
+            <ChevronUp size={13} />
+          </button>
+          <button 
+            onClick={() => startFind(findText, true, true)}
+            disabled={!findText}
+            style={{
+              background: 'transparent', border: 'none', color: findText ? 'var(--text-main)' : 'var(--text-muted)',
+              cursor: findText ? 'pointer' : 'default', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '20px', height: '20px', borderRadius: '4px'
+            }}
+            onMouseEnter={e => findText && (e.currentTarget.style.background = 'var(--bg-glass-active)')}
+            onMouseLeave={e => findText && (e.currentTarget.style.background = 'transparent')}
+            title="다음 찾기 (Enter)"
+          >
+            <ChevronDown size={13} />
+          </button>
+          <button 
+            onClick={stopFind}
+            style={{
+              background: 'transparent', border: 'none', color: 'var(--text-muted)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '20px', height: '20px', borderRadius: '4px'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-glass-active)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            title="닫기 (Esc)"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
 
       {/* 내장 웹뷰 */}
       <webview 

@@ -110,12 +110,6 @@ export function ConsoleLogTab({ fontSize = 12.0 }: ConsoleLogTabProps) {
     return () => unsubscribe();
   }, [fontSize]);
 
-  useEffect(() => {
-    return () => {
-      ipc.setBypassNativeContextMenu(false);
-    };
-  }, []);
-
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     const selection = window.getSelection();
@@ -181,8 +175,6 @@ export function ConsoleLogTab({ fontSize = 12.0 }: ConsoleLogTabProps) {
         className="win98-font"
         ref={logContainerRef}
         onContextMenu={handleContextMenu}
-        onMouseEnter={() => ipc.setBypassNativeContextMenu(true)}
-        onMouseLeave={() => ipc.setBypassNativeContextMenu(false)}
         style={{
           flex: 1, overflowY: 'auto', padding: '12px',
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace",

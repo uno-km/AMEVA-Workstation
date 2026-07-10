@@ -106,13 +106,13 @@ export function useAppEditorInit({
      * - activeEditor: 빌드 완료된 에디터 인스턴스 임시 보존 변수.
      */
     let activeEditor: AppEditor
-    
+
     // 파일 업로드 요청 시 브라우저 FileReader API를 통해 base64 DataURL로 변환해 리턴하는 이너 헬퍼
     const uploadFileHandler = async (file: File): Promise<string> => {
       // [FEAT-PPTX-COMPILER] PPTX 파일 업로드 인터셉트 처리
       if (file && (file as any).path && (file.name.toLowerCase().endsWith('.pptx') || file.name.toLowerCase().endsWith('.ppt'))) {
         const pptxPath = (file as any).path
-        
+
         if (typeof window !== 'undefined' && window.electronAPI?.processPptx) {
           // 백그라운드 컴파일 트리거
           window.electronAPI.processPptx(pptxPath).then((res) => {
@@ -147,7 +147,7 @@ export function useAppEditorInit({
             console.error('[PPTX 컴파일 오류]:', e)
           })
         }
-        
+
         // 순정 미디어 블록 삽입을 우회하기 위한 특수 식별자 반환
         return 'media://presentation-placeholder'
       }
@@ -160,22 +160,22 @@ export function useAppEditorInit({
       }
 
       return new Promise((resolve, reject) => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `reader`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const reader = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+        /*
+         * [RUN-TIME STATE / INVARIANT]
+         * - 변수 명: `reader`
+         * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+         * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+         * - 예시 코드: `const reader = ...` 형태로 안전 캐싱 후 가공 기동.
+         */
         const reader = new FileReader()
         reader.onload = () => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `typeof reader.result === 'string') resolve(reader.result`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (typeof reader.result === 'string') resolve(reader.result)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+          /*
+           * [ALGORITHM BRANCH / DECISION]
+           * - 조건 식: `typeof reader.result === 'string') resolve(reader.result`
+           * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+           * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+           * - 예시: `if (typeof reader.result === 'string') resolve(reader.result)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+           */
           if (typeof reader.result === 'string') resolve(reader.result)
           else reject(new Error('파일 읽기 실패'))
         }
@@ -195,7 +195,7 @@ export function useAppEditorInit({
         },
         uploadFile: uploadFileHandler,
       })
-    } 
+    }
     // 2. 단독 편집(Offline) 조건 시, 기본 스키마만 엮어 생성
     else {
       activeEditor = BlockNoteEditor.create({

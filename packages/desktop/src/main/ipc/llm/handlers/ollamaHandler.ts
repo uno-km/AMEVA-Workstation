@@ -55,24 +55,49 @@ export function handleOllamaGenerate(
 
       // 🦾 [OLLAMA DYNAMIC MODEL FALLBACK] 로컬 설치 모델 목록 조사 후 매치되지 않을 시 폴백 처리
       try {
-        const tagsRes = await fetch('http://127.0.0.1:11434/api/tags', { signal: AbortSignal.timeout(1000) }).catch(() => null)
-        if (tagsRes && tagsRes.ok) {
-          const tagsData: any = await tagsRes.json()
-          const localModels: string[] = (tagsData?.models || []).map((m: any) => m.name)
-          if (localModels.length > 0 && !localModels.includes(targetModel)) {
-            const baseRequestName = targetModel.split(':')[0]
-            const similarModel = localModels.find(m => m.startsWith(baseRequestName) || m.includes(baseRequestName))
-            if (similarModel) {
-              console.log(`[ollamaHandler] 요청 모델 '${targetModel}' 미설치 -> 유사 로컬 모델 '${similarModel}' 매칭 폴백`)
-              targetModel = similarModel
-            } else {
-              console.log(`[ollamaHandler] 요청 모델 '${targetModel}' 미설치 -> 첫 번째 로컬 모델 '${localModels[0]}' 폴백`)
-              targetModel = localModels[0]
+        let tagsData: any = null
+        // 127.0.0.1과 localhost 두 군데 모두 3초 타임아웃으로 안전조회 시도
+        const endpoints = ['http://127.0.0.1:11434/api/tags', 'http://localhost:11434/api/tags']
+        for (const endpoint of endpoints) {
+          try {
+            const tagsRes = await fetch(endpoint, { signal: AbortSignal.timeout(3000) })
+            if (tagsRes && tagsRes.ok) {
+              tagsData = await tagsRes.json()
+              break
             }
+          } catch (e) {
+            // 개별 실패는 스킵하고 다음 엔드포인트 진행
           }
         }
-      } catch (err) {
+
+        if (tagsData) {
+          const localModels: string[] = (tagsData?.models || []).map((m: any) => m.name)
+          if (localModels.length > 0) {
+            // 대소문자 구분 없이 매칭 검사
+            const isMatch = localModels.some(m => m.toLowerCase() === targetModel.toLowerCase())
+            if (!isMatch) {
+              const baseRequestName = targetModel.split(':')[0].toLowerCase()
+              const similarModel = localModels.find(m => {
+                const ml = m.toLowerCase()
+                return ml.startsWith(baseRequestName) || ml.includes(baseRequestName)
+              })
+              if (similarModel) {
+                LLMProcessManager.broadcastLog('OLM', `[ollamaHandler] 요청 모델 '${targetModel}' 미설치 -> 유사 로컬 모델 '${similarModel}' 매칭 폴백\n`)
+                targetModel = similarModel
+              } else {
+                LLMProcessManager.broadcastLog('OLM', `[ollamaHandler] 요청 모델 '${targetModel}' 미설치 -> 첫 번째 가용 로컬 모델 '${localModels[0]}' 강제 폴백\n`)
+                targetModel = localModels[0]
+              }
+            }
+          } else {
+            LLMProcessManager.broadcastLog('OLM', `[ollamaHandler] 경고: Ollama에 설치된 모델이 하나도 존재하지 않습니다.\n`)
+          }
+        } else {
+          LLMProcessManager.broadcastLog('OLM', `[ollamaHandler] 경고: Ollama API 서버 통신 실패 (설치 모델 목록을 조회할 수 없음)\n`)
+        }
+      } catch (err: any) {
         console.error('[ollamaHandler] 로컬 모델 진단 오류:', err)
+        LLMProcessManager.broadcastLog('OLM', `[ollamaHandler] 로컬 모델 진단 오류: ${err.message || err}\n`)
       }
       
       /*

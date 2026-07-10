@@ -171,12 +171,6 @@ export function ConsoleCommandTab({ fontSize = 12.0 }: ConsoleCommandTabProps) {
     }
   };
 
-  useEffect(() => {
-    return () => {
-      ipc.setBypassNativeContextMenu(false);
-    };
-  }, []);
-
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     const selection = window.getSelection();
@@ -249,8 +243,6 @@ export function ConsoleCommandTab({ fontSize = 12.0 }: ConsoleCommandTabProps) {
       <div 
         className={`win98-font ${isFocused ? 'terminal-focused' : ''}`} 
         onContextMenu={handleContextMenu}
-        onMouseEnter={() => ipc.setBypassNativeContextMenu(true)}
-        onMouseLeave={() => ipc.setBypassNativeContextMenu(false)}
         style={{ 
           flex: 1, 
           overflowY: 'auto', 
