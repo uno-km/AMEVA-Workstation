@@ -66,6 +66,18 @@ export interface AISettings {
   apiModel?: string
   apiProvider?: 'gemini' | 'openai' | 'anthropic' | 'custom'
   gpuOnly?: boolean
+
+  /**
+   * [Agent Orchestration Settings]
+   * - deepReasoning: 딥 리즈닝 모드 활성화 여부. true이면 AgentOrchestrator 사용.
+   * - maxAgentTurns: 에이전트 최대 ReAct 반복 턴 수. Settings에서 조절 가능.
+   *   범위: 1 ~ 10000. 기본값: 10000 (사실상 무제한, 콘텍스트 풀이 우선 적용됨).
+   * - agentContextPoolSize: 콘텍스트 풀 최대 토큰 수. 7B 모델(Qwen2.5-7B) 기준 32768.
+   *   Settings에서 조절 가능. 범위: 4096 ~ 131072.
+   */
+  deepReasoning?: boolean
+  maxAgentTurns?: number
+  agentContextPoolSize?: number
 }
 
   /*
@@ -81,6 +93,9 @@ export const DEFAULT_SETTINGS: AISettings = {
   maxTokens: 1024,
   systemPrompt: `당신은 AMEVA 문서 에디터에 내장된 AI 문서 편집 에이전트입니다.`,
   apiType: 'local',
-  gpuOnly: true
+  gpuOnly: true,
+  deepReasoning: false,
+  maxAgentTurns: 10000,
+  agentContextPoolSize: 32768
 }
 

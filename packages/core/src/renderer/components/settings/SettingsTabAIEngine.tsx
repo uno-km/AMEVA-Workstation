@@ -52,7 +52,18 @@ export function SettingsTabAIEngine({
        */
   if (activeTab !== 'AIEngine') return null
 
-  const { apiType = 'wasm', apiProvider = 'gemini', apiEndpoint = '', apiModel = '', gpuOnly = true, temperature = 0.7, maxTokens = 1024 } = aiSettings
+  const {
+    apiType = 'wasm',
+    apiProvider = 'gemini',
+    apiEndpoint = '',
+    apiModel = '',
+    gpuOnly = true,
+    temperature = 0.7,
+    maxTokens = 1024,
+    deepReasoning = false,
+    maxAgentTurns = 10000,
+    agentContextPoolSize = 32768
+  } = aiSettings
 
   const [ollamaModels, setOllamaModels] = useState<{name: string}[]>([])
   const [isOllamaLoading, setIsOllamaLoading] = useState(false)
@@ -895,7 +906,114 @@ export function SettingsTabAIEngine({
           </div>
         </div>
       </div>
-      
+
+      {/* ── 에이전트 오케스트레이션 설정 ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+          <span style={{ fontSize: '14px' }}>🧠</span>
+          <h4 style={{ fontSize: '12.5px', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>딥 리즈닝 (Agent Orchestrator)</h4>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '12px', background: 'var(--bg-glass)', borderRadius: '8px', border: '1px solid var(--border-muted)' }}>
+
+          {/* deepReasoning 토글 */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)', display: 'block' }}>딥 리즈닝 모드</label>
+              <p style={{ fontSize: '9px', color: 'var(--text-muted)', margin: '3px 0 0 0' }}>
+                활성화 시 AgentOrchestrator가 구동됩니다. {'<thought>'}/{'<tool_call>'} 태그 기반
+                ReAct 루프를 수행하며 도구를 자율적으로 실행합니다.
+              </p>
+            </div>
+            <div
+              role="switch"
+              aria-checked={deepReasoning}
+              tabIndex={0}
+              onClick={() => onUpdateAISettings({ deepReasoning: !deepReasoning })}
+              onKeyDown={(e) => e.key === 'Enter' && onUpdateAISettings({ deepReasoning: !deepReasoning })}
+              style={{
+                width: '40px', height: '22px', borderRadius: '11px', cursor: 'pointer',
+                background: deepReasoning ? 'var(--primary)' : 'var(--border-muted)',
+                position: 'relative', transition: 'background 0.2s ease',
+                flexShrink: 0, marginLeft: '12px'
+              }}
+            >
+              <div style={{
+                width: '16px', height: '16px', borderRadius: '50%', background: '#fff',
+                position: 'absolute', top: '3px',
+                left: deepReasoning ? '21px' : '3px',
+                transition: 'left 0.2s ease',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.3)'
+              }} />
+            </div>
+          </div>
+
+          {/* maxAgentTurns 슬라이더 */}
+          <div style={{ borderTop: '1px solid var(--border-muted)', paddingTop: '12px', opacity: deepReasoning ? 1 : 0.4, pointerEvents: deepReasoning ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>최대 에이전트 턴 수</label>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {maxAgentTurns >= 10000 ? '∞ (무제한)' : maxAgentTurns.toLocaleString()}
+              </span>
+            </div>
+            <input
+              id="agent-max-turns"
+              type="range" min="1" max="10000" step="100"
+              value={maxAgentTurns}
+              onChange={e => onUpdateAISettings({ maxAgentTurns: parseInt(e.target.value) })}
+              style={{ width: '100%', accentColor: 'var(--primary)' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: '9px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                ReAct 루프의 최대 반복 횟수. 10,000 = 사실상 무제한 (컨텍스트 풀 가드레일이 우선 적용).
+              </p>
+              <span style={{ fontSize: '9px', color: 'var(--text-muted)', margin: '4px 0 0 0', whiteSpace: 'nowrap' }}>
+                기본: 10,000
+              </span>
+            </div>
+          </div>
+
+          {/* agentContextPoolSize 슬라이더 */}
+          <div style={{ borderTop: '1px solid var(--border-muted)', paddingTop: '12px', opacity: deepReasoning ? 1 : 0.4, pointerEvents: deepReasoning ? 'auto' : 'none', transition: 'opacity 0.2s' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-main)' }}>컨텍스트 풀 크기</label>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', fontVariantNumeric: 'tabular-nums' }}>
+                {(agentContextPoolSize / 1000).toFixed(1)}K 토큰
+              </span>
+            </div>
+            <input
+              id="agent-context-pool"
+              type="range" min="4096" max="131072" step="4096"
+              value={agentContextPoolSize}
+              onChange={e => onUpdateAISettings({ agentContextPoolSize: parseInt(e.target.value) })}
+              style={{ width: '100%', accentColor: 'var(--primary)' }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: '9px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                컨텍스트 풀 초과 시 루프가 자동 종료됩니다. 7B 모델 권장: 32,768 토큰.
+              </p>
+              <div style={{ display: 'flex', gap: '4px', marginTop: '4px' }}>
+                {[8192, 16384, 32768, 65536].map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => onUpdateAISettings({ agentContextPoolSize: v })}
+                    style={{
+                      fontSize: '9px', padding: '1px 5px', borderRadius: '4px', cursor: 'pointer',
+                      background: agentContextPoolSize === v ? 'var(--primary)' : 'var(--bg-glass)',
+                      color: agentContextPoolSize === v ? '#fff' : 'var(--text-muted)',
+                      border: '1px solid var(--border-muted)', transition: 'all 0.15s'
+                    }}
+                  >
+                    {v >= 1000 ? `${(v/1024).toFixed(0)}K` : v}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
     </div>
   )
 }

@@ -19,6 +19,7 @@
 
 import { create } from 'zustand';
 import type { AISettings } from '../types/aiTypes';
+import type { AgentPhase, TaskPlan } from '../services/ai/orchestrator/types';
 import { AI_TERMINAL_CONSTANTS } from '../features/ai-terminal/constants';
 
 export interface AIState {
@@ -41,11 +42,58 @@ export interface AIState {
   setCodeModels: (codeModels: { name: string; filename: string; path: string; size: number }[]) => void;
 
   // 4. 비동기 작업 큐 (AgentEngine 관련)
-  pendingQueue: Array<any>;
-  setPendingQueue: (queue: Array<any>) => void;
-  addPendingQueue: (item: any) => void;
+  pendingQueue: Array<unknown>;
+  setPendingQueue: (queue: Array<unknown>) => void;
+  addPendingQueue: (item: unknown) => void;
   clearPendingQueue: () => void;
   removeFromQueue: (id: string) => void;
+
+  // 5. 오케스트레이터 에이전트 실시간 상태 슬라이스
+  //    Zustand Slice 패턴(AGENTS.md 규칙 3) 준수 - God Store 방지를 위해 별도 슬라이스로 격리.
+  /**
+   * agentPhase: 현재 에이전트 실행 단계.
+   * - 예상 값: 'idle' | 'thinking' | 'tool_calling' | 'observing' | 'answering' | 'done' | 'error'
+   * - 소비처: AgentThoughtBubble.tsx (UI 단계 배지 렌더링), useAIAgentMode.ts (루프 제어)
+   */
+  agentPhase: AgentPhase;
+  setAgentPhase: (phase: AgentPhase) => void;
+
+  /**
+   * agentThoughts: 현재 에이전트의 혼잣말(<thought>) 텍스트 누적 배열.
+   * - 예상 값: 각 청크 문자열의 배열. 초기값: [].
+   * - 소비처: AgentThoughtBubble.tsx (아코디언 내부 혼잣말 텍스트 표시)
+   */
+  agentThoughts: string[];
+  appendAgentThought: (thought: string) => void;
+  clearAgentThoughts: () => void;
+
+  /**
+   * agentTaskPlan: 에이전트가 수립한 Task Plan 체크리스트.
+   * - 예상 값: TaskPlan 객체 또는 null (Plan 없는 단순 요청의 경우).
+   * - 소비처: AgentTaskChecklist.tsx (체크리스트 UI 렌더링)
+   */
+  agentTaskPlan: TaskPlan | null;
+  setAgentTaskPlan: (plan: TaskPlan | null) => void;
+  updateAgentTaskStepStatus: (stepId: number, status: TaskPlan['steps'][number]['status']) => void;
+
+  /**
+   * agentCurrentToolName: 현재 실행 중인 도구 명칭.
+   * - 예상 값: 도구 명칭 문자열 또는 null (도구 미실행 상태).
+   * - 소비처: AgentThoughtBubble.tsx ('Working...' 상태에서 도구명 표시)
+   */
+  agentCurrentToolName: string | null;
+  setAgentCurrentToolName: (name: string | null) => void;
+
+  /**
+   * agentAccumulatedAnswer: 스트리밍 중 누적된 최종 답변 텍스트.
+   * - 예상 값: 빈 문자열(초기) 또는 누적 답변 텍스트.
+   * - 소비처: AgentThoughtBubble.tsx (Done 상태 답변 표시)
+   */
+  agentAccumulatedAnswer: string;
+  setAgentAccumulatedAnswer: (answer: string) => void;
+
+  /** 오케스트레이터 상태 전체 초기화 (새 세션 시작 시 사용) */
+  resetAgentState: () => void;
 }
 
 const DEFAULT_SETTINGS: AISettings = {
@@ -72,34 +120,11 @@ const DEFAULT_SETTINGS: AISettings = {
   apiType: 'local',
 };
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `loadInitialSettings`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const loadInitialSettings = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
 const loadInitialSettings = (): AISettings => {
   try {
-    // ameva_ai_settings와 ai-settings 두 키 모두 확인하여 마이그레이션 호환성 보장
     const saved = localStorage.getItem('ameva_ai_settings') || localStorage.getItem('ai-settings');
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `saved`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (saved)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if (saved) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `parsed`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
       const parsed = JSON.parse(saved);
-      // 구버전 치즈 예시나 구버전 프롬프트가 저장되어 있는 경우 기본값으로 덮어씀
       if (parsed.systemPrompt && (
         parsed.systemPrompt.includes('치즈') ||
         parsed.systemPrompt.includes('간결하고 명확하게 답하세요') ||
@@ -117,37 +142,16 @@ const loadInitialSettings = (): AISettings => {
   return DEFAULT_SETTINGS;
 };
 
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `useAIState`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `useAIState(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
 export const useAIState = create<AIState>((set) => ({
   isGenerating: false,
   setIsGenerating: (isGenerating) => set({ isGenerating }),
 
   settings: loadInitialSettings(),
   updateSettings: (newSettings) => set((state) => {
-    /*
-     * [ALGORITHM BRANCH / DECISION]
-     * - 조건 식: `!Object.keys(newSettings).some(key => state.settings[key] !== newSettings[key])`
-     * - 만족 시: 변경된 설정 항목이 없으므로 상태 업데이트를 스킵하여 불필요한 리렌더링과 무한 루프를 방지함.
-     * - 불만족 시: 병합된 새로운 설정을 상태에 반영함.
-     * - 예시: `if (!isDifferent)` 만족 시 기존 state를 그대로 반환하여 React 렌더 가동 중지.
-     */
     const isDifferent = Object.keys(newSettings).some(
-      (key) => (state.settings as any)[key] !== (newSettings as any)[key]
+      (key) => (state.settings as Record<string, unknown>)[key] !== (newSettings as Record<string, unknown>)[key]
     )
     if (!isDifferent) return state
-
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `updated`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const updated = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const updated = { ...state.settings, ...newSettings };
     localStorage.setItem('ameva_ai_settings', JSON.stringify(updated));
     return { settings: updated };
@@ -167,7 +171,53 @@ export const useAIState = create<AIState>((set) => ({
   addPendingQueue: (item) => set((state) => ({ pendingQueue: [...state.pendingQueue, item] })),
   clearPendingQueue: () => set({ pendingQueue: [] }),
   removeFromQueue: (id) => set((state) => ({
-    pendingQueue: state.pendingQueue.filter(item => item.id !== id),
+    pendingQueue: state.pendingQueue.filter(
+      (item) => (item as Record<string, unknown>)['id'] !== id
+    ),
   })),
+
+  // ── Orchestrator Agent State Slice ──────────────────────────────
+  /*
+   * [AGENT PHASE SLICE]
+   * - 에이전트 단계 상태를 실시간 구독하는 슬라이스.
+   * - AgentThoughtBubble.tsx가 이 값을 구독하여 Thinking/Working/Done UI를 전환한다.
+   */
+  agentPhase: 'idle',
+  setAgentPhase: (agentPhase) => set({ agentPhase }),
+
+  agentThoughts: [],
+  appendAgentThought: (thought) => set((state) => ({
+    agentThoughts: [...state.agentThoughts, thought]
+  })),
+  clearAgentThoughts: () => set({ agentThoughts: [] }),
+
+  agentTaskPlan: null,
+  setAgentTaskPlan: (agentTaskPlan) => set({ agentTaskPlan }),
+  updateAgentTaskStepStatus: (stepId, status) => set((state) => {
+    if (!state.agentTaskPlan) return state;
+    return {
+      agentTaskPlan: {
+        ...state.agentTaskPlan,
+        steps: state.agentTaskPlan.steps.map((step) =>
+          step.id === stepId ? { ...step, status } : step
+        )
+      }
+    };
+  }),
+
+  agentCurrentToolName: null,
+  setAgentCurrentToolName: (agentCurrentToolName) => set({ agentCurrentToolName }),
+
+  agentAccumulatedAnswer: '',
+  setAgentAccumulatedAnswer: (agentAccumulatedAnswer) => set({ agentAccumulatedAnswer }),
+
+  resetAgentState: () => set({
+    agentPhase: 'idle',
+    agentThoughts: [],
+    agentTaskPlan: null,
+    agentCurrentToolName: null,
+    agentAccumulatedAnswer: ''
+  })
 }));
+
 

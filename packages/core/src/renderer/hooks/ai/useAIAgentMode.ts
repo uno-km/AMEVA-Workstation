@@ -33,22 +33,29 @@ import { useCallback, useRef } from 'react'
 
 /* 
  * [ELECTRON IPC BRIDGE ADAPTER]
- * - ipc: 에이전트 사고 단계 로그를 로컬 파일 로그에 기록하기 위한 감청 전송 모듈.
+ * - ipc: 에이전트 사고 단계 로그를 로컈 파일 로그에 기록하기 위한 감청 전송 모듈.
  */
 import * as ipc from '../../services/ipc/electronApiAdapter'
 
 /* 
- * [AGENT CORE UTILS]
- * - AgentEngine: ReAct 방식에 기반하여 최대 회수(maxTurns) 동안 생각을 순환 구동하는 에이전트 실행 엔진.
- * - registerAgentTools: 활성화된 플러그인(웹 검색, 주식, 파일 IO 등)을 에이전트가 호출 가능한 도구로 맵 바인딩 등록하는 헬퍼.
- * - buildAgentQuery: 메시지 히스토리와 태그 단락 맥락을 결합해 최종 에이전트 타깃 쿼리를 구성하는 빌더.
- * - getAgentSystemPrompt: 에이전트용 ReAct 템플릿(Thought/Action/Action Input/Observation) 프롬프트 획득기.
- * - parseStockDataAndGenerateCard: 수집된 에이전트 행동 로그 속에서 UI 카드 렌더링에 적절한 제안 구조를 발라내는 파서.
+ * [AGENT CORE UTILS - LEGACY PATH]
+ * - AgentEngine: 기존 ReAct 에이전트 실행 엔진 (기본 모드에서 사용, 동작 보존).
+ * - registerAgentTools, buildAgentQuery, getAgentSystemPrompt, parseStockDataAndGenerateCard:
+ *   기존 에이전트 모드 지원 헬퍼들. 신규 오케스트레이터 모드에서는 사용하지 않지만
+ *   이전 버전 호환성을 위해 변경하지 않는다.
  */
 import { AgentEngine } from '../../utils/agentEngine'
 import { registerAgentTools } from '../../services/ai/agentTools'
 import { buildAgentQuery, getAgentSystemPrompt } from '../../services/ai/agentPromptFactory'
 import { parseStockDataAndGenerateCard } from '../../services/ai/agentStockCard'
+
+/*
+ * [ORCHESTRATOR - NEW PATH]
+ * - AgentOrchestratorSession: 딥 리즈닝 모드에서 가동되는 신규 오케스트레이터 세션.
+ *   deepReasoning 플래그가 true일 때만 사용되며, false일 때는 기존 AgentEngine이 사용된다.
+ */
+import { AgentOrchestratorSession } from '../../services/ai/orchestrator/AgentOrchestrator'
+import { useAIState } from '../../stores/useAIState'
 
 /* 
  * [TYPES]
@@ -56,6 +63,7 @@ import { parseStockDataAndGenerateCard } from '../../services/ai/agentStockCard'
  * - AISettings: AI 엔진 파라미터 구조체.
  */
 import type { AIMessage, AISettings } from '../../types/aiTypes'
+import type { OrchestratorConfig } from '../../services/ai/orchestrator/types'
 
 /**
  * AgentModeParams 인터페이스 정의.
@@ -125,6 +133,19 @@ export function useAIAgentMode() {
 
     // 에디터 제안 수동 결정 수락창 팝업 플래그
     let agentHasPendingDecision = false
+
+    /*
+     * [DEEP REASONING BRANCH]
+     * - deepReasoning 플래그 활성화 시: 신규 AgentOrchestratorSession 경로로 분기한다.
+     * - deepReasoning 플래그 미활성화 시: 기존 AgentEngine 경로로 폴백하여 동작을 보존한다.
+     *
+     * 시나리오:
+     * - true: <thought>/<tool_call> 파싱, 10000턴 가드레일, 7B 컨텍스트 풀 적용
+     * - false: 기존 Thought/Action/Observation 텍스트 파싱 방식 (최대 5턴)
+     */
+    if (finalSettings.deepReasoning === true) {
+      return await runDeepReasoningMode(params, isAgentRunningRef)
+    }
 
     try {
       // 1. ReAct 동작 엔진 빌드
@@ -354,8 +375,168 @@ export function useAIAgentMode() {
  * ============================================================================
  * FUTURE DEVELOPMENT GUIDE (AI Agent Instruction Layer)
  * ============================================================================
- * 1. 에이전트의 최대 ReAct 반복 사고 횟수(현재 5회)를 늘리고 싶을 때:
- *    - `maxTurns: 5` 파라미터 수치를 조율하되, 너무 높이면 API 응답 비용 및 연산 루프 무한 프리징 위험이 급증함에 주의할 것.
+ * 1. 에이전트의 최대 ReAct 반복 사고 횟수를 늘리고 싶을 때:
+ *    - AISettings.maxAgentTurns 값을 Settings 화면에서 조절하면 된다.
+ * 2. 딥 리즈닝 모드(deepReasoning: true)에서는 runDeepReasoningMode → AgentOrchestratorSession.
+ *    - maxAgentTurns / agentContextPoolSize 는 AISettings에서 사용자가 직접 조절한다.
  * ============================================================================
  */
 
+/* ============================================================
+ * runDeepReasoningMode
+ * ============================================================ */
+
+/**
+ * runDeepReasoningMode
+ * deepReasoning === true 일 때 useAIAgentMode가 위임하는 독립 실행 함수.
+ * AgentOrchestratorSession을 인스턴스화하고 ReAct 루프를 구동하며,
+ * 모든 이벤트를 useAIState 스토어와 메시지 말풍선에 동기화한다.
+ */
+async function runDeepReasoningMode(
+  params: AgentModeParams,
+  isAgentRunningRef: React.MutableRefObject<boolean>
+): Promise<AgentModeResult> {
+  const {
+    assistantId,
+    finalSettings,
+    userMessage,
+    messages,
+    taggedBlocks,
+    setMessages,
+    setIsGenerating,
+    currentAssistantIdRef,
+    processNextQueueRef
+  } = params
+
+  const {
+    resetAgentState,
+    setAgentPhase,
+    appendAgentThought,
+    setAgentTaskPlan,
+    updateAgentTaskStepStatus,
+    setAgentCurrentToolName,
+    setAgentAccumulatedAnswer
+  } = useAIState.getState()
+
+  resetAgentState()
+  ipc.llmAddLog({ text: '[딥 리즈닝] AgentOrchestrator 세션 기동', prefix: 'Orchestrator' })
+
+  const orchestratorConfig: OrchestratorConfig = {
+    maxTurns: finalSettings.maxAgentTurns ?? 10000,
+    contextPoolMaxTokens: finalSettings.agentContextPoolSize ?? 32768,
+    engineType: (finalSettings.apiType as OrchestratorConfig['engineType']) ?? 'local',
+    endpointUrl: finalSettings.apiType === 'ollama'
+      ? 'http://localhost:11434'
+      : 'http://localhost:12345',
+    modelId: finalSettings.modelPath,
+    temperature: finalSettings.temperature ?? 0.1
+  }
+
+  const history = messages.slice(-10).map((m) => ({
+    role: (m.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+    content: m.finalAnswer ?? m.content
+  }))
+
+  const enrichedMessage = taggedBlocks && taggedBlocks.length > 0
+    ? `[참조 본문]\n${taggedBlocks.map((b, i) => `[${i + 1}] "${b.text}"`).join('\n')}\n\n${userMessage}`
+    : userMessage
+
+  const session = new AgentOrchestratorSession(orchestratorConfig, (event) => {
+    switch (event.type) {
+      case 'phase_change':
+        setAgentPhase(event.phase)
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          return { ...m, isStreaming: event.phase !== 'done' && event.phase !== 'error' }
+        }))
+        break
+
+      case 'thought_token':
+        appendAgentThought(event.token)
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          return {
+            ...m, content: '', isStreaming: true, isThinking: true,
+            reasoningTrace: [{
+              id: `orch_thought_${m.id}`,
+              source: 'model' as const,
+              type: 'thinking' as const,
+              text: event.accumulated,
+              model: finalSettings.modelPath || 'unknown',
+              timestamp: new Date().toISOString()
+            }]
+          }
+        }))
+        break
+
+      case 'answer_token':
+        setAgentAccumulatedAnswer(event.accumulated)
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          return { ...m, content: event.accumulated, isStreaming: true, isThinking: false }
+        }))
+        break
+
+      case 'tool_call_start':
+        setAgentCurrentToolName(event.toolName)
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          return {
+            ...m, isStreaming: true,
+            reasoningTrace: [{
+              id: `orch_tool_${m.id}_${event.toolName}`,
+              source: 'model' as const,
+              type: 'thinking' as const,
+              text: `⚙️ [도구 실행 중] \`${event.toolName}\`\n인자: ${JSON.stringify(event.toolArgs, null, 2)}`,
+              model: finalSettings.modelPath || 'unknown',
+              timestamp: new Date().toISOString()
+            }]
+          }
+        }))
+        break
+
+      case 'tool_call_end':
+        setAgentCurrentToolName(null)
+        break
+
+      case 'task_plan':
+        setAgentTaskPlan(event.plan)
+        break
+
+      case 'task_step_update':
+        updateAgentTaskStepStatus(event.stepId, event.status)
+        break
+
+      case 'final_answer':
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          return { ...m, content: event.answer, finalAnswer: event.answer, isStreaming: false, isThinking: false }
+        }))
+        break
+
+      case 'error':
+        ipc.llmAddLog({ text: `[Orchestrator] 오류: ${event.message}`, prefix: 'Orchestrator' })
+        break
+    }
+  })
+
+  try {
+    await session.initialize()
+    await session.run(enrichedMessage, history)
+    return { success: true, hasPendingDecision: false }
+  } catch (err: unknown) {
+    const errMsg = err instanceof Error ? err.message : String(err)
+    console.error('[runDeepReasoningMode] 오케스트레이터 실행 실패:', errMsg)
+    setMessages((prev) => prev.map((m) =>
+      m.id === assistantId
+        ? { ...m, content: `❌ 딥 리즈닝 실행 실패: ${errMsg}`, isStreaming: false, error: true }
+        : m
+    ))
+    return { success: false, hasPendingDecision: false, error: errMsg }
+  } finally {
+    isAgentRunningRef.current = false
+    setIsGenerating(false)
+    currentAssistantIdRef.current = null
+    setTimeout(() => processNextQueueRef.current?.(), 80)
+  }
+}
