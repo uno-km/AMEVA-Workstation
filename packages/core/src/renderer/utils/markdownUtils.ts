@@ -630,3 +630,64 @@ export function cleanMarkdownCodeBlocks(markdown: string): string {
     return match
   })
 }
+
+/**
+ * [FUNCTION CONTRACT - Resolve Local Media URL]
+ * - 역할: 로컬 파일 경로(절대 경로, file:/// 등)를 Electron의 커스텀 프로토콜 media:// 로 매핑 변환합니다.
+ * - 예시: `resolveLocalMediaUrl("C:\\video.mp4")` -> `"media://C:/video.mp4"`
+ */
+export function resolveLocalMediaUrl(url: string): string {
+  if (!url) return url
+  // 만약 이미 http, https, data: 등 원격/인라인 리소스라면 그대로 반환
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url
+  }
+  // file:/// 로 시작하는 경우
+  if (url.startsWith('file:///')) {
+    return url.replace('file:///', 'media://')
+  }
+  // Windows 절대 경로 (예: C:\Users\...) 또는 Unix 절대 경로 (예: /Users/...)
+  if (/^[a-zA-Z]:\\/.test(url) || url.startsWith('\\\\') || url.startsWith('/')) {
+    const normalized = url.replace(/\\/g, '/')
+    return `media://${normalized}`
+  }
+  return url
+}
+
+/**
+ * [FUNCTION CONTRACT - Convert Local Paths to Media Schema]
+ * - 역할: 텍스트 내에 기재된 로컬 경로들을 media:// 스키마로 치환합니다.
+ * - 예시: `convertLocalPathsToMediaSchema(...)` 호출 시 로드된 본문의 절대경로를 통일 치환.
+ */
+export function convertLocalPathsToMediaSchema(text: string): string {
+  if (!text) return text
+  let result = text
+  
+  // 1) file:/// -> media:// 변환
+  result = result.replace(/file:\/\/\//g, 'media://')
+
+  // 2) 마크다운 구문 속 윈도우 절대 경로 변환
+  result = result.replace(/(!\[[^\]]*\]\()([a-zA-Z]:\\[^\)]+)(\))/g, (match, prefix, winPath, suffix) => {
+    const normalized = winPath.replace(/\\/g, '/')
+    return `${prefix}media://${normalized}${suffix}`
+  })
+
+  // 3) HTML src 구문 속 윈도우 절대 경로 변환
+  result = result.replace(/(src=")([a-zA-Z]:\\[^"]+)(")/g, (match, prefix, winPath, suffix) => {
+    const normalized = winPath.replace(/\\/g, '/')
+    return `${prefix}media://${normalized}${suffix}`
+  })
+
+  return result
+}
+
+/**
+ * [FUNCTION CONTRACT - Convert Media Schema to Local Paths]
+ * - 역할: 텍스트 내의 media:// 스키마들을 원래 로컬 경로(file:///) 형식으로 복원하여 저장합니다.
+ * - 예시: `convertMediaSchemaToLocalPaths(...)` 호출 시 media:// 스키마가 복원된 순수 마크다운 생성.
+ */
+export function convertMediaSchemaToLocalPaths(text: string): string {
+  if (!text) return text
+  return text.replace(/media:\/\//g, 'file:///')
+}
+

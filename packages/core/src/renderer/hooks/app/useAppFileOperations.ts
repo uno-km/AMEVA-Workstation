@@ -42,7 +42,7 @@ import { getPlatformAdapter } from '../../../shared/adapters/platformAdapter'
  * - ensureBlockIds: Yjs 협업 세션 충돌 방지를 위한 블록 고유 ID 누락 보정기.
  * - convertJupyterToCodeBlocks: Jupyter 노드를 마크다운 백틱 펜스로 역치환.
  */
-import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds, convertJupyterToCodeBlocks } from '../../utils/markdownUtils'
+import { normalizeMarkdown, cleanCodeBlocks, ensureBlockIds, convertJupyterToCodeBlocks, convertLocalPathsToMediaSchema, convertMediaSchemaToLocalPaths } from '../../utils/markdownUtils'
 
 /* 
  * [ZUSTAND STORE]
@@ -142,14 +142,8 @@ export function useAppFileOperations(
        * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
        */
     const markdown = await parseFileToMarkdown(rawContent, path || filePath || '', isBinary)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `normalized`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const normalized = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const normalized = normalizeMarkdown(markdown)
+    const converted = convertLocalPathsToMediaSchema(markdown)
+    const normalized = normalizeMarkdown(converted)
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -235,8 +229,8 @@ export function useAppFileOperations(
       targetEditor.replaceBlocks(targetEditor.document, blocks)
     }
 
-    setOriginalContent(markdown)
-    setCurrentContent(markdown)
+    setOriginalContent(converted)
+    setCurrentContent(converted)
     setLastSavedTime(null)
   }, [filePath, setEditorMode, setOriginalContent, setCurrentContent, setLastSavedTime])
 
@@ -339,14 +333,8 @@ export function useAppFileOperations(
        * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
        */
     const markdown = await parseFileToMarkdown(fileContent, path, isBinary)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `normalized`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const normalized = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const normalized = normalizeMarkdown(markdown)
+    const converted = convertLocalPathsToMediaSchema(markdown)
+    const normalized = normalizeMarkdown(converted)
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `parsed`
@@ -376,17 +364,17 @@ export function useAppFileOperations(
     const newTab = {
       id: newTabId,
       filePath: path,
-      content: markdown,
+      content: converted,
       blocks: parsed,
-      originalContent: markdown,
+      originalContent: converted,
       lastSavedTime: null
     }
 
     addTab(newTab)
     setActiveTabId(newTabId)
     setFilePath(path)
-    setOriginalContent(markdown)
-    setCurrentContent(markdown)
+    setOriginalContent(converted)
+    setCurrentContent(converted)
     setLastSavedTime(null)
 
     // 리액트 라이프사이클 안착 직후 블록 교체 실행
@@ -541,7 +529,7 @@ export function useAppFileOperations(
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const isBinaryFile = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-            const isBinaryFile = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls'].includes(ext)
+            const isBinaryFile = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
             
             // 바이너리 오피스 문서인 경우 ArrayBuffer를 base64로 감싸서 처리
             if (isBinaryFile) {
@@ -658,7 +646,8 @@ export function useAppFileOperations(
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const markdown = await editor.blocksToMarkdownLossy(rawBlocks)
+    const rawMarkdown = await editor.blocksToMarkdownLossy(rawBlocks)
+    const markdown = convertMediaSchemaToLocalPaths(rawMarkdown)
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `hasMedia`
@@ -762,7 +751,7 @@ export function useAppFileOperations(
             }
             await ipc.saveFile(contentToSave, savedPath)
             setFilePath(savedPath)
-            setOriginalContent(markdown)
+            setOriginalContent(rawMarkdown)
             setLastSavedTime(new Date())
             createSnapshot(`Ameva Document 저장본`, contentToSave)
             return
@@ -853,7 +842,7 @@ export function useAppFileOperations(
        */
         const savedPath = saveResult.filePath
         setFilePath(savedPath)
-        setOriginalContent(markdown)
+        setOriginalContent(rawMarkdown)
         setLastSavedTime(new Date())
         createSnapshot(`저장본 (${new Date().toLocaleTimeString()})`, contentToSave)
       }
@@ -869,7 +858,7 @@ export function useAppFileOperations(
         const targetPath = filePath || 'Documents/document.' + ext;
         await adapter.fs.writeFile(targetPath, contentToSave);
         setFilePath(targetPath);
-        setOriginalContent(markdown);
+        setOriginalContent(rawMarkdown);
         setLastSavedTime(new Date());
         createSnapshot(`모바일 저장본 (${new Date().toLocaleTimeString()})`, contentToSave);
       } catch (err: any) {
@@ -902,7 +891,8 @@ export function useAppFileOperations(
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const markdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
+    const rawMarkdown = await editor.blocksToMarkdownLossy(convertJupyterToCodeBlocks(editor.document))
+    const markdown = convertMediaSchemaToLocalPaths(rawMarkdown)
     
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -971,7 +961,7 @@ export function useAppFileOperations(
         
         await ipc.saveFile(contentToSave, savedPath)
         setFilePath(savedPath)
-        setOriginalContent(markdown)
+        setOriginalContent(rawMarkdown)
         setLastSavedTime(new Date())
         createSnapshot('다른 이름으로 저장본', contentToSave)
       }

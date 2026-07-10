@@ -31,7 +31,7 @@
  * - existsSync: 파일 유무 동기 검사용 fs 모듈.
  * - readFile: 파일 텍스트 비동기 독출용 fs/promises 모듈.
  */
-import { app, BrowserWindow, dialog, session, ipcMain, Menu, MenuItem } from 'electron'
+import { app, BrowserWindow, dialog, session, ipcMain, Menu, MenuItem, protocol, net } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
@@ -148,15 +148,10 @@ if (!gotTheLock) {
       if (mainWindow.isMinimized()) mainWindow.restore()
       mainWindow.focus()
       try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `content`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const content = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const content = await readFile(filePath, 'utf-8')
-        mainWindow.webContents.send('file:open-argv', { content, filePath })
+        const ext = filePath.split('.').pop()?.toLowerCase() || ''
+        const isBinary = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
+        const content = await readFile(filePath, isBinary ? 'base64' : 'utf-8')
+        mainWindow.webContents.send('file:open-argv', { content, filePath, isBinary })
       } catch (err) {
         console.error('Failed to open second-instance file:', err)
       }
@@ -519,6 +514,13 @@ async function autoStartOllamaIfInstalled() {
 
 // Electron 준비 완료 시점의 윈도우 기동 및 CSP 보안 구성
 app.whenReady().then(() => {
+  // [FEAT-MEDIA-PROTOCOL] 로컬 비디오/이미지 렌더링을 위한 커스텀 media:// 프로토콜 핸들러 등록
+  protocol.handle('media', (request) => {
+    // media://C:/path/to/file.mp4 -> file:///C:/path/to/file.mp4 로 매핑 변환
+    const fileUrl = request.url.replace('media://', 'file:///')
+    return net.fetch(fileUrl)
+  })
+
   // [PERF] 1. 가장 먼저 윈도우 생성 (블로킹 방지 및 즉각적인 UI 피드백 제공)
   createWindow()
 
@@ -617,15 +619,10 @@ app.whenReady().then(() => {
        */
     if (fileToOpenOnStartup && mainWindow) {
       try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `content`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const content = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const content = await readFile(fileToOpenOnStartup, 'utf-8')
-        mainWindow.webContents.send('file:open-argv', { content, filePath: fileToOpenOnStartup })
+        const ext = fileToOpenOnStartup.split('.').pop()?.toLowerCase() || ''
+        const isBinary = ['docx', 'pdf', 'hwpx', 'xlsx', 'xls', 'adc'].includes(ext)
+        const content = await readFile(fileToOpenOnStartup, isBinary ? 'base64' : 'utf-8')
+        mainWindow.webContents.send('file:open-argv', { content, filePath: fileToOpenOnStartup, isBinary })
         fileToOpenOnStartup = null
       } catch (err) {
         console.error('Failed to read startup file:', err)

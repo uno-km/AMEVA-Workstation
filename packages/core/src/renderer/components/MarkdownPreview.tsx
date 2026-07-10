@@ -21,6 +21,7 @@ import { useMemo } from 'react'
 import { marked } from 'marked'
 import { JupyterCodeViewer } from './JupyterCodeViewer'
 import { type AmevaEditor } from '../editor/amevaBlockSchema'
+import { resolveLocalMediaUrl } from '../utils/markdownUtils'
 
 // 찢어낸 마크다운 세그먼트 전용 인라인 렌더러 컴포넌트들 수입
 import { InlineMermaidRenderer } from './markdown/InlineMermaidRenderer'
@@ -91,6 +92,7 @@ function buildPreviewSegments(markdown: string) {
                     href.toLowerCase().endsWith('.mov') || 
                     href.toLowerCase().endsWith('.ogg') ||
                     href.startsWith('data:video/')
+    const resolvedHref = resolveLocalMediaUrl(href)
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `isVideo`
@@ -99,9 +101,9 @@ function buildPreviewSegments(markdown: string) {
        * - 예시: `if (isVideo)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
     if (isVideo) {
-      return `<video src="${href}" controls style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: 8px 0;"></video>`
+      return `<video src="${resolvedHref}" controls style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); margin: 8px 0;"></video>`
     }
-    return `<img src="${href}" alt="${text}" title="${title || ''}" style="max-width: 100%;" />`
+    return `<img src="${resolvedHref}" alt="${text}" title="${title || ''}" style="max-width: 100%;" />`
   }
 
       /*

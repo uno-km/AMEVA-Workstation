@@ -52,11 +52,9 @@ import { PanelLeft, Sparkles } from 'lucide-react'
  * - FloatingPiPVideo: PIP 화면 띄우기 비디오 오버레이.
  * - ModalManager: 전역 공용 모달(설정, 정보창 등) 렌더링 라우터.
  */
-import { Sidebar } from '../Sidebar'
 import { MarkdownEditor } from '../MarkdownEditor'
 import { StatusBar } from '../StatusBar'
 import { MenuBar } from '../MenuBar'
-import { AIPanel } from '../AIPanel'
 import { Minimap } from '../Minimap'
 import { RightTabStrip } from '../RightTabStrip'
 import { ResizeHandle } from '../ResizeHandle'
@@ -65,6 +63,14 @@ import { AILogDrawer } from '../ai/AILogDrawer'
 import { FindReplaceBar } from '../FindReplaceBar'
 import { FloatingPiPVideo } from './FloatingPiPVideo'
 import { ModalManager } from './ModalManager'
+
+/* 
+ * [DYNAMIC COMPONENT IMPORTS - PERFORMANCE OPTIMIZATION]
+ * - Rationale: Sidebar와 AIPanel은 협업용 소켓 모듈 및 로컬 AI 추론 엔진 등 무거운 하위 디펜던시들을 다수 import하고 있습니다.
+ * - 앱 최초 마운팅 시의 번들 해석 및 자바스크립트 엔진 평가 blocking을 방지하여 에디터 화면의 노출 속도를 가속화하기 위해 lazy 로딩을 도입합니다.
+ */
+const Sidebar = React.lazy(() => import('../Sidebar').then(m => ({ default: m.Sidebar })))
+const AIPanel = React.lazy(() => import('../AIPanel').then(m => ({ default: m.AIPanel })))
 
 /* 
  * [TYPES & STYLES INJECTIONS]
@@ -200,7 +206,17 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           }}
         >
           {isSidebarReady ? (
-            <Sidebar />
+            <React.Suspense
+              fallback={
+                <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg-deep)', height: '100%', borderRight: '1px solid var(--border-muted)', userSelect: 'none' }}>
+                  <div style={{ height: '24px', background: 'rgba(139,92,246,0.08)', borderRadius: '6px', width: '70%', opacity: 0.5 }} />
+                  <div style={{ height: '32px', background: 'rgba(255,255,255,0.03)', borderRadius: '6px', opacity: 0.5 }} />
+                  <div style={{ flex: 1, background: 'rgba(255,255,255,0.01)', borderRadius: '8px', opacity: 0.3 }} />
+                </div>
+              }
+            >
+              <Sidebar />
+            </React.Suspense>
           ) : (
             // 로딩 스켈레톤 가이드 (성능 상 visual jump를 없애기 위함)
             <div style={{ padding: '24px', color: 'var(--text-muted)', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '14px', background: 'var(--bg-deep)', height: '100%', borderRight: '1px solid var(--border-muted)', userSelect: 'none' }}>
@@ -281,7 +297,16 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
             />
           )}
           {isAIPanelReady ? (
-            <AIPanel />
+            <React.Suspense
+              fallback={
+                <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)', padding: '20px', borderLeft: '1px solid var(--border-muted)', userSelect: 'none' }}>
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--primary)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+                  <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '12px' }}>AI 엔진 및 도구 준비 중...</span>
+                </div>
+              }
+            >
+              <AIPanel />
+            </React.Suspense>
           ) : (
             <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)', padding: '20px', borderLeft: '1px solid var(--border-muted)', userSelect: 'none' }}>
               <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--primary)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
@@ -313,7 +338,16 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
 
       {/* AI 모델 뷰 허브 */}
       {showModelHub && (!showAIPanel || !isAIPanelReady) && (
-        <AIPanel />
+        <React.Suspense
+          fallback={
+            <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)', padding: '20px', borderLeft: '1px solid var(--border-muted)', userSelect: 'none' }}>
+              <div style={{ width: '24px', height: '24px', borderRadius: '50%', border: '2px solid var(--primary)', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '12px' }}>AI 엔진 및 도구 준비 중...</span>
+            </div>
+          }
+        >
+          <AIPanel />
+        </React.Suspense>
       )}
 
       {/* 
