@@ -66,7 +66,7 @@ export function ConsoleLogTab() {
         }
 
         // 2. 기본 스타일 매핑 정의
-        let color = 'var(--text-main)';
+        let color = 'var(--term-text)';
         let bg = 'transparent';
         let fontWeight = '400';
 
@@ -175,7 +175,7 @@ export function ConsoleLogTab() {
           fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
           fontSize: '11.5px', lineHeight: '1.5', whiteSpace: 'pre-wrap',
           userSelect: 'text', cursor: 'text', color: 'var(--term-text)',
-          background: '#070a13'
+          background: 'var(--term-bg)'
         }}
       />
 

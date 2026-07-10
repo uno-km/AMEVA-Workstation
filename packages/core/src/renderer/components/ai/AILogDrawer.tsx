@@ -18,7 +18,7 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Terminal, ListTree, Plus, Minus } from 'lucide-react';
+import { Terminal, ListTree, Plus, Minus, Maximize2, Minimize2 } from 'lucide-react';
 import { ConsoleLogTab } from './log-drawer/ConsoleLogTab';
 import { ConsoleCommandTab } from './log-drawer/ConsoleCommandTab';
 
@@ -33,6 +33,22 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
   const [activeTab, setActiveTab] = useState<'log' | 'cmd'>('log');
   // [FEAT-3] 드로어 높이 조절 상태 — 기본값 35vh (픽셀)
   const [drawerHeight, setDrawerHeight] = useState<number | null>(null);
+  
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - isMaximized: 터미널 전체 화면 최대화 여부 플래그.
+   * - terminalFontSize: 웹콘솔 전용 내부 폰트 크기 상태 (기본 12px).
+   */
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [terminalFontSize, setTerminalFontSize] = useState(12.0);
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - 역할: +/- 폰트 크기를 delta 값 만큼 더하되 최소 9px, 최대 24px 범위로 제한.
+   */
+  const adjustFontSize = (delta: number) => {
+    setTerminalFontSize(prev => Math.max(9, Math.min(24, prev + delta)));
+  };
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `isDraggingRef`
@@ -251,10 +267,10 @@ export function AILogDrawer({ isExpanded, onToggle }: any) {
         >
           <div style={{
             width: '100%', height: '100%', borderRadius: '50%',
-            background: 'var(--bg-glass)',
+            background: isHovered ? 'var(--primary)' : 'var(--bg-glass)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: isHovered ? '#fff' : 'var(--primary)',
-            transition: 'background 0.3s ease',
+            color: isHovered ? 'var(--text-on-primary)' : 'var(--primary)',
+            transition: 'background 0.3s ease, color 0.3s ease',
           }}>
             <Terminal size={isHovered ? 20 : 18} style={{ transition: 'all 0.3s ease' }} />
           </div>

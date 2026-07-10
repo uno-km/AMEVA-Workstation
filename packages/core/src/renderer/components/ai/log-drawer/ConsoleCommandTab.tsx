@@ -45,6 +45,27 @@ export function ConsoleCommandTab() {
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  /*
+   * [SIDE EFFECT - Fetch Initial Host Work Directory]
+   * - Rationale: 가짜 경로 하드코딩을 없애고 런타임 최초 진입 시점의 실제 Host OS 작업 디렉토리를
+   *   'pwd' 명령을 백그라운드로 안전하게 스폰 조회하여 CWD 상태로 동기화 갱신한다.
+   */
+  useEffect(() => {
+    const initCwd = async () => {
+      if (ipc.isElectronEnv()) {
+        try {
+          const res = await (window as any).electronAPI.executeTerminal('pwd');
+          if (res && res.newCwd) {
+            setCwd(res.newCwd);
+          }
+        } catch (err) {
+          console.error('[ConsoleCommandTab] Failed to fetch initial CWD:', err);
+        }
+      }
+    };
+    initCwd();
+  }, []);
   
   // Zustand 전역 로그 검색 상태 연동 (로그 탭과 검색어 연동 공유)
   const searchQuery = useAILogStore((state) => state.searchQuery);
@@ -229,7 +250,7 @@ export function ConsoleCommandTab() {
           boxShadow: isFocused ? 'inset 0 0 0 1px var(--primary), inset 0 0 10px var(--primary-glow)' : 'none',
           userSelect: 'text',
           cursor: 'text',
-          background: '#070a13'
+          background: 'var(--term-bg)'
         }}
         onClick={() => {
           if (window.getSelection()?.toString().trim()) {

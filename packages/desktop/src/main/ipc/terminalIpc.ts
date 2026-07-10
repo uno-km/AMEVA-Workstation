@@ -120,17 +120,87 @@ export function registerTerminalIpc(): void {
 
       // 일반 명령어 실행
       let finalCmd = cmd;
+      let shellOption: string | undefined = undefined;
+
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `process.platform === 'win32'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (process.platform === 'win32')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 만족 시: 윈도우 환경이므로 파워셸 문법으로 인코딩(chcp 65001)을 적용하고 powershell.exe 절대 경로를 획득하여 쉘로 지정.
+       * - 불만족 시: 유닉스/맥 환경이므로 /bin/bash 쉘을 지정.
        */
       if (process.platform === 'win32') {
         finalCmd = `chcp 65001 >$null; ${cmd}`;
+        /*
+         * [RUN-TIME STATE / INVARIANT]
+         * - 변수 명: `systemRoot`
+         * - Rationale: PATH 환경 변수 불완전성으로 인한 spawn ENOENT 오류를 원천 차단하기 위해,
+         *   SystemRoot 환경 변수(기본값 C:\Windows) 하위의 PowerShell v1.0 절대경로를 동적 획득한다.
+         */
+        const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+        shellOption = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+      } else {
+        shellOption = '/bin/bash';
       }
-      const { stdout, stderr } = await execAsync(finalCmd, { cwd: execCwd, shell: process.platform === 'win32' ? 'powershell.exe' : '/bin/bash' });
+
+      let stdout = '';
+      let stderr = '';
+
+      try {
+        /*
+         * [SIDE EFFECT - Process Execution with Env Protection]
+         * - Rationale: Electron 런타임 내 PATH 유실 및 OS 수준 DLL 로더의 ERROR_FILE_NOT_FOUND(ENOENT) 방지를 위해,
+         *   SystemRoot 환경변수와 System32 핵심 경로(Path/PATH)를 강제 캡슐화 및 주입한다.
+         */
+        const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+        const defaultWinPath = `${path.join(systemRoot, 'System32')};${systemRoot};${path.join(systemRoot, 'System32', 'Wbem')};${path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0')}`;
+        
+        const execEnv = {
+          ...process.env,
+          SystemRoot: systemRoot,
+          System32: path.join(systemRoot, 'System32'),
+          Path: process.env.Path || process.env.PATH || defaultWinPath,
+          PATH: process.env.Path || process.env.PATH || defaultWinPath,
+        };
+
+        const res = await execAsync(finalCmd, {
+          cwd: execCwd,
+          shell: shellOption,
+          env: execEnv
+        });
+        stdout = res.stdout;
+        stderr = res.stderr;
+      } catch (spawnError: any) {
+        /*
+         * [ALGORITHM BRANCH / DECISION - Shell Fallback Engine]
+         * - Rationale: 파워셸 스폰(powershell.exe ENOENT)이 리디렉션이나 경로 소실로 최종 실패할 경우,
+         *   Windows의 기본 cmd.exe 쉘로 자가 복구 전환하되, 이때도 환경변수 누락이 없도록 동일한 시스템 경로들을 주입한다.
+         */
+        if (process.platform === 'win32' && (spawnError.code === 'ENOENT' || spawnError.message?.includes('ENOENT'))) {
+          const fallbackCmd = `chcp 65001 >nul && ${cmd}`;
+          const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+          const defaultWinPath = `${path.join(systemRoot, 'System32')};${systemRoot};${path.join(systemRoot, 'System32', 'Wbem')};${path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0')}`;
+          
+          const fallbackShell = process.env.COMSPEC || path.join(systemRoot, 'System32', 'cmd.exe');
+          const execEnv = {
+            ...process.env,
+            SystemRoot: systemRoot,
+            System32: path.join(systemRoot, 'System32'),
+            Path: process.env.Path || process.env.PATH || defaultWinPath,
+            PATH: process.env.Path || process.env.PATH || defaultWinPath,
+          };
+
+          const res = await execAsync(fallbackCmd, {
+            cwd: execCwd,
+            shell: fallbackShell,
+            env: execEnv
+          });
+          stdout = res.stdout;
+          stderr = res.stderr;
+        } else {
+          throw spawnError;
+        }
+      }
+
       return { stdout, stderr, newCwd: execCwd };
     } catch (error: any) {
       return { stdout: '', stderr: error.message || String(error), newCwd: currentCwd };

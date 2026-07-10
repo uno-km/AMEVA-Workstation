@@ -31,7 +31,7 @@
  * - existsSync: 파일 유무 동기 검사용 fs 모듈.
  * - readFile: 파일 텍스트 비동기 독출용 fs/promises 모듈.
  */
-import { app, BrowserWindow, dialog, session, ipcMain } from 'electron'
+import { app, BrowserWindow, dialog, session, ipcMain, Menu, MenuItem } from 'electron'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { existsSync } from 'fs'
@@ -254,6 +254,29 @@ function createWindow() {
 
   // [SEC-W-022] 창 보호 및 단축키 방어 전담 모듈 적용
   WindowDefenseManager.applyDefenses(mainWindow, () => isShuttingDown)
+
+  /*
+   * [SIDE EFFECT - Global Context Menu Binding]
+   * - Rationale: 일렉트론 샌드박스에서 기본 마우스 우클릭 메뉴가 원천 차단되는 사용성 오류를 극복하기 위해,
+   *   마우스 우클릭 시 드래그 텍스트 유무에 따라 Copy/Cut/Paste/Select All 등의 OS 기본 편집 행동 메뉴를 동적으로 표출한다.
+   */
+  mainWindow.webContents.on('context-menu', (_e, params) => {
+    const menu = new Menu();
+
+    if (params.selectionText && params.selectionText.trim() !== '') {
+      menu.append(new MenuItem({ label: '복사 (Copy)', role: 'copy' }));
+    }
+
+    if (params.isEditable) {
+      menu.append(new MenuItem({ label: '잘라내기 (Cut)', role: 'cut' }));
+      menu.append(new MenuItem({ label: '붙여넣기 (Paste)', role: 'paste' }));
+      menu.append(new MenuItem({ label: '모두 선택 (Select All)', role: 'selectAll' }));
+    }
+
+    if (menu.items.length > 0) {
+      menu.popup({ window: mainWindow! });
+    }
+  });
 
   // 디버깅을 위한 개발자 도구 강제 활성화
   mainWindow.webContents.openDevTools()

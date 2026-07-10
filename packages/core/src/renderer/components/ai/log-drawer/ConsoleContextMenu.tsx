@@ -5,19 +5,21 @@
  * @role Core module helper and integration logic
  * 
  * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - 소비처 A (src/renderer/AppLayout.tsx): 레이아웃 그리드 내부 또는 플로팅 레이어 영역 내에서 그리기로 소비.
- * - 소비처 B (src/renderer/App.tsx): 전역 모달 매니저 및 뷰포트 상태 스위칭에 따라 동적 마운트되어 소비.
+ * - 소비처 A (src/renderer/components/ai/log-drawer/ConsoleLogTab.tsx): 로그 터미널 탭 우클릭 시 컨텍스트 메뉴로 마운트.
+ * - 소비처 B (src/renderer/components/ai/log-drawer/ConsoleCommandTab.tsx): Host OS 터미널 탭 우클릭 시 마운트.
+ * - 소비처 C (src/renderer/components/ai/AIEngineLogsPanel.tsx): AI 엔진 실시간 로그 패널 우클릭 시 마운트.
  * 
  * [책임 범위 - RESPONSIBILITY]
- * - 본 파일은 AMEVA 시스템 내에서 도메인 목적에 부합하는 연산 및 데이터 처리 흐름을 안전하게 캡슐화한다.
- * - 외부 라이브러리 및 하위 종속성을 조율하고 결과 규격을 일관되게 제공한다.
+ * - 터미널 로그 내 드래그 텍스트의 복사, 클립보드 붙여넣기, AI 패널 프롬프트 주입(Ask AI) 기능 제공.
+ * - 마우스 클릭 시 화면을 덮는 전역 투명 백드롭(Backdrop) 오버레이를 통해 즉시 닫기 액션을 오작동 없이 제어.
  * 
  * [절대 깨면 안 되는 계약 - CONTRACT]
- * - MUST: 모든 예외 발생 시 에러를 침묵시키지 말고 에러 로그를 명확하게 남길 것.
- * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
+ * - MUST: 메뉴 밖 클릭 시 예외 없이 즉각 onClose가 실행되도록 전역 투명 오버레이 백드롭을 유지할 것.
+ * - MUST NOT: 복잡한 윈도우 click 리스너 혼선으로 마운트 직후 오동작 닫힘 루프가 발생하지 않도록 할 것.
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useRef } from 'react';
+import { AI_TERMINAL_CONSTANTS } from '../../../features/ai-terminal/constants';
 
 export interface ConsoleContextMenuProps {
   x: number;
@@ -33,59 +35,16 @@ export interface ConsoleContextMenuProps {
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `ConsoleContextMenu`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `ConsoleContextMenu(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   * - 역할: 마우스 우클릭 좌표 및 드래그 텍스트를 인자로 받아 커스텀 옵션 메뉴와 전역 투명 닫기 백드롭을 제공.
+   * - 예시: `ConsoleContextMenu(...)` 호출 시 zIndex가 최상위인 GUI 팝업 드로잉.
    */
 export function ConsoleContextMenu({
   x, y, selectedText, onCopy, onPaste, onInsertToBody, onAskAI, onClose
 }: ConsoleContextMenuProps) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `menuRef`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const menuRef = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const menuRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleClickOutside`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleClickOutside = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const handleClickOutside = (e: MouseEvent) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `menuRef.current && !menuRef.current.contains(e.target as Node)`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (menuRef.current && !menuRef.current.contains(e.target as Node))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    
-    // Add small delay to prevent immediate close if it was opened by a click
-    setTimeout(() => {
-      window.addEventListener('click', handleClickOutside);
-    }, 10);
-    
-    return () => window.removeEventListener('click', handleClickOutside);
-  }, [onClose]);
-
-  // Prevent menu from going off-screen
+  // Prevent menu from going off-screen (최대 넓이 180px, 높이 200px 기준 마진 방어)
   const safeX = Math.min(x, window.innerWidth - 180);
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `safeY`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const safeY = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const safeY = Math.min(y, window.innerHeight - 200);
 
   const btnStyle: React.CSSProperties = {
@@ -104,92 +63,103 @@ export function ConsoleContextMenu({
     gap: '8px',
   };
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `hasSelection`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const hasSelection = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const hasSelection = !!selectedText.trim();
 
   return (
-    <div 
-      ref={menuRef}
-      style={{
-        position: 'fixed',
-        top: safeY,
-        left: safeX,
-        background: 'var(--bg-glass)',
-        border: '1px solid var(--border-muted)',
-        borderRadius: '8px',
-        padding: '4px',
-        display: 'flex',
-        flexDirection: 'column',
-        zIndex: 99999,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.08)',
-        fontFamily: 'var(--font-sans)',
-        minWidth: '160px',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      {/* 복사 — 선택된 텍스트가 있을 때만 활성화 */}
-      <button 
-        style={{ ...btnStyle, opacity: hasSelection ? 1 : 0.4 }}
-        disabled={!hasSelection}
-        onMouseEnter={e => hasSelection && (e.currentTarget.style.background = 'var(--bg-glass-active)')}
-        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-        onClick={() => { if (hasSelection) { onCopy(); onClose(); }}}
+    <>
+      {/* 
+        [BACKDROP OVERLAY LAYER]
+        - Rationale: window.click 리스너는 우클릭 mouseup 연쇄 click 신호와 충돌하여 팝업이 즉시 닫히는 오작동을 유발하므로,
+          메뉴 영역 뒷단 전체를 채우는 투명 div 오버레이를 배치해 클릭 시 부드럽게 닫히도록 완벽히 방어한다.
+      */}
+      <div 
+        onClick={onClose}
+        onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+        style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'transparent',
+          zIndex: 99998,
+          cursor: 'default',
+        }}
+      />
+
+      <div 
+        ref={menuRef}
+        style={{
+          position: 'fixed',
+          top: safeY,
+          left: safeX,
+          background: 'var(--bg-glass)',
+          border: '1px solid var(--border-muted)',
+          borderRadius: '8px',
+          padding: '4px',
+          display: 'flex',
+          flexDirection: 'column',
+          zIndex: 99999,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.6), inset 0 1px 1px rgba(255,255,255,0.08)',
+          fontFamily: 'var(--font-sans)',
+          minWidth: '160px',
+          backdropFilter: 'blur(12px)',
+        }}
       >
-        <span>📋</span> 복사 (Copy)
-      </button>
-      
-      {onPaste && (
+        {/* 복사 — 선택된 텍스트가 있을 때만 활성화 */}
         <button 
-          style={btnStyle} 
-          onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-glass-active)')}
+          style={{ ...btnStyle, opacity: hasSelection ? 1 : 0.4 }}
+          disabled={!hasSelection}
+          onMouseEnter={e => hasSelection && (e.currentTarget.style.background = 'var(--bg-glass-active)')}
           onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-          onClick={() => { onPaste(); onClose(); }}
+          onClick={() => { if (hasSelection) { onCopy(); onClose(); }}}
         >
-          <span>📌</span> 붙여넣기 (Paste)
+          <span>📋</span> 복사 (Copy)
         </button>
-      )}
-      
-      {onInsertToBody && hasSelection && (
-        <>
-          <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
+        
+        {onPaste && (
           <button 
             style={btnStyle} 
             onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-glass-active)')}
             onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            onClick={() => { onInsertToBody(); onClose(); }}
+            onClick={() => { onPaste(); onClose(); }}
           >
-            <span>📄</span> 본문에 삽입 (Insert)
+            <span>📌</span> 붙여넣기 (Paste)
           </button>
-        </>
-      )}
+        )}
+        
+        {onInsertToBody && hasSelection && (
+          <>
+            <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
+            <button 
+              style={btnStyle} 
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-glass-active)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onClick={() => { onInsertToBody(); onClose(); }}
+            >
+              <span>📄</span> 본문에 삽입 (Insert)
+            </button>
+          </>
+        )}
 
-      {/* [FEAT-4] AI에게 물어보기 */}
-      {hasSelection && (
-        <>
-          <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
-          <button 
-            style={{ ...btnStyle, color: 'var(--primary)' }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.1)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-            onClick={() => {
-              // AI 패널 입력창에 선택 텍스트 주입
-              window.dispatchEvent(new CustomEvent('ameva:fill-ai-input', {
-                detail: `다음 터미널 출력에 대해 설명해줘:\n\`\`\`\n${selectedText}\n\`\`\``
-              }));
-              onClose();
-            }}
-          >
-            <span>✨</span> AI에게 물어보기
-          </button>
-        </>
-      )}
-    </div>
+        {/* AI에게 물어보기 */}
+        {hasSelection && (
+          <>
+            <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
+            <button 
+              style={{ ...btnStyle, color: 'var(--primary)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(139,92,246,0.1)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              onClick={() => {
+                // AI 패널 입력창에 선택 텍스트 주입 커스텀 이벤트 디스패치
+                window.dispatchEvent(new CustomEvent(AI_TERMINAL_CONSTANTS.EVENTS.FILL_AI_INPUT, {
+                  detail: `다음 터미널 출력에 대해 설명해줘:\n\`\`\`\n${selectedText}\n\`\`\``
+                }));
+                onClose();
+              }}
+            >
+              <span>✨</span> AI에게 물어보기
+            </button>
+          </>
+        )}
+      </div>
+    </>
   );
 }
-
