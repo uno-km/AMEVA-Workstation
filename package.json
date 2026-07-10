@@ -3,19 +3,22 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "main": "dist-electron/index.js",
   "scripts": {
-    "dev": "node scripts/dev.js",
-    "dev:host": "vite --host",
-    "dev:browser": "vite --mode browser",
-    "app": "vite",
-    "web": "vite --mode browser",
+    "dev": "npm run dev --workspace=@ameva/desktop",
+    "dev:host": "npm run dev:host --workspace=@ameva/desktop",
+    "dev:browser": "npm run dev:browser --workspace=@ameva/desktop",
+    "app": "npm run app --workspace=@ameva/desktop",
+    "web": "npm run web --workspace=@ameva/desktop",
     "market": "node ../AMEVA-Workstation-Market-Place/server.js",
     "dev:market": "node ../AMEVA-Workstation-Market-Place/server.js",
-    "build": "tsc && vite build && electron-builder",
-    "pack": "electron-builder --dir",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "build": "npm run build --workspace=@ameva/desktop",
+    "pack": "npm run pack --workspace=@ameva/desktop",
+    "lint": "turbo run lint",
+    "preview": "npm run preview --workspace=@ameva/desktop"
   },
   "dependencies": {
     "@blocknote/core": "^0.51.4",
@@ -57,7 +60,8 @@
     "typescript": "~6.0.2",
     "vite": "^8.1.1",
     "vite-plugin-electron": "^1.1.0",
-    "vite-plugin-electron-renderer": "^1.0.0"
+    "vite-plugin-electron-renderer": "^1.0.0",
+    "turbo": "^2.0.0"
   },
   "build": {
     "appId": "com.ameva.markdowneditor",

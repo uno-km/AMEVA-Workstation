@@ -1,0 +1,173 @@
+/**
+ * @file useAIState.ts
+ * @system AMEVA OS Desktop Workstation
+ * @location src/renderer/stores/useAIState.ts
+ * @role Core module helper and integration logic
+ * 
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - 소비처 A (src/renderer/hooks/): 도메인 훅 내부에서 상태 값 바인딩 및 변경 액션 호출 시 소비.
+ * - 소비처 B (src/renderer/components/): 컴포넌트 내 렌더 조건 판단을 위해 실시간 구독(Subscribe) 소비.
+ * 
+ * [책임 범위 - RESPONSIBILITY]
+ * - 본 파일은 AMEVA 시스템 내에서 도메인 목적에 부합하는 연산 및 데이터 처리 흐름을 안전하게 캡슐화한다.
+ * - 외부 라이브러리 및 하위 종속성을 조율하고 결과 규격을 일관되게 제공한다.
+ * 
+ * [절대 깨면 안 되는 계약 - CONTRACT]
+ * - MUST: 모든 예외 발생 시 에러를 침묵시키지 말고 에러 로그를 명확하게 남길 것.
+ * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
+ */
+
+import { create } from 'zustand';
+import type { AISettings } from '../types/aiTypes';
+import { AI_TERMINAL_CONSTANTS } from '../features/ai-terminal/constants';
+
+export interface AIState {
+  // 1. 전역 생성 상태
+  isGenerating: boolean;
+  setIsGenerating: (isGenerating: boolean) => void;
+
+  // 2. AI 환경 설정 (로컬 스토리지 연동)
+  settings: AISettings;
+  updateSettings: (newSettings: Partial<AISettings>) => void;
+
+  // 3. 모델 가용성 및 목록 상태
+  isAvailable: boolean;
+  setIsAvailable: (isAvailable: boolean) => void;
+
+  models: { name: string; filename: string; path: string; size: number }[];
+  setModels: (models: { name: string; filename: string; path: string; size: number }[]) => void;
+
+  codeModels: { name: string; filename: string; path: string; size: number }[];
+  setCodeModels: (codeModels: { name: string; filename: string; path: string; size: number }[]) => void;
+
+  // 4. 비동기 작업 큐 (AgentEngine 관련)
+  pendingQueue: Array<any>;
+  setPendingQueue: (queue: Array<any>) => void;
+  addPendingQueue: (item: any) => void;
+  clearPendingQueue: () => void;
+  removeFromQueue: (id: string) => void;
+}
+
+const DEFAULT_SETTINGS: AISettings = {
+  modelPath: 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf',
+  codeModelPath: '',
+  temperature: AI_TERMINAL_CONSTANTS.DEFAULT_TEMPERATURE,
+  maxTokens: AI_TERMINAL_CONSTANTS.DEFAULT_MAX_TOKENS,
+  systemPrompt: `당신은 AMEVA 문서 에디터에 내장된 AI 문서 편집 어시스턴트입니다.
+사용자의 문서를 직접 읽고, 분석하고, 수정하거나 새로운 내용을 삽입하는 것이 당신의 주 역할입니다.
+
+# CoT 사고 과정 지침
+답변하기 전에 반드시 <think>...</think> 태그 안에 한국어로 사고 과정을 작성하십시오.
+- 사용자의 요청을 분석하고
+- 문서 구조(블록 목록)를 검토하며
+- 어떤 액션(WRITE/EDIT/CHAT)이 적합할지 판단하고
+- 삽입 위치나 수정 대상 블록을 결정하는 이유를 설명하십시오.
+예시:
+<think>
+사용자가 [요청 주제]에 대해 작성/수정을 요청했다. 문서 상태가 [비어있음/내용있음]이므로 afterBlockId=[블록ID], type=[블록타입]이 적합하다.
+</think>
+
+# 절대 금지 사항
+- JavaScript/Python/코드 예시를 답변에 포함하지 마십시오. 절대 금지.`,
+  apiType: 'local',
+};
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `loadInitialSettings`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const loadInitialSettings = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
+const loadInitialSettings = (): AISettings => {
+  try {
+    // ameva_ai_settings와 ai-settings 두 키 모두 확인하여 마이그레이션 호환성 보장
+    const saved = localStorage.getItem('ameva_ai_settings') || localStorage.getItem('ai-settings');
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `saved`
+       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+       * - 예시: `if (saved)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       */
+    if (saved) {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `parsed`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const parsed = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
+      const parsed = JSON.parse(saved);
+      // 구버전 치즈 예시나 구버전 프롬프트가 저장되어 있는 경우 기본값으로 덮어씀
+      if (parsed.systemPrompt && (
+        parsed.systemPrompt.includes('치즈') ||
+        parsed.systemPrompt.includes('간결하고 명확하게 답하세요') ||
+        !parsed.systemPrompt.includes('CoT 사고 과정 지침')
+      )) {
+        parsed.systemPrompt = DEFAULT_SETTINGS.systemPrompt;
+        localStorage.setItem('ameva_ai_settings', JSON.stringify(parsed));
+        localStorage.setItem('ai-settings', JSON.stringify(parsed));
+      }
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
+  } catch (e) {
+    console.error('설정 로드 실패:', e);
+  }
+  return DEFAULT_SETTINGS;
+};
+
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `useAIState`
+   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
+   * - 예시: `useAIState(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   */
+export const useAIState = create<AIState>((set) => ({
+  isGenerating: false,
+  setIsGenerating: (isGenerating) => set({ isGenerating }),
+
+  settings: loadInitialSettings(),
+  updateSettings: (newSettings) => set((state) => {
+    /*
+     * [ALGORITHM BRANCH / DECISION]
+     * - 조건 식: `!Object.keys(newSettings).some(key => state.settings[key] !== newSettings[key])`
+     * - 만족 시: 변경된 설정 항목이 없으므로 상태 업데이트를 스킵하여 불필요한 리렌더링과 무한 루프를 방지함.
+     * - 불만족 시: 병합된 새로운 설정을 상태에 반영함.
+     * - 예시: `if (!isDifferent)` 만족 시 기존 state를 그대로 반환하여 React 렌더 가동 중지.
+     */
+    const isDifferent = Object.keys(newSettings).some(
+      (key) => (state.settings as any)[key] !== (newSettings as any)[key]
+    )
+    if (!isDifferent) return state
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `updated`
+       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
+       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
+       * - 예시 코드: `const updated = ...` 형태로 안전 캐싱 후 가공 기동.
+       */
+    const updated = { ...state.settings, ...newSettings };
+    localStorage.setItem('ameva_ai_settings', JSON.stringify(updated));
+    return { settings: updated };
+  }),
+
+  isAvailable: false,
+  setIsAvailable: (isAvailable) => set({ isAvailable }),
+
+  models: [],
+  setModels: (models) => set({ models }),
+
+  codeModels: [],
+  setCodeModels: (codeModels) => set({ codeModels }),
+
+  pendingQueue: [],
+  setPendingQueue: (queue) => set({ pendingQueue: queue }),
+  addPendingQueue: (item) => set((state) => ({ pendingQueue: [...state.pendingQueue, item] })),
+  clearPendingQueue: () => set({ pendingQueue: [] }),
+  removeFromQueue: (id) => set((state) => ({
+    pendingQueue: state.pendingQueue.filter(item => item.id !== id),
+  })),
+}));
+

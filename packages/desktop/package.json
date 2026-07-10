@@ -1,0 +1,27 @@
+{
+  "name": "@ameva/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist-electron/index.js",
+  "scripts": {
+    "dev": "node scripts/dev.js",
+    "dev:host": "vite --host",
+    "dev:browser": "vite --mode browser",
+    "app": "vite",
+    "web": "vite --mode browser",
+    "build": "tsc && vite build && electron-builder",
+    "pack": "electron-builder --dir",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@ameva/core": "*"
+  },
+  "devDependencies": {
+    "electron": "^43.0.0",
+    "electron-builder": "^26.15.3",
+    "vite-plugin-electron": "^1.1.0",
+    "vite-plugin-electron-renderer": "^1.0.0",
+    "vite": "^8.1.1"
+  }
+}
