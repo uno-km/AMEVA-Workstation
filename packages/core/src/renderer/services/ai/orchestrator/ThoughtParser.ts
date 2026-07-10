@@ -79,6 +79,17 @@ export interface ThoughtParserCallbacks {
    * @param accumulated - 현재까지 누적된 최종 답변 전체 텍스트
    */
   onFinalAnswerToken: (token: string, accumulated: string) => void
+
+  /**
+   * <tool_call> JSON 파싱에 실패했을 때 호출되는 선택적 콜백.
+   * Self-Healing 미들웨어가 주입된 경우 AgentOrchestrator가 이 콜백을 통해
+   * 손상된 JSON을 수신하여 2-Stage 복구를 시도한다.
+   * 미주입 시 console.error로만 로그를 남기고 스킵한다.
+   *
+   * @param malformedJson - 파싱에 실패한 원본 JSON 문자열
+   * @param parseError    - JSON.parse()가 반환한 원본 에러 메시지
+   */
+  onToolCallParseError?: (malformedJson: string, parseError: string) => void
 }
 
 /* ============================================================
@@ -359,8 +370,19 @@ export class ThoughtParser {
       } else {
         console.error('[ThoughtParser] tool_call JSON에 name 필드가 없습니다:', jsonStr)
       }
-    } catch (parseErr) {
-      console.error('[ThoughtParser] tool_call JSON 파싱 실패:', parseErr, '원본:', jsonStr)
+    } catch (parseErr: unknown) {
+      const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+      console.error('[ThoughtParser] tool_call JSON 파싱 실패:', errMsg, '원본:', jsonStr)
+
+      /*
+       * [SELF-HEALING HOOK CALL]
+       * - onToolCallParseError 콜백이 주입된 경우 AgentOrchestrator에 오류를 전달한다.
+       * - AgentOrchestrator는 SelfHealingMiddleware를 통해 Phase 1 → Phase 2 복구를 시도한다.
+       * - 선택적 콜백이므로 미주입 시에는 기존 동작(에러 로그만).
+       */
+      if (this.callbacks.onToolCallParseError) {
+        this.callbacks.onToolCallParseError(jsonStr.trim(), errMsg)
+      }
     }
 
     /*

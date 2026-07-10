@@ -46,6 +46,14 @@ import * as ipc from '../../../ipc/electronApiAdapter'
  */
 import type { ILLMEngineAdapter } from '../types'
 
+/*
+ * [STRATEGY IMPORTS - for createDefault factory]
+ * - LLMCriticStrategy: 1.5B Critic 전략 실성 구현체.
+ * - FeedbackInjector: REJECT 피드백 주입기 구현체.
+ */
+import { LLMCriticStrategy } from './LLMCriticStrategy'
+import { FeedbackInjector } from './FeedbackInjector'
+
 /* ============================================================
  * ActorCriticHook 구현체
  * ============================================================ */
@@ -287,9 +295,6 @@ export class ActorCriticHookFactory {
     criticAdapter: ILLMEngineAdapter,
     options: Partial<Pick<ActorCriticConfig, 'dangerousTools' | 'critiqueFinalAnswer' | 'maxCriticRejections'>> = {}
   ): ActorCriticHook {
-    const { LLMCriticStrategy } = require('./LLMCriticStrategy')
-    const { FeedbackInjector } = require('./FeedbackInjector')
-
     const config: ActorCriticConfig = {
       dangerousTools: options.dangerousTools ?? ['run_command', 'write_file'],
       critiqueFinalAnswer: options.critiqueFinalAnswer ?? false,

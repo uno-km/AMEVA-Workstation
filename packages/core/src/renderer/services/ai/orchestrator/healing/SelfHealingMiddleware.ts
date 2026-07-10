@@ -25,18 +25,23 @@
  * [IMPORT SEGMENTATION & CONTRACTS]
  * - ISelfHealingMiddleware, SelfHealingConfig, HealingResult, HealingContext: 계약 타입.
  */
-import type {
-  ISelfHealingMiddleware,
-  SelfHealingConfig,
-  HealingResult,
-  HealingContext
-} from './types'
+import type { ISelfHealingMiddleware, SelfHealingConfig, HealingResult, HealingContext } from './types'
 
 /*
  * [IPC LOG IMPORT]
  * - ipc.llmAddLog: 미들웨어 복구 이벤트를 엔진 로그 패널에 출력.
  */
 import * as ipc from '../../../ipc/electronApiAdapter'
+
+/*
+ * [STRATEGY IMPORTS - for createDefault factory]
+ * - HeuristicHealingStrategy: tryHealJSON 래핑 Phase 1 구현체.
+ * - LLMHealingDelegate: Observation 주입 Phase 2 구현체.
+ * - ILLMEngineAdapter: createDefault 커네관 엔진 주입용 타입.
+ */
+import { HeuristicHealingStrategy } from './HeuristicHealingStrategy'
+import { LLMHealingDelegate } from './LLMHealingDelegate'
+import type { ILLMEngineAdapter } from '../types'
 
 /* ============================================================
  * SelfHealingMiddleware 구현체
@@ -211,16 +216,18 @@ export class SelfHealingMiddlewareFactory {
    */
   public static createDefault(
     maxLlmHealAttempts: number = 2,
-    engineAdapter: import('../types').ILLMEngineAdapter
+    engineAdapter: ILLMEngineAdapter
   ): SelfHealingMiddleware {
     /*
      * [DEFAULT STRATEGY INJECTION]
      * - HeuristicHealingStrategy: tryHealJSON 래핑 구현체.
      * - LLMHealingDelegate: Observation 주입 방식 구현체.
      * - engineAdapter는 createDefault() 외부에서 주입받는다 (DI 원칙).
+     *
+     * 주의: engineAdapter는 LLMHealingDelegate가 Phase 2에서 스스로 호출하며,
+     * HealingContext를 통해 주입되므로 여기서 직접 사용되지 않는다.
      */
-    const { HeuristicHealingStrategy } = require('./HeuristicHealingStrategy')
-    const { LLMHealingDelegate } = require('./LLMHealingDelegate')
+    void engineAdapter // 미사용 경고 억제 (파라미터 문서화 목적)
 
     return SelfHealingMiddlewareFactory.create({
       maxLlmHealAttempts,

@@ -198,6 +198,60 @@ export class AgentOrchestratorSession {
       onFinalAnswerToken: (token, accumulated) => {
         this.accumulatedAnswer = accumulated
         this.emitEvent({ type: 'answer_token', token, accumulated })
+      },
+      onToolCallParseError: (malformedJson, parseError) => {
+        /*
+         * [SELF-HEALING INTEGRATION POINT]
+         * - ThoughtParser에서 <tool_call> JSON 파싱이 실패하면 이 콜백이 호출된다.
+         * - selfHealingMiddleware가 주입된 경우 비동기 복구를 시도한다.
+         * - 복구 성공 시 healedJson을 파싱하여 pendingToolCall에 저장한다.
+         * - 미주입 또는 복구 실패 시 pendingToolCall은 null 상태를 유지한다.
+         *
+         * 주의: ThoughtParser.onToolCallParseError는 동기 콜백이지만
+         * SelfHealingMiddleware는 비동기(async)이므로 void IIFE 패턴을 사용한다.
+         */
+        if (this.selfHealingMiddleware !== null) {
+          void (async () => {
+            const healingCtx: HealingContext = {
+              conversationHistory: [...this.contextMessages],
+              engineAdapter: this.adapter,
+              currentLlmAttempts: 0,
+              maxLlmAttempts: 2
+            }
+
+            const result = await this.selfHealingMiddleware!.onToolCallParseError(
+              malformedJson,
+              parseError,
+              healingCtx
+            )
+
+            if (result.success) {
+              try {
+                const healed = JSON.parse(result.healedJson) as ToolCallRequest
+                if (healed.name && typeof healed.name === 'string') {
+                  this.pendingToolCall = { name: healed.name, args: healed.args ?? {} }
+                  this.emitEvent({
+                    type: 'tool_call_start',
+                    toolName: healed.name,
+                    toolArgs: healed.args ?? {}
+                  })
+                  ipc.llmAddLog({
+                    text: `[AgentOrchestrator] Self-Healing 복구 성공 (${result.method}). 도구: ${healed.name}`,
+                    prefix: 'SelfHeal'
+                  })
+                }
+              } catch (reparseErr: unknown) {
+                const msg = reparseErr instanceof Error ? reparseErr.message : String(reparseErr)
+                console.error('[AgentOrchestrator] Self-Healing 결과 재파싱 실패:', msg)
+              }
+            } else {
+              ipc.llmAddLog({
+                text: `[AgentOrchestrator] Self-Healing 복구 실패: ${result.error}`,
+                prefix: 'SelfHeal'
+              })
+            }
+          })()
+        }
       }
     })
 
