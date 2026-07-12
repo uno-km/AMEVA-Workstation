@@ -4,7 +4,7 @@
  * @role Task DAG 생성, 순환 참조 감지, 위상 정렬 기능 제공
  */
 
-import { TaskDefinition } from '../../domain/types';
+import type { TaskDefinition } from '../../domain/types';
 
 export class TaskGraph {
   private nodes: Map<string, TaskDefinition> = new Map();
@@ -107,6 +107,47 @@ export class TaskGraph {
     }
 
     return result;
+  }
+
+  /**
+   * 의존성 트리를 기반으로 병렬 실행 가능한 레이어 단위로 그룹화합니다.
+   * 첫 번째 레이어(인덱스 0)는 의존성이 없는 노드들이며, 
+   * i번째 레이어는 모든 의존성이 i-1 이하 레이어에 존재하는 노드들입니다.
+   * 반환값: Array of String Array (Task ID 묶음들)
+   */
+  public getExecutionLayers(): string[][] {
+    if (this.detectCycle()) {
+      throw new Error('Graph has cycles, cannot determine execution layers.');
+    }
+
+    const inDegree = new Map<string, number>();
+    for (const nodeId of this.nodes.keys()) {
+      inDegree.set(nodeId, this.reverseEdges.get(nodeId)!.size);
+    }
+
+    let currentLayerQueue: string[] = [];
+    for (const [nodeId, degree] of inDegree.entries()) {
+      if (degree === 0) currentLayerQueue.push(nodeId);
+    }
+
+    const layers: string[][] = [];
+    while (currentLayerQueue.length > 0) {
+      layers.push([...currentLayerQueue]);
+      const nextLayerQueue: string[] = [];
+
+      for (const current of currentLayerQueue) {
+        const neighbors = this.edges.get(current) || new Set();
+        for (const neighbor of neighbors) {
+          inDegree.set(neighbor, inDegree.get(neighbor)! - 1);
+          if (inDegree.get(neighbor) === 0) {
+            nextLayerQueue.push(neighbor);
+          }
+        }
+      }
+      currentLayerQueue = nextLayerQueue;
+    }
+
+    return layers;
   }
 
   /**

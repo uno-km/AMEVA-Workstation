@@ -3,9 +3,12 @@
  * @system AMEVA OS Desktop Workstation
  * @role 전체 Plan 검증을 관장하는 중앙 Validator
  */
-
-import { GoalSpec, TaskPlan, PlanValidationResult, ValidationIssue } from '../domain/PlanningTypes';
+import type { GoalSpec, TaskPlan, PlanValidationResult, ValidationIssue } from '../domain/PlanningTypes';
 import { TaskGraph } from '../graph/TaskGraph';
+
+const INVALID_CRITERIA_KEYWORDS = ['충분히', '잘', '완벽하게', '좋은', '적절한'];
+// 임시 Capability 화이트리스트 (PHASE 3 Dispatcher 연동 전)
+const VALID_CAPABILITIES = ['web.search', 'file.read', 'file.write', 'cmd.run', 'browser.action', 'sql.execute', 'system.notify', 'semantic.search'];
 
 export class PlanValidator {
   
@@ -49,16 +52,30 @@ export class PlanValidator {
 
     plan.tasks.forEach(t => {
       t.requirementIds?.forEach(rId => coveredReqIds.add(rId));
-      
-      // 3. Completeness 검증
+      // 3. Completeness & Criteria Quality
       if (!t.expectedOutputs || t.expectedOutputs.length === 0) {
         errors.push({ code: 'MISSING_OUTPUT', severity: 'ERROR', taskId: t.id, message: 'Task is missing expectedOutputs.' });
       }
       if (!t.acceptanceCriteria || t.acceptanceCriteria.length === 0) {
         errors.push({ code: 'MISSING_CRITERIA', severity: 'ERROR', taskId: t.id, message: 'Task is missing acceptanceCriteria.' });
+      } else {
+        // 모호한 Criteria 필터링
+        t.acceptanceCriteria.forEach(criteria => {
+          if (INVALID_CRITERIA_KEYWORDS.some(kw => criteria.includes(kw))) {
+            errors.push({ code: 'AMBIGUOUS_CRITERIA', severity: 'ERROR', taskId: t.id, message: `Ambiguous acceptance criteria detected: "${criteria}"` });
+          }
+        });
       }
+
+      // 4. Capability Validation
       if (!t.capabilityRequirements || t.capabilityRequirements.length === 0) {
         warnings.push({ code: 'NO_CAPABILITY', severity: 'WARNING', taskId: t.id, message: 'Task has no capabilityRequirements. Might be a dummy task.' });
+      } else {
+        t.capabilityRequirements.forEach(cap => {
+          if (!VALID_CAPABILITIES.includes(cap)) {
+            errors.push({ code: 'INVALID_CAPABILITY', severity: 'ERROR', taskId: t.id, message: `Capability '${cap}' is not supported or invalid.` });
+          }
+        });
       }
     });
 
@@ -74,6 +91,21 @@ export class PlanValidator {
         });
       }
     });
+
+    // 5. Reachability / 고립 노드 검사 (Graph 기반)
+    if (errors.length === 0) { // 기본 구조가 맞을 때만 그래프 심화 탐색
+      const graph = new TaskGraph(plan.tasks);
+      const isolatedTasks = plan.tasks.filter(t => {
+        // 진입/진출 간선이 모두 없는 경우 고립으로 판정 (단일 노드 플랜 제외)
+        if (plan.tasks.length === 1) return false; 
+        const isDependedOn = plan.tasks.some(other => other.dependencies.includes(t.id));
+        const hasDependencies = t.dependencies.length > 0;
+        return !isDependedOn && !hasDependencies;
+      });
+      isolatedTasks.forEach(iso => {
+        errors.push({ code: 'ISOLATED_TASK', severity: 'ERROR', taskId: iso.id, message: 'Task is isolated (unreachable from and to any node).' });
+      });
+    }
 
     const requirementCoverage = requiredReqs.length === 0 ? 1 : coveredCount / requiredReqs.length;
 

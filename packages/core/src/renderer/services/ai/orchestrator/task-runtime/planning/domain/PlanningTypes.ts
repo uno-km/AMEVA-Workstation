@@ -4,7 +4,7 @@
  * @role Task Planning 시스템의 타입 계약 (GoalSpec, Plan, Validator)
  */
 
-import { TaskDefinition } from '../../domain/types';
+import type { TaskDefinition } from '../../domain/types';
 
 /**
  * 사용자 요구사항 하나를 나타내는 단위

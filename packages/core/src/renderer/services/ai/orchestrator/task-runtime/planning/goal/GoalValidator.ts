@@ -3,7 +3,7 @@
  * @system AMEVA OS Desktop Workstation
  */
 
-import { GoalSpec } from '../domain/PlanningTypes';
+import type { GoalSpec } from '../domain/PlanningTypes';
 
 export class GoalValidator {
   /**

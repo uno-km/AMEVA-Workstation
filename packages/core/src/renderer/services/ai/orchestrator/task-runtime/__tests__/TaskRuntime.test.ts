@@ -11,7 +11,7 @@ import { TaskStateMachine } from '../state/TaskStateMachine';
 import { LegacyTaskPlanAdapter } from '../compatibility/LegacyTaskPlanAdapter';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { TaskEventLog } from '../events/TaskEventLog';
-import { TaskEntity, TransitionCommand, TaskRuntimeState } from '../domain/types';
+import type { TaskEntity, TransitionCommand, TaskRuntimeState } from '../domain/types';
 
 // ---------------------------------------------------------
 // 1. Adapter Tests

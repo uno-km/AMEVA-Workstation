@@ -8,7 +8,8 @@
  * - StateMachine을 통한 전이만 허용합니다.
  */
 
-import { TaskEntity, TransitionCommand, TaskRuntimeState, TaskEvent } from '../domain/types';
+import type { TaskEntity, TransitionCommand, TaskRuntimeState, TaskEvent } from '../domain/types';
+import type { MissionExecutionState } from '../domain/ExecutionTypes';
 import { TaskNotFoundError } from '../domain/errors';
 import { TaskStateMachine } from '../state/TaskStateMachine';
 import { TaskEventLog } from '../events/TaskEventLog';
@@ -16,10 +17,51 @@ import { TaskEventLog } from '../events/TaskEventLog';
 export class TaskRuntimeStore {
   // missionId -> (taskId -> TaskEntity)
   private missions: Map<string, Map<string, TaskEntity>> = new Map();
-  private eventLog: TaskEventLog;
+  // missionId -> MissionExecutionState
+  private missionStates: Map<string, MissionExecutionState> = new Map();
 
   constructor(eventLog: TaskEventLog) {
     this.eventLog = eventLog;
+  }
+
+  /**
+   * Mission 초기화 (상태 생성)
+   */
+  public initMission(missionId: string, budget: MissionExecutionState['budget']): void {
+    if (this.missionStates.has(missionId)) {
+      throw new Error(`Mission ${missionId} is already initialized.`);
+    }
+    this.missionStates.set(missionId, {
+      missionId,
+      status: 'CREATED',
+      budget: { ...budget },
+    });
+  }
+
+  /**
+   * Mission 상태 조회
+   */
+  public getMissionState(missionId: string): MissionExecutionState {
+    const state = this.missionStates.get(missionId);
+    if (!state) {
+      throw new Error(`Mission ${missionId} not found in store.`);
+    }
+    return state;
+  }
+
+  /**
+   * Mission 상태 갱신
+   */
+  public updateMissionState(missionId: string, updates: Partial<MissionExecutionState>): void {
+    const state = this.getMissionState(missionId);
+    const updated = { ...state, ...updates };
+    
+    // 깊은 복사(budget 등)는 주의 필요
+    if (updates.budget) {
+      updated.budget = { ...state.budget, ...updates.budget };
+    }
+    
+    this.missionStates.set(missionId, updated);
   }
 
   /**
@@ -193,8 +235,10 @@ export class TaskRuntimeStore {
   public clear(missionId?: string): void {
     if (missionId) {
       this.missions.delete(missionId);
+      this.missionStates.delete(missionId);
     } else {
       this.missions.clear();
+      this.missionStates.clear();
       this.eventLog.clear();
     }
   }

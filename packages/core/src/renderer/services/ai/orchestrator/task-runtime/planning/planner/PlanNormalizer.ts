@@ -4,8 +4,8 @@
  * @role 파싱된 데이터를 TaskPlan 구조에 맞게 정규화 (의미 부여는 하지 않음)
  */
 
-import { TaskPlan, PlanStatus } from '../domain/PlanningTypes';
-import { TaskDefinition } from '../../domain/types';
+import type { TaskPlan, PlanStatus } from '../domain/PlanningTypes';
+import type { TaskDefinition } from '../../domain/types';
 import { PlanningPolicy } from '../domain/PlanningPolicy';
 
 export class PlanNormalizer {

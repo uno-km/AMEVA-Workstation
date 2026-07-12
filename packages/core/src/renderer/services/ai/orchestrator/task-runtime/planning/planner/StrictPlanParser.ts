@@ -47,18 +47,46 @@ export class StrictPlanParser {
         throw new PlanParsingError('Prototype pollution detected in planner output');
       }
 
+      // Depth 방어
+      if (this.getMaxDepth(parsedData) > 10) {
+        throw new PlanParsingError('JSON structure is too deep.');
+      }
+
+      // 기본 구조 방어 (tasks 필드 또는 배열 확인)
+      if (typeof parsedData !== 'object' || parsedData === null) {
+        throw new PlanParsingError('JSON root must be an object or array.');
+      }
+      
+      let tasksArray = parsedData;
+      if (!Array.isArray(parsedData)) {
+        if (!Array.isArray(parsedData.tasks)) {
+           throw new PlanParsingError('JSON must contain a valid tasks array.');
+        }
+        tasksArray = parsedData.tasks;
+      }
+
       return {
         success: true,
-        parsedData,
+        parsedData: Array.isArray(parsedData) ? parsedData : parsedData.tasks,
         parseErrors: []
       };
     } catch (error: any) {
-      errors.push(`JSON Parse failed: ${error.message}`);
+      errors.push(`JSON Parse/Validation failed: ${error.message}`);
       return {
         success: false,
         parseErrors: errors
       };
     }
+  }
+
+  private getMaxDepth(obj: any, currentDepth = 1): number {
+    if (typeof obj !== 'object' || obj === null) return currentDepth;
+    let max = currentDepth;
+    for (const key in obj) {
+       const depth = this.getMaxDepth(obj[key], currentDepth + 1);
+       if (depth > max) max = depth;
+    }
+    return max;
   }
 
   private hasPrototypePollution(obj: any): boolean {

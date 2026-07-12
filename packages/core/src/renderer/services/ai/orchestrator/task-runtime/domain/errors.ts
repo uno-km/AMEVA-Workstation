@@ -66,3 +66,18 @@ export class MissionNotFoundError extends Error {
     this.name = 'MissionNotFoundError';
   }
 }
+
+export class BudgetExceededError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'BudgetExceededError';
+  }
+}
+
+export class LeaseConflictError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'LeaseConflictError';
+  }
+}
+

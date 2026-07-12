@@ -60,6 +60,13 @@ import { GoalInterpreter } from './task-runtime/planning/goal/GoalInterpreter'
 import { TaskPlanner as V2TaskPlanner } from './task-runtime/planning/planner/TaskPlanner'
 import { PlanValidator } from './task-runtime/planning/validation/PlanValidator'
 import { PlanActivationService } from './task-runtime/planning/activation/PlanActivationService'
+import type { TaskPlan as V2TaskPlan } from './task-runtime/planning/domain/PlanningTypes'
+
+// PHASE 3 신규 Execution 런타임 임포트
+import { MissionExecutionRuntime } from './task-runtime/mission/MissionExecutionRuntime'
+
+// Legacy TaskPlanner
+import { TaskPlanner } from './task/TaskPlanner'
 
 /*
  * [SELF-HEALING MIDDLEWARE IMPORT]
@@ -283,7 +290,7 @@ export class AgentOrchestratorSession {
               }
             } else {
               ipc.llmAddLog({
-                text: `[AgentOrchestrator] Self-Healing 복구 실패: ${result.error}`,
+                text: `[AgentOrchestrator] Self-Healing 복구 실패: ${(result as any).reason || (result as any).error || 'Unknown error'}`,
                 prefix: 'SelfHeal'
               })
             }
@@ -382,7 +389,59 @@ export class AgentOrchestratorSession {
       void RecoveryEngine.getInstance().handleStall(reason, this.buildRecoveryBridge())
     })
 
-    // 1. Task Planner 가동하여 Goal에 기반한 태스크 계획 획득
+    // [PHASE 2.5 & 3] V2 Planning Pipeline & Execution Runtime Integration
+    let v2Success = false;
+    let activePlan: V2TaskPlan | null = null;
+    try {
+      ipc.llmAddLog({ text: `[AgentOrchestrator] Attempting V2 Planning Pipeline...`, prefix: 'Orchestrator' });
+      activePlan = await this.planAndActivateV2(this.sessionId, userMessage);
+      v2Success = true;
+    } catch (e: any) {
+      ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Failed: ${e.message}. Falling back to Legacy Planner.`, prefix: 'Orchestrator' });
+    }
+
+    if (v2Success && activePlan) {
+      ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Success. Launching MissionExecutionRuntime (PHASE 3)`, prefix: 'Orchestrator' });
+      
+      const v2Runtime = new MissionExecutionRuntime(this.taskStore, this.adapter, this.sessionId, 10000);
+      v2Runtime.start();
+
+      // V2 런타임 폴링 대기
+      return await new Promise<string>((resolve) => {
+        const intervalId = setInterval(() => {
+          if (this.isAborted) {
+            v2Runtime.cancel('User aborted mission');
+            clearInterval(intervalId);
+            this.emitPhaseChange('error');
+            resolve('Mission aborted by user.');
+            return;
+          }
+
+          const missionState = this.taskStore.getMissionState(this.sessionId);
+          if (!missionState) return;
+
+          if (missionState.status === 'COMPLETED') {
+            clearInterval(intervalId);
+            this.emitPhaseChange('done');
+            resolve(`V2 Mission Completed! Consumed Tasks: ${Object.keys(missionState.tasks || {}).length}`);
+          } else if (missionState.status === 'FAILED') {
+            clearInterval(intervalId);
+            this.emitPhaseChange('error');
+            resolve(`V2 Mission Failed: ${missionState.cancellationReason || 'Unknown error'}`);
+          } else if (missionState.status === 'CANCELLED') {
+            clearInterval(intervalId);
+            this.emitPhaseChange('error');
+            resolve(`V2 Mission Cancelled: ${missionState.cancellationReason}`);
+          }
+        }, 1000);
+      });
+    }
+
+    // -----------------------------------------------------
+    // V2 실패 시 폴백되는 Legacy V1 Pipeline 로직
+    // -----------------------------------------------------
+    
+    // 1. Task Planner 가동하여 Goal에 기반한 태스크 계획 획득 (Legacy Fallback)
     const planner = new TaskPlanner(this.adapter)
     const initialTasks = await planner.plan(userMessage)
 
@@ -415,7 +474,7 @@ export class AgentOrchestratorSession {
       if (this.isAborted) return
       await CheckpointSystem.saveCheckpoint(this.sessionId, {
         goal: userMessage,
-        thought: this.parser.getThoughtBuffer() ?? '',
+        thought: this.parser.getAccumulatedThought() ?? '',
         partialAnswer: this.accumulatedAnswer,
         toolState: this.pendingToolCall ? JSON.stringify(this.pendingToolCall) : '',
         step: this.currentTurn,
@@ -594,40 +653,8 @@ export class AgentOrchestratorSession {
         completionManager.getCompletionRate(),
         finalResultGrade,
         this.currentTurn,
-        this.supervisor.getRecoveryCount ? this.supervisor.getRecoveryCount() : 0
+        0 // RecoveryCount
       )
-
-      /**
-       * [PHASE 2 Integration Point]
-       * 새로운 Planning Pipeline 을 구동하는 진입점.
-       * AgentOrchestrator는 기존의 run()과는 별개로 이 진입점을 통해 Goal을 구조화하고
-       * V2 플랜을 활성화할 수 있습니다.
-       */
-      public async planAndActivateV2(missionId: string, rawRequest: string): Promise<void> {
-        const interpreter = new GoalInterpreter();
-        const planner = new V2TaskPlanner();
-        const validator = new PlanValidator();
-        const activationService = new PlanActivationService(this.taskRuntimeStore);
-
-        // 1. 목표 구조화
-        const spec = await interpreter.interpret(missionId, rawRequest);
-
-        // 2. Draft Plan 생성
-        const draftPlan = await planner.createPlan(spec);
-
-        // 3. Validation
-        const valResult = validator.validate(draftPlan, spec);
-        if (!valResult.valid) {
-          this.emit('error', new Error(`Plan validation failed: ${valResult.errors.map(e => e.message).join(', ')}`));
-          return;
-        }
-
-        // 4. Activation
-        draftPlan.status = 'APPROVED';
-        activationService.activate(draftPlan);
-
-        this.emit('log', 'PHASE 2 Planning Pipeline activated successfully.');
-      }
 
       // 최종 상태 바인딩
       state.setFinalReport(finalReportText)
@@ -671,10 +698,10 @@ export class AgentOrchestratorSession {
         this.parser.feed(token)
 
         // recovery 모니터링 연동
-        const isToolCalling = this.parser.getState() === 'tool_calling'
-        this.supervisor.onToken(token, this.parser.getThoughtBuffer() ?? '', isToolCalling)
+        const isToolCalling = this.parser.getState() as any === 'tool_calling'
+        this.supervisor.onToken(token, this.parser.getAccumulatedThought() ?? '', isToolCalling)
 
-        const criticVerdict = this.critic.evaluateThought(this.parser.getThoughtBuffer() ?? '')
+        const criticVerdict = this.critic.evaluateThought(this.parser.getAccumulatedThought() ?? '')
         if (criticVerdict === 'stalled') {
           void RecoveryEngine.getInstance().handleStall('TOKEN_FREEZE', this.buildRecoveryBridge())
         }
@@ -1014,9 +1041,9 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
    * AgentOrchestrator는 기존의 run()과는 별개로 이 진입점을 통해 Goal을 구조화하고
    * V2 플랜을 활성화할 수 있습니다.
    */
-  public async planAndActivateV2(missionId: string, rawRequest: string): Promise<void> {
-    const interpreter = new GoalInterpreter();
-    const planner = new V2TaskPlanner();
+  public async planAndActivateV2(missionId: string, rawRequest: string): Promise<V2TaskPlan> {
+    const interpreter = new GoalInterpreter(this.adapter);
+    const planner = new V2TaskPlanner(this.adapter);
     const validator = new PlanValidator();
     const activationService = new PlanActivationService(this.taskStore);
 
@@ -1029,8 +1056,8 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
     // 3. Validation
     const valResult = validator.validate(draftPlan, spec);
     if (!valResult.valid) {
-      this.emitEvent({ type: 'error', error: new Error(`Plan validation failed: ${valResult.errors.map(e => e.message).join(', ')}`) });
-      return;
+      this.emitEvent({ type: 'error', message: `Plan validation failed: ${valResult.errors.map(e => e.message).join(', ')}` } as any);
+      throw new Error('Plan validation failed');
     }
 
     // 4. Activation
@@ -1038,5 +1065,6 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
     activationService.activate(draftPlan);
 
     ipc.llmAddLog({ text: 'PHASE 2 Planning Pipeline activated successfully.', prefix: 'AgentOrchestrator' });
+    return draftPlan;
   }
 }

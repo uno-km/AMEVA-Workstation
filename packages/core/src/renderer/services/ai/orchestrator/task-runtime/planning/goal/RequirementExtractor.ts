@@ -4,7 +4,7 @@
  * @role 사용자의 Raw Text에서 명시적/암묵적 요구사항을 도출하여 Requirement 객체 배열로 정규화
  */
 
-import { Requirement } from '../domain/PlanningTypes';
+import type { Requirement } from '../domain/PlanningTypes';
 
 export class RequirementExtractor {
   /**

@@ -18,9 +18,18 @@ export const PlanningPolicy = {
   },
   
   budgets: {
-    // 딥 리즈닝(Deep Reasoning) 등 Task 당 최대 추론 허용 횟수
-    // 사용자의 특별 요청: "최대 1000까지 허용"
-    defaultTaskReasoningBudget: 1000, 
-    maxTaskReasoningBudget: 1000,
+    mission: {
+      maxReasoningTurns: 10000,
+      maxDurationMs: 1000 * 60 * 60 * 24, // 24시간
+      maxToolCalls: 50000,
+      maxRecoveries: 100
+    },
+    task: {
+      maxReasoningTurnsPerTask: 1000,
+      maxDurationMsPerTask: 1000 * 60 * 60 * 2, // 2시간
+      maxToolCallsPerTask: 5000,
+      maxRecoveriesPerTask: 10
+    },
+    defaultTaskReasoningBudget: 1000, // Legacy 호환성
   }
 } as const;

@@ -4,10 +4,10 @@
  * @role 승인된(APPROVED) Plan을 런타임(TaskRuntimeStore)에 원자적으로 활성화하는 서비스
  */
 
-import { TaskPlan } from '../domain/PlanningTypes';
+import type { TaskPlan } from '../domain/PlanningTypes';
 import { PlanActivationError } from '../domain/PlanningErrors';
 import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
-import { TaskEntity, TaskRuntimeState } from '../../domain/types';
+import type { TaskEntity, TaskRuntimeState } from '../../domain/types';
 
 export class PlanActivationService {
   constructor(private store: TaskRuntimeStore) {}
@@ -17,8 +17,16 @@ export class PlanActivationService {
    * 이미 존재하는 ID 충돌 시 전체 등록이 거부됩니다.
    */
   public activate(plan: TaskPlan): void {
+    if (plan.status === 'ACTIVE') {
+      throw new PlanActivationError(`Plan is already ACTIVE. Double activation is prohibited.`);
+    }
+    
     if (plan.status !== 'APPROVED') {
       throw new PlanActivationError(`Cannot activate plan in status: ${plan.status}. Must be APPROVED.`);
+    }
+
+    if (plan.version < 1) {
+      throw new PlanActivationError('Plan version is invalid or stale.');
     }
 
     if (!plan.tasks || plan.tasks.length === 0) {

@@ -105,9 +105,13 @@ export interface TaskAttempt {
   executionId?: string;
   startedAt?: number;
   finishedAt?: number;
-  reasoningTurns: number;
-  toolCallCount: number;
-  recoveryCount: number;
+  reasoningTurns: number; // Legacy
+  toolCallCount: number; // Legacy
+  recoveryCount: number; // Legacy
+  consumedReasoningTurns?: number;
+  consumedDurationMs?: number;
+  consumedToolCalls?: number;
+  consumedRecoveries?: number;
   failure?: TaskFailure;
   resultReference?: TaskResult;
 }
@@ -124,8 +128,13 @@ export interface TaskDefinition {
   objective: string; // 설명 및 목표
   dependencies: string[]; // 선행 taskId 목록
   priority?: number;
-  budgetTurns?: number; // 허용된 추론 턴 수 (최대 1000)
+  budgetTurns?: number; // Legacy (최대 1000)
   
+  requestedReasoningTurns?: number;
+  allocatedReasoningTurns?: number;
+  maxDurationMs?: number;
+  maxToolCalls?: number;
+
   // PHASE 2 Planning Extended Fields
   expectedOutputs?: string[]; // 기대 산출물 목록
   acceptanceCriteria?: string[]; // 완료 검수 기준 목록

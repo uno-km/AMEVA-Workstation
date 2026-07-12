@@ -7,12 +7,10 @@
  * - TaskRuntimeStore.ts: 런타임 저장소에서 상태 업데이트 시 경유
  */
 
-import {
-  TaskStatus,
+import type { TaskStatus,
   TaskEntity,
   TransitionCommand,
-  TaskRuntimeState
-} from '../domain/types';
+  TaskRuntimeState } from '../domain/types';
 import {
   InvalidTransitionError,
   StaleStateError,

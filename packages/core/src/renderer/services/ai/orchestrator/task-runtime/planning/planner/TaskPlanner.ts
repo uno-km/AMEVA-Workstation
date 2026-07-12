@@ -7,56 +7,60 @@ import { GoalSpec, TaskPlan } from '../domain/PlanningTypes';
 import { StrictPlanParser } from './StrictPlanParser';
 import { PlanNormalizer } from './PlanNormalizer';
 
+import type { ILLMEngineAdapter } from '../../types';
+
 export class TaskPlanner {
   private parser = new StrictPlanParser();
   private normalizer = new PlanNormalizer();
+  private adapter: ILLMEngineAdapter;
 
-  /**
-   * GoalSpec을 입력받아 초기 TaskPlan(DRAFT)를 생성합니다.
-   * PHASE 2에서는 LLM 모킹 결과를 즉시 파싱/정규화하여 리턴합니다.
-   */
+  constructor(adapter: ILLMEngineAdapter) {
+    this.adapter = adapter;
+  }
+
   public async createPlan(spec: GoalSpec): Promise<TaskPlan> {
-    // 1. 프롬프트 구성 (LLM에 전달할 정보)
-    // const prompt = this.buildPrompt(spec);
-    
-    // 2. LLM 호출 (모킹)
-    const mockLlmOutput = `
-      [
-        {
-          "id": "task_1",
-          "title": "Analyze Request",
-          "objective": "Understand the core user request",
-          "dependencies": [],
-          "expectedOutputs": ["Analysis Report"],
-          "acceptanceCriteria": ["Report is generated"],
-          "capabilityRequirements": ["document.read"],
-          "requirementIds": ["req-mock"],
-          "budgetTurns": 1000
-        },
-        {
-          "id": "task_2",
-          "title": "Execute Plan",
-          "objective": "Execute the required steps",
-          "dependencies": ["task_1"],
-          "expectedOutputs": ["Final Result"],
-          "acceptanceCriteria": ["Result matches request"],
-          "capabilityRequirements": ["code.execute"],
-          "requirementIds": ["req-mock"],
-          "budgetTurns": 1000
-        }
-      ]
-    `;
+    const prompt = `
+You are a Task Planner. Create a JSON array of tasks based on the following GoalSpec.
+Each task must have:
+- id: string
+- title: string
+- objective: string
+- dependencies: string[] (array of task ids)
+- expectedOutputs: string[]
+- acceptanceCriteria: string[]
+- capabilityRequirements: string[]
+- requirementIds: string[]
+- budgetTurns: number
 
-    // 3. 엄격한 파싱
-    const parseResult = this.parser.parse(mockLlmOutput);
+Goal Objective: ${spec.objective}
+Deliverables: ${spec.deliverables.join(', ')}
+
+Output ONLY valid JSON array.
+`;
+
+    let llmOutput = '';
+    try {
+      llmOutput = await this.adapter.generateStream([
+        { role: 'system', content: 'You are an expert system.' },
+        { role: 'user', content: prompt }
+      ], () => {});
+    } catch (e) {
+      throw new Error(`LLM call failed in TaskPlanner: ${e}`);
+    }
+
+    // JSON 추출
+    const jsonMatch = llmOutput.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('Could not find JSON array in LLM output.');
+    }
+
+    const parseResult = this.parser.parse(jsonMatch[0]);
     if (!parseResult.success) {
-      // 파싱 실패 시, 복구 로직으로 가야하지만 초기 생성이므로 바로 DRAFT 생성 
       throw new Error(`Planner output parsing failed: ${parseResult.parseErrors.join(', ')}`);
     }
 
-    // 4. 정규화
     const draftPlan = this.normalizer.normalize(parseResult.parsedData, spec.missionId, spec.goalId);
-    draftPlan.plannerSource = 'LLM'; // (mocking)
+    draftPlan.plannerSource = 'LLM';
 
     return draftPlan;
   }
