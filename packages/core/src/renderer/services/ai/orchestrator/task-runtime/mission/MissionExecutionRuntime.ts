@@ -36,7 +36,8 @@ export class MissionExecutionRuntime {
     this.leaseManager = new TaskLeaseManager(store);
     this.recoveryStore = new RecoveryRequestStore();
     this.scheduler = new TaskScheduler(store, this.ledger, this.recoveryStore);
-    this.verificationRuntime = new VerificationRuntime(store, this.recoveryStore, this.ledger);
+    this.verificationRuntime = new VerificationRuntime(store, this.recoveryStore, this.ledger, adapter); // [STAGE C] SemanticVerifier LLM 연결
+
     
     const catalog = new CapabilityCatalog();
     const resolver = new ExecutionStrategyResolver(catalog);
@@ -136,11 +137,42 @@ export class MissionExecutionRuntime {
         }
       }
 
-      // 5. 완료 여부 검사 로직 (Phase 3.5 -> 4.0 연동)
-      const hasPendingOrReady = allTasks.some(t => t.state.status === 'PENDING' || t.state.status === 'READY' || t.state.status === 'RETRY_WAIT');
+      // 5. 완료 여부 검사 로직 (STAGE E — Recovery 폐루프 포함)
+      const hasPendingOrReady = allTasks.some(t =>
+        t.state.status === 'PENDING' || t.state.status === 'READY' || t.state.status === 'RETRY_WAIT'
+      );
       const hasVerifying = allTasks.some(t => t.state.status === 'VERIFYING');
+      const hasRecovering = allTasks.some(t => t.state.status === 'RECOVERING');
 
-      // VERIFYING이 있으면 VerificationRuntime을 동기적으로 호출하여 신속 검증
+      /*
+       * [STAGE E — RETRY_WAIT → READY 전이]
+       * RETRY_WAIT 상태인 Task의 대기 시간이 만료되었으면 PENDING으로 되돌려
+       * 다음 Scheduling Pass에서 READY가 될 수 있도록 합니다.
+       * RecoveryCoordinator가 이미 retry 대기를 관리하므로 여기서는 만료 체크만 수행.
+       */
+      const retryWaitTasks = allTasks.filter(t => t.state.status === 'RETRY_WAIT');
+      for (const task of retryWaitTasks) {
+        const retryAfter = task.state.retryAfter ?? 0;
+        if (retryAfter > 0 && Date.now() >= retryAfter) {
+          // 대기 만료 → PENDING으로 재진입하여 Scheduler가 다시 READY로 승격
+          this.store.dispatchTransition(
+            {
+              commandId: `cmd-retry-resume-${crypto.randomUUID()}`,
+              missionId: this.missionId,
+              taskId: task.definition.id,
+              expectedCurrentStatus: 'RETRY_WAIT',
+              expectedStateVersion: task.state.stateVersion,
+              reason: `Retry wait expired at ${new Date(retryAfter).toISOString()}. Re-entering PENDING.`,
+              actor: 'MissionExecutionRuntime',
+              timestamp: Date.now()
+            },
+            'PENDING',
+            {}
+          );
+        }
+      }
+
+      // VERIFYING이 있으면 VerificationRuntime을 비동기로 호출하여 신속 검증
       if (hasVerifying && !this.isVerifying) {
         this.isVerifying = true;
         this.verificationRuntime.processVerifyingTasks(this.missionId)
@@ -148,7 +180,7 @@ export class MissionExecutionRuntime {
             if (results.length > 0) {
               console.log(`[MissionExecutionRuntime] Processed ${results.length} verifications.`);
               // 검증 결과 반영을 위해 루프 단축
-              this.requestTick(100); 
+              this.requestTick(100);
             }
           })
           .catch(err => {
@@ -161,16 +193,29 @@ export class MissionExecutionRuntime {
           });
       }
 
-      if (!hasPendingOrReady && this.activeExecutions.size === 0) {
-        if (hasVerifying) {
-          this.requestTick(2000); 
-        } else {
-          // Phase 5를 위한 완료 모드 대기
-          console.log(`[MissionExecutionRuntime] Mission ${this.missionId} has no more work.`);
-          this.pause(); 
-        }
+      /*
+       * [완료 판정 — STAGE E Recovery 상태 포함]
+       * RECOVERING이 있으면 Recovery 중이므로 중단하지 않고 대기.
+       * RETRY_WAIT이 있으면 만료를 기다려야 하므로 짧은 주기로 재폴링.
+       */
+      if (
+        !hasPendingOrReady &&
+        !hasVerifying &&
+        !hasRecovering &&
+        this.activeExecutions.size === 0
+      ) {
+        // 모든 작업 종료 — Mission 완료 처리
+        console.log(`[MissionExecutionRuntime] Mission ${this.missionId} has no more work.`);
+        this.pause();
+      } else if (hasRecovering || retryWaitTasks.length > 0) {
+        // Recovery 진행 중 또는 Retry 대기 — 2초 주기로 재확인
+        this.requestTick(2000);
+      } else if (hasVerifying) {
+        // Verification 진행 중 — 500ms 주기
+        this.requestTick(500);
       } else {
-        this.requestTick(hasVerifying ? 500 : 1000);
+        // 일반 작업 중 — 1초 주기
+        this.requestTick(1000);
       }
 
     } catch (error) {

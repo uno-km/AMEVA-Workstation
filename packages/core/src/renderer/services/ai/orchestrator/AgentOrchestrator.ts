@@ -64,6 +64,9 @@ import type { TaskPlan as V2TaskPlan } from './task-runtime/planning/domain/Plan
 // PHASE 3 신규 Execution 런타임 임포트
 import { MissionExecutionRuntime } from './task-runtime/mission/MissionExecutionRuntime'
 
+// FINAL REMEDIATION — STAGE B: Feature Flag 및 Execution Ownership
+import { V2RuntimeFeatureFlag } from './task-runtime/domain/V2RuntimeFeatureFlag'
+
 // Legacy TaskPlanner
 import { TaskPlanner } from './task/TaskPlanner'
 
@@ -387,28 +390,46 @@ export class AgentOrchestratorSession {
     })
 
     // [PHASE 2.5 & 3] V2 Planning Pipeline & Execution Runtime Integration
+    // [STAGE B] Feature Flag: 기본값 LEGACY_ONLY. V2는 명시적 활성화 시만 시도.
     let v2Success = false;
     let activePlan: V2TaskPlan | null = null;
-    try {
-      ipc.llmAddLog({ text: `[AgentOrchestrator] Attempting V2 Planning Pipeline...`, prefix: 'Orchestrator' });
-      activePlan = await this.planAndActivateV2(this.sessionId, userMessage);
-      v2Success = true;
-    } catch (e: any) {
-      ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Failed: ${e.message}. Falling back to Legacy Planner.`, prefix: 'Orchestrator' });
+
+    if (V2RuntimeFeatureFlag.shouldAttemptV2(this.sessionId)) {
+      try {
+        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 mode: ${V2RuntimeFeatureFlag.getMode()}. Attempting V2 Planning Pipeline...`, prefix: 'Orchestrator' });
+        activePlan = await this.planAndActivateV2(this.sessionId, userMessage);
+        v2Success = true;
+      } catch (e: any) {
+        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Failed: ${e.message}. Checking fallback policy...`, prefix: 'Orchestrator' });
+        // Planning/Activation 실패: Execution 미시작이므로 Legacy Fallback 허용 여부 확인
+        if (!V2RuntimeFeatureFlag.isLegacyFallbackAllowed(this.sessionId)) {
+          // V2_ONLY 모드이거나 이미 Execution이 시작된 경우 — 오류 전파
+          throw e;
+        }
+        ipc.llmAddLog({ text: `[AgentOrchestrator] Legacy Fallback allowed for session ${this.sessionId}.`, prefix: 'Orchestrator' });
+      }
+    } else {
+      ipc.llmAddLog({ text: `[AgentOrchestrator] V2 mode: ${V2RuntimeFeatureFlag.getMode()}. V2 skipped. Using Legacy path.`, prefix: 'Orchestrator' });
     }
 
     if (v2Success && activePlan) {
       ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Success. Launching MissionExecutionRuntime (PHASE 3)`, prefix: 'Orchestrator' });
-      
+
+      // [STAGE B] Execution Ownership 획득 — V2가 실행 소유자
+      V2RuntimeFeatureFlag.acquireV2Ownership(this.sessionId, this.sessionId);
       const v2Runtime = new MissionExecutionRuntime(this.taskStore, this.adapter, this.sessionId, 10000);
+
+      // [STAGE B] Execution 시작 마킹 — 이 이후 Legacy Fallback 절대 금지
+      V2RuntimeFeatureFlag.markV2ExecutionStarted(this.sessionId);
       v2Runtime.start();
 
-      // V2 런타임 폴링 대기
+      // V2 런타임 폴링 대기 (PAUSED = work done)
       return await new Promise<string>((resolve) => {
         const intervalId = setInterval(() => {
           if (this.isAborted) {
             v2Runtime.cancel('User aborted mission');
             clearInterval(intervalId);
+            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
             this.emitPhaseChange('error');
             resolve('Mission aborted by user.');
             return;
@@ -417,16 +438,19 @@ export class AgentOrchestratorSession {
           const missionState = this.taskStore.getMissionState(this.sessionId);
           if (!missionState) return;
 
-          if (missionState.status === 'COMPLETED') {
+          if (missionState.status === 'PAUSED' || missionState.status === 'COMPLETED') {
             clearInterval(intervalId);
+            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
             this.emitPhaseChange('done');
-            resolve(`V2 Mission Completed! Consumed Tasks: ${this.taskStore.getAllTasks(this.sessionId).length}`);
+            resolve(`V2 Mission finished. Consumed Tasks: ${this.taskStore.getAllTasks(this.sessionId).length}`);
           } else if (missionState.status === 'FAILED') {
             clearInterval(intervalId);
+            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
             this.emitPhaseChange('error');
             resolve(`V2 Mission Failed: ${missionState.cancellationReason || 'Unknown error'}`);
           } else if (missionState.status === 'CANCELLED') {
             clearInterval(intervalId);
+            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
             this.emitPhaseChange('error');
             resolve(`V2 Mission Cancelled: ${missionState.cancellationReason}`);
           }
@@ -434,10 +458,10 @@ export class AgentOrchestratorSession {
       });
     }
 
-    // -----------------------------------------------------
-    // V2 실패 시 폴백되는 Legacy V1 Pipeline 로직
-    // -----------------------------------------------------
-    
+    // [STAGE B] Legacy Ownership 획득 — Legacy가 실행 소유자
+    V2RuntimeFeatureFlag.acquireLegacyOwnership(this.sessionId);
+
+
     // 1. Task Planner 가동하여 Goal에 기반한 태스크 계획 획득 (Legacy Fallback)
     const planner = new TaskPlanner(this.adapter)
     const initialTasks = await planner.plan(userMessage)

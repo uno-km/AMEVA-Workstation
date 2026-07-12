@@ -129,7 +129,16 @@ export class RecoveryCoordinator {
             metadata: { decision }
           },
           'RETRY_WAIT',
-          { retries: request.retryCount + 1 }
+          {
+            retries: request.retryCount + 1,
+            /*
+             * [STAGE E] retryAfter 설정 — Recovery 폐루프 완성
+             * MissionExecutionRuntime.tick()이 이 값을 확인하여
+             * 대기 만료 시 PENDING으로 전이하고 재실행을 트리거합니다.
+             * 기본 재시도 대기 시간: 30초 (회복 예산 초과 방지)
+             */
+            retryAfter: Date.now() + 30_000
+          }
         );
         this.recoveryStore.updateRequestStatus(request.recoveryRequestId, 'RESOLVED');
       } 

@@ -161,6 +161,13 @@ export interface TaskRuntimeState {
   lastFailure?: TaskFailure;
   taskResult?: TaskResult; // COMPLETED 시 최종 결과
   verification?: TaskVerificationResult; // COMPLETED 전이 시 PASS 객체 필수
+  /**
+   * [STAGE E — Recovery 폐루프]
+   * RETRY_WAIT 상태에서 재시도가 허용되는 Unix Timestamp(ms).
+   * MissionExecutionRuntime의 tick()이 이 값을 확인하여 PENDING으로 전이함.
+   * RecoveryCoordinator가 RETRY_WAIT 전이 시 이 값을 설정해야 함.
+   */
+  retryAfter?: number;
 }
 
 /**
