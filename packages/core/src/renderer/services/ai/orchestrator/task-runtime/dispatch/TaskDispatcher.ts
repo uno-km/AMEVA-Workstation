@@ -33,9 +33,11 @@ export class TaskDispatcher {
     }
 
     try {
-      // 1. Lease 획득
+      // 1. Lease 획득 — [Critical 0-A Fix] Task 정의에서 실제 planVersion 전달
       const executionId = `exec-${crypto.randomUUID()}`;
-      const lease = this.leaseManager.acquireLease(missionId, taskId, executionId, 'Dispatcher-Main');
+      const planVersion = task.definition.plannerMetadata?.['planVersion'] as number | undefined ?? 1;
+      const lease = this.leaseManager.acquireLease(missionId, taskId, executionId, 'Dispatcher-Main', undefined, planVersion);
+
 
       // 2. RUNNING 전이
       this.store.dispatchTransition(

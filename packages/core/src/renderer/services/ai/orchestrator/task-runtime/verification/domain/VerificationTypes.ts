@@ -8,8 +8,15 @@ import type { TaskDefinition, TaskResult, TaskEvidence } from '../../domain/type
 
 /**
  * 개별 조건(Criterion)에 대한 검증 결과 판정
+ * - PASS: 기준 충족
+ * - FAIL: 기준 불충족 (명확한 실패)
+ * - UNCERTAIN: LLM 판정 불가 또는 파싱 실패 (PASS로 집계 절대 금지)
+ * - NOT_APPLICABLE: 검증기 미연결 또는 해당 없음
+ * - UNVERIFIABLE: 구조적으로 검증 자체 불가
+ * - ERROR: 검증기 내부 오류 (예외 발생)
  */
-export type CriterionVerdict = 'PASS' | 'FAIL' | 'NOT_APPLICABLE' | 'UNVERIFIABLE' | 'ERROR';
+export type CriterionVerdict = 'PASS' | 'FAIL' | 'UNCERTAIN' | 'NOT_APPLICABLE' | 'UNVERIFIABLE' | 'ERROR';
+
 
 /**
  * Task 전체에 대한 종합 검증 판정

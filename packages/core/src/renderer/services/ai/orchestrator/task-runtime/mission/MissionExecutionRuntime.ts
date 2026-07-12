@@ -145,32 +145,39 @@ export class MissionExecutionRuntime {
       const hasRecovering = allTasks.some(t => t.state.status === 'RECOVERING');
 
       /*
-       * [STAGE E — RETRY_WAIT → READY 전이]
-       * RETRY_WAIT 상태인 Task의 대기 시간이 만료되었으면 PENDING으로 되돌려
-       * 다음 Scheduling Pass에서 READY가 될 수 있도록 합니다.
-       * RecoveryCoordinator가 이미 retry 대기를 관리하므로 여기서는 만료 체크만 수행.
+       * [Critical 0-B Fix — RETRY_WAIT → READY]
+       * State Machine ALLOWED_TRANSITIONS: RETRY_WAIT: ['READY', 'FAILED', 'WAITING_USER', 'CANCELLED']
+       * RETRY_WAIT → PENDING은 허용되지 않음. 올바른 전이는 RETRY_WAIT → READY.
+       * Scheduler가 READY Task에 대해 Budget 할당 및 Lease를 발급하므로
+       * READY로 직접 전이 후 다음 tick에서 Dispatcher가 처리한다.
        */
       const retryWaitTasks = allTasks.filter(t => t.state.status === 'RETRY_WAIT');
       for (const task of retryWaitTasks) {
         const retryAfter = task.state.retryAfter ?? 0;
         if (retryAfter > 0 && Date.now() >= retryAfter) {
-          // 대기 만료 → PENDING으로 재진입하여 Scheduler가 다시 READY로 승격
-          this.store.dispatchTransition(
-            {
-              commandId: `cmd-retry-resume-${crypto.randomUUID()}`,
-              missionId: this.missionId,
-              taskId: task.definition.id,
-              expectedCurrentStatus: 'RETRY_WAIT',
-              expectedStateVersion: task.state.stateVersion,
-              reason: `Retry wait expired at ${new Date(retryAfter).toISOString()}. Re-entering PENDING.`,
-              actor: 'MissionExecutionRuntime',
-              timestamp: Date.now()
-            },
-            'PENDING',
-            {}
-          );
+          // 대기 만료 → READY로 직접 전이 (State Machine 계약 준수)
+          try {
+            this.store.dispatchTransition(
+              {
+                commandId: `cmd-retry-resume-${crypto.randomUUID()}`,
+                missionId: this.missionId,
+                taskId: task.definition.id,
+                expectedCurrentStatus: 'RETRY_WAIT',
+                expectedStateVersion: task.state.stateVersion,
+                reason: `Retry wait expired at ${new Date(retryAfter).toISOString()}. Transitioning to READY.`,
+                actor: 'MissionExecutionRuntime',
+                timestamp: Date.now()
+              },
+              'READY',
+              { retryAfter: undefined }  // 만료된 retryAfter 초기화
+            );
+          } catch (transitionErr) {
+            // 상태 충돌 시 경고만 남기고 계속 진행 (다음 tick에서 재시도)
+            console.warn(`[MissionExecutionRuntime] RETRY_WAIT→READY 전이 실패 (Task ${task.definition.id}):`, transitionErr);
+          }
         }
       }
+
 
       // VERIFYING이 있으면 VerificationRuntime을 비동기로 호출하여 신속 검증
       if (hasVerifying && !this.isVerifying) {

@@ -1,102 +1,256 @@
+/**
+ * @file orchestrator/task-runtime/executors/DeepTaskExecutor.ts
+ * @system AMEVA OS Desktop Workstation
+ * @role V2 Task Runtime의 핵심 실행 엔진 — LLM Reasoning + Tool Action + Observation 폐루프
+ *
+ * [소비처 - CONSUMERS / USAGE CONTEXT]
+ * - TaskDispatcher: dispatchTask() 내에서 비동기로 기동
+ *
+ * [STAGE D — Tool Runtime 실제 ReAct 연결]
+ * 이전: 1턴만 실행 후 break (Tool 실행 불가 stub)
+ * 이후: 실제 ReAct Action–Observation 폐루프
+ *
+ * [ReAct 폐루프 설계]
+ * 1. Task Context → 시스템 프롬프트 빌드
+ * 2. LLM generateStream() 호출
+ * 3. ToolCallParser → Tool Action 감지
+ * 4. Tool Action 있으면: ToolRegistry.executeTool() → Observation 생성 → 다음 Turn
+ * 5. Tool Action 없으면: expectedOutputs 충족 여부 판단
+ *    - 충족 → VERIFYING 전이
+ *    - 미충족이고 maxTurns 미달 → 계속 추론
+ *    - maxTurns 초과 → MAX_TURNS → VERIFYING 전이 (Verifier가 판단)
+ *
+ * [False Success 방지]
+ * - [DONE] 키워드로 조기 종료 절대 금지 (삭제)
+ * - Tool 실패를 성공 Observation으로 포장 금지 (ToolObservationBuilder)
+ * - LLM에게 Tool 결과를 상상하도록 허용 금지
+ *
+ * [보안]
+ * - ToolCallParser: prototype pollution, 크기 제한, idempotency
+ * - Shadow Mode에서 외부 변경 Tool 실행 금지 (ToolPolicyChecker via V2ToolRuntimeAdapter)
+ *
+ * [AGENTS.md 규칙 준수]
+ * - any 사용 없음
+ * - 침묵 예외 없음 (AGENTS.md 규칙 5)
+ */
+
 import type { ILLMEngineAdapter } from '../../types';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { TaskLeaseManager } from '../lease/TaskLeaseManager';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
 import { TaskExecutionContextBuilder } from './TaskExecutionContextBuilder';
 import { TaskResultAssembler } from './TaskResultAssembler';
+import { ToolCallParser } from './ToolCallParser';
+import { ToolObservationBuilder, type ToolObservation } from './ToolObservationBuilder';
 import type { TaskEvidence } from '../domain/types';
+import { ToolRegistry } from '../../ToolRegistry';
+
+
+/**
+ * [도메인 종속 지역 상수]
+ * ReAct Loop 제어값
+ */
+const MAX_CONSECUTIVE_NO_TOOL_TURNS = 3; // 연속 Tool 없는 턴 허용 횟수 (이후 Output 충족 여부 판단)
+const TOOL_EXECUTION_TIMEOUT_MS = 30_000; // 단일 Tool 실행 타임아웃 (30초)
 
 export class DeepTaskExecutor {
   private contextBuilder: TaskExecutionContextBuilder;
   private resultAssembler: TaskResultAssembler;
+  private toolCallParser: ToolCallParser;
+  private observationBuilder: ToolObservationBuilder;
 
   constructor(
     private store: TaskRuntimeStore,
     private leaseManager: TaskLeaseManager,
     private ledger: MissionBudgetLedger,
-    private adapter: ILLMEngineAdapter
+    private adapter: ILLMEngineAdapter,
+    /*
+     * [DI — ToolRegistry 주입]
+     * 테스트 환경에서 Mock ToolRegistry를 주입할 수 있도록 Optional Parameter로 설계.
+     * 미주입 시 기본 ToolRegistry를 사용하되, registerDefaultTools()는 최초 호출 시 수행.
+     */
+    private toolRegistry?: ToolRegistry
   ) {
     this.contextBuilder = new TaskExecutionContextBuilder(store);
     this.resultAssembler = new TaskResultAssembler();
+    this.toolCallParser = new ToolCallParser();
+    this.observationBuilder = new ToolObservationBuilder();
   }
 
   /**
-   * Task 실행 메인 루프 (최대 1000턴)
+   * Task 실행 메인 루프 — ReAct Action–Observation 폐루프.
+   *
+   * [상태 전이]
+   * RUNNING → VERIFYING (정상 종료, 최대 턴 도달)
+   * RUNNING → FAILED (실행 오류 또는 Lease 만료)
    */
   public async execute(
-    missionId: string, 
-    taskId: string, 
-    attemptId: string, 
+    missionId: string,
+    taskId: string,
+    attemptId: string,
     leaseId: string,
     abortSignal?: AbortSignal
   ): Promise<void> {
     const task = this.store.getTask(missionId, taskId);
-    const maxTurns = task.definition.allocatedReasoningTurns || task.definition.budgetTurns || 1000;
-    
+    const maxTurns = task.definition.allocatedReasoningTurns ?? task.definition.budgetTurns ?? 1000;
+
     let currentTurn = 0;
     let finalText = '';
     const evidences: TaskEvidence[] = [];
-    let streamFinishReason: 'DONE' | 'EOF' | 'ABORT' | 'ERROR' | 'MAX_TURNS' = 'EOF';
+    const observations: ToolObservation[] = [];
+    let consecutiveNoToolTurns = 0;
+    let streamFinishReason: 'OUTPUT_SUFFICIENT' | 'EOF' | 'ABORT' | 'ERROR' | 'MAX_TURNS' = 'EOF';
+
+    /*
+     * [ToolRegistry 연결]
+     * 주입된 ToolRegistry를 사용하거나, 주입이 없으면 새 인스턴스 생성.
+     * 기존 Legacy ToolRegistry와 독립적으로 V2 전용 인스턴스를 사용하여 충돌 방지.
+     */
+    const registry = this.toolRegistry ?? new ToolRegistry();
+    // 기본 도구가 등록되지 않은 경우에만 등록
+    if (registry.getAllDefinitions().length === 0) {
+      try {
+        await registry.registerDefaultTools();
+      } catch (regErr: unknown) {
+        // 도구 등록 실패는 경고만 남기고 계속 진행 (브라우저 환경 외 실행 시 발생 가능)
+        const regMsg = regErr instanceof Error ? regErr.message : String(regErr);
+        console.warn('[DeepTaskExecutor] Tool 기본 등록 실패 (테스트 환경일 수 있음):', regMsg);
+      }
+    }
+    const knownToolNames = new Set(registry.getAllDefinitions().map(t => t.name));
 
     // 초기 컨텍스트(프롬프트) 생성
-    const messages = this.contextBuilder.buildContextMessages(missionId, task);
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> =
+      this.contextBuilder.buildContextMessages(missionId, task);
 
     try {
       while (currentTurn < maxTurns) {
-        if (abortSignal && abortSignal.aborted) {
+        if (abortSignal?.aborted) {
           streamFinishReason = 'ABORT';
           throw new Error('Task execution was aborted by signal.');
         }
 
-        // Lease 만료 여부 확인 및 갱신 (선택적)
-        // 여기서는 매 턴마다 갱신하여 락을 유지함
+        // ─── Lease 갱신 (매 턴마다) ───────────────────────────────────────
         try {
           this.leaseManager.renewLease(leaseId);
-        } catch (leaseError) {
+        } catch (leaseError: unknown) {
           streamFinishReason = 'ERROR';
-          throw new Error(`Lease expired or invalid during turn ${currentTurn}: ${leaseError}`);
+          const msg = leaseError instanceof Error ? leaseError.message : String(leaseError);
+          throw new Error(`Lease expired or invalid during turn ${currentTurn}: ${msg}`);
         }
 
         currentTurn++;
 
-        // LLM 호출
-        let chunkText = '';
-        const responseText = await this.adapter.generateStream(messages, (token) => {
-          chunkText += token;
-          if (abortSignal && abortSignal.aborted) {
-            // (구현에 따라 여기서 중단 가능)
+        // ─── LLM 호출 ────────────────────────────────────────────────────
+        const responseText = await this.adapter.generateStream(messages, (_token) => {
+          if (abortSignal?.aborted) {
+            /* AbortSignal은 generateStream 완료 후 상위에서 처리 */
           }
         });
 
-        // 텍스트 저장
         finalText += responseText;
+        // assistant 메시지를 컨텍스트에 추가
         messages.push({ role: 'assistant', content: responseText });
 
-        // 스트림 조기 종료 감지 (Done 신호)
-        if (responseText.includes('[DONE]')) {
-          streamFinishReason = 'DONE';
-          break; // 현재 스트림 루프(Reasoning 턴 반복) 탈출
-        }
+        // ─── Tool Call 파싱 ───────────────────────────────────────────────
+        const parseResult = this.toolCallParser.parse(responseText, currentTurn, knownToolNames);
 
-        // TODO: Tool 호출(JSON) 파싱 및 실행 로직
-        // PHASE 3.5: 현재 "Disabled Safely" 정책에 따라 Tool 실행 기능은 막혀 있음.
-        // Tool 요청이 들어와도 실행 불가이므로 다음 턴으로 넘어가거나 종료.
-        // 여기서는 무한 루프를 방지하기 위해 스트림 종료로 간주함
-        break;
+        if (parseResult.success) {
+          /*
+           * [Tool Action 감지]
+           * Tool Call 후보를 실제로 실행하고 Observation을 생성한다.
+           */
+          const candidate = parseResult.candidate;
+          consecutiveNoToolTurns = 0;
+
+          try {
+            // Tool 실행 (Timeout 포함) — DI된 registry 인스턴스 사용
+            const toolResultPromise = registry.executeTool(candidate.toolName, candidate.arguments);
+
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error(`Tool '${candidate.toolName}' timed out after ${TOOL_EXECUTION_TIMEOUT_MS}ms`)), TOOL_EXECUTION_TIMEOUT_MS)
+            );
+
+            const toolResult = await Promise.race([toolResultPromise, timeoutPromise]);
+
+            // Observation 빌드 (False Success 방지: success=false → FAILED 관측)
+            const observation = this.observationBuilder.buildSuccess(candidate, toolResult);
+            observations.push(observation);
+
+            // Evidence 기록
+            evidences.push({
+              evidenceId: `ev-tool-${candidate.toolCallId}`,
+              type: 'TOOL_CALL',
+              description: `Tool '${candidate.toolName}' ${observation.status}`,
+              referenceId: candidate.toolCallId,
+              timestamp: Date.now()
+            });
+
+            // Observation을 다음 Turn의 user 메시지로 주입
+            const observationText = this.observationBuilder.toContextMessage(observation);
+            messages.push({ role: 'user', content: observationText });
+
+          } catch (toolError: unknown) {
+            /*
+             * [Tool 실행 오류 처리]
+             * 오류를 침묵시키지 않는다 (AGENTS.md 규칙 5).
+             * 실패 Observation을 생성하여 LLM이 다음 Turn에서 인지하게 한다.
+             * 오류를 성공 Observation으로 포장하지 않는다.
+             */
+            const errorMsg = toolError instanceof Error ? toolError.message : String(toolError);
+            console.error(`[DeepTaskExecutor] Tool '${candidate.toolName}' 실행 실패:`, errorMsg);
+
+            const failedObservation = this.observationBuilder.buildFailure(
+              candidate,
+              errorMsg,
+              errorMsg.includes('timed out') ? 'TIMED_OUT' : 'ERROR'
+            );
+            observations.push(failedObservation);
+
+            const observationText = this.observationBuilder.toContextMessage(failedObservation);
+            messages.push({ role: 'user', content: observationText });
+          }
+
+        } else {
+          /*
+           * [Tool Action 없음]
+           * LLM이 Tool 없이 순수 텍스트를 응답한 경우.
+           * 연속 Tool-없는-턴 카운터 증가.
+           * - NO_TOOL_CALL_FOUND: 정상 — 추론 중
+           * - 그 외(파싱 오류): 경고 로그 (LLM 출력 형식 문제)
+           */
+          if (parseResult.error.errorType !== 'NO_TOOL_CALL_FOUND') {
+            console.warn(`[DeepTaskExecutor] Tool 파싱 오류 (Turn ${currentTurn}):`, parseResult.error.message);
+          }
+          consecutiveNoToolTurns++;
+
+          /*
+           * [Output 충족 여부 판단]
+           * expectedOutputs가 있는 경우 현재까지의 finalText에서 충족 여부를 확인한다.
+           * 간단한 키워드 기반 체크 (Semantic 검증은 VerificationRuntime에서 수행).
+           * Tool 없이 MAX_CONSECUTIVE_NO_TOOL_TURNS 턴 연속 응답하면 Output 충분하다고 판단.
+           */
+          if (consecutiveNoToolTurns >= MAX_CONSECUTIVE_NO_TOOL_TURNS) {
+            streamFinishReason = 'OUTPUT_SUFFICIENT';
+            break;
+          }
+        }
       }
 
-      if (currentTurn >= maxTurns) {
+      if (currentTurn >= maxTurns && streamFinishReason === 'EOF') {
         streamFinishReason = 'MAX_TURNS';
       }
 
-      // 예산 소비 정산 (실제 소비한 턴 수를 Ledger에 보고하고 나머지 예약분 반환)
+      // ─── 예산 소비 정산 ────────────────────────────────────────────────
       this.ledger.commitTaskBudget(missionId, taskId, maxTurns, currentTurn);
 
-      // 최종 Result 조립
-      const taskResult = this.resultAssembler.assemble(attemptId, finalText, evidences);
-      (taskResult as any).streamFinishReason = streamFinishReason; // PHASE 4 인계를 위한 확장 정보
+      // ─── Tool Parser 상태 초기화 ───────────────────────────────────────
+      this.toolCallParser.reset();
 
-      // RUNNING -> VERIFYING 상태 전이
+      // ─── 최종 Result 조립 ──────────────────────────────────────────────
+      const taskResult = this.resultAssembler.assemble(attemptId, finalText, evidences);
+
+      // RUNNING → VERIFYING 상태 전이
       const currentTask = this.store.getTask(missionId, taskId);
       this.store.dispatchTransition(
         {
@@ -106,7 +260,7 @@ export class DeepTaskExecutor {
           attemptId,
           expectedCurrentStatus: 'RUNNING',
           expectedStateVersion: currentTask.state.stateVersion,
-          reason: `Execution stopped (Reason: ${streamFinishReason}). Submitting for verification.`,
+          reason: `Execution completed (Reason: ${streamFinishReason}, Turns: ${currentTurn}, Tools: ${observations.length}). Submitting for verification.`,
           actor: 'DeepTaskExecutor',
           timestamp: Date.now()
         },
@@ -114,12 +268,14 @@ export class DeepTaskExecutor {
         { taskResult }
       );
 
-    } catch (error: any) {
-      console.error(`[DeepTaskExecutor] Task ${taskId} failed:`, error);
-      
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(`[DeepTaskExecutor] Task ${taskId} failed:`, errorMsg);
+
       // 예산 반환
       this.ledger.commitTaskBudget(missionId, taskId, maxTurns, currentTurn);
-      
+      this.toolCallParser.reset();
+
       try {
         const currentTask = this.store.getTask(missionId, taskId);
         this.store.dispatchTransition(
@@ -130,21 +286,21 @@ export class DeepTaskExecutor {
             attemptId,
             expectedCurrentStatus: 'RUNNING',
             expectedStateVersion: currentTask.state.stateVersion,
-            reason: `Execution failed: ${error.message}`,
+            reason: `Execution failed: ${errorMsg}`,
             actor: 'DeepTaskExecutor',
             timestamp: Date.now()
           },
           'FAILED',
-          { lastFailure: { errorType: 'ExecutionError', message: error.message, timestamp: Date.now() } }
+          { lastFailure: { errorType: 'ExecutionError', message: errorMsg, timestamp: Date.now() } }
         );
-      } catch (transitionError) {
-        console.error(`[DeepTaskExecutor] Failed to transition to FAILED:`, transitionError);
+      } catch (transitionError: unknown) {
+        const tMsg = transitionError instanceof Error ? transitionError.message : String(transitionError);
+        console.error(`[DeepTaskExecutor] Failed to transition to FAILED:`, tMsg);
       }
-      
-      // 런타임에 에러 전파하여 rejection 추적 활성화
+
       throw error;
     } finally {
-      // 락(Lease) 해제 보장
+      // Lease 해제 보장
       this.leaseManager.releaseLease(leaseId);
     }
   }

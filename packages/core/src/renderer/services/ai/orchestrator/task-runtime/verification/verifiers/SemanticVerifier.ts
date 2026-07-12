@@ -21,7 +21,9 @@
 import { TaskVerifier } from './TaskVerifier';
 import { VerificationInput } from '../runtime/VerificationInputBuilder';
 import { CriterionResult } from '../domain/VerificationTypes';
+import { VERIFICATION_TIMEOUT_POLICY } from '../domain/VerificationTimeoutPolicy';
 import type { ILLMEngineAdapter } from '../../../types';
+
 
 /**
  * [Semantic 판정 요청 프롬프트 상수]
@@ -157,9 +159,10 @@ export class SemanticVerifier implements TaskVerifier {
         ];
 
         let rawResponse = '';
-        // 5초 타임아웃
+        // [Critical 0-D Fix] VERIFICATION_TIMEOUT_POLICY.totalVerificationTimeoutMs 사용 (하드코딩 5000 제거)
+        const timeoutMs = VERIFICATION_TIMEOUT_POLICY.totalVerificationTimeoutMs;
         const timeoutPromise = new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error('SemanticVerifier LLM timeout (5s)')), 5000)
+          setTimeout(() => reject(new Error(`SemanticVerifier LLM timeout (${timeoutMs}ms)`)), timeoutMs)
         );
         const generatePromise = this.adapter.generateStream(messages, () => { /* 스트림 토큰 불필요 */ });
 
