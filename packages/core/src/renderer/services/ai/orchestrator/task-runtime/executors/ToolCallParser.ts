@@ -188,8 +188,8 @@ export class ToolCallParser {
       };
     }
 
-    // name 또는 tool 필드에서 Tool 이름 추출
-    const toolName = (parsed['name'] ?? parsed['tool'] ?? '') as string;
+    // name, tool, toolName 필드에서 Tool 이름 추출 (LLM 출력 형식 호환성)
+    const toolName = (parsed['name'] ?? parsed['tool'] ?? parsed['toolName'] ?? '') as string;
     if (!toolName || typeof toolName !== 'string' || toolName.trim() === '') {
       return {
         success: false,

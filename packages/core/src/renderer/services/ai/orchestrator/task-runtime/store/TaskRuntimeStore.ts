@@ -276,4 +276,24 @@ export class TaskRuntimeStore {
       this.eventLog.clear();
     }
   }
+
+  /**
+   * [Item 5 — Event Retention / Compaction]
+   * Mission 종료 후 해당 Mission의 비중요 이벤트를 제거하여 메모리를 압축한다.
+   * MissionExecutionRuntime.pause() 및 cancel() 후 호출됨.
+   *
+   * @param missionId 압축 대상 Mission ID
+   * @returns 압축으로 제거된 이벤트 수
+   */
+  public compactEventLogForMission(missionId: string): number {
+    return this.eventLog.compactForMission(missionId);
+  }
+
+  /**
+   * [Item 5] 현재 EventLog 메모리 사용 통계를 반환한다.
+   * 모니터링 및 디버깅 목적으로 사용.
+   */
+  public getEventLogStats(): ReturnType<typeof this.eventLog.getMemoryStats> {
+    return this.eventLog.getMemoryStats();
+  }
 }

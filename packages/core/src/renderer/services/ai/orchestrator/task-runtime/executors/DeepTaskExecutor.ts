@@ -42,6 +42,8 @@ import { TaskExecutionContextBuilder } from './TaskExecutionContextBuilder';
 import { TaskResultAssembler } from './TaskResultAssembler';
 import { ToolCallParser } from './ToolCallParser';
 import { ToolObservationBuilder, type ToolObservation } from './ToolObservationBuilder';
+import { CheckpointRuntime } from '../checkpoint/CheckpointRuntime';
+import { ToolPolicyChecker, ToolPolicyViolationError } from '../policy/ToolPolicyChecker';
 import type { TaskEvidence } from '../domain/types';
 import { ToolRegistry } from '../../ToolRegistry';
 
@@ -58,6 +60,7 @@ export class DeepTaskExecutor {
   private resultAssembler: TaskResultAssembler;
   private toolCallParser: ToolCallParser;
   private observationBuilder: ToolObservationBuilder;
+  private checkpointRuntime: CheckpointRuntime;
 
   constructor(
     private store: TaskRuntimeStore,
@@ -69,12 +72,19 @@ export class DeepTaskExecutor {
      * 테스트 환경에서 Mock ToolRegistry를 주입할 수 있도록 Optional Parameter로 설계.
      * 미주입 시 기본 ToolRegistry를 사용하되, registerDefaultTools()는 최초 호출 시 수행.
      */
-    private toolRegistry?: ToolRegistry
+    private toolRegistry?: ToolRegistry,
+    /*
+     * [DI — CheckpointRuntime 주입]
+     * MissionExecutionRuntime이 공유하는 CheckpointRuntime을 주입해 Task 간 Checkpoint를 일관 관리.
+     * 미주입 시 DeepTaskExecutor전용 독립 인스턴스 사용.
+     */
+    private checkpointRuntimeInjected?: CheckpointRuntime
   ) {
     this.contextBuilder = new TaskExecutionContextBuilder(store);
     this.resultAssembler = new TaskResultAssembler();
     this.toolCallParser = new ToolCallParser();
     this.observationBuilder = new ToolObservationBuilder();
+    this.checkpointRuntime = checkpointRuntimeInjected ?? new CheckpointRuntime();
   }
 
   /**
@@ -98,8 +108,12 @@ export class DeepTaskExecutor {
     let finalText = '';
     const evidences: TaskEvidence[] = [];
     const observations: ToolObservation[] = [];
+    const completedToolCallIds: string[] = []; // Checkpoint resume 시 재실행 방지용
     let consecutiveNoToolTurns = 0;
     let streamFinishReason: 'OUTPUT_SUFFICIENT' | 'EOF' | 'ABORT' | 'ERROR' | 'MAX_TURNS' = 'EOF';
+
+    // planVersion 추출 (Checkpoint 저장용)
+    const planVersion = task.definition.plannerMetadata?.['planVersion'] as number | undefined ?? 1;
 
     /*
      * [ToolRegistry 연결]
@@ -164,6 +178,10 @@ export class DeepTaskExecutor {
           consecutiveNoToolTurns = 0;
 
           try {
+            // [Item 6] Tool 실행 전 정책 검증
+            // Shadow Mode 차단, 맰드 등록 확인 등 수행
+            ToolPolicyChecker.assertAllowed(candidate.toolName, knownToolNames);
+
             // Tool 실행 (Timeout 포함) — DI된 registry 인스턴스 사용
             const toolResultPromise = registry.executeTool(candidate.toolName, candidate.arguments);
 
@@ -190,20 +208,42 @@ export class DeepTaskExecutor {
             const observationText = this.observationBuilder.toContextMessage(observation);
             messages.push({ role: 'user', content: observationText });
 
+            // [Checkpoint 저장] Tool 성공 직후 안전 지점 저장 (forceNow=true)
+            if (observation.status === 'SUCCESS') {
+              completedToolCallIds.push(candidate.toolCallId);
+              this.checkpointRuntime.maybeSaveOnTurnBoundary(
+                missionId, taskId, attemptId,
+                currentTurn, finalText, completedToolCallIds, planVersion,
+                true // Tool 성공 직후 강제 저장
+              );
+            }
+
           } catch (toolError: unknown) {
             /*
              * [Tool 실행 오류 처리]
              * 오류를 침묵시키지 않는다 (AGENTS.md 규칙 5).
              * 실패 Observation을 생성하여 LLM이 다음 Turn에서 인지하게 한다.
              * 오류를 성공 Observation으로 포장하지 않는다.
+             * [Item 6] ToolPolicyViolationError는 'POLICY_BLOCKED' 유형으로 구분.
              */
             const errorMsg = toolError instanceof Error ? toolError.message : String(toolError);
-            console.error(`[DeepTaskExecutor] Tool '${candidate.toolName}' 실행 실패:`, errorMsg);
+            const isShadowBlock = toolError instanceof ToolPolicyViolationError && toolError.violationType === 'SHADOW_MODE_BLOCKED';
+
+            if (isShadowBlock) {
+              console.info(
+                `[DeepTaskExecutor] Tool '${candidate.toolName}' blocked by Shadow Mode policy. ` +
+                `Observation: POLICY_BLOCKED.`
+              );
+            } else {
+              console.error(`[DeepTaskExecutor] Tool '${candidate.toolName}' 실행 실패:`, errorMsg);
+            }
 
             const failedObservation = this.observationBuilder.buildFailure(
               candidate,
               errorMsg,
-              errorMsg.includes('timed out') ? 'TIMED_OUT' : 'ERROR'
+              errorMsg.includes('timed out') ? 'TIMED_OUT' :
+              isShadowBlock ? 'ERROR' :
+              'ERROR'
             );
             observations.push(failedObservation);
 
@@ -235,11 +275,21 @@ export class DeepTaskExecutor {
             break;
           }
         }
-      }
+
+        // [턴 경계 Checkpoint 저장] 매 N턴마다 Turn_BOUNDARY 저장
+        this.checkpointRuntime.maybeSaveOnTurnBoundary(
+          missionId, taskId, attemptId,
+          currentTurn, finalText, completedToolCallIds, planVersion,
+          false // 정책 진단 (N턴마다)
+        );
+      } // while 루프 종료
 
       if (currentTurn >= maxTurns && streamFinishReason === 'EOF') {
         streamFinishReason = 'MAX_TURNS';
       }
+
+      // ─── Checkpoint 정리 ───────────────────────────────────────────────
+      this.checkpointRuntime.clearTask(taskId);
 
       // ─── 예산 소비 정산 ────────────────────────────────────────────────
       this.ledger.commitTaskBudget(missionId, taskId, maxTurns, currentTurn);
@@ -272,9 +322,13 @@ export class DeepTaskExecutor {
       const errorMsg = error instanceof Error ? error.message : String(error);
       console.error(`[DeepTaskExecutor] Task ${taskId} failed:`, errorMsg);
 
+      // [반복 Crash 기록] 동일 Fingerprint에서 반복 실패 감지
+      this.checkpointRuntime.recordCrash(taskId);
+
       // 예산 반환
       this.ledger.commitTaskBudget(missionId, taskId, maxTurns, currentTurn);
       this.toolCallParser.reset();
+
 
       try {
         const currentTask = this.store.getTask(missionId, taskId);

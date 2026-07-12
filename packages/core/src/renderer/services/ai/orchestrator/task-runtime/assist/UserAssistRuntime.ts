@@ -113,6 +113,16 @@ export class UserAssistRuntime {
     recoveryAttempts: number;
     isTaskRequired: boolean;
   }): UserAssistRequest {
+    const idempotencyKey = `ua-${params.taskId}-${params.attemptId}`;
+
+    // 멱등성 검사: 동일 idempotencyKey의 PENDING Request가 있으면 반환
+    const existing = Array.from(this.requests.values()).find(
+      r => r.idempotencyKey === idempotencyKey && r.status === 'PENDING'
+    );
+    if (existing) {
+      return existing;
+    }
+
     const requestId = `ua-${crypto.randomUUID()}`;
     const now = Date.now();
 

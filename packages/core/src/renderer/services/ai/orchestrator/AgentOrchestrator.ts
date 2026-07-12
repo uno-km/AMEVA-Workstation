@@ -67,6 +67,13 @@ import { MissionExecutionRuntime } from './task-runtime/mission/MissionExecution
 // FINAL REMEDIATION — STAGE B: Feature Flag 및 Execution Ownership
 import { V2RuntimeFeatureFlag } from './task-runtime/domain/V2RuntimeFeatureFlag'
 
+// [Item 3] 앱 재시작 복원 — RuntimeRestoreCoordinator + IndexedDB Adapter
+import { RuntimeRestoreCoordinator } from './task-runtime/persistence/RuntimeRestoreCoordinator';
+import {
+  IndexedDBRuntimePersistenceAdapter,
+  InMemoryRuntimePersistenceAdapter,
+} from './task-runtime/persistence/RuntimePersistenceAdapter';
+
 // Legacy TaskPlanner
 import { TaskPlanner } from './task/TaskPlanner'
 
@@ -400,7 +407,7 @@ export class AgentOrchestratorSession {
         activePlan = await this.planAndActivateV2(this.sessionId, userMessage);
         v2Success = true;
       } catch (e: any) {
-        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Failed: ${e.message}. Checking fallback policy...`, prefix: 'Orchestrator' });
+        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Failed: ${(e instanceof Error ? e.message : String(e))}. Checking fallback policy...`, prefix: 'Orchestrator' });
         // Planning/Activation 실패: Execution 미시작이므로 Legacy Fallback 허용 여부 확인
         if (!V2RuntimeFeatureFlag.isLegacyFallbackAllowed(this.sessionId)) {
           // V2_ONLY 모드이거나 이미 Execution이 시작된 경우 — 오류 전파
@@ -417,7 +424,40 @@ export class AgentOrchestratorSession {
 
       // [STAGE B] Execution Ownership 획득 — V2가 실행 소유자
       V2RuntimeFeatureFlag.acquireV2Ownership(this.sessionId, this.sessionId);
-      const v2Runtime = new MissionExecutionRuntime(this.taskStore, this.adapter, this.sessionId, 10000);
+
+      /*
+       * [Item 3 — RuntimeRestoreCoordinator 앱 진입점 연결]
+       * IndexedDB가 지원되는 Renderer 환경에서는 IndexedDB Adapter 사용.
+       * Renderer 환경 감지: typeof indexedDB !== 'undefined'
+       * 미지원 환경(테스트/SSR): InMemoryRuntimePersistenceAdapter 폴백.
+       *
+       * 세션 시작 시 미완료 Mission 목록을 감지하여 로그에 남긴다.
+       * 자동 재개는 하지 않음 — 사용자 승인 필요 (UserAssistRuntime 통해 처리).
+       */
+      const persistenceAdapter =
+        typeof indexedDB !== 'undefined'
+          ? new IndexedDBRuntimePersistenceAdapter()
+          : new InMemoryRuntimePersistenceAdapter();
+
+      // 미완료 Mission 감지 (비동기, 실패해도 실행 차단 안 함)
+      new RuntimeRestoreCoordinator(persistenceAdapter)
+        .detectIncompleteMissions()
+        .then(incomplete => {
+          if (incomplete.length > 0) {
+            ipc.llmAddLog({
+              text: `[AgentOrchestrator] ${incomplete.length}개의 미완료 Mission이 감지되었습니다: ${incomplete.map(m => m.missionId).join(', ')}`,
+              prefix: 'Orchestrator'
+            });
+          }
+        })
+        .catch((detectErr: unknown) => {
+          const msg = detectErr instanceof Error ? detectErr.message : String(detectErr);
+          console.warn('[AgentOrchestrator] 미완료 Mission 감지 실패:', msg);
+        });
+
+      const v2Runtime = new MissionExecutionRuntime(
+        this.taskStore, this.adapter, this.sessionId, 10000, persistenceAdapter
+      );
 
       // [STAGE B] Execution 시작 마킹 — 이 이후 Legacy Fallback 절대 금지
       V2RuntimeFeatureFlag.markV2ExecutionStarted(this.sessionId);

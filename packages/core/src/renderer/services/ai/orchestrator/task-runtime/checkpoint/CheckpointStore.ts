@@ -89,6 +89,11 @@ function computeIntegrityDigest(cp: Omit<TaskCheckpoint, 'integrityDigest'>): st
     attemptId: cp.attemptId,
     reasoningTurn: cp.reasoningTurn,
     completedToolCallIds: [...cp.completedToolCallIds].sort(),
+    /*
+     * [보안] partialOutputText를 digest에 포함하여 변조 탐지.
+     * 이전 버전에서 누락되어 텍스트 변조를 탐지할 수 없었음.
+     */
+    partialOutputText: cp.partialOutputText,
     planVersion: cp.planVersion,
     reason: cp.reason,
     createdAt: cp.createdAt,

@@ -39,6 +39,9 @@ import { MCPClientManager } from '../../../utils/mcpClient'
  */
 import { executeTerminal } from '../../ipc/electronApiAdapter'
 
+// [Item 7] Path traversal 방어 관련 임포트
+import { PathSanitizer, PathSanitizationError } from './task-runtime/policy/PathSanitizer';
+
 /*
  * [IPC ADAPTER IMPORT]
  * - ipc: llmAddLog 로그 기록 전용 어댑터 (executeTerminal은 직접 임포트).
@@ -234,9 +237,25 @@ export class ToolRegistry {
         required: ['path']
       },
       execute: async (args) => {
-        const path = String(args['path'] ?? '')
+        const rawPath = String(args['path'] ?? '')
+
+        // [Item 7] Path traversal 방어
+        let safePath: string;
         try {
-          const result = await executeTerminal(`Get-Content -Path "${path}" -Raw -Encoding UTF8`, undefined)
+          safePath = PathSanitizer.sanitizePath(rawPath, 'read');
+        } catch (sanitizeErr: unknown) {
+          const reason = sanitizeErr instanceof PathSanitizationError
+            ? sanitizeErr.reason : 'UNKNOWN';
+          return {
+            success: false,
+            error: `Path blocked: ${sanitizeErr instanceof Error ? sanitizeErr.message : String(sanitizeErr)} (reason: ${reason})`,
+            toolName: BUILTIN_TOOL_NAMES.READ_FILE,
+            toolArgs: args
+          };
+        }
+
+        try {
+          const result = await executeTerminal(`Get-Content -Path "${safePath}" -Raw -Encoding UTF8`, undefined)
           return {
             success: true,
             result: result.stdout || '(빈 파일)',
@@ -270,18 +289,34 @@ export class ToolRegistry {
         required: ['path', 'content']
       },
       execute: async (args) => {
-        const path = String(args['path'] ?? '')
+        const rawPath = String(args['path'] ?? '')
         const content = String(args['content'] ?? '')
+
+        // [Item 7] Path traversal 방어 — 쓰기 작업은 허용된 루트에서만
+        let safePath: string;
+        try {
+          safePath = PathSanitizer.sanitizePath(rawPath, 'write');
+        } catch (sanitizeErr: unknown) {
+          const reason = sanitizeErr instanceof PathSanitizationError
+            ? sanitizeErr.reason : 'UNKNOWN';
+          return {
+            success: false,
+            error: `Write blocked: ${sanitizeErr instanceof Error ? sanitizeErr.message : String(sanitizeErr)} (reason: ${reason})`,
+            toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
+            toolArgs: args
+          };
+        }
+
         try {
           // PowerShell heredoc 방식으로 멀티라인 내용을 안전하게 저장한다
           const escapedContent = content.replace(/'/g, "''")
           const result = await executeTerminal(
-            `Set-Content -Path "${path}" -Value '${escapedContent}' -Encoding UTF8`,
+            `Set-Content -Path "${safePath}" -Value '${escapedContent}' -Encoding UTF8`,
             undefined
           )
           return {
             success: !result.stderr,
-            result: result.stderr || `파일 저장 완료: ${path}`,
+            result: result.stderr || `파일 저장 완료: ${safePath}`,
             toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
             toolArgs: args
           }

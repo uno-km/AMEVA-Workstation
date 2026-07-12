@@ -52,28 +52,42 @@ export interface IRuntimePersistenceAdapter {
  * [도메인 종속 지역 상수]
  */
 const DB_NAME = 'ameva_task_runtime_v2';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // [Item 4] V2로 버전 업 (V1→V2 Schema Migration 포함)
 const STORE_MISSIONS = 'missions';
 const STORE_CHECKPOINTS = 'task_checkpoints';
-const PERSISTENCE_SCHEMA_VERSION = 1;
+const PERSISTENCE_SCHEMA_VERSION = 2;
+
+import { SchemaMigrationEngine } from './SchemaMigration';
 
 /**
  * IndexedDB 연결 헬퍼.
- * 기존 ameva_agent_recovery와 다른 DB를 사용하여 V2 전용 저장소 분리.
+ * [Item 4] onupgradeneeded에서 SchemaMigrationEngine을 호출한다.
  */
 function openRuntimeDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const db = request.result;
+      const transaction = (event.target as IDBOpenDBRequest).transaction!;
+      const oldVersion = event.oldVersion;
+      const newVersion = event.newVersion ?? DB_VERSION;
+
+      // Object Store 생성 (최초 생성 시)
       if (!db.objectStoreNames.contains(STORE_MISSIONS)) {
         db.createObjectStore(STORE_MISSIONS, { keyPath: 'missionId' });
       }
       if (!db.objectStoreNames.contains(STORE_CHECKPOINTS)) {
-        // 복합키: missionId + taskId
         db.createObjectStore(STORE_CHECKPOINTS, { keyPath: ['missionId', 'taskId'] });
       }
+
+      // [Item 4] Schema Migration 실행
+      SchemaMigrationEngine.runMigrations(db, transaction, oldVersion, newVersion)
+        .catch((migErr: unknown) => {
+          const msg = migErr instanceof Error ? migErr.message : String(migErr);
+          console.error('[RuntimePersistenceAdapter] Schema migration failed:', msg);
+          // migration 실패는 transaction에서 abort되지 않으나 경고 기록
+        });
     };
 
     request.onsuccess = () => resolve(request.result);
@@ -258,7 +272,7 @@ export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAda
   }
 
   public async listIncompleteMissions(): Promise<MissionSnapshot[]> {
-    const TERMINAL_STATUSES = new Set(['SUCCESS', 'PARTIAL_SUCCESS', 'FAILED', 'CANCELLED']);
+    const TERMINAL_STATUSES = new Set(['SUCCESS', 'PARTIAL_SUCCESS', 'FAILED', 'CANCELLED', 'COMPLETED']);
     return [...this.missions.values()].filter(m => !TERMINAL_STATUSES.has(m.status));
   }
 
