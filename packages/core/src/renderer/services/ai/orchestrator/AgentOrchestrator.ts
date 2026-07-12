@@ -53,7 +53,7 @@ import { TaskCompletionManager } from './task/TaskCompletionManager'
 import { FinalReporter } from './task/FinalReporter'
 import { TaskEventLog } from './task-runtime/events/TaskEventLog'
 import { TaskRuntimeStore } from './task-runtime/store/TaskRuntimeStore'
-import { LegacyTaskPlanAdapter, LegacyTaskPayload } from './task-runtime/compatibility/LegacyTaskPlanAdapter'
+import { LegacyTaskPlanAdapter, type LegacyTaskPayload } from './task-runtime/compatibility/LegacyTaskPlanAdapter'
 
 // PHASE 2 신규 Planning 파이프라인 임포트
 import { GoalInterpreter } from './task-runtime/planning/goal/GoalInterpreter'
@@ -1006,5 +1006,37 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         }
       }
     }
+  }
+
+  /**
+   * [PHASE 2 Integration Point]
+   * 새로운 Planning Pipeline 을 구동하는 진입점.
+   * AgentOrchestrator는 기존의 run()과는 별개로 이 진입점을 통해 Goal을 구조화하고
+   * V2 플랜을 활성화할 수 있습니다.
+   */
+  public async planAndActivateV2(missionId: string, rawRequest: string): Promise<void> {
+    const interpreter = new GoalInterpreter();
+    const planner = new V2TaskPlanner();
+    const validator = new PlanValidator();
+    const activationService = new PlanActivationService(this.taskStore);
+
+    // 1. 목표 구조화
+    const spec = await interpreter.interpret(missionId, rawRequest);
+
+    // 2. Draft Plan 생성
+    const draftPlan = await planner.createPlan(spec);
+
+    // 3. Validation
+    const valResult = validator.validate(draftPlan, spec);
+    if (!valResult.valid) {
+      this.emitEvent({ type: 'error', error: new Error(`Plan validation failed: ${valResult.errors.map(e => e.message).join(', ')}`) });
+      return;
+    }
+
+    // 4. Activation
+    draftPlan.status = 'APPROVED';
+    activationService.activate(draftPlan);
+
+    ipc.llmAddLog({ text: 'PHASE 2 Planning Pipeline activated successfully.', prefix: 'AgentOrchestrator' });
   }
 }
