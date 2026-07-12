@@ -89,13 +89,16 @@ export interface UserAssistResponse {
  * [도메인 종속 지역 상수]
  */
 const DEFAULT_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24시간
-const MAX_CRASH_COUNT_FOR_USER_ASSIST = 3; // 3회 반복 Crash 후 User Assist 강제
 
 export class UserAssistRuntime {
   private readonly requests: Map<string, UserAssistRequest> = new Map();
   private readonly respondedIdempotencyKeys: Set<string> = new Set();
+  
+  private readonly store: TaskRuntimeStore;
 
-  constructor(private readonly store: TaskRuntimeStore) {}
+  constructor(store: TaskRuntimeStore) {
+    this.store = store;
+  }
 
   /**
    * UserAssistRequest를 생성하고 Task를 WAITING_USER 상태로 전환한다.

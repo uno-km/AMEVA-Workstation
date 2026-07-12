@@ -4,7 +4,7 @@
  * @role 실행이 종료된 후 텍스트 출력, 툴 실행 이력 등을 모아 TaskResult(Output)로 패키징
  */
 
-import { TaskResult, TaskOutput, TaskEvidence } from '../domain/types';
+import type { TaskResult, TaskOutput, TaskEvidence } from '../domain/types';
 
 export class TaskResultAssembler {
   /**

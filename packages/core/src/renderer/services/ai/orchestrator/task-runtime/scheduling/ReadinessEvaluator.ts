@@ -4,7 +4,7 @@
  * @role 특정 Task가 실행 준비(READY) 상태로 전이할 수 있는지 모든 조건을 평가
  */
 
-import { TaskEntity } from '../domain/types';
+import type { TaskEntity } from '../domain/types';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
 import { CapabilityCatalog } from '../dispatch/CapabilityCatalog';

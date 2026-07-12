@@ -10,7 +10,7 @@ import { ReadinessEvaluator } from './ReadinessEvaluator';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
 import type { DeadlockClassification } from '../domain/ExecutionTypes';
 import { RecoveryRequestStore } from '../verification/recovery/RecoveryRequestStore';
-import { TaskRecoveryRequest } from '../verification/domain/RecoveryTypes';
+import type { TaskRecoveryRequest } from '../verification/domain/RecoveryTypes';
 
 export class TaskScheduler {
   private evaluator: ReadinessEvaluator;

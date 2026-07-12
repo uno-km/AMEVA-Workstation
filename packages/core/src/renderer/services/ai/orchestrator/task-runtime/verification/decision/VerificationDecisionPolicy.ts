@@ -17,7 +17,7 @@
  * - UNVERIFIABLE → NEEDS_USER 판정
  */
 
-import { CriterionResult, TaskVerdict, TaskVerificationResult } from '../domain/VerificationTypes';
+import type { CriterionResult, TaskVerdict, TaskVerificationResult } from '../domain/VerificationTypes';
 import { VerificationInput } from '../runtime/VerificationInputBuilder';
 
 export class VerificationDecisionPolicy {

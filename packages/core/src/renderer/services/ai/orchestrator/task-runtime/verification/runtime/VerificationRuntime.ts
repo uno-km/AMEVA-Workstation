@@ -8,7 +8,7 @@ import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
 import { VerificationInputBuilder } from './VerificationInputBuilder';
 import { TaskVerifierCoordinator } from '../verifiers/TaskVerifierCoordinator';
 import { VerificationDecisionPolicy } from '../decision/VerificationDecisionPolicy';
-import { TaskVerificationResult } from '../domain/VerificationTypes';
+import type { TaskVerificationResult } from '../domain/VerificationTypes';
 import { RecoveryCoordinator } from '../recovery/RecoveryCoordinator';
 import { RecoveryRequestStore } from '../recovery/RecoveryRequestStore';
 import { MissionBudgetLedger } from '../../budget/MissionBudgetLedger';

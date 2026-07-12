@@ -13,7 +13,7 @@
  */
 
 import { VerificationInput } from '../runtime/VerificationInputBuilder';
-import { CriterionResult } from '../domain/VerificationTypes';
+import type { CriterionResult } from '../domain/VerificationTypes';
 import { TaskVerifier } from './TaskVerifier';
 import type { ILLMEngineAdapter } from '../../../types';
 

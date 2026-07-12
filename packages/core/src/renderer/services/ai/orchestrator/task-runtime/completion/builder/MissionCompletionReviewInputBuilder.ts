@@ -144,7 +144,7 @@ export class MissionCompletionReviewInputBuilder {
       totalRecoveries,
       warnings,
       unresolvedIssues,
-      toolRuntimeStatus,
+      toolRuntimeStatus: toolRuntimeStatus === 'UNAVAILABLE' ? 'BROKEN' : toolRuntimeStatus,
       completionCandidateStatus: 'READY_FOR_COMPLETION_REVIEW',
       createdAt: Date.now()
     };

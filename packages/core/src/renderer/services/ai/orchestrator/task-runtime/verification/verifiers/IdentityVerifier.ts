@@ -6,7 +6,7 @@
 
 import { TaskVerifier } from './TaskVerifier';
 import { VerificationInput } from '../runtime/VerificationInputBuilder';
-import { CriterionResult } from '../domain/VerificationTypes';
+import type { CriterionResult } from '../domain/VerificationTypes';
 
 export class IdentityVerifier implements TaskVerifier {
   public readonly verifierType = 'IDENTITY_VERIFIER';

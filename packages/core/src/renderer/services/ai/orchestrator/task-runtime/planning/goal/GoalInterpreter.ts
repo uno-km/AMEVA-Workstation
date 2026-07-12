@@ -4,7 +4,7 @@
  * @role User Request -> 구조화된 GoalSpec 으로의 변환 파이프라인
  */
 
-import { GoalSpec, Requirement } from '../domain/PlanningTypes';
+import type { GoalSpec, Requirement } from '../domain/PlanningTypes';
 import { RequirementExtractor } from './RequirementExtractor';
 import { GoalInterpretationError } from '../domain/PlanningErrors';
 

@@ -20,7 +20,7 @@
 
 import { TaskVerifier } from './TaskVerifier';
 import { VerificationInput } from '../runtime/VerificationInputBuilder';
-import { CriterionResult } from '../domain/VerificationTypes';
+import type { CriterionResult } from '../domain/VerificationTypes';
 import { VERIFICATION_TIMEOUT_POLICY } from '../domain/VerificationTimeoutPolicy';
 import type { ILLMEngineAdapter } from '../../../types';
 

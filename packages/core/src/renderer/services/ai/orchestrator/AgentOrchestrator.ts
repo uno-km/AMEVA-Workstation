@@ -363,7 +363,8 @@ export class AgentOrchestratorSession {
    * @returns this (메서드 체이닝 지원)
    */
   public withActorCritic(hook: IActorCriticHook): this {
-    this.actorCriticHook = hook
+    // V2 Runtime에서 actorCriticHook 필드는 사용하지 않거나 외부 주입으로 변경됨
+    // 하위 호환성을 위해 메서드는 유지하되 내부 참조만 설정한다.
     /*
      * [ACTOR HISTORY LINKAGE]
      * - ActorCriticHook이 REJECT 시 피드백을 주입할 contextMessages 참조를 연결한다.

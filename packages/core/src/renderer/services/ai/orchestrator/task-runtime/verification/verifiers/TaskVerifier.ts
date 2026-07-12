@@ -5,7 +5,7 @@
  */
 
 import { VerificationInput } from '../runtime/VerificationInputBuilder';
-import { CriterionResult } from '../domain/VerificationTypes';
+import type { CriterionResult } from '../domain/VerificationTypes';
 
 export interface TaskVerifier {
   readonly verifierType: string;

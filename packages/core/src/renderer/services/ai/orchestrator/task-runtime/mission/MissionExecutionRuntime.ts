@@ -51,8 +51,6 @@ import {
  */
 /** WAITING_USER Task 만료 대기 시간 (24시간) */
 const WAITING_USER_EXPIRY_MS = 24 * 60 * 60 * 1000;
-/** 만료된 WAITING_USER Task를 FAILED 전이시키기까지 체크 주기 */
-const WAITING_USER_CHECK_INTERVAL_MS = 60_000; // 1분
 /** WAITING_USER 상태일 때 tick 주기 (자주 확인 불필요) */
 const WAITING_USER_TICK_MS = 30_000; // 30초
 
@@ -90,11 +88,14 @@ export class MissionExecutionRuntime {
    */
   private waitingUserCreatedAt: Map<string, number> = new Map();
 
+  private store: TaskRuntimeStore;
+  private missionId: string;
+
   constructor(
-    private store: TaskRuntimeStore,
-    private adapter: ILLMEngineAdapter,
-    private missionId: string,
-    private initialBudget: number = 10000,
+    store: TaskRuntimeStore,
+    adapter: ILLMEngineAdapter,
+    missionId: string,
+    initialBudget: number = 10000,
     /*
      * [DI — IRuntimePersistenceAdapter]
      * 영속화 어댑터를 주입하여 테스트에서 InMemory 폴백 사용 가능.
@@ -102,6 +103,8 @@ export class MissionExecutionRuntime {
      */
     persistence?: IRuntimePersistenceAdapter
   ) {
+    this.store = store;
+    this.missionId = missionId;
     this.ledger = new MissionBudgetLedger(store);
     this.leaseManager = new TaskLeaseManager(store);
     this.recoveryStore = new RecoveryRequestStore();
@@ -261,7 +264,7 @@ export class MissionExecutionRuntime {
       }
 
       // 4. 새로 준비된 Task를 Dispatch
-      const allTasks = this.store.getAllTasks(this.missionId);
+      let allTasks = this.store.getAllTasks(this.missionId);
       const readyTasks = allTasks.filter(t => t.state.status === 'READY');
 
       for (const task of readyTasks) {
@@ -287,11 +290,11 @@ export class MissionExecutionRuntime {
       }
 
       // 5. 완료 여부 집계
+      allTasks = this.store.getAllTasks(this.missionId);
       const hasPendingOrReady = allTasks.some(t =>
         t.state.status === 'PENDING' || t.state.status === 'READY' || t.state.status === 'RETRY_WAIT'
       );
       const hasVerifying = allTasks.some(t => t.state.status === 'VERIFYING');
-      const hasRecovering = allTasks.some(t => t.state.status === 'RECOVERING');
       const hasRunning = allTasks.some(t => t.state.status === 'RUNNING');
 
       /*
@@ -339,17 +342,17 @@ export class MissionExecutionRuntime {
           this.userAssistRuntime.createRequest({
             missionId: this.missionId,
             taskId: task.definition.id,
-            attemptId: task.state.currentAttemptId ?? 'unknown',
-            title: `Task 실행 실패: ${task.definition.name ?? task.definition.id}`,
+            attemptId: task.state.activeAttemptId ?? 'unknown',
+            title: `Task 실행 실패: ${task.definition.title ?? task.definition.id}`,
             summary: `Task "${task.definition.id}"가 자동 복구에 실패하여 사용자 개입이 필요합니다.`,
             failureReason: task.state.lastFailure?.message ?? '알 수 없는 오류',
-            completedWork: task.state.completedOutputs
-              ? JSON.stringify(task.state.completedOutputs).slice(0, 200)
+            completedWork: task.state.taskResult?.outputs
+              ? JSON.stringify(task.state.taskResult.outputs).slice(0, 200)
               : '(없음)',
             missingWork: task.definition.acceptanceCriteria?.join('\n') ?? '(명세 없음)',
             availableCheckpointId: this.checkpointRuntime.getLatestCheckpoint(task.definition.id)?.checkpointId,
-            recoveryAttempts: task.state.attemptCount ?? 0,
-            isTaskRequired: task.definition.isRequired !== false
+            recoveryAttempts: Object.keys(task.state.attempts).length,
+            isTaskRequired: task.definition.required !== false
           });
 
           // [Item 3] WAITING_USER 상태 영속화
@@ -358,7 +361,7 @@ export class MissionExecutionRuntime {
 
         // WAITING_USER 만료 감지 (24시간)
         const waitStart = this.waitingUserCreatedAt.get(task.definition.id) ?? Date.now();
-        if (Date.now() - waitStart > WAITING_USER_EXPIRY_MS) {
+        if (Date.now() - waitStart > 86400000) {
           console.warn(`[MissionExecutionRuntime] WAITING_USER Task ${task.definition.id} expired after 24h. Transitioning to FAILED.`);
           try {
             this.store.dispatchTransition(
@@ -406,7 +409,6 @@ export class MissionExecutionRuntime {
       if (
         !hasPendingOrReady &&
         !hasVerifying &&
-        !hasRecovering &&
         !hasRunning &&
         !hasWaitingUser &&
         this.activeExecutions.size === 0
@@ -416,8 +418,8 @@ export class MissionExecutionRuntime {
         this.pause();
       } else if (hasWaitingUser) {
         // WAITING_USER 존재 — 30초 주기로 만료만 체크
-        this.requestTick(WAITING_USER_TICK_MS);
-      } else if (hasRecovering || retryWaitTasks.length > 0) {
+        this.requestTick(30000);
+      } else if (retryWaitTasks.length > 0) {
         // Recovery/Retry — 2초 주기
         this.requestTick(2000);
       } else if (hasVerifying) {
@@ -446,15 +448,11 @@ export class MissionExecutionRuntime {
   private persistMissionState(status: string): void {
     const allTasks = this.store.getAllTasks(this.missionId);
     const taskIds = allTasks.map(t => t.definition.id);
-    const mission = this.store.getMissionState(this.missionId);
-    const goalId = mission?.goalId ?? this.missionId;
-
-    this.restoreCoordinator.saveMissionState(
-      this.missionId,
-      goalId,
+    this.restoreCoordinator.saveMissionState(this.missionId, {
+      missionId: this.missionId,
       status,
       taskIds
-    ).catch((err: unknown) => {
+    }).catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[MissionExecutionRuntime] Mission 상태 영속화 실패 (${this.missionId}):`, msg);
     });

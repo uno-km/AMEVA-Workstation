@@ -4,7 +4,7 @@
  * @role TaskEntity와 Store 데이터를 조합하여 검증기(Verifier)들이 사용할 공통 Input 모델을 생성
  */
 
-import { TaskEntity, TaskAttempt } from '../../domain/types';
+import type { TaskEntity, TaskAttempt } from '../../domain/types';
 import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
 
 export interface VerificationInput {

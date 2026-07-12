@@ -4,7 +4,7 @@
  * @role 검증 실패나 의존성 문제로 생성된 Recovery Request를 보관 및 관리하는 메모리 스토어
  */
 
-import { TaskRecoveryRequest, RecoveryRequestStatus } from '../domain/RecoveryTypes';
+import type { TaskRecoveryRequest, RecoveryRequestStatus } from '../domain/RecoveryTypes';
 
 export class RecoveryRequestStore {
   // Map<recoveryRequestId, TaskRecoveryRequest>

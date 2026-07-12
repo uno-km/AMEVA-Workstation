@@ -7,8 +7,8 @@
 import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
 import { RecoveryRequestStore } from './RecoveryRequestStore';
 import { MissionBudgetLedger } from '../../budget/MissionBudgetLedger';
-import { TaskVerificationResult } from '../domain/VerificationTypes';
-import { TaskRecoveryRequest, RecoveryDecision } from '../domain/RecoveryTypes';
+import type { TaskVerificationResult } from '../domain/VerificationTypes';
+import type { TaskRecoveryRequest, RecoveryDecision } from '../domain/RecoveryTypes';
 
 export class RecoveryCoordinator {
   constructor(

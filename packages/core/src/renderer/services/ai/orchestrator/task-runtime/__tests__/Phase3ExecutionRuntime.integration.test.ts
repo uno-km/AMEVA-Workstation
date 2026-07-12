@@ -3,8 +3,8 @@ import * as assert from 'node:assert';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { MissionExecutionRuntime } from '../mission/MissionExecutionRuntime';
 import { TaskEventLog } from '../events/TaskEventLog';
-import { ILLMEngineAdapter, ILLMStreamResponse } from '../../../types';
-import { TaskEntity } from '../domain/types';
+import type { ILLMEngineAdapter, ILLMStreamResponse } from '../../../types';
+import type { TaskEntity } from '../domain/types';
 
 class MockAdapter implements ILLMEngineAdapter {
   async invokeStructured(prompt: string): Promise<any> { return {}; }

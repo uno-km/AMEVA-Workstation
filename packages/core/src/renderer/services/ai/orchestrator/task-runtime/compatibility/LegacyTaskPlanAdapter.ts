@@ -4,7 +4,7 @@
  * @role 기존 Planner의 JSON 아웃풋과 신규 도메인 모델 간의 변환을 담당하는 어댑터
  */
 
-import { TaskEntity, TaskStatus } from '../domain/types';
+import type { TaskEntity, TaskStatus } from '../domain/types';
 
 // 기존 UI 및 Legacy Planner가 반환하던 타입 정의 (간략화)
 export interface LegacyTaskPayload {

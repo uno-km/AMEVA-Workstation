@@ -5,7 +5,7 @@ import { TaskEventLog } from '../events/TaskEventLog';
 import { VerificationInputBuilder } from '../verification/runtime/VerificationInputBuilder';
 import { TaskVerifierCoordinator } from '../verification/verifiers/TaskVerifierCoordinator';
 import { VerificationDecisionPolicy } from '../verification/decision/VerificationDecisionPolicy';
-import { TaskEntity } from '../domain/types';
+import type { TaskEntity } from '../domain/types';
 
 describe('Phase 4 Verification Pipeline', () => {
   it('should successfully build input, coordinate verifiers, and return a verdict', async () => {

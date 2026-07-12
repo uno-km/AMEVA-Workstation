@@ -62,24 +62,25 @@ export class DeepTaskExecutor {
   private observationBuilder: ToolObservationBuilder;
   private checkpointRuntime: CheckpointRuntime;
 
+  private store: TaskRuntimeStore;
+  private leaseManager: TaskLeaseManager;
+  private ledger: MissionBudgetLedger;
+  private adapter: ILLMEngineAdapter;
+  private toolRegistry?: ToolRegistry;
+
   constructor(
-    private store: TaskRuntimeStore,
-    private leaseManager: TaskLeaseManager,
-    private ledger: MissionBudgetLedger,
-    private adapter: ILLMEngineAdapter,
-    /*
-     * [DI — ToolRegistry 주입]
-     * 테스트 환경에서 Mock ToolRegistry를 주입할 수 있도록 Optional Parameter로 설계.
-     * 미주입 시 기본 ToolRegistry를 사용하되, registerDefaultTools()는 최초 호출 시 수행.
-     */
-    private toolRegistry?: ToolRegistry,
-    /*
-     * [DI — CheckpointRuntime 주입]
-     * MissionExecutionRuntime이 공유하는 CheckpointRuntime을 주입해 Task 간 Checkpoint를 일관 관리.
-     * 미주입 시 DeepTaskExecutor전용 독립 인스턴스 사용.
-     */
-    private checkpointRuntimeInjected?: CheckpointRuntime
+    store: TaskRuntimeStore,
+    leaseManager: TaskLeaseManager,
+    ledger: MissionBudgetLedger,
+    adapter: ILLMEngineAdapter,
+    toolRegistry?: ToolRegistry,
+    checkpointRuntimeInjected?: CheckpointRuntime
   ) {
+    this.store = store;
+    this.leaseManager = leaseManager;
+    this.ledger = ledger;
+    this.adapter = adapter;
+    this.toolRegistry = toolRegistry;
     this.contextBuilder = new TaskExecutionContextBuilder(store);
     this.resultAssembler = new TaskResultAssembler();
     this.toolCallParser = new ToolCallParser();
@@ -197,7 +198,6 @@ export class DeepTaskExecutor {
 
             // Evidence 기록
             evidences.push({
-              evidenceId: `ev-tool-${candidate.toolCallId}`,
               type: 'TOOL_CALL',
               description: `Tool '${candidate.toolName}' ${observation.status}`,
               referenceId: candidate.toolCallId,
@@ -259,7 +259,7 @@ export class DeepTaskExecutor {
            * - NO_TOOL_CALL_FOUND: 정상 — 추론 중
            * - 그 외(파싱 오류): 경고 로그 (LLM 출력 형식 문제)
            */
-          if (parseResult.error.errorType !== 'NO_TOOL_CALL_FOUND') {
+          if (!parseResult.success && parseResult.error.errorType !== 'NO_TOOL_CALL_FOUND') {
             console.warn(`[DeepTaskExecutor] Tool 파싱 오류 (Turn ${currentTurn}):`, parseResult.error.message);
           }
           consecutiveNoToolTurns++;

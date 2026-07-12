@@ -19,7 +19,11 @@ import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
 import { createHash } from 'crypto';
 
 export class AuditPackageBuilder {
-  constructor(private readonly taskStore: TaskRuntimeStore) {}
+  private readonly taskStore: TaskRuntimeStore;
+
+  constructor(taskStore: TaskRuntimeStore) {
+    this.taskStore = taskStore;
+  }
 
   /**
    * 미션 종료 시점의 전체 정보를 캡처하여 감사 패키지로 묶어냅니다.

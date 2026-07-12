@@ -4,9 +4,9 @@
  * @role Task 동시 실행 방지를 위한 임대(Lease) 발급 및 관리소
  */
 
-import { TaskLease } from '../domain/ExecutionTypes';
+import type { TaskLease } from '../domain/ExecutionTypes';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
-import { LeaseConflictError, TaskNotFoundError } from '../domain/errors';
+import { LeaseConflictError } from '../domain/errors';
 import type { TaskAttempt } from '../domain/types';
 
 export class TaskLeaseManager {
@@ -16,7 +16,11 @@ export class TaskLeaseManager {
   // 기본 Lease 유효시간 (ms)
   private readonly DEFAULT_TTL = 30000; 
 
-  constructor(private store: TaskRuntimeStore) {}
+  private store: TaskRuntimeStore;
+
+  constructor(store: TaskRuntimeStore) {
+    this.store = store;
+  }
 
   /**
    * 태스크의 Lease를 획득하고 새로운 Attempt를 생성합니다.
@@ -101,7 +105,7 @@ export class TaskLeaseManager {
    * 기존 Lease의 타임아웃을 갱신합니다.
    */
   public renewLease(leaseId: string, ttlMs: number = this.DEFAULT_TTL): TaskLease {
-    for (const [key, lease] of this.leases.entries()) {
+    for (const [, lease] of this.leases.entries()) {
       if (lease.leaseId === leaseId) {
         const now = Date.now();
         if (lease.expiresAt < now) {

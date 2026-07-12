@@ -5,8 +5,8 @@ import { TaskEventLog } from '../events/TaskEventLog';
 import { RecoveryRequestStore } from '../verification/recovery/RecoveryRequestStore';
 import { RecoveryCoordinator } from '../verification/recovery/RecoveryCoordinator';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
-import { TaskVerificationResult } from '../verification/domain/VerificationTypes';
-import { TaskEntity } from '../domain/types';
+import type { TaskVerificationResult } from '../verification/domain/VerificationTypes';
+import type { TaskEntity } from '../domain/types';
 
 describe('Phase 4 Recovery Pipeline', () => {
   it('should handle NEEDS_REPAIR verdict by transitioning task to RETRY_WAIT', () => {

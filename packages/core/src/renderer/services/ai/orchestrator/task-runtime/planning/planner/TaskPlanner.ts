@@ -3,7 +3,7 @@
  * @system AMEVA OS Desktop Workstation
  */
 
-import { GoalSpec, TaskPlan } from '../domain/PlanningTypes';
+import type { GoalSpec, TaskPlan } from '../domain/PlanningTypes';
 import { StrictPlanParser } from './StrictPlanParser';
 import { PlanNormalizer } from './PlanNormalizer';
 

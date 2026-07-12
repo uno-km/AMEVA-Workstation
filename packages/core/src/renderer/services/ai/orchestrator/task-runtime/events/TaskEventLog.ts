@@ -15,7 +15,7 @@
  * - dispose() 추가: 전체 정리
  */
 
-import { TaskEvent } from '../domain/types';
+import type { TaskEvent } from '../domain/types';
 
 /**
  * [상한 상수 — 3단계 상수화 원칙]

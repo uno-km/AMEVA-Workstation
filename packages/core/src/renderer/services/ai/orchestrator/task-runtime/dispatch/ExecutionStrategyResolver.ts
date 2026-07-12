@@ -4,7 +4,7 @@
  * @role Task가 요구하는 Capability를 분석하여 실행 전략을 결정
  */
 
-import { TaskEntity } from '../domain/types';
+import type { TaskEntity } from '../domain/types';
 import { CapabilityCatalog } from './CapabilityCatalog';
 
 export type ExecutionStrategy = 'LLM_ONLY' | 'TOOL_ONLY' | 'HYBRID_REACT' | 'MANUAL';

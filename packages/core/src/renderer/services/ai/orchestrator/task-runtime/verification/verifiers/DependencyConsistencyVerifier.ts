@@ -6,7 +6,7 @@
 
 import { TaskVerifier } from './TaskVerifier';
 import { VerificationInput } from '../runtime/VerificationInputBuilder';
-import { CriterionResult } from '../domain/VerificationTypes';
+import type { CriterionResult } from '../domain/VerificationTypes';
 
 export class DependencyConsistencyVerifier implements TaskVerifier {
   public readonly verifierType = 'DEPENDENCY_CONSISTENCY_VERIFIER';

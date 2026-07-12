@@ -5,7 +5,7 @@
  */
 
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
-import { TaskEntity } from '../domain/types';
+import type { TaskEntity } from '../domain/types';
 
 export class TaskExecutionContextBuilder {
   constructor(private store: TaskRuntimeStore) {}
