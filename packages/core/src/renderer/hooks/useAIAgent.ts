@@ -69,12 +69,15 @@ import { useAIHealthCheck } from './ai/useAIHealthCheck'
 import { useAIBlockProcessor } from './ai/useAIBlockProcessor'
 import { useAIResponseHandler } from './ai/useAIResponseHandler'
 import { useAIGenerator } from './ai/useAIGenerator'
+import { useAIAgentMode } from './ai/useAIAgentMode'
+import { determineIntent } from '../services/ai/determineIntent'
 
 /**
  * @hook useAIAgent
  * @description AI 에이전트의 생성, 중단, 모델 캐싱, 큐 핸들링, 스냅샷 반영 등을 총괄 조율하는 최상단 파사드.
  */
 export function useAIAgent() {
+  const { runAgentMode } = useAIAgentMode()
   /*
    * [ZUSTAND AI STATE SUBSCRIPTION]
    * - isGenerating: 응답 생성 여부 상태값.
@@ -268,7 +271,7 @@ export function useAIAgent() {
    * [CONTRACT - Inference Initiator Controller]
    * - generateResponse: 유저 인풋 및 에디터 선택 텍스트 범위, 태그 지정된 블록 메타정보를 취합해 최적의 Prompt를 생성하고 큐에 넣어 LLM 세션을 구동함.
    */
-  const generateResponse = useCallback((
+  const generateResponse = useCallback(async (
     msg: string,
     ctx?: string,
     orig?: string,
@@ -279,8 +282,78 @@ export function useAIAgent() {
   ) => {
     // Rationale: 비동기 완료 시점에 에디터에 블록을 수정 삽입하기 위해 editorRef.current에 주입 보존한다.
     if (editor) editorRef.current = editor
+
+    // [PLAN APPROVAL INTERCEPT] 플랜 승인 대기 상태일 때 사용자가 새 메시지를 전송하면 계획의 피드백(리뷰)으로 전달한다.
+    const currentState = useAIState.getState()
+    if (currentState.planApprovalState === 'pending') {
+      const resolve = currentState.resolvePlanApproval
+      if (resolve) {
+        // [계획 리뷰] 접두사 제거 후 피드백으로 전달
+        const feedbackText = msg.replace(/^\[계획 리뷰\]\s*/, '').trim()
+        resolve({ approved: false, feedback: feedbackText })
+        return { success: true, hasPendingDecision: false }
+      }
+    }
+
+    const finalSettings = { ...settings, ...runtimeSettings }
+
+    // [DEEP REASONING ORCHESTRATION] 딥리즈닝 모드 사용 시 AgentMode (Orchestrator) 루프로 직접 위임
+    if (finalSettings.deepReasoning === true) {
+      if (isGeneratingRef.current) {
+        enqueue({ userMessage: msg, context: ctx, originalText: orig, blockId: bId, runtimeSettings, editorInstance: editor, taggedBlocks })
+        return { success: true, hasPendingDecision: false }
+      }
+
+      setIsGenerating(true)
+      const assistantId = `msg_${Date.now()}_assistant`
+      const sessId = crypto.randomUUID()
+      resetSession(sessId, assistantId)
+
+      const userMsg: AIMessage = {
+        id: `msg_${Date.now()}_user`,
+        role: 'user',
+        content: msg,
+        timestamp: Date.now(),
+        taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
+      }
+      addUserAndAssistantMessages(userMsg, assistantId, orig, bId)
+
+      let isPro = false
+      try {
+        isPro = localStorage.getItem('is-pro-plan') === 'true'
+      } catch {}
+
+      const intent = determineIntent(msg, taggedBlocks, finalSettings.resolvedMode)
+
+      let enabledPlugins: Record<string, boolean> = {}
+      try {
+        const stored = localStorage.getItem('active-plugins')
+        if (stored) enabledPlugins = JSON.parse(stored)
+      } catch {}
+
+      const agentParams = {
+        assistantId,
+        sessId,
+        finalSettings,
+        userMessage: msg,
+        context: ctx,
+        taggedBlocks,
+        intent,
+        enabledPlugins,
+        isPro,
+        editorRef,
+        messages,
+        setMessages,
+        setIsGenerating,
+        currentAssistantIdRef,
+        processNextQueueRef
+      }
+
+      return await runAgentMode(agentParams)
+    }
+
     return coreGenerateResponse(msg, ctx, orig, bId, runtimeSettings, editor, taggedBlocks)
-  }, [coreGenerateResponse])
+  }, [coreGenerateResponse, settings, runAgentMode, enqueue, setIsGenerating, resetSession, addUserAndAssistantMessages, messages, setMessages, currentAssistantIdRef])
 
   /*
    * [SIDE EFFECT - Scheduler Callback Sync]

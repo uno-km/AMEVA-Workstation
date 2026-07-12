@@ -17,7 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import { ILLMAdapter } from '../types'
+import type { ILLMAdapter } from '../types'
 
 export class OllamaAdapter implements ILLMAdapter {
   private endpoint: string;

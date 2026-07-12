@@ -35,21 +35,45 @@ export class TaskVerifier {
    * @param result - Executor가 작성한 실행 성적서
    * @returns 검증 결과 통과 여부 (true = PASS, false = FAIL)
    */
-  public async verify(task: Task, result: TaskResult): Promise<boolean> {
+  public async verify(task: Task, result: TaskResult, session?: any): Promise<boolean> {
     console.info(`[TaskVerifier] 태스크 검증 기동: ${task.id} (${task.title})`);
 
     // 1단계: 정적 검증 (형식 및 빈 본문 체크)
     const staticPass = this.verifyStatic(task, result);
     if (!staticPass) {
       console.warn(`[TaskVerifier] 태스크 ${task.id} 1단계 정적 검증 실패.`);
+      if (session) {
+        session.emitEvent({
+          type: 'critic_feedback',
+          verdict: 'FAIL',
+          reason: `태스크 ${task.id} 정적 검증 실패: 결과 요약이 비어있거나 산출물 기재가 누락되었습니다.`,
+          taskTitle: task.title
+        })
+      }
       return false;
     }
 
     // 2단계: 동적 의미론적 검증 (LLM Critic 감수)
     try {
+      if (session) {
+        session.emitEvent({
+          type: 'critic_feedback',
+          verdict: 'FAIL',
+          reason: `태스크 ${task.id} 비평가(Verifier) 동적 의미론적 검수 개시...`,
+          taskTitle: task.title
+        })
+      }
       const dynamicPass = await this.verifyDynamic(task, result);
       if (!dynamicPass) {
         console.warn(`[TaskVerifier] 태스크 ${task.id} 2단계 동적 검증 실패.`);
+        if (session) {
+          session.emitEvent({
+            type: 'critic_feedback',
+            verdict: 'FAIL',
+            reason: `태스크 ${task.id} 동적 검증 실패: LLM 검수 기준 만족에 실패했습니다.`,
+            taskTitle: task.title
+          })
+        }
         return false;
       }
     } catch (err: unknown) {

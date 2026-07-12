@@ -3,6 +3,12 @@
 ## 2026-07-12 (Recovery-First Agent Runtime Architecture 구현 및 Ollama 자동 기동 비활성화)
 
 ### 🚀 주요 아키텍처 변경 사항
+- **딥리즈닝 오케스트레이터 기동 활성화 및 승인/리뷰 Human-in-the-loop 인터랙션**:
+  - `deepReasoning === true` 설정임에도 에이전트 오케스트레이션 루프(`runAgentMode`) 대신 일반 토큰 스트림으로 우회 처리되던 분기 누락 결함을 정복했습니다.
+  - 에이전트의 Task Plan(계획 수립) 완료 직후 즉시 작업을 구동하지 않고 사용자에게 계획을 노출한 뒤 "실시(Proceed)" 또는 "리뷰(Review)"를 수락받는 `planApprovalState` 비동기 락-프라미스를 구현했습니다.
+  - 사용자가 "리뷰"를 클릭하고 피드백을 전달(챗)하면, 오케스트레이터가 이 피드백을 수용하여 실시간으로 재계획(Re-plan)을 반복하는 지능형 피드백 루프를 설계했습니다.
+  - 태스크 실행 및 비평가(TaskVerifier)의 동적 의미론적 검수 실패/재시도 이벤트를 챗 말풍선 생각 과정(`reasoningTrace`) 내에 실시간 노출하여, 자아비판과 검증(Critic) 흐름을 투명하게 시각화했습니다.
+  - 태스크 체크리스트의 진행 상태 기호를 사용자가 직관적으로 이해할 수 있는 `[ ]`(대기), `[/]`(진행 중), `[x]`(완료) 3단계 상수 규칙에 맞게 전면 리팩토링했습니다.
 - **Ollama 백그라운드 자동 기동 호출 해제 및 헬스체크 비동기화**:
   - 앱 시작 시 사용자가 LMA(Llama.cpp) 등 다른 설정을 사용 중임에도 Ollama CLI가 깔려 있으면 무조건 `ollama serve` 백데몬을 시작하던 호출부를 비활성화했습니다.
   - `ollama:check-installed` IPC 핸들러의 동기식 `execSync` 호출을 비동기식 `exec`로 리팩토링하여, OS 쉘 검색 명령어 실행 시 발생하던 윈도우 CMD 창 깜빡임 현상을 차단하고 Electron 메인 스레드 블로킹을 해결했습니다.
@@ -30,10 +36,14 @@
 - `[NEW]` [RecoveryEngine.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/RecoveryEngine.ts) - 5단계 점진적 복구 사다리 프로토콜 실행 제어기.
 - `[NEW]` [test_recovery.js](file:///C:/Users/GAME/.gemini/antigravity-ide/brain/ca70e07b-8f8e-465d-a3a4-fd9224e74bf9/scratch/test_recovery.js) - 가변 윈도우 스캔 및 진행 단계 검증을 위한 Node.js 단위 테스트.
 - `[MODIFY]` [LLMEngineAdapter.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/LLMEngineAdapter.ts) - LlamaLocalEngineAdapter 내 `[DONE]` 수신 즉시 리더 종료 및 누적값 반환 수정.
-- `[MODIFY]` [AgentOrchestrator.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/AgentOrchestrator.ts) - SupervisorAgent 감시 등록, 5초 주기 체크포인트 타이머 기동, runSingleTurn 토큰 센서 주입 및 복구 실행 브릿지 통합.
-- `[MODIFY]` [useAIState.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/stores/useAIState.ts) - 복구 상태 및 시간, 추정 진행 단계 변수, 수동 재개 콜백 Zustand 바인딩.
-- `[MODIFY]` [useAIAgentMode.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIAgentMode.ts) - 딥리즈닝 기동 종료 시 수동 재개 콜백 클린업 결합.
-- `[MODIFY]` [ReasoningTraceViewer.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai-panel/chat-list/ReasoningTraceViewer.tsx) - Zustand 복구 상태 구독 및 경과 초/단계 실시간 가시화 카드 구축, 수동 재개 버튼 바인딩.
+- `[MODIFY]` [AgentOrchestrator.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/AgentOrchestrator.ts) - 플랜 수립 후 비동기 승인 대기, 피드백 기반 재계획, 태스크 가동 시작 및 비평 실패/통과 결과 실시간 피드백 방출 이식.
+- `[MODIFY]` [TaskVerifier.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/task/TaskVerifier.ts) - 정적/동적 검증 시 비평가 결과 메시지 방출 및 세션 시그니처 획득.
+- `[MODIFY]` [types.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/types.ts) - `plan_approval_request`, `critic_feedback`, `task_exec_start` 이벤트 및 페이로드 추가.
+- `[MODIFY]` [useAIState.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/stores/useAIState.ts) - `planApprovalState` 및 `resolvePlanApproval` 상태, 세터, resetAgentState 초기화 결합.
+- `[MODIFY]` [useAIAgentMode.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIAgentMode.ts) - 딥리즈닝 기동 내 태스크 시작 및 비평 결과 이벤트를 말풍선 `reasoningTrace`에 적재하는 수신기 구현.
+- `[MODIFY]` [useAIAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/useAIAgent.ts) - `deepReasoning` 사용 시 `runAgentMode` 실행 분기 이식 및 `pending` 승인 대기 상태의 유저 메시지를 피드백 resolve로 강제 매핑 처리.
+- `[MODIFY]` [AgentTaskChecklist.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/AgentTaskChecklist.tsx) - 상수를 대괄호 기호(`[ ]`, `[/]`, `[x]`)로 전환하고 pending 시 Proceed/Review 버튼 렌더링.
+- `[MODIFY]` [AIPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/AIPanel.tsx) - 챗 리스트 최상단에 `AgentTaskChecklist` 고정 마운트 및 `ameva:review-plan-request` 커스텀 윈도우 이벤트 감청 접두사 인풋 입력 제어.
 - `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - Ollama 자동 기동 호출부 비활성화 및 `ollama:check-installed` 내 `execSync`를 비동기 `exec`로 리팩토링.
 
 ## 2026-07-10 (Right Tab Strip UI/UX 고도화 & DrawingBlock 4대 결함 해결 리팩토링)

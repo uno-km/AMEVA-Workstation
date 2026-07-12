@@ -135,6 +135,9 @@ export type OrchestratorEventType =
   | 'task_step_update'   // 체크리스트 단계 상태 변경
   | 'final_answer'       // 최종 답변 확정
   | 'error'              // 루프 에러 발생
+  | 'plan_approval_request' // 플랜 승인 대기
+  | 'critic_feedback'    // 비평가 피드백
+  | 'task_exec_start'    // 태스크 실행 시작
 
 /**
  * OrchestratorEvent
@@ -151,6 +154,9 @@ export type OrchestratorEvent =
   | { type: 'task_step_update'; stepId: number; status: TaskStepStatus }
   | { type: 'final_answer'; answer: string }
   | { type: 'error'; message: string }
+  | { type: 'plan_approval_request'; plan: { goal: string; steps: TaskStep[] } }
+  | { type: 'critic_feedback'; verdict: 'PASS' | 'FAIL'; reason: string; taskTitle: string }
+  | { type: 'task_exec_start'; taskTitle: string; attempt: number }
 
 /**
  * OrchestratorEventCallback

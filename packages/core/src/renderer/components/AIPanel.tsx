@@ -67,6 +67,7 @@ import { useAIPanelLogic } from '../hooks/ai/useAIPanelLogic'
  * - AIPluginViews: 동적으로 입점하는 플러그인 뷰포트.
  */
 import { AIChatList } from './ai-panel/AIChatList'
+import { AgentTaskChecklist } from './ai/AgentTaskChecklist'
 import { AIPanelHeader } from './ai/AIPanelHeader'
 import { AIInputBar } from './ai/AIInputBar'
 import { AIWelcomeScreen } from './ai/AIWelcomeScreen'
@@ -737,6 +738,18 @@ export function AIPanel() {
     return () => window.removeEventListener('ameva:fill-ai-input', handler)
   }, [setInput, textareaRef])
 
+  // 플랜 리뷰 피드백 요청 시 챗 인풋에 접두사 작성 및 포커스 동기화
+  useEffect(() => {
+    const handler = () => {
+      setInput('[계획 리뷰] ')
+      setTimeout(() => {
+        textareaRef?.current?.focus()
+      }, 50)
+    }
+    window.addEventListener('ameva:review-plan-request', handler)
+    return () => window.removeEventListener('ameva:review-plan-request', handler)
+  }, [setInput, textareaRef])
+
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `!isOpen`
@@ -817,6 +830,7 @@ export function AIPanel() {
             <AIWelcomeScreen QUICK_ACTIONS={QUICK_ACTIONS} isAvailable={isAvailable} onAction={handleQuickAction} />
           ) : (
             <div ref={messagesContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column' }}>
+              <AgentTaskChecklist />
               <AIChatList
                 messages={messages}
                 messagesContainerRef={messagesContainerRef}

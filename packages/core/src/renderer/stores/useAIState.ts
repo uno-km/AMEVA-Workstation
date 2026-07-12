@@ -117,6 +117,12 @@ export interface AIState {
   resumeFromCheckpoint: (() => Promise<void>) | null;
   setResumeFromCheckpoint: (callback: (() => Promise<void>) | null) => void;
 
+  // ── 플랜 승인/리뷰 대기 상태 슬라이스 ──
+  planApprovalState: 'idle' | 'pending' | 'approved' | 'rejected';
+  setPlanApprovalState: (state: 'idle' | 'pending' | 'approved' | 'rejected') => void;
+  resolvePlanApproval: ((value: { approved: boolean; feedback?: string }) => void) | null;
+  setResolvePlanApproval: (resolve: ((value: { approved: boolean; feedback?: string }) => void) | null) => void;
+
   /** 오케스트레이터 상태 전체 초기화 (새 세션 시작 시 사용) */
   resetAgentState: () => void;
 }
@@ -257,6 +263,11 @@ export const useAIState = create<AIState>((set) => ({
   resumeFromCheckpoint: null,
   setResumeFromCheckpoint: (resumeFromCheckpoint) => set({ resumeFromCheckpoint }),
 
+  planApprovalState: 'idle',
+  setPlanApprovalState: (planApprovalState) => set({ planApprovalState }),
+  resolvePlanApproval: null,
+  setResolvePlanApproval: (resolvePlanApproval) => set({ resolvePlanApproval }),
+
   resetAgentState: () => set({
     agentPhase: 'idle',
     agentThoughts: [],
@@ -269,7 +280,9 @@ export const useAIState = create<AIState>((set) => ({
     recoveryReason: null,
     recoveryElapsed: 0,
     inferencePhase: 'Planning',
-    resumeFromCheckpoint: null
+    resumeFromCheckpoint: null,
+    planApprovalState: 'idle',
+    resolvePlanApproval: null
   })
 }));
 

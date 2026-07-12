@@ -8,7 +8,7 @@
  * - useAIAgentMode.ts: SupervisorAgent의 Stalled 신호 수신 시 RecoveryEngine.handleStall()을 호출.
  */
 
-import { useAIState } from '../../../stores/useAIState';
+import { useAIState } from '../../../../stores/useAIState';
 import { FailureMemory } from './FailureMemory';
 import type { RecoveryReason, RecoveryCheckpoint } from './types';
 import { CheckpointSystem } from './CheckpointSystem';

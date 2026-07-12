@@ -32,13 +32,13 @@ import type { TaskStepStatus } from '../../services/ai/orchestrator/types'
  */
 const CHECKLIST_CONSTANTS = {
   /** 체크 완료 아이콘 */
-  ICON_DONE: '✓',
+  ICON_DONE: '[x]',
   /** 진행 중 아이콘 */
-  ICON_IN_PROGRESS: '◉',
+  ICON_IN_PROGRESS: '[/]',
   /** 대기 중 아이콘 */
-  ICON_PENDING: '○',
+  ICON_PENDING: '[ ]',
   /** 실패 아이콘 */
-  ICON_FAILED: '✗',
+  ICON_FAILED: '[!]',
   /** 최대 표시 단계 수 (접힘 상태) */
   MAX_VISIBLE_STEPS_COLLAPSED: 5
 } as const
@@ -110,6 +110,8 @@ export function AgentTaskChecklist() {
   const agentTaskPlan = useAIState((s) => s.agentTaskPlan)
   const agentPhase = useAIState((s) => s.agentPhase)
   const taskProgress = useAIState((s) => s.taskProgress)
+  const planApprovalState = useAIState((s) => s.planApprovalState)
+  const resolvePlanApproval = useAIState((s) => s.resolvePlanApproval)
 
   // Plan이 없으면 렌더링하지 않음
   if (!agentTaskPlan || agentTaskPlan.steps.length === 0) return null
@@ -265,6 +267,59 @@ export function AgentTaskChecklist() {
           textAlign: 'center'
         }}>
           ✓ 모든 단계 완료
+        </div>
+      )}
+
+      {/* ── Human-in-the-loop: 플랜 승인 / 리뷰 인터랙션 카드 ── */}
+      {planApprovalState === 'pending' && (
+        <div style={{
+          marginTop: '12px',
+          paddingTop: '10px',
+          borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+          display: 'flex',
+          gap: '8px'
+        }}>
+          <button
+            onClick={() => {
+              if (resolvePlanApproval) {
+                resolvePlanApproval({ approved: true })
+              }
+            }}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '6px',
+              background: 'linear-gradient(135deg, #10b981, #059669)',
+              color: '#fff',
+              fontSize: '11px',
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'transform 0.15s ease',
+              boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+            }}
+          >
+            실시 (Proceed)
+          </button>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('ameva:review-plan-request'))
+            }}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              borderRadius: '6px',
+              background: 'rgba(255, 255, 255, 0.06)',
+              border: '1px solid rgba(255, 255, 255, 0.12)',
+              color: 'rgba(220, 220, 240, 0.9)',
+              fontSize: '11px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+          >
+            리뷰 (Review)
+          </button>
         </div>
       )}
 

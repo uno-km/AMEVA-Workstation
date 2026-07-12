@@ -9,9 +9,9 @@
  * - AgentOrchestrator.ts: 토큰 유입 시 onToken()을 호출하여 시간 갱신 연동.
  */
 
-import { useAIState } from '../../../stores/useAIState';
+import { useAIState } from '../../../../stores/useAIState';
 import type { RecoveryState, RecoveryReason, InferencePhase } from './types';
-import * as ipc from '../../../services/ipc/electronApiAdapter';
+import * as ipc from '../../../../services/ipc/electronApiAdapter';
 
 /**
  * SupervisorAgent

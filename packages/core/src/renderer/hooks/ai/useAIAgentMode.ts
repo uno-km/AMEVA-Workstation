@@ -507,6 +507,57 @@ async function runDeepReasoningMode(
         updateAgentTaskStepStatus(event.stepId, event.status)
         break
 
+      case 'plan_approval_request':
+        // 렌더러가 planApprovalState === 'pending' 상태를 인지해 승인 UI 카드를 렌더링하도록 유도함
+        break
+
+      case 'task_exec_start':
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          const existingTrace = m.reasoningTrace || []
+          return {
+            ...m,
+            isStreaming: true,
+            isThinking: true,
+            reasoningTrace: [
+              ...existingTrace,
+              {
+                id: `orch_task_exec_${m.id}_${Date.now()}`,
+                source: 'model' as const,
+                type: 'thinking' as const,
+                text: `⚙️ [태스크 실행] ${event.taskTitle} (시도: ${event.attempt}회차)`,
+                model: finalSettings.modelPath || 'unknown',
+                timestamp: new Date().toISOString()
+              }
+            ]
+          }
+        }))
+        break
+
+      case 'critic_feedback':
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          const existingTrace = m.reasoningTrace || []
+          const icon = event.verdict === 'PASS' ? '✅' : '❌'
+          return {
+            ...m,
+            isStreaming: true,
+            isThinking: true,
+            reasoningTrace: [
+              ...existingTrace,
+              {
+                id: `orch_critic_${m.id}_${Date.now()}`,
+                source: 'critic' as const,
+                type: 'thinking' as const,
+                text: `${icon} [자아비판 피드백] ${event.reason}`,
+                model: 'TaskVerifier',
+                timestamp: new Date().toISOString()
+              }
+            ]
+          }
+        }))
+        break
+
       case 'final_answer':
         setMessages((prev) => prev.map((m) => {
           if (m.id !== assistantId) return m

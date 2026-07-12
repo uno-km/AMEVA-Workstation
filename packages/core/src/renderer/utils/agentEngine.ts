@@ -18,7 +18,8 @@
  */
 
 import * as ipc from '../services/ipc/electronApiAdapter'
-import { AgentState, ToolDefinition, AgentConfig, AgentSessionStep, AgentSessionResult, ILLMAdapter } from './agent/types'
+import { AgentState } from './agent/types'
+import type { ToolDefinition, AgentConfig, AgentSessionStep, AgentSessionResult, ILLMAdapter } from './agent/types'
 import { LlamaCppAdapter } from './agent/adapters/LlamaCppAdapter'
 import { OllamaAdapter } from './agent/adapters/OllamaAdapter'
 import { tryHealJSON } from './agent/tryHealJSON'

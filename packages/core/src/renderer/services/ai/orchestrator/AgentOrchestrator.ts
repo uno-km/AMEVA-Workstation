@@ -45,13 +45,21 @@ import { ThoughtParser } from './ThoughtParser'
 import { ToolRegistry } from './ToolRegistry'
 
 // 신규 Task Runtime 모듈 임포트
-import { TaskPlanner } from './task/TaskPlanner'
 import { TaskGraph } from './task/TaskGraph'
 import { TaskQueue } from './task/TaskQueue'
 import { TaskExecutor } from './task/TaskExecutor'
 import { TaskVerifier } from './task/TaskVerifier'
 import { TaskCompletionManager } from './task/TaskCompletionManager'
 import { FinalReporter } from './task/FinalReporter'
+import { TaskEventLog } from './task-runtime/events/TaskEventLog'
+import { TaskRuntimeStore } from './task-runtime/store/TaskRuntimeStore'
+import { LegacyTaskPlanAdapter, LegacyTaskPayload } from './task-runtime/compatibility/LegacyTaskPlanAdapter'
+
+// PHASE 2 신규 Planning 파이프라인 임포트
+import { GoalInterpreter } from './task-runtime/planning/goal/GoalInterpreter'
+import { TaskPlanner as V2TaskPlanner } from './task-runtime/planning/planner/TaskPlanner'
+import { PlanValidator } from './task-runtime/planning/validation/PlanValidator'
+import { PlanActivationService } from './task-runtime/planning/activation/PlanActivationService'
 
 /*
  * [SELF-HEALING MIDDLEWARE IMPORT]
@@ -177,6 +185,10 @@ export class AgentOrchestratorSession {
   // 신규 Task Runtime 멤버
   private taskQueue: TaskQueue | null = null
   private taskGraph: TaskGraph | null = null
+
+  // Task Runtime V2 Core Store (Shadow Mode)
+  private readonly eventLog: TaskEventLog = new TaskEventLog()
+  private readonly taskStore: TaskRuntimeStore = new TaskRuntimeStore(this.eventLog)
 
   /*
    * [PRIVATE STATE - Accumulators]
@@ -374,6 +386,15 @@ export class AgentOrchestratorSession {
     const planner = new TaskPlanner(this.adapter)
     const initialTasks = await planner.plan(userMessage)
 
+    // [Task Runtime V2] Legacy JSON(initialTasks) -> Domain Entity 변환 및 Store 등록 (Shadow Mode)
+    const adapterResult = LegacyTaskPlanAdapter.importFromLegacy(initialTasks as unknown as LegacyTaskPayload[]);
+    for (const entity of adapterResult.importedTasks) {
+      this.taskStore.registerTask(entity, this.sessionId);
+    }
+    if (adapterResult.warnings.length > 0) {
+      ipc.llmAddLog({ text: `[AgentOrchestrator] Task Runtime V2 Adapter 경고: ${adapterResult.warnings.length}건 발생`, prefix: 'TaskV2' });
+    }
+
     // 2. Task Graph 및 Queue, Completion Manager 초기화
     this.taskGraph = new TaskGraph(initialTasks)
     
@@ -421,6 +442,27 @@ export class AgentOrchestratorSession {
     // 최초 UI 동기화
     syncUIState()
 
+    // ── Human-in-the-loop: Task Plan 승인 대기 ──
+    const approvalResult = await new Promise<{ approved: boolean; feedback?: string }>((resolve) => {
+      state.setPlanApprovalState('pending')
+      state.setResolvePlanApproval(resolve)
+      
+      this.emitEvent({
+        type: 'plan_approval_request',
+        plan: { goal: userMessage, steps: state.agentTaskPlan?.steps ?? [] }
+      })
+    })
+
+    state.setPlanApprovalState('idle')
+    state.setResolvePlanApproval(null)
+
+    if (!approvalResult.approved) {
+      ipc.llmAddLog({ text: `[AgentOrchestrator] 사용자가 플랜 리뷰를 요청했습니다: ${approvalResult.feedback}`, prefix: 'Orchestrator' })
+      const replannedMessage = `[이전 목표]\n${userMessage}\n\n[사용자 피드백에 따른 계획 수정 요청]\n${approvalResult.feedback ?? ''}`
+      this.cleanupRecovery()
+      return await this.run(replannedMessage, history)
+    }
+
     try {
       const executor = new TaskExecutor()
       const verifier = new TaskVerifier(this.adapter)
@@ -449,20 +491,83 @@ export class AgentOrchestratorSession {
         while (currentTask.retries <= currentTask.maxRetries && !this.isAborted) {
           currentTask.retries++;
           
+          // 태스크 실행 시작 이벤트 방출
+          this.emitEvent({
+            type: 'task_exec_start',
+            taskTitle: currentTask.title,
+            attempt: currentTask.retries
+          })
+          
           // 태스크별 ReAct 루프 가동
           this.accumulatedAnswer = '' // 답변 버퍼 초기화
           const result = await executor.execute(currentTask, this)
 
           if (result.status === 'SUCCESS') {
             // Verifier를 통한 2단계 사후 검정
-            verifyPassed = await verifier.verify(currentTask, result)
+            verifyPassed = await verifier.verify(currentTask, result, this)
             if (verifyPassed) {
               this.taskQueue.setCompleted(currentTask.id, result)
+              
+              // [Task Runtime V2] 상태 전이 동기화 (RUNNING -> VERIFYING -> COMPLETED)
+              try {
+                const shadowAttemptId = `attempt_${crypto.randomUUID()}`;
+                
+                // 1. READY 전이
+                this.taskStore.dispatchTransition({
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'PENDING', expectedStateVersion: 1, reason: 'Shadow Sync READY', actor: 'orchestrator', timestamp: Date.now()
+                }, 'READY');
+                
+                // 2. RUNNING 전이 (Attempt 활성화)
+                this.taskStore.dispatchTransition({
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'READY', expectedStateVersion: 2, reason: 'Shadow Sync RUNNING', actor: 'orchestrator', timestamp: Date.now()
+                }, 'RUNNING', { 
+                  activeAttemptId: shadowAttemptId,
+                  attempts: {
+                    [shadowAttemptId]: {
+                      attemptId: shadowAttemptId, taskId: currentTask.id, sequence: currentTask.retries, status: 'RUNNING', reasoningTurns: 1, toolCallCount: 1, recoveryCount: 0
+                    }
+                  }
+                });
+
+                // 3. VERIFYING 전이
+                this.taskStore.dispatchTransition({
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'RUNNING', expectedStateVersion: 3, reason: 'Shadow Sync VERIFYING', actor: 'orchestrator', timestamp: Date.now()
+                }, 'VERIFYING');
+
+                // 4. COMPLETED 전이 (Result 및 Verification 주입)
+                this.taskStore.dispatchTransition({
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'VERIFYING', expectedStateVersion: 4, reason: 'Shadow Sync COMPLETED', actor: 'orchestrator', timestamp: Date.now()
+                }, 'COMPLETED', {
+                  taskResult: {
+                    attemptId: shadowAttemptId, taskId: currentTask.id, createdAt: Date.now(), status: 'COMPLETED', summary: result.summary || '', outputs: [], evidence: []
+                  } as any,
+                  verification: {
+                    verificationId: crypto.randomUUID(), taskId: currentTask.id, attemptId: shadowAttemptId, verdict: 'PASS', passedCriteria: [], failedCriteria: [], verifierType: 'semantic', createdAt: Date.now()
+                  }
+                });
+              } catch (e: any) { 
+                ipc.llmAddLog({ text: `[AgentOrchestrator] Shadow Sync Drift 감지: ${e.message}`, prefix: 'TaskV2' });
+              }
+
+              this.emitEvent({
+                type: 'critic_feedback',
+                verdict: 'PASS',
+                reason: `태스크 ${currentTask.id} (${currentTask.title}) 비평가 검증 최종 통과.`,
+                taskTitle: currentTask.title
+              })
               break
             }
           }
 
           // 검증 실패 시 또는 실행 실패 시 처리
+          const failReason = result.status !== 'SUCCESS' ? (result.summary || '실행 오류') : '의미론적 산출 기준 미달';
+          this.emitEvent({
+            type: 'critic_feedback',
+            verdict: 'FAIL',
+            reason: `태스크 ${currentTask.id} (${currentTask.title}) 비평 검증 실패 (사유: ${failReason}). 재시도 대기...`,
+            taskTitle: currentTask.title
+          })
+          
           ipc.llmAddLog({ text: `[AgentOrchestrator] 태스크 ${currentTask.id} 수행 또는 검증 실패 (시도 ${currentTask.retries}/${currentTask.maxRetries})`, prefix: 'Orchestrator' })
           
           if (currentTask.retries > currentTask.maxRetries) {
@@ -491,6 +596,38 @@ export class AgentOrchestratorSession {
         this.currentTurn,
         this.supervisor.getRecoveryCount ? this.supervisor.getRecoveryCount() : 0
       )
+
+      /**
+       * [PHASE 2 Integration Point]
+       * 새로운 Planning Pipeline 을 구동하는 진입점.
+       * AgentOrchestrator는 기존의 run()과는 별개로 이 진입점을 통해 Goal을 구조화하고
+       * V2 플랜을 활성화할 수 있습니다.
+       */
+      public async planAndActivateV2(missionId: string, rawRequest: string): Promise<void> {
+        const interpreter = new GoalInterpreter();
+        const planner = new V2TaskPlanner();
+        const validator = new PlanValidator();
+        const activationService = new PlanActivationService(this.taskRuntimeStore);
+
+        // 1. 목표 구조화
+        const spec = await interpreter.interpret(missionId, rawRequest);
+
+        // 2. Draft Plan 생성
+        const draftPlan = await planner.createPlan(spec);
+
+        // 3. Validation
+        const valResult = validator.validate(draftPlan, spec);
+        if (!valResult.valid) {
+          this.emit('error', new Error(`Plan validation failed: ${valResult.errors.map(e => e.message).join(', ')}`));
+          return;
+        }
+
+        // 4. Activation
+        draftPlan.status = 'APPROVED';
+        activationService.activate(draftPlan);
+
+        this.emit('log', 'PHASE 2 Planning Pipeline activated successfully.');
+      }
 
       // 최종 상태 바인딩
       state.setFinalReport(finalReportText)

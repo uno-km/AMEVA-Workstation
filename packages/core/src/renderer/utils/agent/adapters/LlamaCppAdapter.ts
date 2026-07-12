@@ -18,7 +18,7 @@
  */
 
 import * as ipc from '../../../services/ipc/electronApiAdapter'
-import { ILLMAdapter } from '../types'
+import type { ILLMAdapter } from '../types'
 
 export class LlamaCppAdapter implements ILLMAdapter {
   private endpoint: string;
