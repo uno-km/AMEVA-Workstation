@@ -234,7 +234,7 @@ export function registerLlmLifecycleIpc(): void {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const ok = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
+      const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 16384, true)
       return { success: ok, error: ok ? undefined : '재기동 실패 (CPU 폴백 포함)' }
     } catch (err: any) {
       return { success: false, error: err.message }
@@ -298,7 +298,7 @@ export function registerLlmLifecycleIpc(): void {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const ok = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 8192, true)
+      const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 16384, true)
       return { success: ok, error: ok ? undefined : '엔진 기동 실패' }
     } catch (err: any) {
       return { success: false, error: err.message }

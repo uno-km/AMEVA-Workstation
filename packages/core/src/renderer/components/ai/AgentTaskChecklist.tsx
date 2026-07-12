@@ -116,7 +116,12 @@ export function AgentTaskChecklist() {
   // Plan이 없으면 렌더링하지 않음
   if (!agentTaskPlan || agentTaskPlan.steps.length === 0) return null
 
-  const { steps, goal } = agentTaskPlan
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - 변수 명: `steps`
+   * - Rationale: 미사용 goal 변수 경고를 제거하기 위해 steps만 단독 비구조화 할당하여 사용한다.
+   */
+  const { steps } = agentTaskPlan
   const completedCount = steps.filter((s) => s.status === 'done').length
   const progressPercent = taskProgress // 신규 Task Runtime의 실질 진행률로 대체
 

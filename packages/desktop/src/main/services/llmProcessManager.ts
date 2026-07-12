@@ -141,6 +141,8 @@ export class LLMProcessManager {
   static activeServerProcess: ChildProcess | null = null
   // activeServerModelPath: 현재 기동 적재 중인 GGUF 파일 절대 경로.
   static activeServerModelPath: string | null = null
+  // activeServerContextSize: 현재 기동 적재 중인 컨텍스트 크기.
+  static activeServerContextSize: number | null = null
   // serverStartingPromise: 중복 서버 시작 요청을 방지하기 위한 공유 프라미스 락.
   static serverStartingPromise: Promise<boolean> | null = null
   // [FIX-FLICKER-001] 기동 중 표시 가드 락.
@@ -424,13 +426,14 @@ export class LLMProcessManager {
     contextSize: number,
     gpuFirst: boolean
   ): Promise<boolean> {
-    // 이미 같은 모델 파일로 실행 중이라면 바이패스
+    // 이미 같은 모델 파일 및 컨텍스트 크기로 실행 중이라면 바이패스
     if (
       this.activeServerProcess &&
       this.activeServerModelPath === modelPath &&
+      this.activeServerContextSize === contextSize &&
       !this.serverStartingPromise
     ) {
-      this.logToRenderer(`[System] 기존 llama-server 인스턴스 재사용 (모델: ${basename(modelPath)})\n`)
+      this.logToRenderer(`[System] 기존 llama-server 인스턴스 재사용 (모델: ${basename(modelPath)}, 컨텍스트: ${contextSize})\n`)
       return true
     }
 
@@ -467,6 +470,7 @@ export class LLMProcessManager {
         try { this.activeServerProcess.kill('SIGKILL') } catch {}
         this.activeServerProcess = null
         this.activeServerModelPath = ''
+        this.activeServerContextSize = null
       }
       await this.asyncCleanupOrphanedProcesses()
 
@@ -503,7 +507,8 @@ export class LLMProcessManager {
         '-ngl', String(ngl),
         '-t', String(threads),
         '--embedding',
-        '-cb'
+        '-cb',
+        '-np', '2'
       ]
 
       this.logToRenderer(`[System] 로컬 AI 엔진 기동 중 (Port: ${this.serverPort}, GPU 가속 레이어 ngl: ${ngl}, 스레드: ${threads})...\n`)
@@ -565,6 +570,7 @@ export class LLMProcessManager {
               isResolved = true
               this.activeServerProcess = proc
               this.activeServerModelPath = modelPath
+              this.activeServerContextSize = contextSize
               resolve(true)
             }
           }
@@ -600,6 +606,7 @@ export class LLMProcessManager {
               isResolved = true
               this.activeServerProcess = proc
               this.activeServerModelPath = modelPath
+              this.activeServerContextSize = contextSize
               resolve(true)
             }
           }
@@ -659,6 +666,7 @@ export class LLMProcessManager {
             isResolved = true
             this.activeServerProcess = proc
             this.activeServerModelPath = modelPath
+            this.activeServerContextSize = contextSize
             resolve(true)
           }
         }, 12000)

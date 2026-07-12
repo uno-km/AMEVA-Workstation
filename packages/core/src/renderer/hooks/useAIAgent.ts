@@ -55,6 +55,7 @@ import { useAIQueue } from './ai/useAIQueue'
 import { useAIEngineLogs } from './ai/useAIEngineLogs'
 import * as ipc from '../services/ipc/electronApiAdapter'
 import { WebLLMEngine } from '../services/ai/WebLLMEngine'
+import type { AIMessage } from '../types/aiTypes'
 
 /* 
  * [SUB-DOMAINS ACTION ENGINES]

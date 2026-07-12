@@ -532,6 +532,7 @@ ipcMain.handle('ollama:check-health', async () => {
   }
 })
 
+/*
 // 🦙 Ollama 백그라운드 서버가 설치되어 있고 꺼져 있는 경우, 시작 시 자동 기동하는 백데몬 헬퍼
 async function autoStartOllamaIfInstalled() {
   try {
@@ -621,6 +622,7 @@ async function autoStartOllamaIfInstalled() {
     console.error('[OllamaAutoStart] 자동 시작 도중 오류 발생:', err)
   }
 }
+*/
 
 // Electron 준비 완료 시점의 윈도우 기동 및 CSP 보안 구성
 app.whenReady().then(() => {
@@ -855,7 +857,7 @@ app.whenReady().then(() => {
       
       // 로컬 LLM CLI 바이너리와 GGUF 파일이 존재할 때만 웜업 서버 기동 트리거
       if (llamaPath && fs.existsSync(defaultModelPath)) {
-        LLMProcessManager.startLlamaServerWithFallback(llamaPath, defaultModelPath, 8192, true)
+        LLMProcessManager.startLlamaServerWithFallback(llamaPath, defaultModelPath, 16384, true)
           .then(ok => console.log('Background Warmup Status:', ok))
           .catch(err => console.error('Background Warmup Failed:', err))
       }

@@ -63,7 +63,14 @@ const BUBBLE_CONSTANTS = {
  * 에이전트의 실시간 사고 과정을 시각화하는 버블 컴포넌트.
  * Thinking → Working → Done 3단계 UI 전환을 처리한다.
  */
-export function AgentThoughtBubble({ messageId, isDeepReasoning }: AgentThoughtBubbleProps) {
+export function AgentThoughtBubble(props: AgentThoughtBubbleProps) {
+  /*
+   * [RUN-TIME STATE / INVARIANT]
+   * - Rationale: messageId가 외부 프롭스로 전달되지만 사용되지 않아 컴파일 경고를 발생시키므로,
+   *   구조 분해를 시그니처가 아닌 컴포넌트 본문 내부로 옮겨 messageId를 로컬 변수로 바인딩하지 않도록 조치함.
+   */
+  const { isDeepReasoning } = props
+
   /*
    * [ZUSTAND SUBSCRIPTION]
    * - agentPhase: 현재 에이전트 단계 (idle/thinking/tool_calling/observing/answering/done/error).

@@ -39,8 +39,10 @@ import { useAIState } from '../../stores/useAIState'
 /* 
  * [TYPES]
  * - AISettings: AI 엔진 온도, 최대 토큰 등의 속성 구조체.
+ * - AgentModeResult: 에이전트 모드 실행 결과 구조체.
  */
 import type { AISettings } from '../../types/aiTypes'
+import type { AgentModeResult } from './useAIAgentMode'
 
 /** 
  * 대기 큐 항목 타입 정의
@@ -58,6 +60,8 @@ export interface QueueItem {
 
 /** 
  * generateResponse 함수의 콜백 시그니처 정의
+ * - [EXPECTED VALUE FLOW]: string / Partial<AISettings> / editorInstance / taggedBlocks -> Promise<void | AgentModeResult>
+ * - [Rationale]: 에이전트 모드 도입으로 generateResponse가 AgentModeResult를 반환하므로 콜백 호환성을 위해 리턴 타입을 void에서 AgentModeResult 유니온으로 확장함.
  */
 export type GenerateFn = (
   userMessage: string,
@@ -67,7 +71,7 @@ export type GenerateFn = (
   runtimeSettings?: Partial<AISettings>,
   editorInstance?: any,
   taggedBlocks?: { id: string; text: string }[]
-) => Promise<void>
+) => Promise<void | AgentModeResult>
 
 /**
  * @hook useAIQueue
@@ -95,8 +99,9 @@ export function useAIQueue(
   const pendingQueueRef = useRef<QueueItem[]>([])
 
   // Zustand 스토어의 pendingQueue 상태 변경 시 로컬 동기용 Ref를 1:1 싱크 맞춤 (좀비 큐 부활 버그 차단)
+  // - Rationale: Zustand 스토어의 pendingQueue 타입을 QueueItem[] 으로 안전하게 단언하여 컴파일 타입 에러를 해결함.
   useEffect(() => {
-    pendingQueueRef.current = [...pendingQueue]
+    pendingQueueRef.current = [...pendingQueue] as QueueItem[]
   }, [pendingQueue])
 
   /**

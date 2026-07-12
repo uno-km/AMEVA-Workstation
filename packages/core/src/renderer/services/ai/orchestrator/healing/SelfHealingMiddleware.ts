@@ -122,10 +122,15 @@ export class SelfHealingMiddleware implements ISelfHealingMiddleware {
       return phase1Result
     }
 
-    ipc.llmAddLog({
-      text: `[SelfHealing] Phase 1 실패: ${phase1Result.error}. Phase 2 (LLM Slow-Track) 시작...`,
-      prefix: 'SelfHeal'
-    })
+    // [ALGORITHM BRANCH / DECISION]
+    // - 조건: phase1Result.success가 거짓(false)일 때.
+    // - Rationale: TypeScript Discriminated Union narrowing 보장을 위해 명시적으로 if (!phase1Result.success) 스코프 내에서 error에 접근한다.
+    if (!phase1Result.success) {
+      ipc.llmAddLog({
+        text: `[SelfHealing] Phase 1 실패: ${phase1Result.error}. Phase 2 (LLM Slow-Track) 시작...`,
+        prefix: 'SelfHeal'
+      })
+    }
 
     /* ─────────────────────────────────────────────────
      * PHASE 2: LLMHealingDelegate (비동기, LLM 재호출)
@@ -165,17 +170,16 @@ export class SelfHealingMiddleware implements ISelfHealingMiddleware {
     /*
      * [UPDATE ATTEMPT COUNTER]
      * - Phase 2 시도 결과에 따라 카운터를 갱신한다.
+     * - Rationale: 삼항 연산자에서는 TypeScript의 Discriminated Union narrowing이 정상 작동하지 않아 컴파일 에러를 야기하므로, 명시적인 if-else 분기로 리팩토링한다.
      */
-    this.llmAttemptCount = phase2Result.success
-      ? this.llmAttemptCount + 1
-      : phase2Result.llmAttempts
-
     if (phase2Result.success) {
+      this.llmAttemptCount = this.llmAttemptCount + 1
       ipc.llmAddLog({
         text: `[SelfHealing] Phase 2 성공 (LLM). 복구 완료. 총 LLM 시도: ${this.llmAttemptCount}회`,
         prefix: 'SelfHeal'
       })
     } else {
+      this.llmAttemptCount = phase2Result.llmAttempts
       ipc.llmAddLog({
         text: `[SelfHealing] Phase 2 실패: ${phase2Result.error}`,
         prefix: 'SelfHeal'

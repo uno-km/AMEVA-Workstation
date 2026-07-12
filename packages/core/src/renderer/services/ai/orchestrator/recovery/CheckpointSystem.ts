@@ -24,7 +24,9 @@ function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onupgradeneeded = (event) => {
+    // [RUN-TIME STATE / INVARIANT]
+    // - Rationale: 미사용 event 매개변수 경고를 회피하기 위해 접두사 _event 로 명명한다.
+    request.onupgradeneeded = (_event) => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_CHECKPOINTS)) {
         db.createObjectStore(STORE_CHECKPOINTS, { keyPath: 'sessionId' });
@@ -38,7 +40,9 @@ function openDB(): Promise<IDBDatabase> {
       resolve(request.result);
     };
 
-    request.onerror = (event) => {
+    // [RUN-TIME STATE / INVARIANT]
+    // - Rationale: 미사용 event 매개변수 경고를 회피하기 위해 접두사 _event 로 명명한다.
+    request.onerror = (_event) => {
       console.error('[CheckpointSystem] IndexedDB 오픈 실패:', request.error);
       reject(request.error);
     };

@@ -10,7 +10,7 @@
  */
 
 import { useAIState } from '../../../../stores/useAIState';
-import type { RecoveryState, RecoveryReason, InferencePhase } from './types';
+import type { RecoveryReason, InferencePhase } from './types';
 import * as ipc from '../../../../services/ipc/electronApiAdapter';
 
 /**
@@ -29,7 +29,6 @@ export class SupervisorAgent {
   private lastChunkTime = Date.now();
   private lastThoughtLength = 0;
   private lastThoughtChangeTime = Date.now();
-  private lastToolCallTime = Date.now();
   private accumulatedTokens = 0;
 
   private constructor() {}
@@ -57,7 +56,6 @@ export class SupervisorAgent {
     this.lastChunkTime = now;
     this.lastThoughtLength = 0;
     this.lastThoughtChangeTime = now;
-    this.lastToolCallTime = now;
     this.accumulatedTokens = 0;
 
     // 10초 주기 백그라운드 Watchdog 구동
@@ -95,10 +93,7 @@ export class SupervisorAgent {
       this.lastThoughtChangeTime = now;
     }
 
-    // 2. 도구 호출 시간 갱신
-    if (isToolCalling) {
-      this.lastToolCallTime = now;
-    }
+    // 2. 도구 호출 시간 갱신은 현재 감시 로직에서 사용되지 않아 생략함
 
     // 3. Inference Phase 추정 (모델 독립적 휴리스틱)
     let currentPhase: InferencePhase = 'Reasoning';

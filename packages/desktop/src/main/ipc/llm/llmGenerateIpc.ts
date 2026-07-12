@@ -233,7 +233,7 @@ export function registerLlmGenerateIpc(): void {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const contextSize = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const contextSize = payload.contextSize ?? 8192
+    const contextSize = payload.contextSize ?? 16384
 
     const { fullPrompt, stopTokens } = formatPromptForModel(modelPath, systemPrompt, payload)
 

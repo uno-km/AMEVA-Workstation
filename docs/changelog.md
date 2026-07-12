@@ -1,5 +1,35 @@
 # AMEVA OS Changelog
 
+## 2026-07-13 (TypeScript 컴파일 에러 해결 및 미사용 변수/타입 경고 제거)
+
+### 🚀 주요 아키텍처 및 소스 정비 사항
+- **TypeScript `verbatimModuleSyntax` 컴파일 에러 정복**:
+  - `useAIAgent.ts` 및 `useAIQueue.ts`에서 타입 전용 선언인 `AIMessage`와 `AgentModeResult`를 참조할 때 `import` 대신 `import type` 구문으로 강제하여 verbatimModuleSyntax 제약 조건하의 타입 오류를 정복했습니다.
+  - `useAIQueue.ts`에서 큐 내 Zustand 스토어의 `pendingQueue` 데이터를 복사하는 과정에서 발생한 `unknown[]` -> `QueueItem[]` 타입 호환 에러를 명시적인 Type Assertion(`as QueueItem[]`)으로 해결했습니다.
+  - `GenerateFn` 콜백의 리턴 타입을 `Promise<void>`에서 `Promise<void | AgentModeResult>`로 넓힘으로써, 에이전트 모드가 추가된 `generateResponse` 함수의 반환 시그니처와 매칭되도록 동기화시켰습니다.
+- **자가 치유 파이프라인 (SelfHealingMiddleware) 타입 Narrowing 개선**:
+  - Discriminated Union 타입인 `HealingResult`에서 TypeScript의 control flow analysis가 `success` 필드를 통한 narrowing을 잃어버리는 문제를 해결했습니다.
+  - Phase 1 실패 에러 로그 시 `if (!phase1Result.success)` 타입 가드 내에서 error를 명확히 참조하도록 개선했습니다.
+  - `llmAttemptCount` 업데이트 시 삼항 연산자를 사용하면 타입 narrowing이 깨지는 병목을 `if-else` 분기 구조로 리팩토링하여 `else` 분기 내부에서 `phase2Result.llmAttempts`와 `phase2Result.error`가 확실히 narrowing 되도록 구조화했습니다.
+- **미사용 컴포넌트 프롭스 및 로컬 변수 경고 전수 해결**:
+  - `AgentTaskChecklist.tsx`에서 비구조화 할당되었으나 실제 렌더링에 사용되지 않는 `goal` 변수를 할당 목록에서 제외하여 unused local 경고를 제거했습니다.
+  - `AgentThoughtBubble.tsx`에서 프롭으로 수신되나 활용되지 않는 `messageId`로 인한 linter 에러를 방지했습니다. 외부 호출 규격을 완벽히 보존하기 위해 시그니처에서 직접 구조 분해하지 않고 `props` 매개변수로 수신한 뒤 컴포넌트 내부에서 `isDeepReasoning`만 구조 분해하여 타입 검사를 안전하게 우회했습니다.
+- **에이전트 복구 엔진 (Checkpoint & Watchdog) Linter 경고 해소**:
+  - `CheckpointSystem.ts` 내의 IndexedDB 이벤트 핸들러(`onupgradeneeded`, `onerror`)에서 사용되지 않는 `event` 매개변수를 `_event`로 변경하여 linter 경고를 방지했습니다.
+  - `SupervisorAgent.ts`에서 사용되지 않는 `RecoveryState` 임포트를 제거했습니다. 아울러 감시 로직 내에서 상태 할당만 되고 읽히지 않는 `lastToolCallTime` 멤버 필드 및 관련 타임스탬프 갱신 연산들을 전부 삭제하여 불필요한 메모리/연산을 절약했습니다.
+- **일렉트론 메인 데몬 자동 기동 함수 주석 처리**:
+  - `packages/desktop/src/main/index.ts` 내에서 Ollama 자동 실행 비활성화 정책(2026-07-12)에 의해 호출부가 주석 처리되었으나, 함수 정의부 자체가 남아 발생하던 unused warning을 해소하기 위해 `autoStartOllamaIfInstalled` 함수 선언부 전체를 블록 주석 처리했습니다.
+
+### 📁 수정된 파일 목록
+- `[MODIFY]` [useAIAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/useAIAgent.ts) - AIMessage 타입 임포트를 import type으로 교정.
+- `[MODIFY]` [useAIQueue.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIQueue.ts) - AgentModeResult 임포트 교정, GenerateFn 리턴 타입 넓힘 및 QueueItem[] 캐스팅 추가.
+- `[MODIFY]` [SelfHealingMiddleware.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/healing/SelfHealingMiddleware.ts) - Discriminated Union 타입 narrowing 해소를 위해 삼항 연산자를 if-else 분기로 리팩토링.
+- `[MODIFY]` [AgentTaskChecklist.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/AgentTaskChecklist.tsx) - 구조 분해 할당문에서 미사용 goal 변수 제거.
+- `[MODIFY]` [AgentThoughtBubble.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/AgentThoughtBubble.tsx) - messageId 미사용 경고 제거를 위해 props 매개변수 구조 분해 구조 개선.
+- `[MODIFY]` [CheckpointSystem.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/CheckpointSystem.ts) - IndexedDB 콜백 매개변수 event를 _event로 변경.
+- `[MODIFY]` [SupervisorAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/SupervisorAgent.ts) - 미사용 RecoveryState 타입 임포트 제거 및 미사용 lastToolCallTime 멤버 변수와 할당 코드 제거.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - 미사용 autoStartOllamaIfInstalled 함수 선언부 전체 블록 주석 처리.
+
 ## 2026-07-12 (Recovery-First Agent Runtime Architecture 구현 및 Ollama 자동 기동 비활성화)
 
 ### 🚀 주요 아키텍처 변경 사항

@@ -433,7 +433,7 @@ export class MissionExecutionRuntime {
       }
 
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const msg = error instanceof Error ? (error.stack || error.message) : String(error);
       console.error(`[MissionExecutionRuntime] Error during tick:`, msg);
       this.requestTick(5000);
     } finally {
