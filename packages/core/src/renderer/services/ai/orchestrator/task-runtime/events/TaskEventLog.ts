@@ -128,7 +128,7 @@ export class TaskEventLog {
     if (missionId) {
       // 특정 Mission의 비중요 이벤트만 제거
       this.events = this.events.filter(e =>
-        e.missionId !== missionId || PRESERVED_EVENT_TYPES.has(e.type)
+        e.sessionId !== missionId || PRESERVED_EVENT_TYPES.has(e.type)
       );
     } else {
       this.compact();

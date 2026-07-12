@@ -10,7 +10,10 @@ import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
 import type { TaskEntity, TaskRuntimeState } from '../../domain/types';
 
 export class PlanActivationService {
-  constructor(private store: TaskRuntimeStore) {}
+  private store: TaskRuntimeStore;
+  constructor(store: TaskRuntimeStore) {
+    this.store = store;
+  }
 
   /**
    * APPROVED 상태의 Plan만 받아 Store에 원자적으로 등록합니다.

@@ -24,19 +24,28 @@ import type { ILLMEngineAdapter } from '../../types';
 import type { ExecutionHandle } from '../domain/ExecutionTypes';
 
 export class TaskDispatcher {
+  private store: TaskRuntimeStore;
+  private leaseManager: TaskLeaseManager;
+  private ledger: MissionBudgetLedger;
+  private resolver: ExecutionStrategyResolver;
+  private adapter: ILLMEngineAdapter;
+  private checkpointRuntime?: CheckpointRuntime;
+
   constructor(
-    private store: TaskRuntimeStore,
-    private leaseManager: TaskLeaseManager,
-    private ledger: MissionBudgetLedger,
-    private resolver: ExecutionStrategyResolver,
-    private adapter: ILLMEngineAdapter,
-    /*
-     * [DI — CheckpointRuntime]
-     * MissionExecutionRuntime이 공유하는 CheckpointRuntime을 주입.
-     * 미주입 시 DeepTaskExecutor가 자체 인스턴스 생성.
-     */
-    private checkpointRuntime?: CheckpointRuntime
-  ) {}
+    store: TaskRuntimeStore,
+    leaseManager: TaskLeaseManager,
+    ledger: MissionBudgetLedger,
+    resolver: ExecutionStrategyResolver,
+    adapter: ILLMEngineAdapter,
+    checkpointRuntime?: CheckpointRuntime
+  ) {
+    this.store = store;
+    this.leaseManager = leaseManager;
+    this.ledger = ledger;
+    this.resolver = resolver;
+    this.adapter = adapter;
+    this.checkpointRuntime = checkpointRuntime;
+  }
 
   /**
    * READY 상태인 특정 태스크를 시작합니다.

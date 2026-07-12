@@ -4,8 +4,8 @@
  * @role 검증 대상 Task가 올바른 엔티티인지 확인 (Identity & Freshness)
  */
 
-import { TaskVerifier } from './TaskVerifier';
-import { VerificationInput } from '../runtime/VerificationInputBuilder';
+import type { TaskVerifier } from './TaskVerifier';
+import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 import type { CriterionResult } from '../domain/VerificationTypes';
 
 export class IdentityVerifier implements TaskVerifier {

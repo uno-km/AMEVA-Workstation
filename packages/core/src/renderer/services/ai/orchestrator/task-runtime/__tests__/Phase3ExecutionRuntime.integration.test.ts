@@ -3,20 +3,19 @@ import * as assert from 'node:assert';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { MissionExecutionRuntime } from '../mission/MissionExecutionRuntime';
 import { TaskEventLog } from '../events/TaskEventLog';
-import type { ILLMEngineAdapter, ILLMStreamResponse } from '../../../types';
+import type { ILLMEngineAdapter } from '../../types';
 import type { TaskEntity } from '../domain/types';
 
 class MockAdapter implements ILLMEngineAdapter {
-  async invokeStructured(prompt: string): Promise<any> { return {}; }
-  async invokeStream(prompt: string): Promise<ILLMStreamResponse> {
-    return {
-      stream: (async function* () {})(),
-      abort: () => {}
-    };
-  }
-  async generateStream(messages: any[], onToken: (t: string) => void): Promise<string> {
+  async generateStream(_messages: any[], onToken: (t: string) => void): Promise<string> {
     onToken('[DONE]');
     return '[DONE] Test output';
+  }
+  async loadModel(): Promise<void> {}
+  async unloadModel(): Promise<void> {}
+  async abort(): Promise<void> {}
+  isReady(): boolean {
+    return true;
   }
 }
 

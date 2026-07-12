@@ -21,7 +21,7 @@
  * - 순환 참조 객체 저장 금지
  */
 
-import { createHash } from 'crypto';
+import { sha256Sync } from '../utils/sha256';
 
 /**
  * Checkpoint 데이터 모델.
@@ -99,9 +99,7 @@ function computeIntegrityDigest(cp: Omit<TaskCheckpoint, 'integrityDigest'>): st
     createdAt: cp.createdAt,
     schemaVersion: cp.schemaVersion
   };
-  return createHash('sha256')
-    .update(JSON.stringify(canonicalFields))
-    .digest('hex');
+  return sha256Sync(JSON.stringify(canonicalFields));
 }
 
 /**

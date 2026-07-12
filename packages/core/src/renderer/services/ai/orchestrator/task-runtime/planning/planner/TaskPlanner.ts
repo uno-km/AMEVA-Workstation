@@ -7,7 +7,7 @@ import type { GoalSpec, TaskPlan } from '../domain/PlanningTypes';
 import { StrictPlanParser } from './StrictPlanParser';
 import { PlanNormalizer } from './PlanNormalizer';
 
-import type { ILLMEngineAdapter } from '../../types';
+import type { ILLMEngineAdapter } from '../../../types';
 
 export class TaskPlanner {
   private parser = new StrictPlanParser();

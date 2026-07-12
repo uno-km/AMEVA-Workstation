@@ -4,7 +4,7 @@
  * @role 검증 단계에서 사용되는 타입 명세 (Verdict, Criteria 등)
  */
 
-import type { TaskDefinition, TaskResult, TaskEvidence } from '../../domain/types';
+// No unused imports
 
 /**
  * 개별 조건(Criterion)에 대한 검증 결과 판정

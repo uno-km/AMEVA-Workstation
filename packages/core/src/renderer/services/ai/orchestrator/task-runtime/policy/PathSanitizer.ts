@@ -60,12 +60,16 @@ const BLOCKED_PATH_PATTERNS: readonly RegExp[] = [
  * 경로 검증 실패 시 발생하는 예외.
  */
 export class PathSanitizationError extends Error {
+  public readonly inputPath: string;
+  public readonly reason: string;
   constructor(
     message: string,
-    public readonly inputPath: string,
-    public readonly reason: string
+    inputPath: string,
+    reason: string
   ) {
     super(message);
+    this.inputPath = inputPath;
+    this.reason = reason;
     this.name = 'PathSanitizationError';
   }
 }

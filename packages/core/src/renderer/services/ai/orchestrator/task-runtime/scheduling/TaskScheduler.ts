@@ -15,11 +15,17 @@ import type { TaskRecoveryRequest } from '../verification/domain/RecoveryTypes';
 export class TaskScheduler {
   private evaluator: ReadinessEvaluator;
 
+  private store: TaskRuntimeStore;
+  private ledger: MissionBudgetLedger;
+  private recoveryStore?: RecoveryRequestStore;
   constructor(
-    private store: TaskRuntimeStore,
-    private ledger: MissionBudgetLedger,
-    private recoveryStore?: RecoveryRequestStore
+    store: TaskRuntimeStore,
+    ledger: MissionBudgetLedger,
+    recoveryStore?: RecoveryRequestStore
   ) {
+    this.store = store;
+    this.ledger = ledger;
+    this.recoveryStore = recoveryStore;
     this.evaluator = new ReadinessEvaluator(store, ledger);
   }
 

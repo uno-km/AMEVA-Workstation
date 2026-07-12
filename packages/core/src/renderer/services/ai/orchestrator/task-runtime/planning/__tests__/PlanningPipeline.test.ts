@@ -17,7 +17,7 @@ import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
 import { TaskEventLog } from '../../events/TaskEventLog';
 
 test('Pipeline 1: Goal Interpreter creates valid spec', async () => {
-  const interpreter = new GoalInterpreter();
+  const interpreter = new GoalInterpreter({} as any);
   const validator = new GoalValidator();
   
   const spec = await interpreter.interpret('m1', '치즈 보고서 작성');

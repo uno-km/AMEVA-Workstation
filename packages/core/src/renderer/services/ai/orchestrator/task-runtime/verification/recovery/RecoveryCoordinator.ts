@@ -11,11 +11,18 @@ import type { TaskVerificationResult } from '../domain/VerificationTypes';
 import type { TaskRecoveryRequest, RecoveryDecision } from '../domain/RecoveryTypes';
 
 export class RecoveryCoordinator {
+  private store: TaskRuntimeStore;
+  private recoveryStore: RecoveryRequestStore;
+  private ledger: MissionBudgetLedger;
   constructor(
-    private store: TaskRuntimeStore,
-    private recoveryStore: RecoveryRequestStore,
-    private ledger: MissionBudgetLedger
-  ) {}
+    store: TaskRuntimeStore,
+    recoveryStore: RecoveryRequestStore,
+    ledger: MissionBudgetLedger
+  ) {
+    this.store = store;
+    this.recoveryStore = recoveryStore;
+    this.ledger = ledger;
+  }
 
   /**
    * Verification Verdict에 따라 초기 Recovery Request를 생성하고 Decision을 결정합니다.

@@ -21,12 +21,14 @@ export class VerificationRuntime {
   private policy: VerificationDecisionPolicy;
   private recoveryCoordinator: RecoveryCoordinator;
 
+  private store: TaskRuntimeStore;
   constructor(
-    private store: TaskRuntimeStore,
+    store: TaskRuntimeStore,
     recoveryStore: RecoveryRequestStore,
     ledger: MissionBudgetLedger,
     adapter?: ILLMEngineAdapter  // [STAGE C] SemanticVerifier LLM 연결용
   ) {
+    this.store = store;
     this.inputBuilder = new VerificationInputBuilder(store);
     this.coordinator = new TaskVerifierCoordinator(adapter); // [STAGE C] adapter 전달
     this.policy = new VerificationDecisionPolicy();

@@ -8,7 +8,10 @@ import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import type { TaskEntity } from '../domain/types';
 
 export class TaskExecutionContextBuilder {
-  constructor(private store: TaskRuntimeStore) {}
+  private store: TaskRuntimeStore;
+  constructor(store: TaskRuntimeStore) {
+    this.store = store;
+  }
 
   /**
    * 해당 Task의 실행을 위한 LLM 프롬프트(시스템/유저 메시지)를 생성합니다.

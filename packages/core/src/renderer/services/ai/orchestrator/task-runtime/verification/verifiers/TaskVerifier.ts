@@ -4,7 +4,7 @@
  * @role 공통 Verifier 인터페이스
  */
 
-import { VerificationInput } from '../runtime/VerificationInputBuilder';
+import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 import type { CriterionResult } from '../domain/VerificationTypes';
 
 export interface TaskVerifier {

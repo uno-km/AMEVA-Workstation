@@ -25,7 +25,10 @@ export interface VerificationInput {
 }
 
 export class VerificationInputBuilder {
-  constructor(private store: TaskRuntimeStore) {}
+  private store: TaskRuntimeStore;
+  constructor(store: TaskRuntimeStore) {
+    this.store = store;
+  }
 
   /**
    * 지정된 태스크와 해당 시도(Attempt)에 대한 검증 입력 객체를 생성합니다.

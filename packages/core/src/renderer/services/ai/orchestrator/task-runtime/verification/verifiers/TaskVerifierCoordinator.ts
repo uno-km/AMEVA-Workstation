@@ -12,9 +12,9 @@
  * - 기존 시그니처(인자 없는 생성자) 유지하고 withAdapter() Fluent API 추가
  */
 
-import { VerificationInput } from '../runtime/VerificationInputBuilder';
+import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 import type { CriterionResult } from '../domain/VerificationTypes';
-import { TaskVerifier } from './TaskVerifier';
+import type { TaskVerifier } from './TaskVerifier';
 import type { ILLMEngineAdapter } from '../../../types';
 
 import { IdentityVerifier } from './IdentityVerifier';

@@ -4,8 +4,8 @@
  * @role 기대되는 출력물(Expected Outputs)이 결과(Result)에 포함되어 있는지 검증
  */
 
-import { TaskVerifier } from './TaskVerifier';
-import { VerificationInput } from '../runtime/VerificationInputBuilder';
+import type { TaskVerifier } from './TaskVerifier';
+import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 import type { CriterionResult } from '../domain/VerificationTypes';
 
 export class ExpectedOutputVerifier implements TaskVerifier {

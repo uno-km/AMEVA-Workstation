@@ -4,11 +4,11 @@
  * @role User Request -> 구조화된 GoalSpec 으로의 변환 파이프라인
  */
 
-import type { GoalSpec, Requirement } from '../domain/PlanningTypes';
+import type { GoalSpec } from '../domain/PlanningTypes';
 import { RequirementExtractor } from './RequirementExtractor';
 import { GoalInterpretationError } from '../domain/PlanningErrors';
 
-import type { ILLMEngineAdapter } from '../../types';
+import type { ILLMEngineAdapter } from '../../../types';
 
 export class GoalInterpreter {
   private extractor = new RequirementExtractor();

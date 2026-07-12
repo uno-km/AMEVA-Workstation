@@ -18,7 +18,7 @@
  */
 
 import type { CriterionResult, TaskVerdict, TaskVerificationResult } from '../domain/VerificationTypes';
-import { VerificationInput } from '../runtime/VerificationInputBuilder';
+import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 
 export class VerificationDecisionPolicy {
 

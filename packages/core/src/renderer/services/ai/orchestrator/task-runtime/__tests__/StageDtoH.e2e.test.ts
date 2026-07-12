@@ -26,14 +26,14 @@
  * - IndexedDB: 없음 (Node.js test 환경)
  */
 
-import { describe, it, before, after, beforeEach } from 'node:test';
+import { describe, it, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 
 // Core domain
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { TaskEventLog } from '../events/TaskEventLog';
 import type { TaskEntity } from '../domain/types';
-import type { ILLMEngineAdapter } from '../../../types';
+import type { ILLMEngineAdapter } from '../../types';
 
 // STAGE D
 import { ToolCallParser } from '../executors/ToolCallParser';
@@ -98,6 +98,13 @@ class SequentialMockAdapter implements ILLMEngineAdapter {
     onToken(response);
     return response;
   }
+
+  async loadModel(): Promise<void> {}
+  async unloadModel(): Promise<void> {}
+  async abort(): Promise<void> {}
+  isReady(): boolean {
+    return true;
+  }
 }
 
 /**
@@ -108,7 +115,7 @@ class MockToolRegistry extends ToolRegistry {
   private mockResults: Map<string, ToolCallResult> = new Map();
 
   // IPC 의존성을 제거하기 위해 register를 Override
-  register(def: any): void {
+  register(_def: any): void {
     // 내부 맵에만 저장 (원래 ToolRegistry의 Map을 우회할 수는 없으므로,
     // executeTool 오버라이드를 통해 해결하거나 기본 register 기능을 최소화)
   }
@@ -146,7 +153,7 @@ function createTaskEntity(
       title: `Task ${id}`,
       objective: `Objective of ${id}`,
       dependencies: [],
-      isRequired,
+      required: isRequired,
       budgetTurns: 10,
       allocatedReasoningTurns: 10,
     },
@@ -173,9 +180,12 @@ describe('STAGE D: ToolCallParser & ToolObservationBuilder', () => {
     const knownTools = new Set(['read_file', 'write_file']);
     const result = parser.parse(llmOutput, 1, knownTools);
 
-    assert.ok(result.success, `파싱 실패: ${result.error?.message}`);
-    assert.equal(result.candidate.toolName, 'read_file');
-    assert.deepEqual(result.candidate.arguments, { path: './test.txt' });
+    if (!result.success) {
+      assert.fail(`파싱 실패: ${(result as any).error?.message}`);
+    } else {
+      assert.equal(result.candidate.toolName, 'read_file');
+      assert.deepEqual(result.candidate.arguments, { path: './test.txt' });
+    }
 
     // 성공 Observation 생성
     const toolResult: ToolCallResult = {
@@ -231,10 +241,10 @@ describe('STAGE D: ToolCallParser & ToolObservationBuilder', () => {
 
     // unknown tool은 에러로 처리 (파싱은 성공할 수 있지만 ToolPolicyChecker에서 차단)
     // 여기서는 파싱 결과만 테스트
-    if (result.success) {
-      assert.equal(result.candidate.toolName, 'unknown_evil_tool');
+    if (!result.success) {
+      assert.equal((result as any).error.errorType, 'MISSING_TOOL_NAME');
     } else {
-      assert.equal(result.error.errorType, 'MISSING_TOOL_NAME');
+      assert.equal(result.candidate.toolName, 'unknown_evil_tool');
     }
   });
 });
@@ -428,7 +438,11 @@ describe('STAGE G: UserAssistRuntime', () => {
     });
 
     // SKIP 시도 — isTaskRequired=true이면 예외가 아니라 반환 객체로 거부됨
-    const response = runtime.respondToRequest({ requestId: request.requestId, selectedOption: 'SKIP_OPTIONAL_TASK' });
+    const response = runtime.respondToRequest({
+      requestId: request.requestId,
+      selectedOption: 'SKIP_OPTIONAL_TASK',
+      respondedAt: Date.now()
+    });
     assert.ok(!response.success, '필수 Task의 SKIP 요청은 거부되어야 한다');
     assert.ok(response.message.includes('required'), '거부 메시지에 required 명시');
 

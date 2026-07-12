@@ -18,34 +18,33 @@ import { GoalLevelVerifier } from '../completion/verifier/GoalLevelVerifier';
 import { MissionOutcomeEvaluator } from '../completion/evaluators/MissionOutcomeEvaluator';
 import { MissionCompletionRuntime } from '../completion/runtime/MissionCompletionRuntime';
 
-import type { TaskDefinition, TaskEntity } from '../domain/types';
+import type { TaskEntity } from '../domain/types';
 
 import { TaskEventLog } from '../events/TaskEventLog';
 
 describe('MissionCompletionRuntime Integration', () => {
   let taskStore: TaskRuntimeStore;
-  let eventLog: TaskEventLog;
   let completionRuntime: MissionCompletionRuntime;
 
   beforeEach(() => {
-    eventLog = new TaskEventLog();
-    taskStore = new TaskRuntimeStore(eventLog);
-    const builder = new MissionCompletionReviewInputBuilder(taskStore);
-    const reqEval = new RequiredTaskEvaluator();
-    const optEval = new OptionalTaskPolicyEvaluator();
+    taskStore = new TaskRuntimeStore(new TaskEventLog());
+
+    const inputBuilder = new MissionCompletionReviewInputBuilder(taskStore);
+    const requiredTaskEval = new RequiredTaskEvaluator();
+    const optionalTaskEval = new OptionalTaskPolicyEvaluator();
     const goalReqEval = new GoalRequirementCoverageEvaluator();
-    const delivEval = new DeliverableCoverageEvaluator();
+    const deliverableEval = new DeliverableCoverageEvaluator();
     const artifactVal = new FinalArtifactValidator();
     const goalVerifier = new GoalLevelVerifier();
     const outcomeEval = new MissionOutcomeEvaluator();
 
     completionRuntime = new MissionCompletionRuntime(
       taskStore,
-      builder,
-      reqEval,
-      optEval,
+      inputBuilder,
+      requiredTaskEval,
+      optionalTaskEval,
       goalReqEval,
-      delivEval,
+      deliverableEval,
       artifactVal,
       goalVerifier,
       outcomeEval
@@ -63,10 +62,9 @@ describe('MissionCompletionRuntime Integration', () => {
       definition: {
         id,
         title: `Task ${id}`,
-        description: 'Mock',
-        command: 'mock',
+        objective: 'Mock',
         priority,
-        dependsOn: [],
+        dependencies: [],
         expectedOutputs: outputs.map(o => o.type),
         requirementIds: [`req-${id}`],
         capabilityRequirements: []
@@ -79,26 +77,31 @@ describe('MissionCompletionRuntime Integration', () => {
         attempts: {},
         taskResult: status === 'COMPLETED' ? {
           attemptId: `att-${id}`,
-          taskId: id,
-          status: 'SUCCESS',
+          status: 'COMPLETED',
+          summary: 'Mock Summary',
           outputs,
           evidence: [],
           unresolvedIssues: [],
-          metadata: {},
-          timestamp: Date.now()
+          metrics: {},
+          createdAt: Date.now()
         } : undefined,
         verification: isPassed ? {
+          verificationId: `v-${id}`,
+          taskId: id,
+          attemptId: `att-${id}`,
           verdict: 'PASS',
-          confidence: 100,
-          reasoning: 'Mock pass',
-          timestamp: Date.now()
+          score: 100,
+          passedCriteria: [],
+          failedCriteria: [],
+          verifierType: 'deterministic',
+          createdAt: Date.now()
         } : undefined
       }
     };
   };
 
   it('should return SUCCESS when all required tasks are COMPLETED and PASSED', async () => {
-    taskStore.initMission('m1', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m1', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
     // t1 is required explicitly
     const task1 = createMockTaskEntity('t1', 1, 'COMPLETED', true, [{ type: 'doc1', content: 'hello' }]);
@@ -117,7 +120,7 @@ describe('MissionCompletionRuntime Integration', () => {
   });
 
   it('should treat priority 10 but required=true as a required task and fail if incomplete', async () => {
-    taskStore.initMission('m5', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m5', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     const task1 = createMockTaskEntity('req_low_prio', 10, 'FAILED', false);
     task1.definition.required = true; // explicitly required despite low priority
     taskStore.registerTask(task1, 'm5');
@@ -129,7 +132,7 @@ describe('MissionCompletionRuntime Integration', () => {
   });
 
   it('should treat missing outputs with Placeholder string as missing deliverables', async () => {
-    taskStore.initMission('m6', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m6', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     const task1 = createMockTaskEntity('fake_out', 1, 'COMPLETED', true, [{ type: 'req-fake_out', content: 'Placeholder data' }]);
     task1.definition.required = true;
     taskStore.registerTask(task1, 'm6');
@@ -141,7 +144,7 @@ describe('MissionCompletionRuntime Integration', () => {
   });
 
   it('should return WAITING_USER if semantic evaluation is required but disabled', async () => {
-    taskStore.initMission('m7', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m7', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     const task1 = createMockTaskEntity('semantic_task', 1, 'COMPLETED', true, [{ type: 'out', content: 'done' }]);
     task1.definition.required = true;
     task1.definition.capabilityRequirements = ['llm'];
@@ -155,7 +158,7 @@ describe('MissionCompletionRuntime Integration', () => {
   });
 
   it('should return the same decision via idempotency caching', async () => {
-    taskStore.initMission('m8', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m8', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     const task1 = createMockTaskEntity('req1', 1, 'COMPLETED', true, [{ type: 'out', content: 'done' }]);
     task1.definition.required = true;
     taskStore.registerTask(task1, 'm8');
@@ -167,7 +170,7 @@ describe('MissionCompletionRuntime Integration', () => {
   });
 
   it('should return SUCCESS_WITH_WARNINGS if optional tasks fail', async () => {
-    taskStore.initMission('m2', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m2', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
     const task1 = createMockTaskEntity('req1', 1, 'COMPLETED', true, [{ type: 'out1', content: 'ok' }]);
     task1.definition.required = true;
@@ -185,7 +188,7 @@ describe('MissionCompletionRuntime Integration', () => {
   });
 
   it('should return PARTIAL_SUCCESS if a required task fails but some completed', async () => {
-    taskStore.initMission('m3', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m3', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
     const task1 = createMockTaskEntity('req1', 1, 'COMPLETED', true, [{ type: 'out1', content: 'ok' }]);
     task1.definition.required = true;
@@ -201,7 +204,7 @@ describe('MissionCompletionRuntime Integration', () => {
   });
 
   it('should throw an error if another review is in progress for the same mission (Lock test)', async () => {
-    taskStore.initMission('m4', { maxTotalCost: 100, remainingTotalCost: 100, usedTokens: 0, maxTurnCount: 10, currentTurnCount: 0 });
+    taskStore.initMission('m4', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
     const task1 = createMockTaskEntity('t1', 1, 'COMPLETED', true);
     taskStore.registerTask(task1, 'm4');

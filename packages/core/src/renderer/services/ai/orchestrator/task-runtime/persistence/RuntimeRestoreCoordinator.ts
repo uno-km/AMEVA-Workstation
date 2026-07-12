@@ -40,9 +40,10 @@ export interface RestoredMissionInfo {
  * 앱 재시작 시 미완료 Mission을 안전하게 복원한다.
  */
 export class RuntimeRestoreCoordinator {
-  constructor(
-    private readonly persistence: IRuntimePersistenceAdapter
-  ) {}
+  private readonly persistence: IRuntimePersistenceAdapter;
+  constructor(persistence: IRuntimePersistenceAdapter) {
+    this.persistence = persistence;
+  }
 
   /**
    * 앱 시작 시 미완료 Mission 목록을 조회하고 복원 정보를 반환한다.

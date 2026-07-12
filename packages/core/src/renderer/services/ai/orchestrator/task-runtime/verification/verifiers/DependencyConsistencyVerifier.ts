@@ -4,8 +4,8 @@
  * @role 선행 태스크의 결과가 유효한지 검증 (Dependency Recovery 판단의 기초)
  */
 
-import { TaskVerifier } from './TaskVerifier';
-import { VerificationInput } from '../runtime/VerificationInputBuilder';
+import type { TaskVerifier } from './TaskVerifier';
+import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 import type { CriterionResult } from '../domain/VerificationTypes';
 
 export class DependencyConsistencyVerifier implements TaskVerifier {

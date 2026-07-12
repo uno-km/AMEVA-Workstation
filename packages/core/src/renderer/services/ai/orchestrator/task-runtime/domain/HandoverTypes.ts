@@ -4,9 +4,8 @@
  * @role PHASE 4(검증 및 복구)와의 인터페이스 계약 명세
  */
 
-import type { TaskEntity, TaskResult, TaskDefinition } from './types';
+import type { TaskResult, TaskDefinition } from './types';
 import type { TaskEvidence, TaskOutput } from './types';
-import type { TaskAttempt } from './types';
 
 /**
  * TaskResult 후보를 생성한 태스크를 검증하기 위한 입력 인터페이스.

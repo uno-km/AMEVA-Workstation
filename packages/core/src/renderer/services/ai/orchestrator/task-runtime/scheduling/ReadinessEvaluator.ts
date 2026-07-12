@@ -23,10 +23,14 @@ export interface ReadinessResult {
 export class ReadinessEvaluator {
   private catalog: CapabilityCatalog;
 
+  private store: TaskRuntimeStore;
+  private ledger: MissionBudgetLedger;
   constructor(
-    private store: TaskRuntimeStore,
-    private ledger: MissionBudgetLedger
+    store: TaskRuntimeStore,
+    ledger: MissionBudgetLedger
   ) {
+    this.store = store;
+    this.ledger = ledger;
     this.catalog = new CapabilityCatalog();
   }
 
@@ -35,8 +39,6 @@ export class ReadinessEvaluator {
    * PHASE 3.5: 차단 사유를 구조화하여 반환합니다.
    */
   public evaluate(missionId: string, task: TaskEntity): ReadinessResult {
-    const reasons: string[] = [];
-
     // 1. 기본 상태 조건
     if (task.state.status !== 'PENDING' && task.state.status !== 'RETRY_WAIT') {
       return { 

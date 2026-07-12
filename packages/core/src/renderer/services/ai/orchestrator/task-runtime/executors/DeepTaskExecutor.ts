@@ -198,9 +198,13 @@ export class DeepTaskExecutor {
 
             // Evidence 기록
             evidences.push({
-              type: 'TOOL_CALL',
-              description: `Tool '${candidate.toolName}' ${observation.status}`,
-              referenceId: candidate.toolCallId,
+              source: 'tool_result',
+              data: {
+                toolCallId: candidate.toolCallId,
+                toolName: candidate.toolName,
+                status: observation.status,
+                description: `Tool '${candidate.toolName}' ${observation.status}`
+              },
               timestamp: Date.now()
             });
 
@@ -258,9 +262,10 @@ export class DeepTaskExecutor {
            * 연속 Tool-없는-턴 카운터 증가.
            * - NO_TOOL_CALL_FOUND: 정상 — 추론 중
            * - 그 외(파싱 오류): 경고 로그 (LLM 출력 형식 문제)
-           */
-          if (!parseResult.success && parseResult.error.errorType !== 'NO_TOOL_CALL_FOUND') {
-            console.warn(`[DeepTaskExecutor] Tool 파싱 오류 (Turn ${currentTurn}):`, parseResult.error.message);
+          if (!parseResult.success) {
+            if (parseResult.error.errorType !== 'NO_TOOL_CALL_FOUND') {
+              console.warn(`[DeepTaskExecutor] Tool 파싱 오류 (Turn ${currentTurn}):`, parseResult.error.message);
+            }
           }
           consecutiveNoToolTurns++;
 

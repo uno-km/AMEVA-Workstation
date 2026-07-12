@@ -8,13 +8,16 @@ import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { BudgetExceededError } from '../domain/errors';
 
 export class MissionBudgetLedger {
-  constructor(private store: TaskRuntimeStore) {}
+  private store: TaskRuntimeStore;
+  constructor(store: TaskRuntimeStore) {
+    this.store = store;
+  }
 
   /**
    * 태스크 실행을 위해 지정된 예산을 예약합니다.
    * 여유 예산이 부족하면 예외를 던집니다.
    */
-  public reserveTaskBudget(missionId: string, taskId: string, requestedTurns: number): void {
+  public reserveTaskBudget(missionId: string, _taskId: string, requestedTurns: number): void {
     const missionState = this.store.getMissionState(missionId);
     const { budget } = missionState;
 
@@ -36,7 +39,7 @@ export class MissionBudgetLedger {
   /**
    * 태스크 실행이 종료된 후, 실제 소비한 예산을 정산하고 남은 예약 예산을 반환합니다.
    */
-  public commitTaskBudget(missionId: string, taskId: string, initiallyRequestedTurns: number, actuallyConsumedTurns: number): void {
+  public commitTaskBudget(missionId: string, _taskId: string, initiallyRequestedTurns: number, actuallyConsumedTurns: number): void {
     const missionState = this.store.getMissionState(missionId);
     const { budget } = missionState;
 

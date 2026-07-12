@@ -16,7 +16,7 @@
 
 import type { MissionCompletionDecision, MissionCompletionSnapshot } from '../domain/MissionCompletionTypes';
 import { TaskRuntimeStore } from '../../store/TaskRuntimeStore';
-import { createHash } from 'crypto';
+import { sha256Sync } from '../../utils/sha256';
 
 export class AuditPackageBuilder {
   private readonly taskStore: TaskRuntimeStore;
@@ -108,7 +108,7 @@ export class AuditPackageBuilder {
        * 재귀적 키 정렬 직렬화 함수를 사용합니다.
        */
       const stableJson = AuditPackageBuilder.stableStringify(payload);
-      return createHash('sha256').update(stableJson, 'utf8').digest('hex');
+      return sha256Sync(stableJson);
     } catch (error) {
       // Node crypto 환경에서 예외 발생 시 런타임 오류를 전파
       throw new Error(`[AuditPackageBuilder] Failed to compute integrity digest: ${error}`);

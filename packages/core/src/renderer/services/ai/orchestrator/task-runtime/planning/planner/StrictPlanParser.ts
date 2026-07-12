@@ -67,7 +67,7 @@ export class StrictPlanParser {
 
       return {
         success: true,
-        parsedData: Array.isArray(parsedData) ? parsedData : parsedData.tasks,
+        parsedData: tasksArray,
         parseErrors: []
       };
     } catch (error: any) {

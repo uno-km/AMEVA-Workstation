@@ -18,8 +18,8 @@
  * - isReady() false 시 NOT_APPLICABLE 반환 (LLM 미연결 환경에서 검증 차단)
  */
 
-import { TaskVerifier } from './TaskVerifier';
-import { VerificationInput } from '../runtime/VerificationInputBuilder';
+import type { TaskVerifier } from './TaskVerifier';
+import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 import type { CriterionResult } from '../domain/VerificationTypes';
 import { VERIFICATION_TIMEOUT_POLICY } from '../domain/VerificationTimeoutPolicy';
 import type { ILLMEngineAdapter } from '../../../types';
@@ -124,7 +124,7 @@ export class SemanticVerifier implements TaskVerifier {
      * VerificationInput에서 Task의 실제 실행 결과 텍스트를 추출.
      * 결과가 없으면 FAIL로 판정.
      */
-    const taskResultText = input.taskResult?.outputText ?? '';
+    const taskResultText = input.taskState.taskResult?.summary ?? '';
     if (!taskResultText.trim()) {
       for (const criterion of criteria) {
         results.push({

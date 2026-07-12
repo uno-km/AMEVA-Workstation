@@ -90,6 +90,7 @@ export class MissionExecutionRuntime {
 
   private store: TaskRuntimeStore;
   private missionId: string;
+  private initialBudget: number;
 
   constructor(
     store: TaskRuntimeStore,
@@ -105,6 +106,7 @@ export class MissionExecutionRuntime {
   ) {
     this.store = store;
     this.missionId = missionId;
+    this.initialBudget = initialBudget;
     this.ledger = new MissionBudgetLedger(store);
     this.leaseManager = new TaskLeaseManager(store);
     this.recoveryStore = new RecoveryRequestStore();
@@ -247,7 +249,7 @@ export class MissionExecutionRuntime {
       }
 
       // 2. 스케줄링 패스 (PENDING → READY 승격 및 예산 할당)
-      const { newlyReadyCount, deadlockType } = this.scheduler.runSchedulingPass(this.missionId);
+      const { deadlockType } = this.scheduler.runSchedulingPass(this.missionId);
 
       // 3. 데드락 처리
       if (deadlockType === 'TRUE_DEADLOCK' || deadlockType === 'INTERNAL_ERROR') {
@@ -361,7 +363,7 @@ export class MissionExecutionRuntime {
 
         // WAITING_USER 만료 감지 (24시간)
         const waitStart = this.waitingUserCreatedAt.get(task.definition.id) ?? Date.now();
-        if (Date.now() - waitStart > 86400000) {
+        if (Date.now() - waitStart > WAITING_USER_EXPIRY_MS) {
           console.warn(`[MissionExecutionRuntime] WAITING_USER Task ${task.definition.id} expired after 24h. Transitioning to FAILED.`);
           try {
             this.store.dispatchTransition(
@@ -418,7 +420,7 @@ export class MissionExecutionRuntime {
         this.pause();
       } else if (hasWaitingUser) {
         // WAITING_USER 존재 — 30초 주기로 만료만 체크
-        this.requestTick(30000);
+        this.requestTick(WAITING_USER_TICK_MS);
       } else if (retryWaitTasks.length > 0) {
         // Recovery/Retry — 2초 주기
         this.requestTick(2000);
@@ -448,11 +450,8 @@ export class MissionExecutionRuntime {
   private persistMissionState(status: string): void {
     const allTasks = this.store.getAllTasks(this.missionId);
     const taskIds = allTasks.map(t => t.definition.id);
-    this.restoreCoordinator.saveMissionState(this.missionId, {
-      missionId: this.missionId,
-      status,
-      taskIds
-    }).catch((err: unknown) => {
+    this.restoreCoordinator.saveMissionState(this.missionId, this.missionId, status, taskIds)
+    .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[MissionExecutionRuntime] Mission 상태 영속화 실패 (${this.missionId}):`, msg);
     });

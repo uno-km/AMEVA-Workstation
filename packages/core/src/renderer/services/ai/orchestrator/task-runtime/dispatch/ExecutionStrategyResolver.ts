@@ -10,7 +10,7 @@ import { CapabilityCatalog } from './CapabilityCatalog';
 export type ExecutionStrategy = 'LLM_ONLY' | 'TOOL_ONLY' | 'HYBRID_REACT' | 'MANUAL';
 
 export class ExecutionStrategyResolver {
-  constructor(private catalog: CapabilityCatalog) {}
+  constructor(_catalog: CapabilityCatalog) {}
 
   public resolve(task: TaskEntity): ExecutionStrategy {
     const caps = task.definition.capabilityRequirements || [];
