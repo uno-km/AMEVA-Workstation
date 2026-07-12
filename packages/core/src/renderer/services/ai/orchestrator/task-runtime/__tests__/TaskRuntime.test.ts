@@ -122,11 +122,11 @@ test('StateMachine: COMPLETED 전이 시 불변조건 검증', () => {
     });
   }, /TaskResult is missing/);
 
-  // 3. taskId 불일치 (Result가 엉뚱한 태스크)
+  // 3. taskId 불일치 (Verification이 엉뚱한 태스크)
   assert.throws(() => {
     TaskStateMachine.transition(entity, 'COMPLETED', cmd, {
-      taskResult: { attemptId: 'att_1', taskId: 'task_WRONG', createdAt: Date.now(), status: 'COMPLETED', summary: '', outputs: [], evidence: [] } as any,
-      verification: { verificationId: 'v1', taskId: 'task_1', attemptId: 'att_1', verdict: 'PASS', passedCriteria: [], failedCriteria: [], verifierType: 'semantic', createdAt: Date.now() }
+      taskResult: { attemptId: 'att_1', createdAt: Date.now(), status: 'COMPLETED', summary: '', outputs: [], evidence: [] } as any,
+      verification: { verificationId: 'v1', taskId: 'task_WRONG', attemptId: 'att_1', verdict: 'PASS', passedCriteria: [], failedCriteria: [], verifierType: 'semantic', createdAt: Date.now() }
     });
   }, /taskId mismatch/);
 

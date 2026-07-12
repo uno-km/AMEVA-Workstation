@@ -23,11 +23,12 @@ export class TaskLeaseManager {
    * 이미 유효한 Lease가 존재하면 거부됩니다.
    */
   public acquireLease(
-    missionId: string, 
-    taskId: string, 
-    executionId: string, 
+    missionId: string,
+    taskId: string,
+    executionId: string,
     ownerId: string,
-    ttlMs: number = this.DEFAULT_TTL
+    ttlMs: number = this.DEFAULT_TTL,
+    planVersion: number = 1  // [STAGE A] 하드코딩 1 제거: 호출자가 실제 Plan의 version을 전달해야 함
   ): TaskLease {
     const key = this.getLeaseKey(missionId, taskId);
     const existing = this.leases.get(key);
@@ -87,7 +88,9 @@ export class TaskLeaseManager {
       expiresAt: now + ttlMs,
       renewedAt: now,
       stateVersion: updatedTask.state.stateVersion,
-      planVersion: 1 // TODO: MissionExecutionState에서 동기화 필요
+      // [STAGE A] planVersion: 하드코딩 1 제거. 호출자로부터 실제 planVersion을 받음.
+      // TaskDispatcher는 활성 Plan의 version을 전달해야 함. 미전달 시 1 사용 (기존 동작 보존).
+      planVersion
     };
 
     this.leases.set(key, lease);

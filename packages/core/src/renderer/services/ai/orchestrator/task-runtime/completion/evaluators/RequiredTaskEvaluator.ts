@@ -12,6 +12,14 @@ export class RequiredTaskEvaluator {
    * @param input 완료 리뷰 스냅샷 데이터
    * @returns { success: boolean, completionRate: number, failedTaskIds: string[] }
    */
+  private isRequired(def: any): boolean {
+    if (typeof def.required === 'boolean') return def.required;
+    // Legacy fallback
+    if (def.requirementIds && def.requirementIds.length > 0) return true;
+    if (def.expectedOutputs && def.expectedOutputs.length > 0) return true;
+    return def.priority === 1;
+  }
+
   public evaluate(input: MissionCompletionReviewInput): {
     success: boolean;
     completionRate: number;
@@ -19,7 +27,7 @@ export class RequiredTaskEvaluator {
     waitingUserTaskIds: string[];
     blockedTaskIds: string[];
   } {
-    const requiredTasks = input.allTaskDefinitions.filter(t => t.priority <= 5); // 도메인 정책 기준(임시: <= 5)
+    const requiredTasks = input.allTaskDefinitions.filter(t => this.isRequired(t));
     
     if (requiredTasks.length === 0) {
       return { success: true, completionRate: 100, failedTaskIds: [], waitingUserTaskIds: [], blockedTaskIds: [] };
@@ -27,18 +35,12 @@ export class RequiredTaskEvaluator {
 
     const failedTaskIds = input.failedRequiredTasks.map(t => t.definition.id);
     const waitingUserTaskIds = input.waitingUserTasks
-      .filter(t => t.definition.priority <= 5)
+      .filter(t => this.isRequired(t.definition))
       .map(t => t.definition.id);
     const blockedTaskIds = input.blockedTasks
-      .filter(t => t.definition.priority <= 5)
+      .filter(t => this.isRequired(t.definition))
       .map(t => t.definition.id);
 
-    // 성공한 필수 태스크 = successfulTaskResults 안에 있는 것 중 requiredTasks
-    // PASS 판정을 받은 검증 객체가 존재하는지까지 엄밀히 봐야 함.
-    const completedRequiredTaskIds = input.successfulTaskResults
-      .map(r => r.taskId) // 주의: 기존에 taskId가 TaskResult에 없어서 뺐었는데, input에서는 definition을 이용해야 할 수도 있다.
-      // *참고*: TaskResult 대신 taskStore에서 뽑아온 상태를 바탕으로 검사하는 편이 안전함.
-      .filter(id => !!id);
 
     // 실제로는 input.allTaskRuntimeStates와 definition을 순회하여 평가
     let completedCount = 0;

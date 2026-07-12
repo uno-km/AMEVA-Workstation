@@ -11,6 +11,13 @@ export class DeliverableCoverageEvaluator {
   /**
    * 예상되는 Deliverable 들이 실제 TaskResult의 output 또는 파일 시스템(가정) 상에 존재하는지 평가.
    */
+  private isRequired(def: any): boolean {
+    if (typeof def.required === 'boolean') return def.required;
+    if (def.requirementIds && def.requirementIds.length > 0) return true;
+    if (def.expectedOutputs && def.expectedOutputs.length > 0) return true;
+    return def.priority === 1;
+  }
+
   public evaluate(input: MissionCompletionReviewInput): {
     success: boolean;
     deliverableResults: DeliverableResult[];
@@ -19,41 +26,61 @@ export class DeliverableCoverageEvaluator {
     const warnings: string[] = [];
     const deliverableResults: DeliverableResult[] = [];
     
-    // 현재 AMEVA V2 모델상 Deliverable은 TaskDefinition의 expectedOutputs 로 간접 표기됩니다.
     let success = true;
 
     input.allTaskDefinitions.forEach(def => {
-      const isRequired = def.priority <= 5;
+      const isReqRequired = this.isRequired(def);
       const expectedOutputs = def.expectedOutputs || [];
 
       if (expectedOutputs.length === 0) return;
 
-      const state = input.allTaskRuntimeStates.find(s => s.taskResult && s.status === 'COMPLETED');
+      const stateIdx = input.allTaskDefinitions.findIndex(d => d.id === def.id);
+      const state = input.allTaskRuntimeStates[stateIdx];
       const result = state?.taskResult;
       
       expectedOutputs.forEach(outName => {
-        // 실제 아웃풋 매칭 로직 (이름이나 타입 기반)
-        const hasOutput = result?.outputs.some(o => o.type === outName || o.data !== undefined);
-        const exists = !!hasOutput;
+        let hasOutput = false;
+        let valid = false;
+        let artifactRef = '';
 
-        if (isRequired && !exists) {
+        if (result?.outputs) {
+          const matchedOut = result.outputs.find(o => o.type === outName || (typeof o.content === 'object' && o.content?.name === outName));
+          if (matchedOut) {
+            hasOutput = true;
+            artifactRef = 'virtual_ref_in_memory';
+            
+            // Text 유효성 검증
+            if (typeof matchedOut.content === 'string') {
+              const text = matchedOut.content.trim();
+              if (text.length > 0 && !text.includes('TODO') && !text.includes('Placeholder') && !text.startsWith('에러')) {
+                valid = true;
+              }
+            } else if (matchedOut.content) {
+              valid = true;
+            }
+          }
+        }
+
+        const exists = hasOutput;
+        
+        if (isReqRequired && (!exists || !valid)) {
           success = false;
-          warnings.push(`[DeliverableCoverage] 필수 산출물 누락: Task ${def.id} 의 ${outName}`);
+          warnings.push(`[DeliverableCoverage] 필수 산출물 누락 혹은 무효함: Task ${def.id} 의 ${outName}`);
         }
 
         deliverableResults.push({
           deliverableId: outName,
-          required: isRequired,
+          required: isReqRequired,
           producerTaskId: def.id,
           resultId: result?.attemptId || '',
-          artifactReference: hasOutput ? 'virtual_ref_in_memory' : '',
+          artifactReference: artifactRef,
           exists,
-          accessible: exists,
-          nonEmpty: exists,
-          verified: exists && !!state?.verification,
+          accessible: valid,
+          nonEmpty: valid,
+          verified: valid && state?.status === 'COMPLETED' && state?.verification?.verdict === 'PASS',
           latestRevision: true,
-          integrity: exists,
-          warnings: exists ? [] : ['Deliverable output not found in task result']
+          integrity: valid,
+          warnings: valid ? [] : ['Deliverable output not found, empty, or placeholder']
         });
       });
     });

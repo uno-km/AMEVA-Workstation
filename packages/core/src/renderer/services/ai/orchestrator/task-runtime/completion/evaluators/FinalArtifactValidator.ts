@@ -23,9 +23,8 @@ export class FinalArtifactValidator {
     const finalArtifactReferences: FinalArtifactReference[] = [];
     let success = true;
 
-    // TODO: AMEVA OS VFS 연동 시 실제 파일 유무를 파일 시스템에서 조회하는 로직으로 대체
     deliverables.forEach(deliv => {
-      if (!deliv.exists || !deliv.nonEmpty) {
+      if (!deliv.exists || !deliv.nonEmpty || !deliv.accessible || !deliv.integrity) {
         if (deliv.required) {
           success = false;
           warnings.push(`[FinalArtifactValidator] 필수 산출물 ${deliv.deliverableId} 유효하지 않음.`);
@@ -33,7 +32,6 @@ export class FinalArtifactValidator {
         return;
       }
 
-      // 모의 아티팩트 참조 생성
       finalArtifactReferences.push({
         artifactId: `art-${crypto.randomUUID()}`,
         referencePath: deliv.artifactReference || 'virtual_buffer',
@@ -44,7 +42,6 @@ export class FinalArtifactValidator {
       });
     });
 
-    // 툴 런타임에 의한 생성 제한 감지
     if (input.toolRuntimeStatus === 'DISABLED_SAFELY' || input.toolRuntimeStatus === 'BROKEN') {
       const fileExpected = input.allTaskDefinitions.some(d => d.capabilityRequirements?.includes('file_system'));
       if (fileExpected) {

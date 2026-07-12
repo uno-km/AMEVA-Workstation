@@ -106,10 +106,44 @@ export class PlanValidator {
       });
     }
 
-    const requirementCoverage = requiredReqs.length === 0 ? 1 : coveredCount / requiredReqs.length;
 
-    // 4. ValidationResult 조립
+    const requirementCoverage = requiredReqs.length === 0 ? 1 : coveredCount / requiredReqs.length;
     const valid = errors.length === 0;
+
+    /*
+     * [STAGE A 수정] deliverableCoverage 실제 계산
+     * goalSpec.deliverables의 각 항목이 어느 Task의 expectedOutputs에 부분 일치하는지 검사.
+     * 완전 일치가 불가능하므로 소문자 포함 여부(토큰화 비교)로 Coverage를 판단.
+     * deliverables가 없으면 요구사항 Coverage를 deliverableCoverage로 사용.
+     */
+    let deliverableCoverage: number;
+    if (!goalSpec.deliverables || goalSpec.deliverables.length === 0) {
+      // Deliverable 명세가 없으면 Requirement Coverage를 대리 지표로 사용
+      deliverableCoverage = requirementCoverage;
+    } else {
+      // 모든 Task의 expectedOutputs를 합쳐 검색 풀로 사용
+      const allExpectedOutputTokens = plan.tasks.flatMap(t =>
+        (t.expectedOutputs || []).map(s => s.toLowerCase())
+      ).join(' ');
+
+      const coveredDeliverables = goalSpec.deliverables.filter(deliverable => {
+        const deliverableLower = deliverable.toLowerCase();
+        // 단어 단위 포함 여부 확인 (단순 substring 포함)
+        return allExpectedOutputTokens.includes(deliverableLower) ||
+          // 토큰 분리 후 한 단어라도 포함 시 부분 포함으로 인정 (Precision 낮지만 Recall 우선)
+          deliverableLower.split(/\s+/).some(token => token.length > 2 && allExpectedOutputTokens.includes(token));
+      });
+      deliverableCoverage = coveredDeliverables.length / goalSpec.deliverables.length;
+
+      // 핵심 Deliverable이 하나도 커버되지 않으면 WARNING 추가
+      if (deliverableCoverage < 0.5) {
+        warnings.push({
+          code: 'LOW_DELIVERABLE_COVERAGE',
+          severity: 'WARNING',
+          message: `Deliverable coverage is low (${Math.round(deliverableCoverage * 100)}%). Some deliverables may not be produced by any task.`
+        });
+      }
+    }
 
     return {
       validationId: `val-${crypto.randomUUID()}`,
@@ -119,8 +153,9 @@ export class PlanValidator {
       errors,
       warnings,
       requirementCoverage,
-      deliverableCoverage: 1.0, // TODO: Deliverable 경로 계산
+      deliverableCoverage,
       createdAt: Date.now()
     };
   }
 }
+

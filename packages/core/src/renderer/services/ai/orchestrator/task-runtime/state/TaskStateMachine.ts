@@ -134,6 +134,7 @@ export class TaskStateMachine {
       if (verif.taskId !== entity.definition.id) {
         throw new InvalidTransitionError('Cannot transition to COMPLETED: taskId mismatch in verification.');
       }
+
       if (result.attemptId !== activeAttemptId || verif.attemptId !== activeAttemptId) {
         throw new InvalidTransitionError('Cannot transition to COMPLETED: attemptId mismatch between result, verification, and activeAttemptId.');
       }

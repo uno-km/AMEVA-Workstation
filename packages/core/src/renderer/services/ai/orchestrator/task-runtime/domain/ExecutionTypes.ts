@@ -39,6 +39,7 @@ export interface MissionExecutionState {
   status: MissionStatus;
   activePlanId?: string;
   activePlanVersion?: number;
+  stateVersion: number;
   
   // Mission 레벨 예산 (Budget)
   budget: {

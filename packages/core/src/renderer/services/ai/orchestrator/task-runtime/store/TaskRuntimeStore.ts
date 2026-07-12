@@ -35,6 +35,7 @@ export class TaskRuntimeStore {
     this.missionStates.set(missionId, {
       missionId,
       status: 'CREATED',
+      stateVersion: 1,
       budget: { ...budget },
     });
   }
@@ -55,7 +56,7 @@ export class TaskRuntimeStore {
    */
   public updateMissionState(missionId: string, updates: Partial<MissionExecutionState>): void {
     const state = this.getMissionState(missionId);
-    const updated = { ...state, ...updates };
+    const updated = { ...state, ...updates, stateVersion: state.stateVersion + 1 };
     
     // 깊은 복사(budget 등)는 주의 필요
     if (updates.budget) {
@@ -170,8 +171,7 @@ export class TaskRuntimeStore {
     // 이벤트 로깅 (별도의 이벤트 타입이 필요할 수 있지만, 여기서는 TASK_STATE_TRANSITION_REJECTED나 다른 걸 피하기 위해 임시 사용)
     this.eventLog.appendEvent({
       eventId: `evt-meta-${crypto.randomUUID()}`,
-      sessionId: 'sys-session', // 임시 세션
-      missionId: command.missionId,
+      sessionId: command.missionId, // 세션 ID로 missionId 사용
       taskId: command.taskId,
       type: 'TASK_VERIFICATION_STARTED', // TODO: 임시로 맵핑, 실제로는 TASK_METADATA_UPDATED 등 필요
       timestamp: command.timestamp,

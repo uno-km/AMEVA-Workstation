@@ -110,6 +110,7 @@ export interface MissionCompletionDecision {
 }
 
 export interface MissionCompletionSnapshot {
+  packageId: string;
   missionId: string;
   goalId?: string;
   planId?: string;
@@ -123,6 +124,8 @@ export interface MissionCompletionSnapshot {
   budgetSummary: Record<string, any>;
   recoverySummary: RecoverySummary;
   unresolvedIssues: string[];
+  toolRuntimeStatus?: string;
+  semanticRuntimeStatus?: string;
   createdAt: number;
   finalizedAt?: number;
   schemaVersion: number;

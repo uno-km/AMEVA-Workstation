@@ -34,7 +34,6 @@ import type {
   OrchestratorEventCallback,
   AgentPhase,
   ToolCallRequest,
-  ToolCallResult,
   TaskPlan,
   TaskStep
 } from './types'
@@ -214,7 +213,6 @@ export class AgentOrchestratorSession {
    *   미주입 시 검수 없이 통과.
    */
   private selfHealingMiddleware: ISelfHealingMiddleware | null = null
-  private actorCriticHook: IActorCriticHook | null = null
 
   constructor(config: OrchestratorConfig, onEvent: OrchestratorEventCallback) {
     this.config = config
@@ -747,84 +745,6 @@ export class AgentOrchestratorSession {
   /**
    * 도구를 실행하고 그 결과를 Observation으로 컨텍스트에 주입한다.
    * Actor-Critic 훅이 주입된 경우 실행 직전 Critic 검수를 수행한다.
-   *
-   * @param request - ThoughtParser가 파싱한 도구 호출 요청
-   */
-  private async executeToolAndObserve(request: ToolCallRequest): Promise<void> {
-    this.emitPhaseChange('tool_calling')
-    ipc.llmAddLog({
-      text: `[AgentOrchestrator] 도구 실행: ${request.name}(${JSON.stringify(request.args)})`,
-      prefix: 'Orchestrator'
-    })
-
-    /*
-     * [ACTOR-CRITIC: TOOL CALL INTERCEPT]
-     * - actorCriticHook이 주입된 경우, 도구 실행 직전 Critic 검수를 수행한다.
-     * - REJECT 시: FeedbackInjector가 contextMessages에 피드백을 주입하고 도구 실행을 건너뛴다.
-     * - PASS 또는 훅 미주입 시: 기존 도구 실행 경로로 계속 진행한다.
-     */
-    if (this.actorCriticHook !== null) {
-      const conversationSummary = this.contextMessages
-        .slice(-3)
-        .map((m) => `[${m.role}]: ${m.content.slice(0, 150)}`)
-        .join('\n')
-
-      const verdict = await this.actorCriticHook.beforeToolCall(
-        request.name,
-        request.args,
-        conversationSummary
-      )
-
-      if (verdict.verdict === 'REJECT') {
-        /*
-         * [REJECT: 도구 실행 건너뜀]
-         * - FeedbackInjector가 이미 contextMessages에 REJECT Observation을 주입했다.
-         * - 도구를 실행하지 않고 thinking 단계로 돌아가 다음 턴에서 재시도한다.
-         */
-        ipc.llmAddLog({
-          text: `[AgentOrchestrator] Critic이 도구 '${request.name}' 실행을 거부함. 피드백 주입 후 재시도.`,
-          prefix: 'Orchestrator'
-        })
-        this.emitPhaseChange('thinking')
-        return
-      }
-    }
-
-    const result: ToolCallResult = await this.registry.executeTool(request.name, request.args)
-
-    this.emitPhaseChange('observing')
-    this.emitEvent({ type: 'tool_call_end', result })
-
-    /*
-     * [OBSERVATION INJECTION]
-     * - 도구 실행 결과를 user 역할 메시지로 컨텍스트에 주입한다.
-     * - 이후 모델은 이 Observation을 바탕으로 다음 Thought를 생성한다.
-     * - 포맷: "Observation: [결과 내용]"
-     */
-    const observationText = result.success
-      ? `Observation: ${result.result ?? '(결과 없음)'}`
-      : `Observation: 도구 실행 실패 - ${result.error ?? '알 수 없는 오류'}`
-
-    this.contextMessages.push({
-      role: 'user',
-      content: observationText
-    })
-
-    ipc.llmAddLog({ text: `[AgentOrchestrator] Observation 주입 완료: ${observationText.slice(0, 100)}...`, prefix: 'Orchestrator' })
-    this.emitPhaseChange('thinking')
-  }
-
-  /**
-   * 현재 컨텍스트 메시지들의 총 토큰 수를 추정한다.
-   * 정확한 토크나이저 없이 글자 수 기반 근사치를 사용한다.
-   *
-   * @returns 추정 토큰 수 (글자 수 / CHARS_PER_TOKEN_ESTIMATE)
-   */
-  private estimateContextTokens(): number {
-    const totalChars = this.contextMessages
-      .reduce((sum, msg) => sum + msg.content.length, 0)
-    return Math.ceil(totalChars / ORCHESTRATOR_CONSTANTS.CHARS_PER_TOKEN_ESTIMATE)
-  }
 
   /**
    * 스트리밍 버퍼에서 Task Plan JSON을 찾아 파싱하고 이벤트를 방출한다.

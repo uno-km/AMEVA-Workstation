@@ -12,6 +12,13 @@ export class GoalRequirementCoverageEvaluator {
    * 요구사항 커버리지 평가. 
    * AMEVA V2 특성상 명시적인 Goal Spec 스키마가 없는 경우, 임시로 통과 처리하거나 TaskDefinition의 requirementIds를 이용해 Mock 평가를 수행합니다.
    */
+  private isRequired(def: any): boolean {
+    if (typeof def.required === 'boolean') return def.required;
+    if (def.requirementIds && def.requirementIds.length > 0) return true;
+    if (def.expectedOutputs && def.expectedOutputs.length > 0) return true;
+    return def.priority === 1;
+  }
+
   public evaluate(input: MissionCompletionReviewInput): {
     success: boolean;
     requirementResults: RequirementResult[];
@@ -20,8 +27,6 @@ export class GoalRequirementCoverageEvaluator {
     const warnings: string[] = [];
     const requirementResults: RequirementResult[] = [];
     
-    // TODO: Phase 2 ApprovedExecutionPlan 스키마에서 Goal Requirement 리스트를 직접 가져와야 함.
-    // 현재는 TaskDefinition.requirementIds 기반으로 역산출하여 1:1 매핑되어 있다고 가정합니다.
     const allRequirementIds = new Set<string>();
     input.allTaskDefinitions.forEach(t => {
       if (t.requirementIds) {
@@ -32,34 +37,46 @@ export class GoalRequirementCoverageEvaluator {
     let success = true;
 
     for (const reqId of allRequirementIds) {
-      // 해당 요구사항을 담당하는 Task 찾기
       const producerTasks = input.allTaskDefinitions.filter(t => t.requirementIds?.includes(reqId));
       const producerTaskIds = producerTasks.map(t => t.id);
 
-      // 이 Task들이 남긴 성공 Result가 있는지 파악
-      const verifiedResultIds = input.successfulTaskResults
-        .filter(r => producerTaskIds.includes(r.taskId as any)) // 타입 우회를 위해 as any, 혹은 나중에 Result 타입 통일
-        .map(r => r.attemptId);
+      const verifiedResultIds: string[] = [];
+      let hasValidOutput = false;
 
-      const isRequired = producerTasks.some(t => t.priority <= 5);
-      const isSatisfied = verifiedResultIds.length > 0;
 
-      if (isRequired && !isSatisfied) {
+      producerTasks.forEach(pTask => {
+        const stateIdx = input.allTaskDefinitions.findIndex(d => d.id === pTask.id);
+        const state = input.allTaskRuntimeStates[stateIdx];
+        if (!state) return;
+
+        if (state.status === 'COMPLETED' && state.taskResult && state.verification?.verdict === 'PASS') {
+          verifiedResultIds.push(state.taskResult.attemptId);
+          // 실제 유효한 산출물 데이터가 있는지 딥 검사
+          if (state.taskResult.outputs && state.taskResult.outputs.length > 0) {
+            hasValidOutput = true;
+          }
+        }
+      });
+
+      const isReqRequired = producerTasks.some(t => this.isRequired(t));
+      const isSatisfied = verifiedResultIds.length > 0 && hasValidOutput;
+
+      if (isReqRequired && !isSatisfied) {
         success = false;
-        warnings.push(`[GoalRequirementCoverage] 필수 Requirement ${reqId} 가 달성되지 않았습니다.`);
+        warnings.push(`[GoalRequirementCoverage] 필수 Requirement ${reqId} 가 달성되지 않았거나 유효한 산출물이 없습니다.`);
       }
 
       requirementResults.push({
         requirementId: reqId,
-        required: isRequired,
+        required: isReqRequired,
         sourceText: `Requirement ${reqId}`,
         producerTaskIds,
         verifiedResultIds,
         deliverableIds: [],
         finalArtifactReferences: [],
-        status: isSatisfied ? 'SATISFIED' : (isRequired ? 'UNSATISFIED' : 'UNVERIFIABLE'),
+        status: isSatisfied ? 'SATISFIED' : (isReqRequired ? 'UNSATISFIED' : 'UNVERIFIABLE'),
         evidenceReferences: [],
-        warnings: isSatisfied ? [] : ['Not covered by any successful task result.'],
+        warnings: isSatisfied ? [] : ['Not covered by any successful task result or missing outputs.'],
         unresolvedIssues: []
       });
     }

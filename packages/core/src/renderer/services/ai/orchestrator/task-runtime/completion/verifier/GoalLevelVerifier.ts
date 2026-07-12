@@ -19,24 +19,26 @@ export class GoalLevelVerifier {
     let success = true;
     let waitingUser = false;
 
-    // 만약 전체 Mission이 Semantic Runtime이 비활성화 되어 제대로 검증을 못했다면?
-    // Semantic 검증이 필요한 미션인 경우(예: 글쓰기, 요약 등) WAITING_USER 플래그 켜기
+    // Semantic 검증이 필요한 미션인 경우(예: 글쓰기, 분석, 요약 등) WAITING_USER 플래그 켜기
+    // 실제 Adapter 연결 없이 Mocking(Stub)으로 SUCCESS 반환하는 것을 방지함
     const semanticExpected = input.allTaskDefinitions.some(d => d.capabilityRequirements?.includes('semantic_analysis') || d.capabilityRequirements?.includes('llm'));
     
-    if (semanticExpected && input.toolRuntimeStatus === 'DISABLED_SAFELY') {
+    // 이 환경은 실제 LLM Adapter를 TaskRuntimeStore 또는 생성자에 주입받아 사용해야 함
+    // LLM 주입이 안되어있거나, Runtime 상태가 비활성일 때 Mock 통과 처리하지 않고 WAITING_USER로 넘김
+    if (semanticExpected) {
+      // TODO: 실제 Goal-Level Verifier Prompt 및 Semantic Adapter 연동 필요.
+      // 현재는 인프라 부재 시 거짓 SUCCESS를 선언하지 않기 위해 강제 WAITING_USER 처리.
       success = false;
       waitingUser = true;
-      warnings.push('[GoalLevelVerifier] Semantic Runtime(LLM)이 비활성화되어 의미론적 목표 달성 여부를 자동 검증할 수 없습니다. 수동 검토가 필요합니다.');
+      warnings.push('[GoalLevelVerifier] Semantic Runtime(LLM) 검증 모듈이 연결되지 않아 의미론적 목표 달성 여부를 자동 검증할 수 없습니다. 수동 검토가 필요합니다.');
     }
 
     // 미해결 이슈(unresolvedIssues) 중 치명적 결함 체크
-    const fatalIssues = input.unresolvedIssues.filter(iss => iss.toLowerCase().includes('fatal') || iss.toLowerCase().includes('critical'));
+    const fatalIssues = input.unresolvedIssues.filter(iss => iss.toLowerCase().includes('fatal') || iss.toLowerCase().includes('critical') || iss.toLowerCase().includes('error'));
     if (fatalIssues.length > 0) {
       success = false;
-      warnings.push(`[GoalLevelVerifier] ${fatalIssues.length} 개의 치명적 미해결 이슈가 존재합니다.`);
+      warnings.push(`[GoalLevelVerifier] ${fatalIssues.length} 개의 치명적/미해결 오류가 존재합니다.`);
     }
-
-    // (모순이나 논리 오류를 여기서 추가 분석할 수 있음)
 
     return {
       success,

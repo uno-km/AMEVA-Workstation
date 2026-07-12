@@ -128,6 +128,7 @@ export interface TaskDefinition {
   objective: string; // 설명 및 목표
   dependencies: string[]; // 선행 taskId 목록
   priority?: number;
+  required?: boolean; // Mission 완료를 위한 필수 Task 여부 (PHASE 5.5 추가)
   budgetTurns?: number; // Legacy (최대 1000)
   
   requestedReasoningTurns?: number;
