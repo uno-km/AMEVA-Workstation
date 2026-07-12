@@ -77,6 +77,14 @@ export interface AIState {
   setAgentTaskPlan: (plan: TaskPlan | null) => void;
   updateAgentTaskStepStatus: (stepId: number, status: TaskPlan['steps'][number]['status']) => void;
 
+  /** 신규 Task Runtime 실시간 진행률 (%) */
+  taskProgress: number;
+  setTaskProgress: (progress: number) => void;
+
+  /** 최종 작성된 미션 성적 보고서 마크다운 */
+  finalReport: string | null;
+  setFinalReport: (report: string | null) => void;
+
   /**
    * agentCurrentToolName: 현재 실행 중인 도구 명칭.
    * - 예상 값: 도구 명칭 문자열 또는 null (도구 미실행 상태).
@@ -222,6 +230,12 @@ export const useAIState = create<AIState>((set) => ({
     };
   }),
 
+  taskProgress: 0,
+  setTaskProgress: (taskProgress) => set({ taskProgress }),
+
+  finalReport: null,
+  setFinalReport: (finalReport) => set({ finalReport }),
+
   agentCurrentToolName: null,
   setAgentCurrentToolName: (agentCurrentToolName) => set({ agentCurrentToolName }),
 
@@ -247,6 +261,8 @@ export const useAIState = create<AIState>((set) => ({
     agentPhase: 'idle',
     agentThoughts: [],
     agentTaskPlan: null,
+    taskProgress: 0,
+    finalReport: null,
     agentCurrentToolName: null,
     agentAccumulatedAnswer: '',
     recoveryState: 'normal',

@@ -62,6 +62,8 @@ export interface RecoveryCheckpoint {
   step: number;
   timestamp: number;
   contextMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
+  /** 태스크 런타임용 Task 목록 저장 */
+  tasks?: any[];
 }
 
 /**

@@ -109,13 +109,14 @@ export function AgentTaskChecklist() {
    */
   const agentTaskPlan = useAIState((s) => s.agentTaskPlan)
   const agentPhase = useAIState((s) => s.agentPhase)
+  const taskProgress = useAIState((s) => s.taskProgress)
 
   // Plan이 없으면 렌더링하지 않음
   if (!agentTaskPlan || agentTaskPlan.steps.length === 0) return null
 
   const { steps, goal } = agentTaskPlan
   const completedCount = steps.filter((s) => s.status === 'done').length
-  const progressPercent = Math.round((completedCount / steps.length) * 100)
+  const progressPercent = taskProgress // 신규 Task Runtime의 실질 진행률로 대체
 
   return (
     <div

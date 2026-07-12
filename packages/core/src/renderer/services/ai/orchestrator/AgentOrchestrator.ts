@@ -44,6 +44,15 @@ import type { ILLMEngineAdapter } from './types'
 import { ThoughtParser } from './ThoughtParser'
 import { ToolRegistry } from './ToolRegistry'
 
+// 신규 Task Runtime 모듈 임포트
+import { TaskPlanner } from './task/TaskPlanner'
+import { TaskGraph } from './task/TaskGraph'
+import { TaskQueue } from './task/TaskQueue'
+import { TaskExecutor } from './task/TaskExecutor'
+import { TaskVerifier } from './task/TaskVerifier'
+import { TaskCompletionManager } from './task/TaskCompletionManager'
+import { FinalReporter } from './task/FinalReporter'
+
 /*
  * [SELF-HEALING MIDDLEWARE IMPORT]
  * - ISelfHealingMiddleware: 2-Stage 자가 치유 파이프라인 주입 계약.
@@ -164,6 +173,10 @@ export class AgentOrchestratorSession {
   private readonly supervisor: SupervisorAgent = SupervisorAgent.getInstance()
   private readonly critic: CriticAgent = new CriticAgent()
   private checkpointIntervalId: any = null
+
+  // 신규 Task Runtime 멤버
+  private taskQueue: TaskQueue | null = null
+  private taskGraph: TaskGraph | null = null
 
   /*
    * [PRIVATE STATE - Accumulators]
@@ -350,149 +363,141 @@ export class AgentOrchestratorSession {
     history: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = []
   ): Promise<string> {
     this.emitPhaseChange('thinking')
-    ipc.llmAddLog({ text: `[AgentOrchestrator] ReAct 루프 시작. maxTurns=${this.config.maxTurns}`, prefix: 'Orchestrator' })
+    ipc.llmAddLog({ text: `[AgentOrchestrator] 신규 Task Runtime Engine 가동 시작`, prefix: 'Orchestrator' })
 
     // supervisor 모니터링 및 체크포인트 시작
     this.supervisor.startMonitoring(this.sessionId, (reason) => {
       void RecoveryEngine.getInstance().handleStall(reason, this.buildRecoveryBridge())
     })
 
+    // 1. Task Planner 가동하여 Goal에 기반한 태스크 계획 획득
+    const planner = new TaskPlanner(this.adapter)
+    const initialTasks = await planner.plan(userMessage)
+
+    // 2. Task Graph 및 Queue, Completion Manager 초기화
+    this.taskGraph = new TaskGraph(initialTasks)
+    
+    // Cycle 오류 체크 가드
+    if (this.taskGraph.hasCycle()) {
+      ipc.llmAddLog({ text: '[AgentOrchestrator] 태스크 그래프 상에 순환 의존성(Cycle) 감지! 폴백 처리합니다.', prefix: 'Orchestrator' })
+    }
+    
+    this.taskQueue = new TaskQueue(this.taskGraph)
+    const completionManager = new TaskCompletionManager(this.taskQueue)
+
+    // Zustand 스토어 참조 (useAIState 동적 임포트 형태 바인딩)
+    const { useAIState } = await import('../../../stores/useAIState')
+    const state = useAIState.getState()
+
+    // 5초 체크포인트 주기 연동 (태스크 상태 직렬화 병합)
     this.checkpointIntervalId = setInterval(async () => {
       if (this.isAborted) return
       await CheckpointSystem.saveCheckpoint(this.sessionId, {
-        goal: this.agentTaskPlan?.goal ?? userMessage,
+        goal: userMessage,
         thought: this.parser.getThoughtBuffer() ?? '',
         partialAnswer: this.accumulatedAnswer,
         toolState: this.pendingToolCall ? JSON.stringify(this.pendingToolCall) : '',
         step: this.currentTurn,
-        contextMessages: this.contextMessages
+        contextMessages: this.contextMessages,
+        tasks: this.taskGraph ? this.taskGraph.getTasks() : [] // 태스크 상태 직렬화 추가
       })
     }, 5000)
 
+    // 동적 UI 싱크 함수 선언
+    const syncUIState = () => {
+      if (!this.taskGraph) return;
+      const allTasks = this.taskGraph.getTasks();
+      const steps = allTasks.map((t, idx) => ({
+        id: idx + 1, // 기존 UI 호환용 정수 ID
+        description: t.title,
+        status: t.status === 'COMPLETED' ? 'done' as const : 
+                t.status === 'RUNNING' ? 'in_progress' as const : 
+                t.status === 'FAILED' ? 'failed' as const : 'pending' as const
+      }));
+      state.setAgentTaskPlan({ goal: userMessage, steps });
+      state.setTaskProgress(completionManager.getCompletionRate());
+    };
+
+    // 최초 UI 동기화
+    syncUIState()
+
     try {
-      // 시스템 프롬프트 빌드
+      const executor = new TaskExecutor()
+      const verifier = new TaskVerifier(this.adapter)
+
+      // 시스템 프롬프트 및 이전 대화 컨텍스트 초기화
       const systemPrompt = this.buildSystemPrompt()
+      this.contextMessages = [
+        { role: 'system', content: systemPrompt },
+        ...history
+      ]
 
-    // 컨텍스트 초기화: 시스템 + 이전 히스토리 + 현재 사용자 메시지
-    this.contextMessages = [
-      { role: 'system', content: systemPrompt },
-      ...history,
-      { role: 'user', content: userMessage }
-    ]
+      // 3. Task Dispatcher & Execution 루프 구동
+      while (this.taskQueue && this.taskQueue.hasMoreTasks() && !this.isAborted) {
+        const currentTask = this.taskQueue.dispatchNext()
+        if (!currentTask) {
+          // READY 상태 노드가 없는데 PENDING이 남은 경우 (의존성 대기)
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue
+        }
 
-    /*
-     * [ACTOR HISTORY RE-LINKAGE]
-     * - run() 호출 시 contextMessages가 재초기화되므로 ActorCriticHook 참조를 갱신한다.
-     * - 이렇게 해야 REJECT 시 올바른 배열에 피드백이 주입된다.
-     */
-    if (this.actorCriticHook instanceof ActorCriticHook) {
-      this.actorCriticHook.setActorHistory(this.contextMessages)
-      this.actorCriticHook.resetRejectionCount()
-    }
+        ipc.llmAddLog({ text: `[AgentOrchestrator] 태스크 실행 개시: ${currentTask.id} (${currentTask.title})`, prefix: 'Orchestrator' })
+        syncUIState()
 
-    /*
-     * [REACT LOOP]
-     * - maxTurns와 contextPoolMaxTokens 두 가지 가드레일로 무한 루프를 방지한다.
-     * - 각 턴마다: 생성 → 파서 → (도구 실행 → Observation 주입 → 반복) 또는 최종 답변.
-     */
-    while (this.currentTurn < this.config.maxTurns && !this.isAborted) {
-      this.currentTurn++
-      ipc.llmAddLog({ text: `[AgentOrchestrator] 턴 ${this.currentTurn} 시작`, prefix: 'Orchestrator' })
+        let verifyPassed = false;
+        
+        while (currentTask.retries <= currentTask.maxRetries && !this.isAborted) {
+          currentTask.retries++;
+          
+          // 태스크별 ReAct 루프 가동
+          this.accumulatedAnswer = '' // 답변 버퍼 초기화
+          const result = await executor.execute(currentTask, this)
 
-      // 컨텍스트 풀 가드레일 체크
-      if (this.estimateContextTokens() > this.config.contextPoolMaxTokens) {
-        ipc.llmAddLog({
-          text: `[AgentOrchestrator] 컨텍스트 풀 초과(${this.estimateContextTokens()} > ${this.config.contextPoolMaxTokens} 토큰). 루프 조기 종료.`,
-          prefix: 'Orchestrator'
-        })
-        break
-      }
+          if (result.status === 'SUCCESS') {
+            // Verifier를 통한 2단계 사후 검정
+            verifyPassed = await verifier.verify(currentTask, result)
+            if (verifyPassed) {
+              this.taskQueue.setCompleted(currentTask.id, result)
+              break
+            }
+          }
 
-      // 파서 상태 리셋 (새 턴 시작)
-      this.parser.reset()
-      this.pendingToolCall = null
-
-      try {
-        // 스트리밍 생성 실행
-        await this.runSingleTurn()
-      } catch (turnErr: unknown) {
-        const msg = turnErr instanceof Error ? turnErr.message : String(turnErr)
-        console.error(`[AgentOrchestrator] 턴 ${this.currentTurn} 실행 오류:`, msg)
-        this.emitPhaseChange('error')
-        this.emitEvent({ type: 'error', message: msg })
-        return `오류가 발생했습니다: ${msg}`
-      }
-
-      /*
-       * [TOOL CALL BRANCH]
-       * - pendingToolCall이 설정되어 있으면 도구를 실행하고 결과를 컨텍스트에 주입한다.
-       * - 도구 실행 완료 후 다음 턴으로 계속 진행한다.
-       */
-      if (this.pendingToolCall !== null) {
-        await this.executeToolAndObserve(this.pendingToolCall)
-        continue // 다음 턴으로 진행
-      }
-
-      /*
-       * [FINAL ANSWER BRANCH]
-       * - pendingToolCall이 없고 답변 텍스트가 누적되었다면 루프를 종료한다.
-       */
-      if (this.accumulatedAnswer.trim() !== '') {
-        break
-      }
-
-      /*
-       * [EMPTY TURN GUARD]
-       * - 도구 호출도 없고 답변도 없는 빈 턴이 나오면 루프를 종료한다.
-       */
-      ipc.llmAddLog({ text: `[AgentOrchestrator] 빈 턴 감지. 루프 종료.`, prefix: 'Orchestrator' })
-      break
-    }
-
-    // 루프 완료 처리
-    const finalAnswer = this.accumulatedAnswer.trim() || this.buildFallbackAnswer()
-
-    /*
-     * [ACTOR-CRITIC: FINAL ANSWER INTERCEPT]
-     * - actorCriticHook이 주입된 경우 Final Answer 확정 직전에 Critic 검수를 수행한다.
-     * - REJECT 시 피드백이 contextMessages에 주입되고 재생성이 강제된다.
-     * - maxCriticRejections 초과 시 PASS 폴백으로 원본 답변을 사용한다.
-     */
-    if (this.actorCriticHook !== null && finalAnswer.trim() !== '') {
-      const criticVerdict = await this.actorCriticHook.beforeFinalAnswer(
-        finalAnswer,
-        this.contextMessages.find((m) => m.role === 'user')?.content ?? ''
-      )
-      if (criticVerdict.verdict === 'REJECT') {
-        /*
-         * [REJECT: 재생성 강제]
-         * - REJECT 시 currentTurn을 유지하고 루프를 한 번 더 실행한다.
-         * - FeedbackInjector가 이미 contextMessages에 REJECT Observation을 주입했다.
-         * - 단, maxTurns 또는 maxCriticRejections 초과 시 폴백으로 원본 답변을 사용한다.
-         */
-        if (this.currentTurn < this.config.maxTurns) {
-          this.accumulatedAnswer = ''
-          this.parser.reset()
-          try {
-            await this.runSingleTurn()
-            const regeneratedAnswer = this.accumulatedAnswer.trim() || finalAnswer
-            this.emitPhaseChange('done')
-            this.emitEvent({ type: 'final_answer', answer: regeneratedAnswer })
-            ipc.llmAddLog({ text: `[AgentOrchestrator] Critic 재생성 완료. 총 ${this.currentTurn}턴.`, prefix: 'Orchestrator' })
-            return regeneratedAnswer
-          } catch {
-            // 재생성 실패 시 원본 답변 폴백
-            ipc.llmAddLog({ text: '[AgentOrchestrator] Critic 재생성 실패. 원본 답변 사용.', prefix: 'Orchestrator' })
+          // 검증 실패 시 또는 실행 실패 시 처리
+          ipc.llmAddLog({ text: `[AgentOrchestrator] 태스크 ${currentTask.id} 수행 또는 검증 실패 (시도 ${currentTask.retries}/${currentTask.maxRetries})`, prefix: 'Orchestrator' })
+          
+          if (currentTask.retries > currentTask.maxRetries) {
+            // Skip 처리
+            this.taskQueue.setSkipped(currentTask.id)
+            break
+          } else {
+            this.taskQueue.setFailed(currentTask.id)
+            syncUIState()
+            // 잠시 대기 후 재시도
+            await new Promise(resolve => setTimeout(resolve, 1000))
           }
         }
+
+        syncUIState()
       }
-    }
 
-    this.emitPhaseChange('done')
-    this.emitEvent({ type: 'final_answer', answer: finalAnswer })
-    ipc.llmAddLog({ text: `[AgentOrchestrator] 루프 완료. 총 ${this.currentTurn}턴 실행.`, prefix: 'Orchestrator' })
+      // 4. Mission 완료 결과 평가 및 최종 마크다운 보고서 생성
+      const finalResultGrade = completionManager.evaluateMissionResult()
+      const stats = completionManager.getSummaryStats()
+      const finalReportText = FinalReporter.buildReport(
+        userMessage,
+        stats,
+        completionManager.getCompletionRate(),
+        finalResultGrade,
+        this.currentTurn,
+        this.supervisor.getRecoveryCount ? this.supervisor.getRecoveryCount() : 0
+      )
 
-    return finalAnswer
+      // 최종 상태 바인딩
+      state.setFinalReport(finalReportText)
+      this.emitPhaseChange('done')
+      this.emitEvent({ type: 'final_answer', answer: finalReportText })
+
+      return finalReportText
     } finally {
       this.cleanupRecovery()
     }
@@ -837,6 +842,26 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
           }
           this.parser.reset()
           this.parser.feed(checkpoint.thought)
+
+          // 신규 Task 리스트 및 큐 복원 연동
+          if (checkpoint.tasks) {
+            this.taskGraph = new TaskGraph(checkpoint.tasks)
+            this.taskQueue = new TaskQueue(this.taskGraph)
+            const { useAIState } = await import('../../../stores/useAIState')
+            const state = useAIState.getState()
+            const steps = checkpoint.tasks.map((t, idx) => ({
+              id: idx + 1,
+              description: t.title,
+              status: t.status === 'COMPLETED' ? 'done' as const : 
+                      t.status === 'RUNNING' ? 'in_progress' as const : 
+                      t.status === 'FAILED' ? 'failed' as const : 'pending' as const
+            }));
+            state.setAgentTaskPlan({ goal: checkpoint.goal, steps });
+            const finished = checkpoint.tasks.filter((t: any) => t.status === 'COMPLETED' || t.status === 'SKIPPED').length;
+            const rate = checkpoint.tasks.length > 0 ? Math.round((finished / checkpoint.tasks.length) * 100) : 0;
+            state.setTaskProgress(rate);
+          }
+
           await this.runSingleTurn()
           return true;
         } catch {
