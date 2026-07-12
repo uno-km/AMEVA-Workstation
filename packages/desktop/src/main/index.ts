@@ -405,12 +405,26 @@ ipcMain.handle('clipboard:write-image', async (_event, dataUrl: string) => {
 // (1) Ollama 설치 여부 진단 채널
 ipcMain.handle('ollama:check-installed', async () => {
   try {
-    const { execSync } = require('child_process') as typeof import('child_process')
+    const { exec } = require('child_process') as typeof import('child_process')
     // Windows: where ollama / Linux·macOS: which ollama
     const cmd = process.platform === 'win32' ? 'where ollama' : 'which ollama'
-    // - Expected Value Flow: cmd -> execSync -> string result 반환
-    // - Rationale: Ollama 탐색 명령어 실행 시 Windows에서 콘솔 창 깜빡임 현상을 완벽히 차단한다.
-    const result = execSync(cmd, { encoding: 'utf-8', timeout: 5000, windowsHide: true }).trim()
+    
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `result`
+     * - 자료형 / 예상 값: string
+     * - 시나리오: 비동기 exec를 이용하여 where/which 명령어를 실행해 백그라운드 콘솔 창의 깜빡임을 방지하고 설치 경로를 확보한다.
+     */
+    const result = await new Promise<string>((resolve) => {
+      exec(cmd, { windowsHide: true, timeout: 3000 }, (error, stdout) => {
+        if (error) {
+          resolve('')
+        } else {
+          resolve(stdout.trim())
+        }
+      })
+    })
+    
     return { installed: !!result, path: result }
   } catch {
     return { installed: false, path: '' }
@@ -639,8 +653,8 @@ app.whenReady().then(() => {
   // [PERF] 1. 가장 먼저 윈도우 생성 (블로킹 방지 및 즉각적인 UI 피드백 제공)
   createWindow()
 
-  // [FEAT-OLLAMA-AUTO] 올라마가 감지되면 백그라운드 백데몬 기동 연쇄
-  autoStartOllamaIfInstalled()
+  // [FEAT-OLLAMA-AUTO] 올라마가 감지되면 백그라운드 백데몬 기동 연쇄 (LMA 등 타 엔진 사용 시 불필요한 자동 기동 방지를 위해 호출 주석 처리)
+  // autoStartOllamaIfInstalled()
 
   // [FIX-USER-AGENT-001] 유튜브 등 외부 임베드 웹 브라우저 호환성 및 재생 제한 우회 설정
   /*

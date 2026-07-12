@@ -1,8 +1,11 @@
 # AMEVA OS Changelog
 
-## 2026-07-12 (Recovery-First Agent Runtime Architecture 구현 및 스트림 락 해결)
+## 2026-07-12 (Recovery-First Agent Runtime Architecture 구현 및 Ollama 자동 기동 비활성화)
 
 ### 🚀 주요 아키텍처 변경 사항
+- **Ollama 백그라운드 자동 기동 호출 해제 및 헬스체크 비동기화**:
+  - 앱 시작 시 사용자가 LMA(Llama.cpp) 등 다른 설정을 사용 중임에도 Ollama CLI가 깔려 있으면 무조건 `ollama serve` 백데몬을 시작하던 호출부를 비활성화했습니다.
+  - `ollama:check-installed` IPC 핸들러의 동기식 `execSync` 호출을 비동기식 `exec`로 리팩토링하여, OS 쉘 검색 명령어 실행 시 발생하던 윈도우 CMD 창 깜빡임 현상을 차단하고 Electron 메인 스레드 블로킹을 해결했습니다.
 - **로컬 LLM 스트리밍 [DONE] 시그널 브레이킹 버그 수정**:
   - `LLMEngineAdapter.ts`에서 SSE 스트림 수신 도중 `[DONE]` 시그널을 수신했을 때 바깥쪽 `while` 루프가 아닌 내부 `for` 루프만 탈출하여 영구 블로킹(Pending)되던 심각한 흐름 제어 결함을 정복했습니다.
   - 완료 시그널 감지 즉시 `reader.cancel()`을 명시적으로 호출해 연결을 종료하고, 지금까지 누적된 텍스트를 즉시 안전하게 반환하도록 수정했습니다.
@@ -31,6 +34,7 @@
 - `[MODIFY]` [useAIState.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/stores/useAIState.ts) - 복구 상태 및 시간, 추정 진행 단계 변수, 수동 재개 콜백 Zustand 바인딩.
 - `[MODIFY]` [useAIAgentMode.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIAgentMode.ts) - 딥리즈닝 기동 종료 시 수동 재개 콜백 클린업 결합.
 - `[MODIFY]` [ReasoningTraceViewer.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai-panel/chat-list/ReasoningTraceViewer.tsx) - Zustand 복구 상태 구독 및 경과 초/단계 실시간 가시화 카드 구축, 수동 재개 버튼 바인딩.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - Ollama 자동 기동 호출부 비활성화 및 `ollama:check-installed` 내 `execSync`를 비동기 `exec`로 리팩토링.
 
 ## 2026-07-10 (Right Tab Strip UI/UX 고도화 & DrawingBlock 4대 결함 해결 리팩토링)
 
