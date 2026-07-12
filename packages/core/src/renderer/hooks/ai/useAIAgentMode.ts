@@ -537,6 +537,7 @@ async function runDeepReasoningMode(
     isAgentRunningRef.current = false
     setIsGenerating(false)
     currentAssistantIdRef.current = null
+    useAIState.getState().setResumeFromCheckpoint(null)
     setTimeout(() => processNextQueueRef.current?.(), 80)
   }
 }

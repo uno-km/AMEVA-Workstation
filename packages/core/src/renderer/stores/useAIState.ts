@@ -21,6 +21,7 @@ import { create } from 'zustand';
 import type { AISettings } from '../types/aiTypes';
 import type { AgentPhase, TaskPlan } from '../services/ai/orchestrator/types';
 import { AI_TERMINAL_CONSTANTS } from '../features/ai-terminal/constants';
+import type { RecoveryState, RecoveryReason, InferencePhase } from '../services/ai/orchestrator/recovery/types';
 
 export interface AIState {
   // 1. 전역 생성 상태
@@ -91,6 +92,22 @@ export interface AIState {
    */
   agentAccumulatedAnswer: string;
   setAgentAccumulatedAnswer: (answer: string) => void;
+
+  // 6. Recovery-First 자가회복 모듈용 상태 슬라이스
+  recoveryState: RecoveryState;
+  setRecoveryState: (state: RecoveryState) => void;
+
+  recoveryReason: RecoveryReason | null;
+  setRecoveryReason: (reason: RecoveryReason | null) => void;
+
+  recoveryElapsed: number;
+  setRecoveryElapsed: (elapsed: number) => void;
+
+  inferencePhase: InferencePhase;
+  setInferencePhase: (phase: InferencePhase) => void;
+
+  resumeFromCheckpoint: (() => Promise<void>) | null;
+  setResumeFromCheckpoint: (callback: (() => Promise<void>) | null) => void;
 
   /** 오케스트레이터 상태 전체 초기화 (새 세션 시작 시 사용) */
   resetAgentState: () => void;
@@ -211,12 +228,32 @@ export const useAIState = create<AIState>((set) => ({
   agentAccumulatedAnswer: '',
   setAgentAccumulatedAnswer: (agentAccumulatedAnswer) => set({ agentAccumulatedAnswer }),
 
+  recoveryState: 'normal',
+  setRecoveryState: (recoveryState) => set({ recoveryState }),
+
+  recoveryReason: null,
+  setRecoveryReason: (recoveryReason) => set({ recoveryReason }),
+
+  recoveryElapsed: 0,
+  setRecoveryElapsed: (recoveryElapsed) => set({ recoveryElapsed }),
+
+  inferencePhase: 'Planning',
+  setInferencePhase: (inferencePhase) => set({ inferencePhase }),
+
+  resumeFromCheckpoint: null,
+  setResumeFromCheckpoint: (resumeFromCheckpoint) => set({ resumeFromCheckpoint }),
+
   resetAgentState: () => set({
     agentPhase: 'idle',
     agentThoughts: [],
     agentTaskPlan: null,
     agentCurrentToolName: null,
-    agentAccumulatedAnswer: ''
+    agentAccumulatedAnswer: '',
+    recoveryState: 'normal',
+    recoveryReason: null,
+    recoveryElapsed: 0,
+    inferencePhase: 'Planning',
+    resumeFromCheckpoint: null
   })
 }));
 

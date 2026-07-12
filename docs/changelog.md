@@ -1,5 +1,37 @@
 # AMEVA OS Changelog
 
+## 2026-07-12 (Recovery-First Agent Runtime Architecture 구현 및 스트림 락 해결)
+
+### 🚀 주요 아키텍처 변경 사항
+- **로컬 LLM 스트리밍 [DONE] 시그널 브레이킹 버그 수정**:
+  - `LLMEngineAdapter.ts`에서 SSE 스트림 수신 도중 `[DONE]` 시그널을 수신했을 때 바깥쪽 `while` 루프가 아닌 내부 `for` 루프만 탈출하여 영구 블로킹(Pending)되던 심각한 흐름 제어 결함을 정복했습니다.
+  - 완료 시그널 감지 즉시 `reader.cancel()`을 명시적으로 호출해 연결을 종료하고, 지금까지 누적된 텍스트를 즉시 안전하게 반환하도록 수정했습니다.
+- **자가회복형 에이전트 런타임(Recovery-First Agent Runtime) 및 5단계 복구 사다리 구축**:
+  - **SupervisorAgent & Watchdog**: 에이전트의 메인 추론 스레드 외부에서 독립적으로 동작하는 10초 주기 Watchdog 타이머를 탑재했습니다. 토큰 방출 패턴을 정밀 추적하여 현재 진행 단계(`Planning` | `Reasoning` | `Drafting` | `Finalizing`)를 모델 독립적인 휴리스틱으로 추정합니다.
+  - **RecoveryEngine**: 정체/장애 상황에 대처하는 **5단계 점진적 복구 사다리(Recovery Ladder)** 프로토콜을 구현했습니다.
+    `1. Reconnection (재연결)` → `2. Parser Reset (파서 초기화)` → `3. Stream Rebuild (컨텍스트 빌드)` → `4. Checkpoint Resume (스냅샷 복원)` → `5. User Assist (사용자 수동 재개)`
+    순차적으로 시도하여 단일 스트림 지연이 추론 흐름 전체를 붕괴시키지 않도록 차단합니다.
+  - **CheckpointSystem**: 5초 주기 또는 각 턴 경계 시점에 에이전트의 내부 컨텍스트 메시지와 스토어 상태를 IndexedDB에 비동기 방식으로 안전하게 백업하여 데이터 유실 없는 회복 기반을 다졌습니다.
+  - **CriticAgent**: 오탐율이 높은 LLM 기반 자기모순 검사를 지양하고, 공백/기호를 트리밍한 단어/구절 단위의 룰 기반 N-gram 연속 중복(6자~15자 가변 윈도우 스캔) 및 10초 이상 무반응을 Heuristic 검사하도록 고안했습니다. Markdown 표(`|`)와 코드 블록(```) 영역은 감시에서 자동 배제하는 가드를 추가했습니다.
+  - **FailureMemory**: 과거 실패에 의거한 적응형 임계치 변경 등의 위험요소를 제거하고, 복구 이력에 대한 투명한 디버깅 분석을 돕는 **비동기 ReadOnly 복구 로그(FailureMemory)**를 구축했습니다.
+- **UI/UX 복구 상태 카드 및 수동 재개(User Assist) 지원**:
+  - `ReasoningTraceViewer.tsx` 컴포넌트 내에 Zustand 스토어를 바인딩하여, 스트리밍 진행 중 정체 발생 시 경과 시간 및 현재 복구 단계/원인을 투명하게 노출합니다.
+  - 자동 복구 사다리 전체 시도가 최종 실패했을 시, 잃어버린 답변을 복원하여 그 지점부터 자연스럽게 재개할 수 있는 **[마지막 지점부터 이어서 진행] 수동 복원 버튼 카드**를 UI에 제공합니다.
+
+### 📁 수정된 파일 목록
+- `[NEW]` [types.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/types.ts) - 복구 상태 및 진행 단계, 체크포인트 모델 정의.
+- `[NEW]` [CheckpointSystem.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/CheckpointSystem.ts) - IndexedDB 비동기 스냅샷 세션 백업 매니저.
+- `[NEW]` [FailureMemory.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/FailureMemory.ts) - 비동기 IndexedDB 기반 ReadOnly 복구 이력 로깅 모듈.
+- `[NEW]` [CriticAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/CriticAgent.ts) - 가변 윈도우 N-gram 루프 및 정체 Heuristic 감시자.
+- `[NEW]` [SupervisorAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/SupervisorAgent.ts) - 진행 단계 추정 및 10초 주기 Watchdog 타이머 모듈.
+- `[NEW]` [RecoveryEngine.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/RecoveryEngine.ts) - 5단계 점진적 복구 사다리 프로토콜 실행 제어기.
+- `[NEW]` [test_recovery.js](file:///C:/Users/GAME/.gemini/antigravity-ide/brain/ca70e07b-8f8e-465d-a3a4-fd9224e74bf9/scratch/test_recovery.js) - 가변 윈도우 스캔 및 진행 단계 검증을 위한 Node.js 단위 테스트.
+- `[MODIFY]` [LLMEngineAdapter.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/LLMEngineAdapter.ts) - LlamaLocalEngineAdapter 내 `[DONE]` 수신 즉시 리더 종료 및 누적값 반환 수정.
+- `[MODIFY]` [AgentOrchestrator.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/AgentOrchestrator.ts) - SupervisorAgent 감시 등록, 5초 주기 체크포인트 타이머 기동, runSingleTurn 토큰 센서 주입 및 복구 실행 브릿지 통합.
+- `[MODIFY]` [useAIState.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/stores/useAIState.ts) - 복구 상태 및 시간, 추정 진행 단계 변수, 수동 재개 콜백 Zustand 바인딩.
+- `[MODIFY]` [useAIAgentMode.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIAgentMode.ts) - 딥리즈닝 기동 종료 시 수동 재개 콜백 클린업 결합.
+- `[MODIFY]` [ReasoningTraceViewer.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai-panel/chat-list/ReasoningTraceViewer.tsx) - Zustand 복구 상태 구독 및 경과 초/단계 실시간 가시화 카드 구축, 수동 재개 버튼 바인딩.
+
 ## 2026-07-10 (Right Tab Strip UI/UX 고도화 & DrawingBlock 4대 결함 해결 리팩토링)
 
 ### 🚀 주요 아키텍처 변경 사항

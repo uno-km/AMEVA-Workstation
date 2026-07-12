@@ -74,6 +74,14 @@ AMEVA OS is a serverless local AI & WASM hybrid operating system that executes c
 - **`editor.css`**: BlockNote editor theming, code block styling, and markdown preview overrides.
 - **`components/*.css`**: Component-isolated styles (`Sidebar.css`, `AIPanel.css`, `StatusBar.css`, `MenuBar.css`, `Modals.css`).
 
+### 2.10 Recovery Layer
+- **`types.ts`**: 복구 상태(RecoveryState) 및 진행 단계(InferencePhase), 체크포인트 데이터 타입 선언.
+- **`CheckpointSystem.ts`**: 5초 주기 비동기 IndexedDB 기반 에이전트 스냅샷 백업 시스템.
+- **`FailureMemory.ts`**: 복구/실패 이력을 비동기 IndexedDB에 ReadOnly 형태로 누적 기록하는 이력 저장소.
+- **`CriticAgent.ts`**: 룰 기반 N-gram(6자~15자 가변 윈도우 스캔) 무한 루프 및 10초 무반응 Heuristic 검수 에이전트.
+- **`SupervisorAgent.ts`**: 토큰 방출 빈도를 측정하여 진행 단계를 추정하고 10초 주기 Watchdog 타이머로 오작동을 진단하는 감시자.
+- **`RecoveryEngine.ts`**: Stalled/Dead 상태 진입 시 5단계 복구 사다리(Reconnection, Parser Reset, Stream Rebuild, Checkpoint Resume, User Assist) 프로토콜을 수행하는 회복 제어기.
+
 ## 3. Mermaid Architecture Diagram
 
 ```mermaid
@@ -131,6 +139,23 @@ graph TD
         Adapter[electronApiAdapter.ts]
     end
 
+    %% Recovery Layer
+    subgraph Recovery Layer [자가회복 계층]
+        Supervisor[SupervisorAgent.ts<br>(Watchdog/Estimator)]
+        Critic[CriticAgent.ts<br>(N-gram/Stall Heuristics)]
+        Engine[RecoveryEngine.ts<br>(5-Level Ladder)]
+        Checkpoint[CheckpointSystem.ts<br>(IndexedDB Backup)]
+        FailMemory[FailureMemory.ts<br>(ReadOnly Log)]
+    end
+
     AppLayout --> Adapter
     Adapter <-->|Electron IPC| MainIndex
+
+    %% Recovery Relations
+    Supervisor -.->|진단 통지| Engine
+    Critic -.->|반복 감지| Engine
+    Engine --> Checkpoint
+    Engine --> FailMemory
+    Engine -.->|복구 상태 갱신| useAIState
+    AIPanel --> useAIState
 ```

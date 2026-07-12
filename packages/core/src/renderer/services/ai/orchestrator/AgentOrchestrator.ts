@@ -59,6 +59,12 @@ import type { ISelfHealingMiddleware, HealingContext } from './healing/types'
  */
 import type { IActorCriticHook } from './critic/types'
 import { ActorCriticHook } from './critic/ActorCriticHook'
+import { SupervisorAgent } from './recovery/SupervisorAgent'
+import { CriticAgent } from './recovery/CriticAgent'
+import { RecoveryEngine } from './recovery/RecoveryEngine'
+import { CheckpointSystem } from './recovery/CheckpointSystem'
+import type { RecoveryOrchestratorBridge } from './recovery/RecoveryEngine'
+import type { RecoveryCheckpoint } from './recovery/types'
 
 /*
  * [IPC ADAPTER IMPORT]
@@ -152,6 +158,12 @@ export class AgentOrchestratorSession {
   private currentTurn: number = 0
   private isAborted: boolean = false
   private pendingToolCall: ToolCallRequest | null = null
+
+  // Recovery-First 아키텍처 멤버
+  private readonly sessionId: string = 'sess_' + Math.random().toString(36).substring(2, 9)
+  private readonly supervisor: SupervisorAgent = SupervisorAgent.getInstance()
+  private readonly critic: CriticAgent = new CriticAgent()
+  private checkpointIntervalId: any = null
 
   /*
    * [PRIVATE STATE - Accumulators]
@@ -340,8 +352,26 @@ export class AgentOrchestratorSession {
     this.emitPhaseChange('thinking')
     ipc.llmAddLog({ text: `[AgentOrchestrator] ReAct 루프 시작. maxTurns=${this.config.maxTurns}`, prefix: 'Orchestrator' })
 
-    // 시스템 프롬프트 빌드
-    const systemPrompt = this.buildSystemPrompt()
+    // supervisor 모니터링 및 체크포인트 시작
+    this.supervisor.startMonitoring(this.sessionId, (reason) => {
+      void RecoveryEngine.getInstance().handleStall(reason, this.buildRecoveryBridge())
+    })
+
+    this.checkpointIntervalId = setInterval(async () => {
+      if (this.isAborted) return
+      await CheckpointSystem.saveCheckpoint(this.sessionId, {
+        goal: this.agentTaskPlan?.goal ?? userMessage,
+        thought: this.parser.getThoughtBuffer() ?? '',
+        partialAnswer: this.accumulatedAnswer,
+        toolState: this.pendingToolCall ? JSON.stringify(this.pendingToolCall) : '',
+        step: this.currentTurn,
+        contextMessages: this.contextMessages
+      })
+    }, 5000)
+
+    try {
+      // 시스템 프롬프트 빌드
+      const systemPrompt = this.buildSystemPrompt()
 
     // 컨텍스트 초기화: 시스템 + 이전 히스토리 + 현재 사용자 메시지
     this.contextMessages = [
@@ -463,6 +493,9 @@ export class AgentOrchestratorSession {
     ipc.llmAddLog({ text: `[AgentOrchestrator] 루프 완료. 총 ${this.currentTurn}턴 실행.`, prefix: 'Orchestrator' })
 
     return finalAnswer
+    } finally {
+      this.cleanupRecovery()
+    }
   }
 
   /**
@@ -472,6 +505,7 @@ export class AgentOrchestratorSession {
     this.isAborted = true
     await this.adapter.abort()
     this.emitPhaseChange('error')
+    this.cleanupRecovery()
     ipc.llmAddLog({ text: '[AgentOrchestrator] 사용자 중단 요청 처리됨', prefix: 'Orchestrator' })
   }
 
@@ -493,6 +527,15 @@ export class AgentOrchestratorSession {
 
         turnBuffer += token
         this.parser.feed(token)
+
+        // recovery 모니터링 연동
+        const isToolCalling = this.parser.getState() === 'tool_calling'
+        this.supervisor.onToken(token, this.parser.getThoughtBuffer() ?? '', isToolCalling)
+
+        const criticVerdict = this.critic.evaluateThought(this.parser.getThoughtBuffer() ?? '')
+        if (criticVerdict === 'stalled') {
+          void RecoveryEngine.getInstance().handleStall('TOKEN_FREEZE', this.buildRecoveryBridge())
+        }
 
         /*
          * [FINAL ANSWER DETECTION]
@@ -740,5 +783,66 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
 - 도구 실행 결과(Observation)를 받은 후 다음 Thought를 작성하세요.
 - 최종 답변이 준비되지 않은 경우 절대로 "Final Answer:"를 사용하지 마세요.
 - 모든 혼잣말(<thought>)과 최종 답변은 한국어로 작성하세요.`
+  }
+
+  private cleanupRecovery(): void {
+    if (this.checkpointIntervalId) {
+      clearInterval(this.checkpointIntervalId)
+      this.checkpointIntervalId = null
+    }
+    this.supervisor.stopMonitoring()
+    RecoveryEngine.getInstance().resetSession(this.sessionId)
+    void CheckpointSystem.clearCheckpoint(this.sessionId)
+  }
+
+  private buildRecoveryBridge(): RecoveryOrchestratorBridge {
+    return {
+      sessionId: this.sessionId,
+      abortCurrentStream: () => {
+        void this.adapter.abort()
+      },
+      reconnectStream: async () => {
+        try {
+          await this.runSingleTurn()
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      resetParser: () => {
+        this.parser.reset()
+        this.critic.reset()
+      },
+      rebuildStreamContext: async () => {
+        try {
+          const filtered = this.contextMessages.filter(m => m.role !== 'system')
+          const systemPrompt = this.buildSystemPrompt()
+          this.contextMessages = [
+            { role: 'system', content: systemPrompt },
+            ...filtered
+          ]
+          await this.runSingleTurn()
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      resumeFromCheckpoint: async (checkpoint: RecoveryCheckpoint) => {
+        try {
+          this.contextMessages = checkpoint.contextMessages
+          this.accumulatedAnswer = checkpoint.partialAnswer
+          this.currentTurn = checkpoint.step
+          if (checkpoint.toolState) {
+            this.pendingToolCall = JSON.parse(checkpoint.toolState)
+          }
+          this.parser.reset()
+          this.parser.feed(checkpoint.thought)
+          await this.runSingleTurn()
+          return true;
+        } catch {
+          return false;
+        }
+      }
+    }
   }
 }

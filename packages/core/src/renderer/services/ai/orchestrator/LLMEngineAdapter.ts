@@ -394,7 +394,14 @@ class LlamaLocalEngineAdapter implements ILLMEngineAdapter {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const dataStr = line.slice(6).trim()
-          if (dataStr === '[DONE]') break
+          if (dataStr === '[DONE]') {
+            try {
+              reader.cancel()
+            } catch (cancelErr) {
+              console.warn('[LlamaLocalEngineAdapter] reader cancel error:', cancelErr)
+            }
+            return accumulated
+          }
 
           try {
             const parsed = JSON.parse(dataStr) as {

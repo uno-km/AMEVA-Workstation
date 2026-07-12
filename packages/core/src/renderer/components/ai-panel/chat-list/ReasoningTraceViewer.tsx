@@ -20,6 +20,7 @@
 import React from 'react'
 import { Brain, ChevronUp, ChevronDown } from 'lucide-react'
 import { ThoughtTreeView } from './ThoughtProcess'
+import { useAIState } from '../../../stores/useAIState'
 
 interface ReasoningTraceViewerProps {
   isStreaming: boolean
@@ -46,6 +47,12 @@ export function ReasoningTraceViewer({
   setThoughtExpanded,
   isWhiteTheme,
 }: ReasoningTraceViewerProps) {
+  const recoveryState = useAIState((s) => s.recoveryState)
+  const recoveryReason = useAIState((s) => s.recoveryReason)
+  const recoveryElapsed = useAIState((s) => s.recoveryElapsed)
+  const inferencePhase = useAIState((s) => s.inferencePhase)
+  const resumeFromCheckpoint = useAIState((s) => s.resumeFromCheckpoint)
+
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `!hasRealTrace && !isStreaming`
@@ -99,6 +106,64 @@ export function ReasoningTraceViewer({
           ) : (isStreaming
             ? <span style={{ color: isWhiteTheme ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.25)', fontStyle: 'italic', fontSize: '10px' }}>{"<think> 태그 대기 중..."}</span>
             : null
+          )}
+        </div>
+      )}
+
+      {/* ── 복구 및 정체 경고 카드 (스트리밍 중에만 노출) ── */}
+      {isStreaming && recoveryState !== 'normal' && (
+        <div style={{
+          margin: '6px 10px',
+          padding: '10px 12px',
+          borderRadius: '8px',
+          fontSize: '11px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+          background: recoveryState === 'recovery_failed'
+            ? 'rgba(239, 68, 68, 0.08)'
+            : 'rgba(245, 158, 11, 0.08)',
+          border: recoveryState === 'recovery_failed'
+            ? '1px solid rgba(239, 68, 68, 0.2)'
+            : '1px solid rgba(245, 158, 11, 0.2)',
+          color: recoveryState === 'recovery_failed' ? '#f87171' : '#fbbf24',
+          transition: 'all 0.3s ease',
+          fontFamily: 'Inter, system-ui, sans-serif'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
+            <span>{recoveryState === 'recovery_failed' ? '❌' : '⚠️'}</span>
+            <span>
+              {recoveryState === 'suspicious' && `생각 중... ${recoveryElapsed}초 경과 (추론 진행률 분석 중 - 현재 단계: ${inferencePhase})`}
+              {recoveryState === 'stalled' && `정체 감지 (경과: ${recoveryElapsed}초, 단계: ${inferencePhase})`}
+              {recoveryState === 'recovering' && `정체 감지: 복구 시도 중 (단계: ${inferencePhase}, 원인: ${recoveryReason})`}
+              {recoveryState === 'recovery_failed' && '자동 복구가 실패하였습니다.'}
+            </span>
+          </div>
+          
+          {recoveryState === 'recovery_failed' && resumeFromCheckpoint && (
+            <button
+              onClick={() => void resumeFromCheckpoint()}
+              style={{
+                alignSelf: 'flex-start',
+                marginTop: '4px',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: '10px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.2)',
+                transition: 'transform 0.1s ease, filter 0.2s ease',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.filter = 'brightness(1.15)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
+              onMouseDown={(e) => { e.currentTarget.style.transform = 'scale(0.96)'; }}
+              onMouseUp={(e) => { e.currentTarget.style.transform = 'none'; }}
+            >
+              마지막 지점부터 이어서 진행
+            </button>
           )}
         </div>
       )}

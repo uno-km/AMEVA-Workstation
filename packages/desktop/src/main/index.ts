@@ -421,12 +421,12 @@ ipcMain.handle('ollama:check-installed', async () => {
 ipcMain.handle('ollama:start-server', async () => {
   try {
     const { spawn } = require('child_process') as typeof import('child_process')
-    // [BUG-FIX] Windows에서 CMD 검은 창이 직접 팝업되는 현상을 방지하기 위해 windowsHide: true 추가
+    // [BUG-FIX] Windows에서 CMD 검은 창이 직접 팝업되는 현상을 방지하기 위해 shell: false 및 windowsHide: true 지정
     // stdio를 ignore하지 않고 pipe로 가두어, 실시간 출력 로그를 AMEVA 웹 CLI/콘솔 화면(OLM 프리픽스)에 전달
     const child = spawn('ollama', ['serve'], {
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      shell: process.platform === 'win32',
+      shell: false,
       windowsHide: true,
     })
 
@@ -521,9 +521,39 @@ ipcMain.handle('ollama:check-health', async () => {
 // 🦙 Ollama 백그라운드 서버가 설치되어 있고 꺼져 있는 경우, 시작 시 자동 기동하는 백데몬 헬퍼
 async function autoStartOllamaIfInstalled() {
   try {
-    // 1. 이미 Ollama 포트가 열려 있는지 (켜져 있는지) 사전 감사
-    const checkRes = await fetch('http://127.0.0.1:11434/api/tags').catch(() => null)
-    if (checkRes && checkRes.ok) {
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `isAlreadyRunning`
+     * - 자료형 / 예상 값: boolean (초기값 false)
+     * - 시나리오: 127.0.0.1 및 localhost 엔드포인트 두 곳 모두 헬스체크 핑을 전송하여 어느 하나라도 정상 수신되면 true가 됨.
+     */
+    let isAlreadyRunning = false
+    const endpoints = ['http://127.0.0.1:11434/api/tags', 'http://localhost:11434/api/tags']
+    for (const endpoint of endpoints) {
+      try {
+        const checkRes = await fetch(endpoint, { signal: AbortSignal.timeout(2000) })
+        /*
+         * [ALGORITHM BRANCH / DECISION]
+         * - 조건 식: `checkRes && checkRes.ok`
+         * - 만족 시: Ollama 백그라운드 서버가 가용한 엔드포인트를 통해 이미 구동 중임을 확인한 경우
+         * - 불만족 시: 네트워크 연결 거부 등으로 에러가 발생하면 다음 엔드포인트 검사를 진행함
+         */
+        if (checkRes && checkRes.ok) {
+          isAlreadyRunning = true
+          break
+        }
+      } catch {
+        // 개별 엔드포인트 접속 실패 시 예외를 조용히 버리고 다음 루프로 전환
+      }
+    }
+
+    /*
+     * [ALGORITHM BRANCH / DECISION]
+     * - 조건 식: `isAlreadyRunning`
+     * - 만족 시: 이미 백그라운드에서 동작 중이므로 신규 서브 프로세스 spawn을 바이패스(중단)함
+     * - 불만족 시: Ollama 포트가 완전히 닫혀있어 자동 기동 프로세스로 통과함
+     */
+    if (isAlreadyRunning) {
       console.log('[OllamaAutoStart] Ollama 데몬이 이미 백그라운드에서 동작 중입니다.')
       return
     }
