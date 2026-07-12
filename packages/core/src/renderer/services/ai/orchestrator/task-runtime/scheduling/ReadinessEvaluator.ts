@@ -7,30 +7,43 @@
 import { TaskEntity } from '../domain/types';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
-// import { CapabilityCatalog } from '../dispatch/CapabilityCatalog'; // 예정
+import { CapabilityCatalog } from '../dispatch/CapabilityCatalog';
+import type { DependencyFailureReason, DeadlockClassification } from '../domain/ExecutionTypes';
 
 export interface ReadinessResult {
   isReady: boolean;
   reasons: string[];
+  blockType?: DeadlockClassification;
+  dependencyFailure?: {
+    reason: DependencyFailureReason;
+    sourceTaskId: string;
+  };
 }
 
 export class ReadinessEvaluator {
+  private catalog: CapabilityCatalog;
+
   constructor(
     private store: TaskRuntimeStore,
     private ledger: MissionBudgetLedger
-  ) {}
+  ) {
+    this.catalog = new CapabilityCatalog();
+  }
 
   /**
    * PENDING 또는 RETRY_WAIT 상태의 Task가 READY로 갈 수 있는지 평가합니다.
-   * PHASE 3 원칙에 따른 다중 조건(18개 조건 압축)을 검사합니다.
+   * PHASE 3.5: 차단 사유를 구조화하여 반환합니다.
    */
   public evaluate(missionId: string, task: TaskEntity): ReadinessResult {
     const reasons: string[] = [];
-    let isReady = true;
 
     // 1. 기본 상태 조건
     if (task.state.status !== 'PENDING' && task.state.status !== 'RETRY_WAIT') {
-      return { isReady: false, reasons: [`Task is currently in ${task.state.status} state, not evaluable for READY.`] };
+      return { 
+        isReady: false, 
+        reasons: [`Task is currently in ${task.state.status} state, not evaluable for READY.`],
+        blockType: 'PLAN_STATE_INVALID'
+      };
     }
 
     // 2. 의존성 (Dependencies) 해결 여부
@@ -39,35 +52,70 @@ export class ReadinessEvaluator {
         try {
           const depTask = this.store.getTask(missionId, depId);
           if (depTask.state.status !== 'COMPLETED') {
-            isReady = false;
-            reasons.push(`Dependency '${depId}' is not COMPLETED (current: ${depTask.state.status}).`);
-          } else if (!depTask.state.verification || depTask.state.verification.verdict !== 'PASS') {
-            isReady = false;
-            reasons.push(`Dependency '${depId}' is COMPLETED but lacks a 'PASS' verification verdict.`);
+            let depFailReason: DependencyFailureReason = 'DEPENDENCY_NOT_COMPLETED';
+            if (depTask.state.status === 'FAILED') depFailReason = 'DEPENDENCY_TASK_FAILED';
+            else if (depTask.state.status === 'CANCELLED') depFailReason = 'DEPENDENCY_TASK_CANCELLED';
+            else if (depTask.state.status === 'SKIPPED') depFailReason = 'DEPENDENCY_TASK_SKIPPED';
+            
+            return {
+              isReady: false,
+              reasons: [`Dependency '${depId}' is not COMPLETED (current: ${depTask.state.status}).`],
+              blockType: 'WAITING_DEPENDENCY_RECOVERY',
+              dependencyFailure: { reason: depFailReason, sourceTaskId: depId }
+            };
+          } 
+          
+          if (!depTask.state.verification || depTask.state.verification.verdict !== 'PASS') {
+            return {
+              isReady: false,
+              reasons: [`Dependency '${depId}' lacks a 'PASS' verification verdict.`],
+              blockType: 'WAITING_DEPENDENCY_RECOVERY',
+              dependencyFailure: { reason: 'DEPENDENCY_VERIFICATION_NOT_PASS', sourceTaskId: depId }
+            };
+          }
+          
+          if (!depTask.state.taskResult) {
+            return {
+              isReady: false,
+              reasons: [`Dependency '${depId}' has no taskResult.`],
+              blockType: 'WAITING_DEPENDENCY_RECOVERY',
+              dependencyFailure: { reason: 'DEPENDENCY_RESULT_MISSING', sourceTaskId: depId }
+            };
           }
         } catch (e) {
-          isReady = false;
-          reasons.push(`Dependency '${depId}' is missing from the store.`);
+          return {
+            isReady: false,
+            reasons: [`Dependency '${depId}' is missing from the store.`],
+            blockType: 'INTERNAL_ERROR'
+          };
         }
       }
     }
 
-    // 3. 예산 (Budget) 여유분 확인
+    // 3. Capability (권한 및 툴) 요구사항 충족 여부
+    const requiredCaps = task.definition.capabilityRequirements || [];
+    if (requiredCaps.length > 0) {
+      const missingCaps = this.catalog.getMissingCapabilities(requiredCaps);
+      if (missingCaps.length > 0) {
+        return {
+          isReady: false,
+          reasons: [`Missing capabilities: ${missingCaps.join(', ')}`],
+          blockType: 'WAITING_CAPABILITY'
+        };
+      }
+    }
+
+    // 4. 예산 (Budget) 여유분 확인
     const requestedTurns = task.definition.allocatedReasoningTurns || task.definition.budgetTurns || 100;
     const availableBudget = this.ledger.getAvailableBudget(missionId);
     if (availableBudget < requestedTurns) {
-      isReady = false;
-      reasons.push(`Insufficient mission budget. Requested: ${requestedTurns}, Available: ${availableBudget}.`);
+      return {
+        isReady: false,
+        reasons: [`Insufficient mission budget. Requested: ${requestedTurns}, Available: ${availableBudget}.`],
+        blockType: 'WAITING_BUDGET'
+      };
     }
 
-    // 4. Capability (권한 및 툴) 요구사항 충족 여부
-    // TODO: CapabilityCatalog와 연동하여 실제 인프라에 해당 툴이 켜져 있는지 확인
-    const requiredCaps = task.definition.capabilityRequirements || [];
-    if (requiredCaps.length > 0) {
-      // PHASE 3 임시 통과
-      // reasons.push(`Checked capabilities: ${requiredCaps.join(', ')}`);
-    }
-
-    return { isReady, reasons };
+    return { isReady: true, reasons: [] };
   }
 }

@@ -8,13 +8,17 @@ import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { TaskGraph } from '../planning/graph/TaskGraph';
 import { ReadinessEvaluator } from './ReadinessEvaluator';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
+import type { DeadlockClassification } from '../domain/ExecutionTypes';
+import { RecoveryRequestStore } from '../verification/recovery/RecoveryRequestStore';
+import { TaskRecoveryRequest } from '../verification/domain/RecoveryTypes';
 
 export class TaskScheduler {
   private evaluator: ReadinessEvaluator;
 
   constructor(
     private store: TaskRuntimeStore,
-    private ledger: MissionBudgetLedger
+    private ledger: MissionBudgetLedger,
+    private recoveryStore?: RecoveryRequestStore
   ) {
     this.evaluator = new ReadinessEvaluator(store, ledger);
   }
@@ -28,7 +32,7 @@ export class TaskScheduler {
    * 
    * @returns newlyReadyCount: 이번 패스에서 READY로 전이된 태스크 수, isDeadlocked: 데드락 감지 여부
    */
-  public runSchedulingPass(missionId: string): { newlyReadyCount: number, isDeadlocked: boolean } {
+  public runSchedulingPass(missionId: string): { newlyReadyCount: number, deadlockType: DeadlockClassification | null } {
     const allTasks = this.store.getAllTasks(missionId);
     
     // 그래프 생성 (의존성 레이어 파악)
@@ -44,6 +48,9 @@ export class TaskScheduler {
     let newlyReadyCount = 0;
     let pendingOrRetryCount = 0;
     let activeOrCompleteCount = 0;
+    
+    // 블록된 사유들의 빈도나 우선순위를 추적하기 위한 Set
+    const blockReasons = new Set<DeadlockClassification>();
 
     for (const layer of layers) {
       for (const taskId of layer) {
@@ -77,7 +84,49 @@ export class TaskScheduler {
               newlyReadyCount++;
             } catch (budgetError) {
               console.warn(`[TaskScheduler] Task ${taskId} is ready but failed budget reservation: ${budgetError}`);
-              // 예산 부족이면 다음 태스크(작은 태스크)가 가능할지도 모르니 루프 계속.
+              blockReasons.add('WAITING_BUDGET');
+            }
+          } else {
+            if (result.blockType) {
+              blockReasons.add(result.blockType);
+              
+              // Phase 4 (Critical C): Dependency Recovery 발생 시 명시적으로 RecoveryRequest 생성
+              if (result.blockType === 'WAITING_DEPENDENCY_RECOVERY' && this.recoveryStore && result.dependencyFailure) {
+                // 이미 발급된 Request가 있는지 확인
+                const activeReqs = this.recoveryStore.getActiveRequestsForTask(taskId);
+                if (activeReqs.length === 0) {
+                  const req: TaskRecoveryRequest = {
+                    recoveryRequestId: `dep-rec-${crypto.randomUUID()}`,
+                    missionId,
+                    taskId,
+                    planId: task.definition.planId,
+                    failureReason: `Dependency failed: ${result.dependencyFailure.reason} from ${result.dependencyFailure.sourceTaskId}`,
+                    status: 'PENDING',
+                    retryCount: task.state.retries,
+                    recoveryCount: 0,
+                    createdAt: Date.now()
+                  };
+                  this.recoveryStore.addRequest(req);
+                  
+                  // 상태를 BLOCKED (또는 WAITING_DEPENDENCY)로 강제 전이하여 무한 평가 방지
+                  this.store.dispatchTransition(
+                    {
+                      commandId: `cmd-block-${crypto.randomUUID()}`,
+                      missionId,
+                      taskId,
+                      expectedCurrentStatus: status,
+                      expectedStateVersion: task.state.stateVersion,
+                      reason: req.failureReason,
+                      actor: 'TaskScheduler',
+                      timestamp: Date.now()
+                    },
+                    'BLOCKED',
+                    { blockReason: req.failureReason }
+                  );
+                  // 이번 턴의 카운트 계산 보정을 위해 
+                  pendingOrRetryCount--;
+                }
+              }
             }
           }
         } else if (
@@ -91,12 +140,34 @@ export class TaskScheduler {
       }
     }
 
-    // 데드락 판정: 새로 준비된 태스크는 0개인데, 남은 대기 태스크는 있고, 실행 중이거나 이미 끝난(선행 완료로 이어질) 태스크도 0개인 경우.
-    // 보다 엄밀히는: 진행중(READY, RUNNING, VERIFYING)인 게 하나도 없는데 PENDING만 남아있고 newlyReadyCount가 0일 때.
-    const isDeadlocked = newlyReadyCount === 0 && pendingOrRetryCount > 0 && !allTasks.some(t => 
-      t.state.status === 'READY' || t.state.status === 'RUNNING' || t.state.status === 'VERIFYING'
-    );
+    // 데드락 및 대기 상태 판정 로직
+    let deadlockType: DeadlockClassification | null = null;
 
-    return { newlyReadyCount, isDeadlocked };
+    // 만약 새롭게 READY가 된 태스크가 하나도 없고, 진행 중인(또는 끝난) 태스크가 없다면 대기 상태다.
+    // 하지만 VERIFYING이 있다면 이는 Deadlock이 아니라 검증 대기 상태다.
+    const isActuallyBlocked = newlyReadyCount === 0 && pendingOrRetryCount > 0 && 
+      !allTasks.some(t => t.state.status === 'READY' || t.state.status === 'RUNNING');
+
+    if (isActuallyBlocked) {
+      // 1. VERIFYING이 하나라도 있다면, 이는 데드락이 아니라 검증이 끝나길 기다리는 중임
+      if (allTasks.some(t => t.state.status === 'VERIFYING')) {
+        deadlockType = 'WAITING_VERIFICATION';
+      } 
+      // 2. 블록 사유들을 기반으로 판별
+      else if (blockReasons.has('WAITING_DEPENDENCY_RECOVERY')) {
+        deadlockType = 'WAITING_DEPENDENCY_RECOVERY';
+      } else if (blockReasons.has('WAITING_CAPABILITY')) {
+        deadlockType = 'WAITING_CAPABILITY';
+      } else if (blockReasons.has('WAITING_BUDGET')) {
+        deadlockType = 'WAITING_BUDGET';
+      } else if (blockReasons.has('WAITING_USER')) {
+        deadlockType = 'WAITING_USER';
+      } else {
+        // 남은 진행 태스크도 없고, VERIFYING도 없고, 명확한 대기 사유도 없으면 진정한 데드락
+        deadlockType = 'TRUE_DEADLOCK';
+      }
+    }
+
+    return { newlyReadyCount, deadlockType };
   }
 }

@@ -94,7 +94,6 @@ export class PlanValidator {
 
     // 5. Reachability / 고립 노드 검사 (Graph 기반)
     if (errors.length === 0) { // 기본 구조가 맞을 때만 그래프 심화 탐색
-      const graph = new TaskGraph(plan.tasks);
       const isolatedTasks = plan.tasks.filter(t => {
         // 진입/진출 간선이 모두 없는 경우 고립으로 판정 (단일 노드 플랜 제외)
         if (plan.tasks.length === 1) return false; 

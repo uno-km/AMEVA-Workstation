@@ -177,7 +177,6 @@ export class AgentOrchestratorSession {
    * - isAborted: 외부에서 abort()가 호출되었는지 여부.
    * - pendingToolCall: ThoughtParser가 감지한 미실행 도구 호출 요청.
    */
-  private currentPhase: AgentPhase = 'idle'
   private contextMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = []
   private currentTurn: number = 0
   private isAborted: boolean = false
@@ -423,7 +422,7 @@ export class AgentOrchestratorSession {
           if (missionState.status === 'COMPLETED') {
             clearInterval(intervalId);
             this.emitPhaseChange('done');
-            resolve(`V2 Mission Completed! Consumed Tasks: ${Object.keys(missionState.tasks || {}).length}`);
+            resolve(`V2 Mission Completed! Consumed Tasks: ${this.taskStore.getAllTasks(this.sessionId).length}`);
           } else if (missionState.status === 'FAILED') {
             clearInterval(intervalId);
             this.emitPhaseChange('error');
@@ -494,7 +493,7 @@ export class AgentOrchestratorSession {
                 t.status === 'RUNNING' ? 'in_progress' as const : 
                 t.status === 'FAILED' ? 'failed' as const : 'pending' as const
       }));
-      state.setAgentTaskPlan({ goal: userMessage, steps });
+      state.setAgentTaskPlan({ goal: userMessage, steps, currentStepIndex: 0 });
       state.setTaskProgress(completionManager.getCompletionRate());
     };
 
@@ -863,19 +862,8 @@ export class AgentOrchestratorSession {
       /*
        * [INTENTIONAL IGNORE]
        * - 버퍼가 아직 완전한 JSON이 아닐 수 있으므로 파싱 실패는 무시한다.
-       * - 다음 토큰 수신 시 재시도된다.
        */
     }
-  }
-
-  /**
-   * 최종 답변 축적에 실패한 경우 혼잣말 내용을 기반으로 대체 답변을 생성한다.
-   */
-  private buildFallbackAnswer(): string {
-    if (this.accumulatedThoughts.length > 0) {
-      return `[추론 완료] ${this.accumulatedThoughts.join('').slice(0, 500)}`
-    }
-    return '요청을 처리하는 중에 문제가 발생했습니다. 다시 시도해주세요.'
   }
 
   /**
@@ -884,7 +872,6 @@ export class AgentOrchestratorSession {
    * @param phase - 전환할 새로운 AgentPhase
    */
   private emitPhaseChange(phase: AgentPhase): void {
-    this.currentPhase = phase
     this.emitEvent({ type: 'phase_change', phase })
   }
 
@@ -1020,7 +1007,7 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
                       t.status === 'RUNNING' ? 'in_progress' as const : 
                       t.status === 'FAILED' ? 'failed' as const : 'pending' as const
             }));
-            state.setAgentTaskPlan({ goal: checkpoint.goal, steps });
+            state.setAgentTaskPlan({ goal: checkpoint.goal, steps, currentStepIndex: 0 });
             const finished = checkpoint.tasks.filter((t: any) => t.status === 'COMPLETED' || t.status === 'SKIPPED').length;
             const rate = checkpoint.tasks.length > 0 ? Math.round((finished / checkpoint.tasks.length) * 100) : 0;
             state.setTaskProgress(rate);

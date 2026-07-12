@@ -10,6 +10,7 @@ import { ExecutionStrategyResolver } from './ExecutionStrategyResolver';
 import { DeepTaskExecutor } from '../executors/DeepTaskExecutor';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
 import type { ILLMEngineAdapter } from '../../types';
+import type { ExecutionHandle } from '../domain/ExecutionTypes';
 
 export class TaskDispatcher {
   constructor(
@@ -22,20 +23,17 @@ export class TaskDispatcher {
 
   /**
    * READY 상태인 특정 태스크를 시작합니다.
-   * - 락 획득 시도
-   * - 실패 시 무시 (다른 워커가 실행 중)
-   * - 성공 시 RUNNING 상태로 전이
-   * - 비동기로 Executor 실행 (fire and forget, promise는 내부에서 상태 머신으로 귀결됨)
+   * PHASE 3.5: fire-and-forget이 아닌 ExecutionHandle을 반환하여 런타임이 추적하게 합니다.
    */
-  public dispatchTask(missionId: string, taskId: string, abortSignal?: AbortSignal): void {
+  public dispatchTask(missionId: string, taskId: string, parentAbortSignal?: AbortSignal): ExecutionHandle | null {
     const task = this.store.getTask(missionId, taskId);
     
     if (task.state.status !== 'READY') {
-      return;
+      return null;
     }
 
     try {
-      // 1. Lease 획득 (내부에서 TaskAttempt 생성 및 활성화)
+      // 1. Lease 획득
       const executionId = `exec-${crypto.randomUUID()}`;
       const lease = this.leaseManager.acquireLease(missionId, taskId, executionId, 'Dispatcher-Main');
 
@@ -58,23 +56,41 @@ export class TaskDispatcher {
       // 3. 전략 판별
       const strategy = this.resolver.resolve(task);
 
-      // 4. 비동기 Executor 실행 (Fire and Forget)
-      this.launchDeepExecutor(missionId, taskId, lease.attemptId, abortSignal);
+      // 4. Abort Controller 구성
+      const taskAbortController = new AbortController();
+      if (parentAbortSignal) {
+        parentAbortSignal.addEventListener('abort', () => taskAbortController.abort('Mission Cancelled'));
+      }
+
+      // 5. 비동기 Executor 기동 (Promise 반환)
+      const executionPromise = this.launchDeepExecutor(missionId, taskId, lease.attemptId, lease.leaseId, taskAbortController.signal);
+
+      // 6. Handle 반환
+      return {
+        executionId,
+        missionId,
+        taskId,
+        attemptId: lease.attemptId,
+        promise: executionPromise,
+        abortController: taskAbortController,
+        startedAt: Date.now(),
+        status: 'RUNNING',
+        leaseId: lease.leaseId
+      };
 
     } catch (e) {
       console.warn(`[TaskDispatcher] Failed to dispatch task ${taskId}:`, e);
-      // Lease 획득 실패(충돌) 등일 수 있으므로 여기서 바로 FAILED로 보내지 않음
+      return null;
     }
   }
 
-  private async launchDeepExecutor(missionId: string, taskId: string, attemptId: string, abortSignal?: AbortSignal) {
+  private async launchDeepExecutor(missionId: string, taskId: string, attemptId: string, leaseId: string, abortSignal: AbortSignal): Promise<void> {
     try {
       const executor = new DeepTaskExecutor(this.store, this.leaseManager, this.ledger, this.adapter);
-      await executor.execute(missionId, taskId, attemptId, abortSignal);
+      await executor.execute(missionId, taskId, attemptId, leaseId, abortSignal);
     } catch (e: any) {
       console.error(`[TaskDispatcher] DeepTaskExecutor crashed for ${taskId}:`, e);
       
-      // 심각한 런타임 에러 시 FAILED로 강제 전이
       try {
         const currentTask = this.store.getTask(missionId, taskId);
         this.store.dispatchTransition(

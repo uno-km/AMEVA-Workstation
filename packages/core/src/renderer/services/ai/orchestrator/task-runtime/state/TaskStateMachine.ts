@@ -38,6 +38,36 @@ export class TaskStateMachine {
   };
 
   /**
+   * 상태 전이를 수반하지 않고 Metadata만 갱신합니다. (예: Attempt 갱신, Lease 갱신 등)
+   */
+  public static updateMetadata(
+    entity: TaskEntity,
+    command: Omit<TransitionCommand, 'expectedCurrentStatus'>,
+    partialUpdates: Partial<TaskRuntimeState>
+  ): TaskEntity {
+    const currentVersion = entity.state.stateVersion;
+
+    if (currentVersion !== command.expectedStateVersion) {
+      throw new StaleStateError(
+        `State version mismatch for Task ${entity.definition.id}. Expected ${command.expectedStateVersion}, but got ${currentVersion}.`
+      );
+    }
+
+    // 상태 적용 및 버전 증가 (상태값은 변경하지 않음)
+    const newState: TaskRuntimeState = {
+      ...entity.state,
+      ...partialUpdates,
+      attempts: { ...entity.state.attempts, ...(partialUpdates.attempts || {}) },
+      stateVersion: currentVersion + 1,
+    };
+
+    return {
+      definition: entity.definition,
+      state: newState
+    };
+  }
+
+  /**
    * 상태 전이의 유효성을 검사합니다.
    */
   public static canTransition(from: TaskStatus, to: TaskStatus): boolean {
@@ -101,8 +131,8 @@ export class TaskStateMachine {
       if (verif.verdict !== 'PASS') {
         throw new InvalidTransitionError('Cannot transition to COMPLETED: Verification verdict must be PASS.');
       }
-      if (result.taskId !== entity.definition.id || verif.taskId !== entity.definition.id) {
-        throw new InvalidTransitionError('Cannot transition to COMPLETED: taskId mismatch in result or verification.');
+      if (verif.taskId !== entity.definition.id) {
+        throw new InvalidTransitionError('Cannot transition to COMPLETED: taskId mismatch in verification.');
       }
       if (result.attemptId !== activeAttemptId || verif.attemptId !== activeAttemptId) {
         throw new InvalidTransitionError('Cannot transition to COMPLETED: attemptId mismatch between result, verification, and activeAttemptId.');

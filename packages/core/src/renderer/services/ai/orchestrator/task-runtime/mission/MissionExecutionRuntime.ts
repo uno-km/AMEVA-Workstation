@@ -1,9 +1,3 @@
-/**
- * @file orchestrator/task-runtime/mission/MissionExecutionRuntime.ts
- * @system AMEVA OS Desktop Workstation
- * @role V2(PHASE 3) 미션 실행의 전반적인 생명주기를 관장하는 최상위 런타임 매니저
- */
-
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
 import { TaskLeaseManager } from '../lease/TaskLeaseManager';
@@ -12,40 +6,47 @@ import { TaskDispatcher } from '../dispatch/TaskDispatcher';
 import { CapabilityCatalog } from '../dispatch/CapabilityCatalog';
 import { ExecutionStrategyResolver } from '../dispatch/ExecutionStrategyResolver';
 import type { ILLMEngineAdapter } from '../../types';
+import type { ExecutionHandle } from '../domain/ExecutionTypes';
+import { VerificationRuntime } from '../verification/runtime/VerificationRuntime';
+import { RecoveryRequestStore } from '../verification/recovery/RecoveryRequestStore';
 
 export class MissionExecutionRuntime {
   private ledger: MissionBudgetLedger;
   private leaseManager: TaskLeaseManager;
   private scheduler: TaskScheduler;
   private dispatcher: TaskDispatcher;
+  private verificationRuntime: VerificationRuntime;
+  private recoveryStore: RecoveryRequestStore;
   
   private abortController: AbortController = new AbortController();
   private isRunning: boolean = false;
-  private intervalId?: ReturnType<typeof setInterval>;
+  private isTicking: boolean = false;
+  private isVerifying: boolean = false;
+  private timerId?: ReturnType<typeof setTimeout>;
+
+  private activeExecutions: Map<string, ExecutionHandle> = new Map();
 
   constructor(
     private store: TaskRuntimeStore,
     private adapter: ILLMEngineAdapter,
     private missionId: string,
-    private initialBudget: number = 10000 // PHASE 3 원칙: 미션 당 1만 턴 제한
+    private initialBudget: number = 10000
   ) {
     this.ledger = new MissionBudgetLedger(store);
     this.leaseManager = new TaskLeaseManager(store);
-    this.scheduler = new TaskScheduler(store, this.ledger);
+    this.recoveryStore = new RecoveryRequestStore();
+    this.scheduler = new TaskScheduler(store, this.ledger, this.recoveryStore);
+    this.verificationRuntime = new VerificationRuntime(store, this.recoveryStore, this.ledger);
     
     const catalog = new CapabilityCatalog();
     const resolver = new ExecutionStrategyResolver(catalog);
     this.dispatcher = new TaskDispatcher(store, this.leaseManager, this.ledger, resolver, adapter);
   }
 
-  /**
-   * 미션 실행 환경을 초기화하고 비동기 루프를 기동합니다.
-   */
   public start(): void {
     if (this.isRunning) return;
     this.isRunning = true;
 
-    // Mission 상태 초기화
     this.store.initMission(this.missionId, {
       maxReasoningTurns: this.initialBudget,
       consumedReasoningTurns: 0,
@@ -59,54 +60,60 @@ export class MissionExecutionRuntime {
     });
     this.store.updateMissionState(this.missionId, { status: 'RUNNING', startedAt: Date.now() });
 
-    // 스케줄링 틱 루프 기동 (예: 1000ms마다 한 번)
-    this.intervalId = setInterval(() => {
-      this.tick();
-    }, 1000);
+    this.requestTick();
   }
 
-  /**
-   * 미션 일시 정지 (스케줄링 루프 중단, 진행 중인 Task는 Abort 하지 않음)
-   */
   public pause(): void {
     this.isRunning = false;
-    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.timerId) clearTimeout(this.timerId);
     this.store.updateMissionState(this.missionId, { status: 'PAUSED', pausedAt: Date.now() });
   }
 
-  /**
-   * 미션 완전 취소 (진행 중인 모든 Task Abort)
-   */
   public cancel(reason: string): void {
     this.isRunning = false;
-    if (this.intervalId) clearInterval(this.intervalId);
+    if (this.timerId) clearTimeout(this.timerId);
+    
     this.abortController.abort(reason);
+
+    for (const handle of this.activeExecutions.values()) {
+      handle.abortController.abort(reason);
+    }
+    
     this.store.updateMissionState(this.missionId, { status: 'CANCELLED', cancellationReason: reason });
   }
 
-  /**
-   * 내부 스케줄링 메인 루프 (1 tick)
-   */
-  private tick(): void {
+  private requestTick(delayMs: number = 1000): void {
     if (!this.isRunning || this.abortController.signal.aborted) return;
+    if (this.timerId) clearTimeout(this.timerId);
+    
+    this.timerId = setTimeout(() => {
+      this.tick();
+    }, delayMs);
+  }
+
+  private tick(): void {
+    if (!this.isRunning || this.isTicking || this.abortController.signal.aborted) return;
+    this.isTicking = true;
 
     try {
       // 1. 만료된 Lease 청소 (타임아웃 감지)
       const expiredTasks = this.leaseManager.sweepExpiredLeases();
       if (expiredTasks.length > 0) {
         console.warn(`[MissionExecutionRuntime] Swept expired leases for: ${expiredTasks.join(', ')}`);
-        // 필요 시 FAILED 처리 또는 RETRY_WAIT 처리 가능
       }
 
       // 2. 스케줄링 패스 (PENDING -> READY 승격 및 예산 할당)
-      const { newlyReadyCount, isDeadlocked } = this.scheduler.runSchedulingPass(this.missionId);
+      const { newlyReadyCount, deadlockType } = this.scheduler.runSchedulingPass(this.missionId);
 
       // 3. 데드락 처리
-      if (isDeadlocked) {
-        console.error(`[MissionExecutionRuntime] Deadlock detected for mission ${this.missionId}.`);
-        this.store.updateMissionState(this.missionId, { status: 'FAILED' });
-        this.cancel('Deadlock detected in TaskScheduler');
+      if (deadlockType === 'TRUE_DEADLOCK' || deadlockType === 'INTERNAL_ERROR') {
+        console.error(`[MissionExecutionRuntime] Fatal Deadlock detected: ${deadlockType}`);
+        this.store.updateMissionState(this.missionId, { status: 'FAILED', cancellationReason: deadlockType });
+        this.cancel(`Deadlock detected: ${deadlockType}`);
+        this.isTicking = false;
         return;
+      } else if (deadlockType !== null) {
+        console.debug(`[MissionExecutionRuntime] Scheduling blocked by: ${deadlockType}`);
       }
 
       // 4. 새로 준비되었거나 기존에 READY 상태인 태스크들을 Dispatch
@@ -114,27 +121,64 @@ export class MissionExecutionRuntime {
       const readyTasks = allTasks.filter(t => t.state.status === 'READY');
 
       for (const task of readyTasks) {
-        // Dispatcher 내부에서 락 획득 시도 후 비동기 Executor를 실행함
-        this.dispatcher.dispatchTask(this.missionId, task.definition.id, this.abortController.signal);
+        const handle = this.dispatcher.dispatchTask(this.missionId, task.definition.id, this.abortController.signal);
+        if (handle) {
+          this.activeExecutions.set(handle.executionId, handle);
+          
+          handle.promise.then(() => {
+            handle.status = 'COMPLETED';
+            this.activeExecutions.delete(handle.executionId);
+          }).catch((err) => {
+            console.error(`[MissionExecutionRuntime] Unhandled executor rejection:`, err);
+            handle.status = 'FAILED';
+            this.activeExecutions.delete(handle.executionId);
+          });
+        }
       }
 
-      // 5. 완료 여부 검사
-      const pendingOrRunning = allTasks.filter(t => 
-        t.state.status !== 'COMPLETED' && 
-        t.state.status !== 'FAILED' && 
-        t.state.status !== 'CANCELLED' &&
-        t.state.status !== 'SKIPPED'
-      );
+      // 5. 완료 여부 검사 로직 (Phase 3.5 -> 4.0 연동)
+      const hasPendingOrReady = allTasks.some(t => t.state.status === 'PENDING' || t.state.status === 'READY' || t.state.status === 'RETRY_WAIT');
+      const hasVerifying = allTasks.some(t => t.state.status === 'VERIFYING');
 
-      if (pendingOrRunning.length === 0) {
-        console.log(`[MissionExecutionRuntime] Mission ${this.missionId} finished.`);
-        this.store.updateMissionState(this.missionId, { status: 'COMPLETED', completedAt: Date.now() });
-        this.pause(); // 루프 종료
+      // VERIFYING이 있으면 VerificationRuntime을 동기적으로 호출하여 신속 검증
+      if (hasVerifying && !this.isVerifying) {
+        this.isVerifying = true;
+        this.verificationRuntime.processVerifyingTasks(this.missionId)
+          .then(results => {
+            if (results.length > 0) {
+              console.log(`[MissionExecutionRuntime] Processed ${results.length} verifications.`);
+              // 검증 결과 반영을 위해 루프 단축
+              this.requestTick(100); 
+            }
+          })
+          .catch(err => {
+            if (err.name !== 'AbortError') {
+              console.error(`[MissionExecutionRuntime] Verification failed:`, err);
+            }
+          })
+          .finally(() => {
+            this.isVerifying = false;
+          });
+      }
+
+      if (!hasPendingOrReady && this.activeExecutions.size === 0) {
+        if (hasVerifying) {
+          this.requestTick(2000); 
+        } else {
+          // Phase 5를 위한 완료 모드 대기
+          console.log(`[MissionExecutionRuntime] Mission ${this.missionId} has no more work.`);
+          this.pause(); 
+        }
+      } else {
+        this.requestTick(hasVerifying ? 500 : 1000);
       }
 
     } catch (error) {
       console.error(`[MissionExecutionRuntime] Error during tick:`, error);
-      // 루프 내 에러는 치명적일 수 있으므로 로깅만 하거나 임계치 이상 시 FAILED로 전이
+      this.requestTick(5000); 
+    } finally {
+      this.isTicking = false;
     }
   }
 }
+

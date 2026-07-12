@@ -5,14 +5,15 @@
  */
 
 export class CapabilityCatalog {
-  // 현재 에이전트 시스템이 제공할 수 있는 임의의 툴들 목록
+  // PHASE 3.5: Tool Runtime 구현 전까지 Tool 기능을 비활성화 (Disabled Safely).
+  // 오직 LLM Reasoning만 허용합니다.
   private availableCapabilities = new Set([
-    'file.read',
-    'file.write',
-    'sys.command',
-    'web.search',
-    'code.execute',
     'llm.reasoning'
+    // 'file.read',
+    // 'file.write',
+    // 'sys.command',
+    // 'web.search',
+    // 'code.execute',
   ]);
 
   public hasCapability(cap: string): boolean {

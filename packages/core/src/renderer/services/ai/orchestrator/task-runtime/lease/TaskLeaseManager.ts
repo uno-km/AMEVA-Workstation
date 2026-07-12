@@ -55,21 +55,18 @@ export class TaskLeaseManager {
       startedAt: now,
     };
 
-    // Store에 Attempt 등록 
-    // 주의: 실제 READY -> RUNNING 전이는 StateMachine이 담당하므로 여기서는 객체만 심어줍니다.
-    this.store.dispatchTransition(
+    // Store에 Attempt 등록 (상태 변경 없음)
+    this.store.updateTaskMetadata(
       {
         commandId: `cmd-acquire-${crypto.randomUUID()}`,
         missionId,
         taskId,
         attemptId,
-        expectedCurrentStatus: task.state.status,
         expectedStateVersion: task.state.stateVersion,
         reason: `Lease acquired by ${ownerId}`,
         actor: 'TaskLeaseManager',
         timestamp: now
       },
-      task.state.status, // 상태는 일단 그대로 두고 Attempt만 갱신 (전이는 스케줄러가 알아서 함)
       {
         activeAttemptId: attemptId,
         attempts: { ...task.state.attempts, [attemptId]: newAttempt }

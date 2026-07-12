@@ -1,9 +1,3 @@
-/**
- * @file orchestrator/task-runtime/executors/DeepTaskExecutor.ts
- * @system AMEVA OS Desktop Workstation
- * @role 개별 Task를 최대 1000턴까지 실행할 수 있는 마이크로 ReAct 엔진(Sub-Orchestrator)
- */
-
 import type { ILLMEngineAdapter } from '../../types';
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { TaskLeaseManager } from '../lease/TaskLeaseManager';
@@ -33,15 +27,16 @@ export class DeepTaskExecutor {
     missionId: string, 
     taskId: string, 
     attemptId: string, 
+    leaseId: string,
     abortSignal?: AbortSignal
   ): Promise<void> {
     const task = this.store.getTask(missionId, taskId);
     const maxTurns = task.definition.allocatedReasoningTurns || task.definition.budgetTurns || 1000;
     
     let currentTurn = 0;
-    let isGoalAchieved = false;
     let finalText = '';
     const evidences: TaskEvidence[] = [];
+    let streamFinishReason: 'DONE' | 'EOF' | 'ABORT' | 'ERROR' | 'MAX_TURNS' = 'EOF';
 
     // 초기 컨텍스트(프롬프트) 생성
     const messages = this.contextBuilder.buildContextMessages(missionId, task);
@@ -49,7 +44,17 @@ export class DeepTaskExecutor {
     try {
       while (currentTurn < maxTurns) {
         if (abortSignal && abortSignal.aborted) {
-          throw new Error('Task execution was aborted.');
+          streamFinishReason = 'ABORT';
+          throw new Error('Task execution was aborted by signal.');
+        }
+
+        // Lease 만료 여부 확인 및 갱신 (선택적)
+        // 여기서는 매 턴마다 갱신하여 락을 유지함
+        try {
+          this.leaseManager.renewLease(leaseId);
+        } catch (leaseError) {
+          streamFinishReason = 'ERROR';
+          throw new Error(`Lease expired or invalid during turn ${currentTurn}: ${leaseError}`);
         }
 
         currentTurn++;
@@ -58,41 +63,38 @@ export class DeepTaskExecutor {
         let chunkText = '';
         const responseText = await this.adapter.generateStream(messages, (token) => {
           chunkText += token;
-          // (선택) 스트림 도중 조기 취소 감지 가능
+          if (abortSignal && abortSignal.aborted) {
+            // (구현에 따라 여기서 중단 가능)
+          }
         });
 
         // 텍스트 저장
         finalText += responseText;
         messages.push({ role: 'assistant', content: responseText });
 
-        // 조기 종료 감지 (Done 신호)
+        // 스트림 조기 종료 감지 (Done 신호)
         if (responseText.includes('[DONE]')) {
-          isGoalAchieved = true;
-          break; // 루프 탈출
+          streamFinishReason = 'DONE';
+          break; // 현재 스트림 루프(Reasoning 턴 반복) 탈출
         }
 
-        // TODO: Tool 호출(JSON) 파싱 및 실행 로직 (PHASE 3의 핵심 ReAct 기능)
-        // const toolCalls = parseToolCalls(responseText);
-        // if (toolCalls.length > 0) {
-        //   const toolResults = await executeTools(toolCalls);
-        //   evidences.push(...toolResults);
-        //   messages.push({ role: 'user', content: formatToolResults(toolResults) });
-        //   continue; // 계속 루프 돎
-        // } else {
-        //   // 툴 호출이 없고 DONE도 없으면 무한루프 방지를 위해 조기 종료할 수 있음
-        //   break;
-        // }
-        
-        // 현재는 Tool 실행 연동 전이므로 바로 종료 (임시)
-        isGoalAchieved = true;
+        // TODO: Tool 호출(JSON) 파싱 및 실행 로직
+        // PHASE 3.5: 현재 "Disabled Safely" 정책에 따라 Tool 실행 기능은 막혀 있음.
+        // Tool 요청이 들어와도 실행 불가이므로 다음 턴으로 넘어가거나 종료.
+        // 여기서는 무한 루프를 방지하기 위해 스트림 종료로 간주함
         break;
       }
 
-      // 예산 소비 정산 (소비한 턴 수를 Ledger에 보고)
+      if (currentTurn >= maxTurns) {
+        streamFinishReason = 'MAX_TURNS';
+      }
+
+      // 예산 소비 정산 (실제 소비한 턴 수를 Ledger에 보고하고 나머지 예약분 반환)
       this.ledger.commitTaskBudget(missionId, taskId, maxTurns, currentTurn);
 
       // 최종 Result 조립
       const taskResult = this.resultAssembler.assemble(attemptId, finalText, evidences);
+      (taskResult as any).streamFinishReason = streamFinishReason; // PHASE 4 인계를 위한 확장 정보
 
       // RUNNING -> VERIFYING 상태 전이
       const currentTask = this.store.getTask(missionId, taskId);
@@ -104,22 +106,21 @@ export class DeepTaskExecutor {
           attemptId,
           expectedCurrentStatus: 'RUNNING',
           expectedStateVersion: currentTask.state.stateVersion,
-          reason: 'Execution completed. Submitting for verification.',
+          reason: `Execution stopped (Reason: ${streamFinishReason}). Submitting for verification.`,
           actor: 'DeepTaskExecutor',
           timestamp: Date.now()
         },
         'VERIFYING',
-        { taskResult } // 조립된 결과를 함께 갱신
+        { taskResult }
       );
 
     } catch (error: any) {
       console.error(`[DeepTaskExecutor] Task ${taskId} failed:`, error);
       
-      // 오류 발생 시 RUNNING -> FAILED 로 전이
+      // 예산 반환
+      this.ledger.commitTaskBudget(missionId, taskId, maxTurns, currentTurn);
+      
       try {
-        // 예산은 예약된 만큼만 반환 (또는 소모된 만큼 처리)
-        this.ledger.commitTaskBudget(missionId, taskId, maxTurns, currentTurn);
-        
         const currentTask = this.store.getTask(missionId, taskId);
         this.store.dispatchTransition(
           {
@@ -139,9 +140,12 @@ export class DeepTaskExecutor {
       } catch (transitionError) {
         console.error(`[DeepTaskExecutor] Failed to transition to FAILED:`, transitionError);
       }
+      
+      // 런타임에 에러 전파하여 rejection 추적 활성화
+      throw error;
     } finally {
-      // 락(Lease) 해제
-      // 이 부분은 LeaseManager에 attemptId 기반 release가 필요함 (생략 시 sweep에 의해 해제됨)
+      // 락(Lease) 해제 보장
+      this.leaseManager.releaseLease(leaseId);
     }
   }
 }

@@ -186,10 +186,28 @@ export interface TaskEvent {
     | 'TASK_VERIFICATION_STARTED'
     | 'TASK_VERIFICATION_PASSED'
     | 'TASK_VERIFICATION_FAILED'
+    | 'TASK_VERIFICATION_TIMEOUT'
+    | 'TASK_REPAIR_REQUESTED'
+    | 'TASK_REPAIR_STARTED'
+    | 'TASK_REPAIR_COMPLETED'
+    | 'TASK_REPAIR_FAILED'
     | 'TASK_RETRY_REQUESTED'
+    | 'TASK_RETRY_SCHEDULED'
+    | 'TASK_RECOVERY_REQUESTED'
+    | 'TASK_RECOVERY_STARTED'
+    | 'TASK_RECOVERY_LEVEL_CHANGED'
+    | 'TASK_RECOVERY_COMPLETED'
+    | 'TASK_RECOVERY_FAILED'
+    | 'DEPENDENCY_RECOVERY_REQUESTED'
+    | 'STATE_RESYNC_STARTED'
+    | 'STATE_RESYNC_COMPLETED'
+    | 'CHECKPOINT_RESUME_REQUESTED'
+    | 'CHECKPOINT_RESUME_FAILED'
     | 'TASK_BLOCKED'
     | 'TASK_FAILED'
     | 'TASK_WAITING_USER'
+    | 'USER_ASSIST_REQUESTED'
+    | 'USER_ASSIST_RESPONSE_RECEIVED'
     | 'TASK_SKIPPED'
     | 'TASK_CANCELLED'
     | 'TASK_STATE_TRANSITION_REJECTED'
@@ -219,4 +237,50 @@ export interface TransitionCommand {
   actor: string;
   timestamp: number;
   metadata?: Record<string, any>;
+}
+
+/**
+ * PHASE 5 Handover Contract
+ * Mission 후보 상태 및 종합 결과 전달 DTO
+ */
+export type CompletionCandidateStatus =
+  | 'READY_FOR_COMPLETION_REVIEW'
+  | 'PARTIAL_COMPLETION_CANDIDATE'
+  | 'MISSION_FAILURE_CANDIDATE'
+  | 'WAITING_USER'
+  | 'BLOCKED'
+  | 'CANCELLED';
+
+export interface MissionCompletionReviewInput {
+  missionId: string;
+  goalId?: string;
+  goalSpec?: string;
+  activePlanId?: string;
+  planVersion: number;
+  missionExecutionState: any; // MissionExecutionState import 회피(순환참조 등 방지 시 any 또는 Pick)
+  allTaskDefinitions: TaskDefinition[];
+  allTaskRuntimeStates: TaskRuntimeState[];
+  successfulTaskResults: TaskResult[];
+  taskVerificationResults: TaskVerificationResult[];
+  failedRequiredTasks: TaskEntity[];
+  failedOptionalTasks: TaskEntity[];
+  skippedOptionalTasks: TaskEntity[];
+  blockedTasks: TaskEntity[];
+  waitingUserTasks: TaskEntity[];
+  requirementCoverageResults?: any[];
+  deliverableCoverageResults?: any[];
+  evidenceSummary?: any[];
+  finalArtifactReferences?: string[];
+  totalReasoningTurns: number;
+  totalToolCalls: number;
+  totalAttempts: number;
+  totalRepairs: number;
+  totalRetries: number;
+  totalRecoveries: number;
+  recoveryHistorySummary?: any[];
+  warnings: string[];
+  unresolvedIssues: string[];
+  toolRuntimeStatus: 'FULLY_CONNECTED' | 'PARTIALLY_CONNECTED' | 'DISABLED_SAFELY' | 'MOCK_ONLY' | 'BROKEN';
+  completionCandidateStatus: CompletionCandidateStatus;
+  createdAt: number;
 }

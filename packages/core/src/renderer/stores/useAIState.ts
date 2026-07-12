@@ -179,8 +179,8 @@ export const useAIState = create<AIState>((set) => ({
 
   settings: loadInitialSettings(),
   updateSettings: (newSettings) => set((state) => {
-    const isDifferent = Object.keys(newSettings).some(
-      (key) => (state.settings as Record<string, unknown>)[key] !== (newSettings as Record<string, unknown>)[key]
+    const isDifferent = (Object.keys(newSettings) as Array<keyof AISettings>).some(
+      (key) => state.settings[key] !== newSettings[key]
     )
     if (!isDifferent) return state
     const updated = { ...state.settings, ...newSettings };

@@ -19,6 +19,7 @@ export class TaskRuntimeStore {
   private missions: Map<string, Map<string, TaskEntity>> = new Map();
   // missionId -> MissionExecutionState
   private missionStates: Map<string, MissionExecutionState> = new Map();
+  private eventLog: TaskEventLog;
 
   constructor(eventLog: TaskEventLog) {
     this.eventLog = eventLog;
@@ -149,6 +150,39 @@ export class TaskRuntimeStore {
   public getAllTasks(missionId: string): TaskEntity[] {
     const missionTasks = this.missions.get(missionId);
     return missionTasks ? Array.from(missionTasks.values()) : [];
+  }
+
+  /**
+   * 상태 변경 없이 메타데이터(Attempt 등)만 갱신합니다.
+   */
+  public updateTaskMetadata(
+    command: Omit<TransitionCommand, 'expectedCurrentStatus'>,
+    partialUpdates: Partial<TaskRuntimeState>
+  ): void {
+    const task = this.getTask(command.missionId, command.taskId);
+    
+    // StateMachine의 순수 함수를 호출하여 Invariant 검증
+    const updatedTask = TaskStateMachine.updateMetadata(task, command, partialUpdates);
+
+    // 저장소 갱신
+    this.missions.get(command.missionId)!.set(command.taskId, updatedTask);
+
+    // 이벤트 로깅 (별도의 이벤트 타입이 필요할 수 있지만, 여기서는 TASK_STATE_TRANSITION_REJECTED나 다른 걸 피하기 위해 임시 사용)
+    this.eventLog.appendEvent({
+      eventId: `evt-meta-${crypto.randomUUID()}`,
+      sessionId: 'sys-session', // 임시 세션
+      missionId: command.missionId,
+      taskId: command.taskId,
+      type: 'TASK_VERIFICATION_STARTED', // TODO: 임시로 맵핑, 실제로는 TASK_METADATA_UPDATED 등 필요
+      timestamp: command.timestamp,
+      actor: command.actor,
+      stateVersion: updatedTask.state.stateVersion,
+      reason: command.reason,
+      metadata: {
+        command,
+        updates: partialUpdates
+      }
+    });
   }
 
   /**
