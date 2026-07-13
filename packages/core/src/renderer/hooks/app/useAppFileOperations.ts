@@ -26,7 +26,7 @@
  * [IMPORT SEGMENTATION & CONTRACTS]
  * - useCallback: 파일 트랜잭션 콜백들의 렌더링 무결성을 보장하기 위한 React 코어 API.
  */
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 
 /* 
  * [ELECTRON IPC BRIDGE ADAPTER]
@@ -967,6 +967,48 @@ export function useAppFileOperations(
       }
     }
   }, [editor, setFilePath, setOriginalContent, setLastSavedTime, createSnapshot])
+
+  /*
+   * [AUTO TABS SYNCHRONIZATION EFFECT]
+   * - Rationale: AI 에이전트가 백그라운드 태스크 수행 중 VFS 파일 쓰기(write_file)를 성공하면,
+   *   자동으로 해당 파일의 에디터 탭을 신설(openFileInTab)하거나 실시간 본문 동기화(loadMarkdownIntoEditor)를 격발하여
+   *   사용자 화면에 편집 상태가 즉시 시각화되도록 조율한다.
+   */
+  useEffect(() => {
+    if (!editor) return
+
+    const handleAutoOpened = (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      setEditorMode('edit')
+      void openFileInTab(editor, detail.content, detail.filePath, false)
+    }
+
+    const handleAutoUpdated = async (e: Event) => {
+      const detail = (e as CustomEvent).detail
+      if (activeTabId === detail.tabId) {
+        await loadMarkdownIntoEditor(editor, detail.content, false, detail.filePath)
+      } else {
+        try {
+          const parsed = await editor.tryParseMarkdownToBlocks(normalizeMarkdown(detail.content))
+          useWorkspaceStore.getState().updateActiveTab({
+            filePath: detail.filePath,
+            content: detail.content,
+            blocks: parsed
+          })
+        } catch (err: unknown) {
+          console.warn('[AutoUpdate] 비활성 탭 버퍼 동기화 오류:', err)
+        }
+      }
+    }
+
+    window.addEventListener('ameva:file-auto-opened', handleAutoOpened)
+    window.addEventListener('ameva:file-auto-updated', handleAutoUpdated)
+
+    return () => {
+      window.removeEventListener('ameva:file-auto-opened', handleAutoOpened)
+      window.removeEventListener('ameva:file-auto-updated', handleAutoUpdated)
+    }
+  }, [editor, activeTabId, openFileInTab, loadMarkdownIntoEditor, setEditorMode])
 
   return {
     loadMarkdownIntoEditor,

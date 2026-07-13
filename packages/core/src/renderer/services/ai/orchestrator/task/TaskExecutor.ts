@@ -8,7 +8,7 @@
  * - AgentOrchestrator.ts: 태스크 큐에서 READY 노드를 꺼내 TaskExecutor.execute()에 인가하여 기동.
  */
 
-import type { Task, TaskResult, TaskStatus } from './types';
+import type { Task, TaskResult } from './types';
 
 /**
  * TaskExecutor
@@ -40,14 +40,63 @@ export class TaskExecutor {
 - 산출물 검증 기준 (expectedOutput): ${task.expectedOutput}
 
 이전 단계들의 작업 결과를 참조하여, 위 태스크의 목표를 완수하십시오.
-작업이 끝났다면 반드시 'Final Answer:' 접두사 뒤에 결과 요약과 산출 정보를 포함하여 작성하십시오.
+
+🚨 [작업 완료 선언 시 절대 규칙]
+당신은 절대로 작업을 완료했다고 주장해서는 안 됩니다.
+작업 완료는 다음 4가지 조건을 모두 만족할 때만 선언할 수 있습니다:
+1. 실제 도구 호출 성공
+2. 산출물 생성 또는 수정 확인
+3. 결과 요약 작성
+4. 검증자가 확인 가능한 증거 제출
+
+위 조건이 하나라도 누락되면 FAILED 상태가 됩니다.
+작업 완료 선언(Final Answer) 시 반드시 아래 JSON 구조만 출력하십시오:
+
+Final Answer: {
+  "status": "SUCCESS",
+  "artifacts": [
+    {
+      "path": "파일경로 (예: cheese_report.md)",
+      "description": "생성 또는 수정 내용"
+    }
+  ],
+  "summary": "수행 결과 요약",
+  "evidence": [
+    "검증 가능한 근거1",
+    "검증 가능한 근거2"
+  ]
+}
+
+주의: '완료했습니다' 등 추측성 문장만 뱉거나, 증거 없이 성공을 선언하는 행위는 엄격히 금지됩니다.
 `;
 
-      // session의 contextMessages에 태스크 안내 컨텍스트 주입
-      session.contextMessages.push({
-        role: 'user',
-        content: taskPrompt
-      });
+      /*
+       * [CONTEXT COMPRESSION - PREVENT 400 BAD REQUEST]
+       * - Rationale: 태스크가 여러 개 누적될수록 이전 단계들의 상세 ReAct 토큰(Thoughts, Observations)들이 누적되어
+       *   로컬 LLM의 컨텍스트 한계 용량을 초과해 400 Bad Request 에러를 야기한다.
+       *   따라서 신규 태스크 실행 진입 시 시스템 프롬프트만 보존한 채 이전의 장황한 ReAct 세부 로그들을 소거하고,
+       *   대신 이미 성공적으로 완료된 태스크들의 결과 요약(Summary) 목록만을 정갈하게 합성하여 컨텍스트를 압축 리셋한다.
+       */
+      const systemMessage = session.contextMessages.find((m: any) => m.role === 'system');
+      const baseSystemPrompt = systemMessage ? systemMessage.content : '';
+      
+      const completedTaskSummaries = session.taskGraph
+        ? session.taskGraph.getTasks()
+            .filter((t: any) => t.status === 'COMPLETED' && t.result)
+            .map((t: any) => `- [완료] ${t.id} (${t.title}): ${t.result.summary || '요약 없음'}`)
+            .join('\n')
+        : '';
+
+      const contextSummaryPrompt = `
+[이전 태스크 실행 결과 요약 목록]
+${completedTaskSummaries || '이전 단계 실행 결과 없음'}
+`;
+
+      session.contextMessages = [
+        { role: 'system', content: baseSystemPrompt },
+        { role: 'user', content: contextSummaryPrompt },
+        { role: 'user', content: taskPrompt }
+      ];
 
       /*
        * [RUN-TIME STATE / INVARIANT - ReAct Loop Control]

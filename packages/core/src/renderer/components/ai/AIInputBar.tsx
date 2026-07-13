@@ -52,38 +52,97 @@ export function AIInputBar({
   selectedText
 }: AIInputBarProps) {
   console.debug("Unused vars (AIInputBar):", { Check });
+  /*
+   * [DISPLAY STATE CONVERSION - Rationale]
+   * - isReview: Zustand 입력값에 계획 리뷰 접두사([계획 리뷰])가 부착되어 있는지 검출.
+   * - displayValue: 입력 필드 렌더링 시 대괄호 문자열을 비주얼 상에서 가려주어 정돈된 뷰 제공.
+   * - handleChange: 타이핑 완료 시 백그라운드에서 다시 [계획 리뷰] 접두사를 원자적으로 합성하여 상위 스토어로 상신.
+   */
+  const isReview = value.startsWith('[계획 리뷰]')
+  const displayValue = isReview ? value.replace(/^\[계획 리뷰\]\s*/, '') : value
+  
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value
+    if (isReview) {
+      onChange(`[계획 리뷰] ${text}`)
+    } else {
+      onChange(text)
+    }
+  }
+
   return (
     <div
       data-focus-region="ai-input"
-      style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', position: 'relative', borderRadius: '10px' }}
+      style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', position: 'relative', borderRadius: '10px', width: '100%' }}
     >
-      <textarea
-        ref={textareaRef as any}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        onKeyDown={onKeyDown}
-        placeholder={placeholder}
-        disabled={disabled}
-        rows={2}
-        style={{
-          flex: 1,
-          background: 'var(--bg-glass)',
-          border: selectedText ? '1px solid rgba(6,182,212,0.4)' : '1px solid var(--border-muted)',
-          borderRadius: '8px',
-          padding: '8px 10px',
-          color: 'var(--text-main)',
-          fontSize: '12px',
-          resize: 'none',
-          outline: 'none',
-          fontFamily: 'var(--font-sans)',
-          lineHeight: '1.5',
-          transition: 'border-color 0.15s',
-          maxHeight: '80px',
-          overflowY: 'auto',
-        }}
-        onFocus={e => (e.target.style.borderColor = selectedText ? 'var(--secondary)' : 'var(--primary)')}
-        onBlur={e => (e.target.style.borderColor = selectedText ? 'rgba(6,182,212,0.4)' : 'var(--border-muted)')}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+        {isReview && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: 'linear-gradient(135deg, #6366f1, #a855f7)',
+              color: '#fff',
+              fontSize: '10px',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: '12px',
+              boxShadow: '0 2px 5px rgba(99, 102, 241, 0.25)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              fontFamily: 'var(--font-sans)',
+              letterSpacing: '0.3px'
+            }}>
+              <span>📝 계획 리뷰 피드백</span>
+              <button
+                onClick={() => onChange('')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  cursor: 'pointer',
+                  fontSize: '9px',
+                  padding: '0 2px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  marginLeft: '2px'
+                }}
+                title="리뷰 취소"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        <textarea
+          ref={textareaRef as any}
+          value={displayValue}
+          onChange={handleChange}
+          onKeyDown={onKeyDown}
+          placeholder={isReview ? '계획 수정 요구사항을 적어주세요...' : placeholder}
+          disabled={disabled}
+          rows={2}
+          style={{
+            width: '100%',
+            background: 'var(--bg-glass)',
+            border: selectedText ? '1px solid rgba(6,182,212,0.4)' : '1px solid var(--border-muted)',
+            borderRadius: '8px',
+            padding: '8px 10px',
+            color: 'var(--text-main)',
+            fontSize: '12px',
+            resize: 'none',
+            outline: 'none',
+            fontFamily: 'var(--font-sans)',
+            lineHeight: '1.5',
+            transition: 'border-color 0.15s',
+            maxHeight: '80px',
+            overflowY: 'auto',
+            boxSizing: 'border-box'
+          }}
+          onFocus={e => (e.target.style.borderColor = selectedText ? 'var(--secondary)' : 'var(--primary)')}
+          onBlur={e => (e.target.style.borderColor = selectedText ? 'rgba(6,182,212,0.4)' : 'var(--border-muted)')}
+        />
+      </div>
 
       {isGenerating ? (
         <button

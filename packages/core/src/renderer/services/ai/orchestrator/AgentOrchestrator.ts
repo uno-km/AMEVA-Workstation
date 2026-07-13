@@ -505,7 +505,22 @@ export class AgentOrchestratorSession {
 
     // 1. Task Planner 가동하여 Goal에 기반한 태스크 계획 획득 (Legacy Fallback)
     const planner = new TaskPlanner(this.adapter)
-    const initialTasks = await planner.plan(userMessage)
+    
+    /*
+     * [STREAM TOKENS PASS-THROUGH]
+     * - Rationale: 계획 수립(Planning)은 수십 초 이상 걸리므로, 생성되는 토큰을 감시경(supervisor)에 feed하여
+     *   정체 감지(TOKEN_FREEZE) 타임아웃 오작동을 예방하고 동시에 UI 화면에 실시간 생각 스트림으로 노출한다.
+     */
+    let accumulatedPlanText = ''
+    const initialTasks = await planner.plan(userMessage, (token) => {
+      accumulatedPlanText += token
+      this.supervisor.onToken(token, accumulatedPlanText, false)
+      this.emitEvent({
+        type: 'thought_token',
+        token,
+        accumulated: accumulatedPlanText
+      })
+    })
 
     // [Task Runtime V2] Legacy JSON(initialTasks) -> Domain Entity 변환 및 Store 등록 (Shadow Mode)
     const adapterResult = LegacyTaskPlanAdapter.importFromLegacy(initialTasks as unknown as LegacyTaskPayload[]);
@@ -809,7 +824,80 @@ export class AgentOrchestratorSession {
 
   /**
    * 도구를 실행하고 그 결과를 Observation으로 컨텍스트에 주입한다.
-   * Actor-Critic 훅이 주입된 경우 실행 직전 Critic 검수를 수행한다.
+   *
+   * [ADR - Real-time Editor Sync Bridge]
+   * - Rationale: 백그라운드 도구 실행 결과가 VFS(write_file)에 도달했을 때,
+   *   Zustand 스토어의 탭 정보와 activeTabId를 업데이트하고 커스텀 이벤트를 릴레이하여
+   *   사용자 화면의 웰컴/편집기 탭에 실시간으로 작성 중인 본문이 주르륵 채워지도록 조율한다.
+   *
+   * @param request - ThoughtParser가 파싱한 도구 호출 요청
+   */
+  public async executeToolAndObserve(request: ToolCallRequest): Promise<void> {
+    this.emitPhaseChange('tool_calling')
+    ipc.llmAddLog({
+      text: `[AgentOrchestrator] 도구 실행: ${request.name}(${JSON.stringify(request.args)})`,
+      prefix: 'Orchestrator'
+    })
+
+    const result = await this.registry.executeTool(request.name, request.args)
+
+    this.emitPhaseChange('observing')
+    this.emitEvent({ type: 'tool_call_end', result } as any)
+
+    if (request.name === 'write_file' && result.success && request.args && typeof request.args.path === 'string') {
+      try {
+        const { useWorkspaceStore } = await import('../../../stores/useWorkspaceStore')
+        const store = useWorkspaceStore.getState()
+        const filePath = String(request.args.path)
+        const content = String(request.args.content || '')
+        
+        const targetTab = store.tabs.find(t => t.filePath === filePath)
+        if (!targetTab) {
+          const newTabId = 'tab_' + Math.random().toString(36).substring(2, 9)
+          const newTab = {
+            id: newTabId,
+            filePath: filePath,
+            content: content,
+            blocks: [],
+            originalContent: content,
+            lastSavedTime: new Date()
+          }
+          store.addTab(newTab)
+          store.setActiveTabId(newTabId)
+          window.dispatchEvent(new CustomEvent('ameva:file-auto-opened', { detail: { filePath, content } }))
+        } else {
+          store.setActiveTabId(targetTab.id)
+          window.dispatchEvent(new CustomEvent('ameva:file-auto-updated', { detail: { filePath, content, tabId: targetTab.id } }))
+        }
+      } catch (syncErr: unknown) {
+        console.warn('[AgentOrchestrator] VFS 탭 실시간 동기화 브릿지 실패:', syncErr)
+      }
+    }
+
+    const observationText = result.success
+      ? `Observation: ${result.result ?? '(결과 없음)'}`
+      : `Observation: 도구 실행 실패 - ${result.error ?? '알 수 없는 오류'}`
+
+    this.contextMessages.push({
+      role: 'user',
+      content: observationText
+    })
+
+    ipc.llmAddLog({ text: `[AgentOrchestrator] Observation 주입 완료: ${observationText.slice(0, 100)}...`, prefix: 'Orchestrator' })
+    this.emitPhaseChange('thinking')
+  }
+
+  /**
+   * 현재 컨텍스트 메시지들의 총 토큰 수를 추정한다.
+   * 정확한 토크나이저 없이 글자 수 기반 근사치를 사용한다.
+   *
+   * @returns 추정 토큰 수 (글자 수 / CHARS_PER_TOKEN_ESTIMATE)
+   */
+  public estimateContextTokens(): number {
+    const totalChars = this.contextMessages
+      .reduce((sum, msg) => sum + msg.content.length, 0)
+    return Math.ceil(totalChars / ORCHESTRATOR_CONSTANTS.CHARS_PER_TOKEN_ESTIMATE)
+  }
 
   /**
    * 스트리밍 버퍼에서 Task Plan JSON을 찾아 파싱하고 이벤트를 방출한다.

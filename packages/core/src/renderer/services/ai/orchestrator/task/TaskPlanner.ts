@@ -31,10 +31,15 @@ export class TaskPlanner {
   /**
    * 사용자의 최종 Goal을 분석하여 Task 리스트를 빌드합니다.
    *
+   * [ADR - Real-time Token Propagation]
+   * - Rationale: 로컬 모델 구동 시 계획 수립에 수십 초 이상이 소요될 수 있으므로,
+   *   실시간 생성 토큰을 onToken 콜백으로 중계하여 UI 상의 멈춤 현상(Stall) 및 감시견의 정체 판단 오작동을 차단한다.
+   *
    * @param goal - 사용자의 목표 텍스트 (예: '치즈 산업 보고서 작성')
+   * @param onToken - 실시간 토큰 수신 콜백 (선택적)
    * @returns 파싱 완료된 Task 배열 (오류 시 안전한 폴백 목록 반환)
    */
-  public async plan(goal: string): Promise<Task[]> {
+  public async plan(goal: string, onToken?: (token: string) => void): Promise<Task[]> {
     console.info(`[TaskPlanner] 태스크 계획 수립 시작: "${goal}"`);
 
     const systemPrompt = `당신은 AMEVA OS의 Task Planning Architect입니다.
@@ -67,8 +72,12 @@ export class TaskPlanner {
     ];
 
     try {
-      // 실시간 토큰 피드백 없이 동기식 텍스트 수집
-      const rawOutput = await this.llmAdapter.generateStream(messages, () => {});
+      // 실시간 토큰 콜백 연결로 UI 및 감시경 락 타임아웃 갱신
+      const rawOutput = await this.llmAdapter.generateStream(messages, (token) => {
+        if (onToken) {
+          onToken(token);
+        }
+      });
       console.debug(`[TaskPlanner] LLM 원본 계획 데이터:\n`, rawOutput);
 
       return this.parsePlanOutput(rawOutput);
