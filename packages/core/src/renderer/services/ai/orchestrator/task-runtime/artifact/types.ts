@@ -5,6 +5,7 @@ export type ArtifactStatus =
   | 'STAGED'
   | 'WRITTEN'
   | 'VALIDATED'
+  | 'COMMITTING'
   | 'COMMITTED'
   | 'REJECTED'
   | 'CORRUPTED'

@@ -124,7 +124,8 @@ export class ToolRegistry {
    */
   public async executeTool(
     name: string,
-    args: Record<string, unknown>
+    args: Record<string, unknown>,
+    context?: { missionId?: string; taskId?: string; attemptId?: string }
   ): Promise<ToolCallResult> {
     const tool = this.tools.get(name)
 
@@ -143,7 +144,7 @@ export class ToolRegistry {
     ipc.llmAddLog({ text: `[ToolRegistry] 도구 실행 시작: ${name}`, prefix: 'Orchestrator' })
 
     try {
-      const result = await tool.execute(args)
+      const result = await tool.execute(args, context)
       ipc.llmAddLog({
         text: `[ToolRegistry] 도구 실행 완료: ${name} → ${result.success ? '성공' : '실패'}`,
         prefix: 'Orchestrator'
@@ -192,7 +193,7 @@ export class ToolRegistry {
         },
         required: ['cmd']
       },
-      execute: async (args) => {
+      execute: async (args, context) => {
         const cmd = String(args['cmd'] ?? '')
         const cwd = args['cwd'] ? String(args['cwd']) : undefined
 
@@ -236,13 +237,13 @@ export class ToolRegistry {
         },
         required: ['path']
       },
-      execute: async (args) => {
+      execute: async (args, context) => {
         const rawPath = String(args['path'] ?? '')
 
         // [Item 7] Path traversal 방어
         let safePath: string;
         try {
-          safePath = PathSanitizer.sanitizePath(rawPath, 'read');
+          safePath = PathSanitizer.sanitizePath(rawPath, 'read', context?.missionId);
         } catch (sanitizeErr: unknown) {
           const reason = sanitizeErr instanceof PathSanitizationError
             ? sanitizeErr.reason : 'UNKNOWN';
@@ -288,14 +289,14 @@ export class ToolRegistry {
         },
         required: ['path', 'content']
       },
-      execute: async (args) => {
+      execute: async (args, context) => {
         const rawPath = String(args['path'] ?? '')
         const content = String(args['content'] ?? '')
 
         // [Item 7] Path traversal 방어 — 쓰기 작업은 허용된 루트에서만
         let safePath: string;
         try {
-          safePath = PathSanitizer.sanitizePath(rawPath, 'write');
+          safePath = PathSanitizer.sanitizePath(rawPath, 'write', context?.missionId);
         } catch (sanitizeErr: unknown) {
           const reason = sanitizeErr instanceof PathSanitizationError
             ? sanitizeErr.reason : 'UNKNOWN';

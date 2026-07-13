@@ -284,5 +284,5 @@ export interface ToolDefinition {
     required?: string[]
   }
   /** 실제 도구 실행 함수. args를 받아 비동기로 결과를 반환한다. */
-  execute: (args: Record<string, unknown>) => Promise<ToolCallResult>
+  execute: (args: Record<string, unknown>, context?: { missionId?: string; taskId?: string; attemptId?: string }) => Promise<ToolCallResult>
 }

@@ -21,6 +21,7 @@
  */
 
 import type { IRuntimePersistenceAdapter, MissionSnapshot } from './RuntimePersistenceAdapter';
+import type { ArtifactTransactionManager } from '../artifact/ArtifactTransactionManager';
 
 /**
  * 복원된 Mission 정보.
@@ -41,8 +42,14 @@ export interface RestoredMissionInfo {
  */
 export class RuntimeRestoreCoordinator {
   private readonly persistence: IRuntimePersistenceAdapter;
-  constructor(persistence: IRuntimePersistenceAdapter) {
+  private readonly artifactTxManager?: ArtifactTransactionManager;
+
+  constructor(
+    persistence: IRuntimePersistenceAdapter,
+    artifactTxManager?: ArtifactTransactionManager
+  ) {
     this.persistence = persistence;
+    this.artifactTxManager = artifactTxManager;
   }
 
   /**
@@ -83,9 +90,33 @@ export class RuntimeRestoreCoordinator {
         // Checkpoint 조회 실패는 무시 (복원 불가로 간주)
       }
 
+      // [Item 6] Artifact Hash Verification
+      // 만약 COMMITTED된 Artifact가 디스크상에서 변조(STALE/CORRUPTED)되었다면 경고
+      let artifactCorrupted = false;
+      if (this.artifactTxManager) {
+        try {
+          const manifests = await this.artifactTxManager['store'].listManifests(snapshot.missionId);
+          for (const m of manifests) {
+            if (m.status === 'COMMITTED' && m.finalPath && m.contentHash) {
+              const currentHash = await this.artifactTxManager['fsAdapter'].hash(m.finalPath);
+              if (currentHash !== m.contentHash) {
+                console.error(`[RuntimeRestoreCoordinator] Artifact corrupted or stale detected during restore: ${m.artifactId}`);
+                artifactCorrupted = true;
+                // Optional: Update status to CORRUPTED here or let user decide
+              }
+            }
+          }
+        } catch (e) {
+          console.error(`[RuntimeRestoreCoordinator] Artifact verification failed for mission ${snapshot.missionId}`, e);
+        }
+      }
+
       // 권장 복원 액션 결정
       let recommendedAction: RestoredMissionInfo['recommendedAction'];
-      if (hasCheckpoint) {
+      if (artifactCorrupted) {
+         // Artifact가 손상되었으므로 처음부터 재시작하거나 사용자가 파일 복구를 하도록 유도
+         recommendedAction = 'RESTART';
+      } else if (hasCheckpoint) {
         recommendedAction = 'RESUME_FROM_CHECKPOINT';
       } else if (snapshot.status === 'PAUSED' || snapshot.status === 'WAITING_USER') {
         recommendedAction = 'RESTART';

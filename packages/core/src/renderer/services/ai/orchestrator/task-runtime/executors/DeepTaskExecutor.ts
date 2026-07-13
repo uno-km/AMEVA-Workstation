@@ -184,7 +184,8 @@ export class DeepTaskExecutor {
             ToolPolicyChecker.assertAllowed(candidate.toolName, knownToolNames);
 
             // Tool 실행 (Timeout 포함) — DI된 registry 인스턴스 사용
-            const toolResultPromise = registry.executeTool(candidate.toolName, candidate.arguments);
+            const toolContext = { missionId, taskId, attemptId };
+            const toolResultPromise = registry.executeTool(candidate.toolName, candidate.arguments, toolContext);
 
             const timeoutPromise = new Promise<never>((_, reject) =>
               setTimeout(() => reject(new Error(`Tool '${candidate.toolName}' timed out after ${TOOL_EXECUTION_TIMEOUT_MS}ms`)), TOOL_EXECUTION_TIMEOUT_MS)

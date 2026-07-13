@@ -15,6 +15,8 @@ import { GoalLevelVerifier } from '../verifier/GoalLevelVerifier';
 import { MissionOutcomeEvaluator } from '../evaluators/MissionOutcomeEvaluator';
 import type { MissionCompletionDecision } from '../domain/MissionCompletionTypes';
 
+import type { ArtifactTransactionManager } from '../../artifact/ArtifactTransactionManager';
+
 export class MissionCompletionRuntime {
   private activeLocks: Set<string> = new Set(); // in-memory 락 (reviewId 또는 missionId 기준)
   private decisionCache: Map<string, MissionCompletionDecision> = new Map(); // 멱등성 보장을 위한 캐시
@@ -28,6 +30,7 @@ export class MissionCompletionRuntime {
   private readonly artifactValidator: FinalArtifactValidator;
   private readonly goalVerifier: GoalLevelVerifier;
   private readonly outcomeEvaluator: MissionOutcomeEvaluator;
+  private readonly artifactTxManager?: ArtifactTransactionManager;
 
   constructor(
     taskStore: TaskRuntimeStore,
@@ -38,7 +41,8 @@ export class MissionCompletionRuntime {
     deliverableEvaluator: DeliverableCoverageEvaluator,
     artifactValidator: FinalArtifactValidator,
     goalVerifier: GoalLevelVerifier,
-    outcomeEvaluator: MissionOutcomeEvaluator
+    outcomeEvaluator: MissionOutcomeEvaluator,
+    artifactTxManager?: ArtifactTransactionManager
   ) {
     this.taskStore = taskStore;
     this.builder = builder;
@@ -49,6 +53,7 @@ export class MissionCompletionRuntime {
     this.artifactValidator = artifactValidator;
     this.goalVerifier = goalVerifier;
     this.outcomeEvaluator = outcomeEvaluator;
+    this.artifactTxManager = artifactTxManager;
   }
 
   /**
@@ -186,6 +191,27 @@ export class MissionCompletionRuntime {
 
       // 5. 스토어 상태 변경(FINALIZING -> 결정된 Outcome)
       this.taskStore.updateMissionState(missionId, { status: outcome });
+
+      // [Phase 2] 커밋 확인 (이미 VerificationRuntime에서 커밋을 마쳤어야 함)
+      if (outcome === 'COMPLETED' && this.artifactTxManager) {
+        for (const ref of artifactEval.finalArtifactReferences) {
+          if (ref.referencePath && ref.referencePath.startsWith('/')) {
+            try {
+              const manifest = await this.artifactTxManager.getManifest(missionId, ref.referencePath);
+              if (!manifest || manifest.status !== 'COMMITTED') {
+                 // 필수 Artifact가 COMMITTED가 아니라면 SUCCESS/COMPLETED 금지
+                 console.error(`[MissionCompletionRuntime] Required artifact is not COMMITTED: ${ref.referencePath}`);
+                 decision.outcome = 'FAILED';
+                 decision.warnings.push(`Required artifact ${ref.referencePath} is not COMMITTED.`);
+                 this.taskStore.updateMissionState(missionId, { status: 'FAILED' });
+                 break; // Mark FAILED
+              }
+            } catch (e) {
+              console.error(`[MissionCompletionRuntime] Failed to check artifact ${ref.referencePath}`, e);
+            }
+          }
+        }
+      }
 
       // 6. 캐싱 (멱등성 보장용)
       this.decisionCache.set(cacheKey, decision);

@@ -89,7 +89,8 @@ export class PathSanitizer {
    */
   public static sanitizePath(
     inputPath: string,
-    operation: 'read' | 'write' | 'list' = 'write'
+    operation: 'read' | 'write' | 'list' = 'write',
+    missionId?: string
   ): string {
     if (!inputPath || typeof inputPath !== 'string') {
       throw new PathSanitizationError(
@@ -99,7 +100,6 @@ export class PathSanitizer {
       );
     }
 
-    // 최대 경로 길이 제한 (255자 — Windows MAX_PATH 기준)
     if (inputPath.length > 1024) {
       throw new PathSanitizationError(
         `Path too long: ${inputPath.length} chars (max 1024).`,
@@ -108,7 +108,6 @@ export class PathSanitizer {
       );
     }
 
-    // Null byte 및 제어 문자 차단
     if (/[\x00-\x1f\x7f]/.test(inputPath)) {
       throw new PathSanitizationError(
         `Path contains control characters or null bytes.`,
@@ -117,15 +116,11 @@ export class PathSanitizer {
       );
     }
 
-    // URL decoding 시도 후 재검증 (URL encoding bypass 차단)
     let decoded = inputPath;
     try {
       decoded = decodeURIComponent(inputPath);
-    } catch {
-      // decodeURIComponent가 실패하면 원본 유지 (이미 non-encoded)
-    }
+    } catch {}
 
-    // Double-encoding 시도 탐지
     if (decoded.includes('%')) {
       throw new PathSanitizationError(
         `Path contains suspicious percent-encoding.`,
@@ -134,7 +129,6 @@ export class PathSanitizer {
       );
     }
 
-    // 차단 패턴 검사
     for (const pattern of BLOCKED_PATH_PATTERNS) {
       if (pattern.test(decoded)) {
         throw new PathSanitizationError(
@@ -145,7 +139,6 @@ export class PathSanitizer {
       }
     }
 
-    // 다중 Directory Traversal 차단 (2단계 이상)
     const traversalDepth = (decoded.match(/\.\.[/\\]/g) ?? []).length;
     if (traversalDepth >= 2) {
       throw new PathSanitizationError(
@@ -155,7 +148,22 @@ export class PathSanitizer {
       );
     }
 
-    // 쓰기 작업은 허용된 루트만 통과
+    // Mission isolation check
+    if (missionId) {
+      const normalizedPath = decoded.replace(/\\/g, '/');
+      const missionDirMatch = normalizedPath.match(/missions\/([^/]+)\/(staging|final)/i);
+      if (missionDirMatch) {
+        const targetMissionId = missionDirMatch[1];
+        if (targetMissionId !== missionId) {
+          throw new PathSanitizationError(
+            `Mission isolation violated: cannot access mission ${targetMissionId} from mission ${missionId}.`,
+            inputPath,
+            'MISSION_ISOLATION_VIOLATION'
+          );
+        }
+      }
+    }
+
     if (operation === 'write') {
       const normalizedForCheck = decoded.replace(/\//g, '\\');
       const isRelativePath = !normalizedForCheck.startsWith('\\') && !/^[A-Za-z]:/.test(normalizedForCheck);

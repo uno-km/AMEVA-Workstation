@@ -13,32 +13,31 @@ import { RecoveryCoordinator } from '../recovery/RecoveryCoordinator';
 import { RecoveryRequestStore } from '../recovery/RecoveryRequestStore';
 import { MissionBudgetLedger } from '../../budget/MissionBudgetLedger';
 import type { ILLMEngineAdapter } from '../../../types';
-
+import type { ArtifactTransactionManager } from '../../artifact/ArtifactTransactionManager';
 
 export class VerificationRuntime {
   private inputBuilder: VerificationInputBuilder;
   private coordinator: TaskVerifierCoordinator;
   private policy: VerificationDecisionPolicy;
   private recoveryCoordinator: RecoveryCoordinator;
-
   private store: TaskRuntimeStore;
+  private artifactManager?: ArtifactTransactionManager;
+
   constructor(
     store: TaskRuntimeStore,
     recoveryStore: RecoveryRequestStore,
     ledger: MissionBudgetLedger,
-    adapter?: ILLMEngineAdapter  // [STAGE C] SemanticVerifier LLM 연결용
+    adapter?: ILLMEngineAdapter,
+    artifactManager?: ArtifactTransactionManager
   ) {
     this.store = store;
     this.inputBuilder = new VerificationInputBuilder(store);
-    this.coordinator = new TaskVerifierCoordinator(adapter); // [STAGE C] adapter 전달
+    this.coordinator = new TaskVerifierCoordinator(adapter);
     this.policy = new VerificationDecisionPolicy();
     this.recoveryCoordinator = new RecoveryCoordinator(store, recoveryStore, ledger);
+    this.artifactManager = artifactManager;
   }
 
-  /**
-   * 특정 Mission 내의 모든 VERIFYING 태스크에 대해 검증을 수행하고, 결과를 반환합니다.
-   * (실제 런타임에서는 이 결과를 받아 Store에 Transition 하거나 RecoveryCoordinator로 넘겨야 함)
-   */
   public async processVerifyingTasks(missionId: string): Promise<TaskVerificationResult[]> {
     const allTasks = this.store.getAllTasks(missionId);
     const verifyingTasks = allTasks.filter(t => t.state.status === 'VERIFYING');
@@ -48,44 +47,60 @@ export class VerificationRuntime {
     for (const task of verifyingTasks) {
       try {
         const jobId = `vjob-${crypto.randomUUID()}`;
-        
-        // 1. Input 빌드
         const input = this.inputBuilder.build(missionId, task.definition.id, task.state.activeAttemptId);
-        
-        // 2. 파이프라인 실행
         const criterionResults = await this.coordinator.runVerificationPipeline(input);
-        
-        // 3. 최종 정책 판정
         const finalResult = this.policy.evaluate(input, criterionResults, jobId);
-        
         results.push(finalResult);
 
-        // 4. 상태 적용 (PASS면 COMPLETED로 전이, 아니면 Recovery 런타임 호출)
         if (finalResult.verdict === 'PASS') {
-          this.store.dispatchTransition(
-            {
-              commandId: `cmd-verif-${crypto.randomUUID()}`,
-              missionId,
-              taskId: task.definition.id,
-              expectedCurrentStatus: 'VERIFYING',
-              expectedStateVersion: task.state.stateVersion,
-              reason: 'Verification Passed',
-              actor: 'VerificationRuntime',
-              timestamp: Date.now()
-            },
-            'COMPLETED',
-            { verification: finalResult as any } // verification 객체 주입
-          );
+          // Commit phase: Commit VALIDATED artifacts BEFORE task completion
+          let commitFailed = false;
+          let commitErrorMsg = '';
+
+          if (this.artifactManager && finalResult.deliverableResults) {
+             for (const dr of finalResult.deliverableResults) {
+                if (dr.exists && dr.accessible && dr.artifactReference && dr.artifactReference.startsWith('/')) {
+                   try {
+                     await this.artifactManager.markValidated(missionId, dr.artifactReference);
+                     await this.artifactManager.commitArtifact(missionId, dr.artifactReference);
+                   } catch (err: unknown) {
+                     commitFailed = true;
+                     commitErrorMsg = err instanceof Error ? err.message : String(err);
+                     console.error(`[VerificationRuntime] Commit failed for ${dr.artifactReference}:`, err);
+                     break; // Stop committing if one fails (atomic mission-level safety)
+                   }
+                }
+             }
+          }
+
+          if (commitFailed) {
+            // Re-route to failure
+            finalResult.verdict = 'FAIL';
+            finalResult.reasons.push(`Artifact commit failed: ${commitErrorMsg}`);
+            this.recoveryCoordinator.handleVerificationFailure(finalResult);
+          } else {
+            this.store.dispatchTransition(
+              {
+                commandId: `cmd-verif-${crypto.randomUUID()}`,
+                missionId,
+                taskId: task.definition.id,
+                expectedCurrentStatus: 'VERIFYING',
+                expectedStateVersion: task.state.stateVersion,
+                reason: 'Verification & Commit Passed',
+                actor: 'VerificationRuntime',
+                timestamp: Date.now()
+              },
+              'COMPLETED',
+              { verification: finalResult as any }
+            );
+          }
         } else {
-          // 실패 시 복구 코디네이터로 이관 (상태 전이는 RecoveryCoordinator가 책임짐)
           this.recoveryCoordinator.handleVerificationFailure(finalResult);
         }
-        
       } catch (e: any) {
         console.error(`[VerificationRuntime] Failed to process verification for task ${task.definition.id}:`, e);
       }
     }
-
     return results;
   }
 }
