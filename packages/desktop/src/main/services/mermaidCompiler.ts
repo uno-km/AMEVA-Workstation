@@ -10,6 +10,7 @@
  */
 
 import { BrowserWindow } from 'electron'
+import mermaidScript from 'mermaid/dist/mermaid.min.js?raw'
 
 /**
  * Mermaid 코드를 PNG 버퍼로 변환합니다.
@@ -47,23 +48,24 @@ export async function renderMermaidToBuffer(code: string): Promise<Buffer> {
             body { margin: 0; padding: 20px; background: transparent; display: inline-block; }
             #container { background: white; border-radius: 8px; padding: 20px; display: inline-block; }
           </style>
-          <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
         </head>
         <body>
           <div id="container">
             <pre class="mermaid">${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>
           </div>
-          <script>
-            mermaid.initialize({ startOnLoad: true, theme: 'default' });
-          </script>
         </body>
         </html>
       `
       
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
       
-      // 렌더링이 완료될 시간을 충분히 줍니다. (mermaid는 초기화 후 렌더링에 약간의 비동기 시간이 걸림)
+      // 1. 오프라인(로컬) Mermaid 스크립트 주입 (CDN 통신 오류 원천 차단)
+      await win.webContents.executeJavaScript(mermaidScript)
+      
+      // 2. Mermaid 초기화 및 렌더링 완료 대기
       await win.webContents.executeJavaScript(`
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+        mermaid.run();
         new Promise((resolve) => {
           setTimeout(() => resolve(), 800); 
         })
