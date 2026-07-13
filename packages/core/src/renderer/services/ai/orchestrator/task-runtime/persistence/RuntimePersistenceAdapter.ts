@@ -46,6 +46,11 @@ export interface IRuntimePersistenceAdapter {
   saveCheckpointData(missionId: string, taskId: string, data: object): Promise<void>;
   loadCheckpointData(missionId: string, taskId: string): Promise<object | null>;
   deleteMission(missionId: string): Promise<void>;
+  
+  // Artifact Manifests
+  saveArtifactManifest(manifest: any): Promise<void>; // using any here to avoid circular dep or we can import ArtifactManifest
+  loadArtifactManifest(missionId: string, artifactId: string): Promise<any | null>;
+  listArtifactManifests(missionId: string): Promise<any[]>;
 }
 
 /*
@@ -58,6 +63,8 @@ const STORE_CHECKPOINTS = 'task_checkpoints';
 const PERSISTENCE_SCHEMA_VERSION = 2;
 
 import { SchemaMigrationEngine } from './SchemaMigration';
+
+const STORE_ARTIFACT_MANIFESTS = 'artifact_manifests';
 
 /**
  * IndexedDB 연결 헬퍼.
@@ -79,6 +86,9 @@ function openRuntimeDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_CHECKPOINTS)) {
         db.createObjectStore(STORE_CHECKPOINTS, { keyPath: ['missionId', 'taskId'] });
+      }
+      if (!db.objectStoreNames.contains(STORE_ARTIFACT_MANIFESTS)) {
+        db.createObjectStore(STORE_ARTIFACT_MANIFESTS, { keyPath: ['missionId', 'artifactId'] });
       }
 
       // [Item 4] Schema Migration 실행
@@ -254,6 +264,64 @@ export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAd
       throw new Error(`Mission delete failed: ${msg}`);
     }
   }
+
+  // Artifact Manifests
+  public async saveArtifactManifest(manifest: any): Promise<void> {
+    try {
+      const db = await openRuntimeDB();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(STORE_ARTIFACT_MANIFESTS, 'readwrite');
+        const req = tx.objectStore(STORE_ARTIFACT_MANIFESTS).put(manifest);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[RuntimePersistenceAdapter] ArtifactManifest 저장 실패 (${manifest.artifactId}):`, msg);
+      throw new Error(`ArtifactManifest save failed: ${msg}`);
+    }
+  }
+
+  public async loadArtifactManifest(missionId: string, artifactId: string): Promise<any | null> {
+    try {
+      const db = await openRuntimeDB();
+      const result = await new Promise<any | null>((resolve, reject) => {
+        const tx = db.transaction(STORE_ARTIFACT_MANIFESTS, 'readonly');
+        const req = tx.objectStore(STORE_ARTIFACT_MANIFESTS).get([missionId, artifactId]);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      });
+      db.close();
+      return result;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[RuntimePersistenceAdapter] ArtifactManifest 조회 실패 (${artifactId}):`, msg);
+      return null;
+    }
+  }
+
+  public async listArtifactManifests(missionId: string): Promise<any[]> {
+    try {
+      const db = await openRuntimeDB();
+      const manifests = await new Promise<any[]>((resolve, reject) => {
+        const tx = db.transaction(STORE_ARTIFACT_MANIFESTS, 'readonly');
+        const req = tx.objectStore(STORE_ARTIFACT_MANIFESTS).getAll();
+        req.onsuccess = () => {
+          const all = (req.result as any[]) ?? [];
+          resolve(all.filter(m => m.missionId === missionId));
+        };
+        req.onerror = () => reject(req.error);
+      });
+      db.close();
+      return manifests;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[RuntimePersistenceAdapter] ArtifactManifest 목록 조회 실패 (${missionId}):`, msg);
+      return [];
+    }
+  }
 }
 
 /**
@@ -262,6 +330,7 @@ export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAd
 export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAdapter {
   private readonly missions: Map<string, MissionSnapshot> = new Map();
   private readonly checkpoints: Map<string, object> = new Map();
+  private readonly manifests: Map<string, any> = new Map();
 
   public async saveMissionSnapshot(snapshot: MissionSnapshot): Promise<void> {
     this.missions.set(snapshot.missionId, { ...snapshot, updatedAt: Date.now() });
@@ -291,5 +360,29 @@ export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAda
         this.checkpoints.delete(key);
       }
     }
+    for (const key of this.manifests.keys()) {
+      if (key.startsWith(`${missionId}:`)) {
+        this.manifests.delete(key);
+      }
+    }
+  }
+
+  // Artifact Manifests
+  public async saveArtifactManifest(manifest: any): Promise<void> {
+    this.manifests.set(`${manifest.missionId}:${manifest.artifactId}`, manifest);
+  }
+
+  public async loadArtifactManifest(missionId: string, artifactId: string): Promise<any | null> {
+    return this.manifests.get(`${missionId}:${artifactId}`) ?? null;
+  }
+
+  public async listArtifactManifests(missionId: string): Promise<any[]> {
+    const results: any[] = [];
+    for (const [key, val] of this.manifests.entries()) {
+      if (key.startsWith(`${missionId}:`)) {
+        results.push(val);
+      }
+    }
+    return results;
   }
 }

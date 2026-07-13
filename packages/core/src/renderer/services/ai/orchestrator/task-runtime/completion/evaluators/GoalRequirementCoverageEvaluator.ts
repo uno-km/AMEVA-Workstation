@@ -20,7 +20,7 @@ export class GoalRequirementCoverageEvaluator {
   }
 
   public evaluate(input: MissionCompletionReviewInput): {
-    success: boolean;
+    requiredRequirementSuccess: boolean;
     requirementResults: RequirementResult[];
     warnings: string[];
   } {
@@ -34,7 +34,7 @@ export class GoalRequirementCoverageEvaluator {
       }
     });
 
-    let success = true;
+    let requiredRequirementSuccess = true;
 
     for (const reqId of allRequirementIds) {
       const producerTasks = input.allTaskDefinitions.filter(t => t.requirementIds?.includes(reqId));
@@ -58,12 +58,25 @@ export class GoalRequirementCoverageEvaluator {
         }
       });
 
-      const isReqRequired = producerTasks.some(t => this.isRequired(t));
+      let isReqRequired = false;
+      for (const t of producerTasks) {
+        if (typeof t.required === 'boolean') {
+          isReqRequired = isReqRequired || t.required;
+        } else if (t.priority === 1) {
+          isReqRequired = true;
+          console.warn(`[GoalRequirementCoverageEvaluator] Task ${t.id} has undefined 'required' field. Falling back to priority === 1 as required=true.`);
+        }
+      }
+      
       const isSatisfied = verifiedResultIds.length > 0 && hasValidOutput;
 
-      if (isReqRequired && !isSatisfied) {
-        success = false;
-        warnings.push(`[GoalRequirementCoverage] 필수 Requirement ${reqId} 가 달성되지 않았거나 유효한 산출물이 없습니다.`);
+      if (!isSatisfied) {
+        if (isReqRequired) {
+          requiredRequirementSuccess = false;
+          warnings.push(`[GoalRequirementCoverage] 필수 Requirement ${reqId} 가 달성되지 않았거나 유효한 산출물이 없습니다.`);
+        } else {
+          warnings.push(`[GoalRequirementCoverage] 선택 Requirement ${reqId} 가 달성되지 않았습니다.`);
+        }
       }
 
       requirementResults.push({
@@ -82,7 +95,7 @@ export class GoalRequirementCoverageEvaluator {
     }
 
     return {
-      success,
+      requiredRequirementSuccess,
       requirementResults,
       warnings
     };

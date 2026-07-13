@@ -60,6 +60,8 @@ export interface Task {
   readonly dependencies: string[];
   /** 실행 우선순위 가중치 (기본값: 1) */
   readonly priority: number;
+  /** 필수 여부 (기존엔 priority === 1 로 갈음했으나 명시적으로 추가) */
+  readonly required?: boolean;
   /** 현재 태스크의 상태값 */
   status: TaskStatus;
   /** 완료 여부를 검증하기 위한 상세 가이드라인 */

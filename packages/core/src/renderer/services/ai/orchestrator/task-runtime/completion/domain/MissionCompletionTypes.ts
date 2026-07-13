@@ -11,7 +11,9 @@ export type MissionOutcome =
   | 'WAITING_USER'
   | 'BLOCKED'
   | 'FAILED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'TIMED_OUT'
+  | 'TIMED_OUT_WITH_ARTIFACT';
 
 export type CompletionConfidenceBand = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNDETERMINED';
 

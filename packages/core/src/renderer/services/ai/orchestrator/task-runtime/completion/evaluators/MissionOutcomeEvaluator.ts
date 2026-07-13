@@ -21,6 +21,7 @@ export interface EvaluatorResults {
   unresolvedIssuesCount: number;
   warningsCount: number;
   isCancelled: boolean;
+  isTimedOut: boolean;
   isBlockedByPrecondition: boolean;
 }
 
@@ -34,21 +35,26 @@ export class MissionOutcomeEvaluator {
   } {
     let outcome: MissionOutcome = 'FAILED';
 
+    const meetsSuccessCriteria = 
+      results.requiredSuccess &&
+      results.requirementSuccess &&
+      results.deliverableSuccess &&
+      results.artifactSuccess &&
+      results.goalLevelSuccess;
+
     if (results.isCancelled) {
       outcome = 'CANCELLED';
     } else if (results.isBlockedByPrecondition) {
       outcome = 'BLOCKED';
     } else if (results.goalLevelWaitingUser) {
       outcome = 'WAITING_USER';
+    } else if (results.isTimedOut) {
+      if (meetsSuccessCriteria) {
+        outcome = 'TIMED_OUT_WITH_ARTIFACT';
+      } else {
+        outcome = 'TIMED_OUT';
+      }
     } else {
-      // SUCCESS 기본 전제조건
-      const meetsSuccessCriteria = 
-        results.requiredSuccess &&
-        results.requirementSuccess &&
-        results.deliverableSuccess &&
-        results.artifactSuccess &&
-        results.goalLevelSuccess;
-
       if (meetsSuccessCriteria) {
         if (results.hasFailedOptionals || results.warningsCount > 0 || results.unresolvedIssuesCount > 0) {
           outcome = 'SUCCESS_WITH_WARNINGS';
@@ -56,13 +62,10 @@ export class MissionOutcomeEvaluator {
           outcome = 'SUCCESS';
         }
       } else {
-        // 필수 조건을 완벽히 달성하진 못했지만, 
-        // 완료된 필수 Task가 있거나 일부 Requirement를 달성한 경우 부분 성공 처리
-        if (results.completedTasks > 0) {
-          outcome = 'PARTIAL_SUCCESS';
-        } else {
-          outcome = 'FAILED';
-        }
+        // 필수 조건 중 하나라도 실패하면 무조건 FAILED (PARTIAL_SUCCESS 금지)
+        // PARTIAL_SUCCESS는 선택(Optional) 조건 실패 시에만 허용할 수 있으나, 
+        // 여기서 meetsSuccessCriteria는 필수 조건만 포함하므로, 여기가 false면 무조건 FAILED
+        outcome = 'FAILED';
       }
     }
 

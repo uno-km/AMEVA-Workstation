@@ -4,7 +4,7 @@
  * @role 모든 필수 Task가 검증된 성공(COMPLETED) 상태인지 평가
  */
 
-import type { MissionCompletionReviewInput } from '../../domain/types';
+import type { MissionCompletionReviewInput, TaskDefinition } from '../../domain/types';
 
 export class RequiredTaskEvaluator {
   /**
@@ -12,12 +12,19 @@ export class RequiredTaskEvaluator {
    * @param input 완료 리뷰 스냅샷 데이터
    * @returns { success: boolean, completionRate: number, failedTaskIds: string[] }
    */
-  private isRequired(def: any): boolean {
-    if (typeof def.required === 'boolean') return def.required;
+  private isRequired(def: TaskDefinition): boolean {
+    if (typeof def.required === 'boolean') {
+      return def.required;
+    }
     // Legacy fallback
     if (def.requirementIds && def.requirementIds.length > 0) return true;
     if (def.expectedOutputs && def.expectedOutputs.length > 0) return true;
-    return def.priority === 1;
+    
+    if (def.priority === 1) {
+      console.warn(`[RequiredTaskEvaluator] Task ${def.id} has undefined 'required' field. Falling back to priority === 1 as required=true.`);
+      return true;
+    }
+    return false;
   }
 
   public evaluate(input: MissionCompletionReviewInput): {

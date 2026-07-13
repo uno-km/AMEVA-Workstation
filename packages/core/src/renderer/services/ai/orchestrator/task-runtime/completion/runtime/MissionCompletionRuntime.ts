@@ -107,7 +107,7 @@ export class MissionCompletionRuntime {
       const reqEval = this.requiredTaskEvaluator.evaluate(input);
       const optEval = this.optionalTaskEvaluator.evaluate(input);
       const goalReqEval = this.goalReqEvaluator.evaluate(input);
-      const delivEval = this.deliverableEvaluator.evaluate(input);
+      const delivEval = await this.deliverableEvaluator.evaluateAsync(input);
       const artifactEval = this.artifactValidator.evaluate(input, delivEval.deliverableResults);
       const goalVerify = this.goalVerifier.verify(input);
 
@@ -117,7 +117,7 @@ export class MissionCompletionRuntime {
         requiredCompletionRate: reqEval.completionRate,
         hasFailedOptionals: optEval.hasFailedOptionals,
         hasSkippedOptionals: optEval.hasSkippedOptionals,
-        requirementSuccess: goalReqEval.success,
+        requirementSuccess: goalReqEval.requiredRequirementSuccess,
         deliverableSuccess: delivEval.success,
         artifactSuccess: artifactEval.success,
         goalLevelSuccess: goalVerify.success,
@@ -127,6 +127,7 @@ export class MissionCompletionRuntime {
         unresolvedIssuesCount: input.unresolvedIssues.length,
         warningsCount: optEval.warnings.length + goalReqEval.warnings.length + delivEval.warnings.length + artifactEval.warnings.length + goalVerify.warnings.length,
         isCancelled: input.completionCandidateStatus === 'CANCELLED',
+        isTimedOut: input.completionCandidateStatus === 'TIMED_OUT',
         isBlockedByPrecondition
       });
 

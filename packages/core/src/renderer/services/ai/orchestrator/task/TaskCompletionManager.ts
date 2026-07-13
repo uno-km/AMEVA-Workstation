@@ -92,12 +92,33 @@ export class TaskCompletionManager {
    * - 'FAILED': USER_ASSIST 상태에 락되었거나 FAILED 노드가 남아 소진된 상태.
    */
   public evaluateMissionResult(): 'SUCCESS' | 'PARTIALLY_COMPLETE' | 'FAILED' {
+    const tasks = this.queue.getGraph().getTasks();
     const stats = this.getSummaryStats();
     
-    if (stats.userAssist > 0 || stats.failed > 0) {
+    let hasRequiredFailedOrSkipped = false;
+    let hasOptionalFailedOrSkipped = false;
+
+    for (const t of tasks) {
+      if (t.status === 'FAILED' || t.status === 'SKIPPED' || t.status === 'USER_ASSIST') {
+        let isReq = t.priority === 1;
+        if (typeof t.required === 'boolean') {
+          isReq = t.required;
+        } else if (t.priority === 1) {
+          console.warn(`[TaskCompletionManager] Task ${t.id} has undefined 'required' field. Falling back to priority === 1 as required=true.`);
+        }
+
+        if (isReq || t.status === 'USER_ASSIST') {
+          hasRequiredFailedOrSkipped = true;
+        } else {
+          hasOptionalFailedOrSkipped = true;
+        }
+      }
+    }
+
+    if (hasRequiredFailedOrSkipped) {
       return 'FAILED';
     }
-    if (stats.skipped > 0) {
+    if (hasOptionalFailedOrSkipped) {
       return 'PARTIALLY_COMPLETE';
     }
     if (stats.completed === stats.total && stats.total > 0) {

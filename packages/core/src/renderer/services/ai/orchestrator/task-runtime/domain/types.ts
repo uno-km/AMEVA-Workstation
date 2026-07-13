@@ -257,7 +257,8 @@ export type CompletionCandidateStatus =
   | 'MISSION_FAILURE_CANDIDATE'
   | 'WAITING_USER'
   | 'BLOCKED'
-  | 'CANCELLED';
+  | 'CANCELLED'
+  | 'TIMED_OUT';
 
 export interface MissionCompletionReviewInput {
   missionId: string;
