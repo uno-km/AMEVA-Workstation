@@ -27,7 +27,7 @@
  * - useEffect: 최초 마운트 시 브라우저 콘솔 하이재킹 및 메인 프로세스 로그 구독을 개시하기 위한 리액트 라이프사이클 훅.
  * - useRef: 콘솔 언마운트 해제 리스너 핸들러 레퍼런스를 보존하기 위한 Mutable 참조 훅.
  */
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 
 /* 
  * [ZUSTAND LOG STORE]
@@ -115,10 +115,21 @@ export function useAIEngineLogs() {
       /*
        * [INVARIANT - Intercept Console Logs]
        * - Rationale: 콘솔 스트림에 유입되는 객체/문자열을 조인한 후, WebGPU/WebGL 등 그래픽 관련 로그만 추려 메인 로그 파일로 역전송한다.
+       * - Expected Value Flow: args.map -> string (JSON or fallback) -> text.join
+       * - Rationale: React 19 가 에러 방출 시 전달하는 순환 참조 객체(React Fiber)를 JSON.stringify 하다가 throw 되는 크래시(Expected static flag was missing)를 방지하기 위해 try-catch 방어막 구축.
        */
       const interceptAndSend = (_type: string, args: any[]) => {
         const text = args
-          .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+          .map((a) => {
+            if (typeof a === 'object' && a !== null) {
+              try {
+                return JSON.stringify(a)
+              } catch {
+                return '[Circular/Object]'
+              }
+            }
+            return String(a)
+          })
           .join(' ')
         const lower = text.toLowerCase()
         if (

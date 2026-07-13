@@ -53,6 +53,10 @@ export interface AIPanelHeaderProps {
   isGenerating?: boolean
   /** 대화 기록 초기화 클릭 핸들러 (존재할 때만 휴지통 노출) */
   onClearMessages?: () => void
+  /** 딥리즈닝 모드 활성화 여부 */
+  deepReasoning?: boolean
+  /** 딥리즈닝 모드 토글 이벤트 핸들러 */
+  onToggleDeepReasoning?: () => void
 }
 
 /**
@@ -76,7 +80,9 @@ export function AIPanelHeader({
   onOpenSettings,
   onClose,
   isGenerating,
-  onClearMessages
+  onClearMessages,
+  deepReasoning,
+  onToggleDeepReasoning
 }: AIPanelHeaderProps) {
   return (
     <div style={{
@@ -141,11 +147,54 @@ export function AIPanelHeader({
         </div>
       </div>
 
-      {/* 
-       * [CONTROL BUTTON ACTIONS]
-       * - 대화 비우기(onClearMessages), 엔진 상세 설정(onOpenSettings), AI 패널 개폐(onClose) 버튼 그룹.
-       */
-      }
+      {/* 🧠 딥리즈닝 똑딱이 토글 스위치 */}
+      {onToggleDeepReasoning && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginRight: '6px', flexShrink: 0 }}>
+          <span 
+            style={{ 
+              fontSize: '11px', 
+              fontWeight: 600, 
+              color: deepReasoning ? 'var(--primary)' : 'var(--text-muted)',
+              transition: 'color 0.15s ease',
+              userSelect: 'none'
+            }}
+          >
+            🧠 딥리즈닝
+          </span>
+          <button
+            onClick={onToggleDeepReasoning}
+            style={{
+              width: '26px',
+              height: '14px',
+              borderRadius: '9999px',
+              background: deepReasoning ? 'var(--primary)' : 'var(--border-muted)',
+              border: 'none',
+              position: 'relative',
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'background-color 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.2)'
+            }}
+            title={deepReasoning ? "딥리즈닝 활성화됨" : "딥리즈닝 비활성화됨"}
+          >
+            <div 
+              style={{
+                width: '10px',
+                height: '10px',
+                borderRadius: '50%',
+                background: '#ffffff',
+                position: 'absolute',
+                left: deepReasoning ? '14px' : '2px',
+                transition: 'left 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+              }} 
+            />
+          </button>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
         {onClearMessages && (
           <button

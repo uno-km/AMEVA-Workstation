@@ -25,7 +25,7 @@
  * [IMPORT SEGMENTATION & CONTRACTS]
  * - ISelfHealingMiddleware, SelfHealingConfig, HealingResult, HealingContext: 계약 타입.
  */
-import type { ISelfHealingMiddleware, SelfHealingConfig, HealingResult, HealingContext } from './types'
+import type { ISelfHealingMiddleware, SelfHealingConfig, HealingResult, HealingContext, HealingFailureResult } from './types'
 
 /*
  * [IPC LOG IMPORT]
@@ -126,8 +126,9 @@ export class SelfHealingMiddleware implements ISelfHealingMiddleware {
     // - 조건: phase1Result.success가 거짓(false)일 때.
     // - Rationale: TypeScript Discriminated Union narrowing 보장을 위해 명시적으로 if (!phase1Result.success) 스코프 내에서 error에 접근한다.
     if (!phase1Result.success) {
+      const failResult = phase1Result as HealingFailureResult
       ipc.llmAddLog({
-        text: `[SelfHealing] Phase 1 실패: ${phase1Result.error}. Phase 2 (LLM Slow-Track) 시작...`,
+        text: `[SelfHealing] Phase 1 실패: ${failResult.error}. Phase 2 (LLM Slow-Track) 시작...`,
         prefix: 'SelfHeal'
       })
     }
@@ -179,9 +180,10 @@ export class SelfHealingMiddleware implements ISelfHealingMiddleware {
         prefix: 'SelfHeal'
       })
     } else {
-      this.llmAttemptCount = phase2Result.llmAttempts
+      const failResult = phase2Result as HealingFailureResult
+      this.llmAttemptCount = failResult.llmAttempts
       ipc.llmAddLog({
-        text: `[SelfHealing] Phase 2 실패: ${phase2Result.error}`,
+        text: `[SelfHealing] Phase 2 실패: ${failResult.error}`,
         prefix: 'SelfHeal'
       })
     }

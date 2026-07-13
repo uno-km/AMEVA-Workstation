@@ -49,8 +49,15 @@ export class TaskExecutor {
         content: taskPrompt
       });
 
-      // 2. session 내에서 해당 태스크에 대응하는 ReAct 단일 루프 기동
+      /*
+       * [RUN-TIME STATE / INVARIANT - ReAct Loop Control]
+       * - accumulatedText: 모델이 최종적으로 반환한 Final Answer 본문을 누적하는 캐시 변수.
+       * - consecutiveEmptyTurns: 도구 호출도 발생하지 않고 Final Answer도 유입되지 않은 턴의 누적 횟수.
+       * - Rationale: 소형 로컬 7B 모델의 경우 첫 턴에 생각(thought)만 전개하고 다음 턴에 답변하는 경향이 있으므로,
+       *   단 1회 무응답만으로 즉각 루프를 깨지(break) 않고 누적 3회 시도를 허용하여 답변 완수를 보호한다.
+       */
       let accumulatedText = '';
+      let consecutiveEmptyTurns = 0;
       
       // 태스크 전용 ReAct 루프 개시
       let turns = 0;
@@ -66,6 +73,7 @@ export class TaskExecutor {
 
         // 도구 호출이 설정되었을 경우, 도구를 실행하고 다음 턴으로 계속
         if (session.pendingToolCall !== null) {
+          consecutiveEmptyTurns = 0;
           await session.executeToolAndObserve(session.pendingToolCall);
           continue;
         }
@@ -76,9 +84,14 @@ export class TaskExecutor {
           break;
         }
 
-        // 빈 턴 가드
-        console.warn(`[TaskExecutor] 태스크 ${task.id} 수행 중 빈 턴 감지. 루틴 강제 종결.`);
-        break;
+        // 빈 턴 가드 및 완화 정책
+        consecutiveEmptyTurns++;
+        if (consecutiveEmptyTurns >= 3) {
+          console.warn(`[TaskExecutor] 태스크 ${task.id} 수행 중 빈 턴이 3회 연속 감지되어 루틴을 강제 종결합니다.`);
+          break;
+        }
+        
+        console.debug(`[TaskExecutor] 태스크 ${task.id} 수행 중 생각(thought)은 출력되었으나 도구 호출 및 최종 답이 없어 턴을 재개합니다. (연속 빈 턴: ${consecutiveEmptyTurns}/3)`);
       }
 
       // 최종 답변 확보
@@ -109,11 +122,25 @@ export class TaskExecutor {
 
   /**
    * 결과 텍스트에서 생성된 파일 경로 등을 정규식으로 유추 추출하는 서브 헬퍼.
+   *
+   * [ADR - Path Parsing Mitigation]
+   * - Rationale: 로컬 파일 저장 시 c:\ 같은 절대 경로뿐만 아니라 cheese_report.md와 같은 relative filename도
+   *   성공적으로 산출물 지표(artifact)로 잡힐 수 있도록 드라이브 유무와 확장자 단어 패턴을 동시 식별한다.
    */
   private extractArtifactPath(text: string): string | null {
-    // 예: "파일이 c:/path/to/file.md 에 생성되었습니다" 또는 "c:\Users\..." 매칭
-    const pathRegex = /([a-zA-Z]:[\\/][\w\-.\\/]+)/;
-    const match = text.match(pathRegex);
-    return match ? match[1] : null;
+    // 1단계: 드라이브 문자로 시작하는 절대 경로 식별
+    const absoluteMatch = text.match(/([a-zA-Z]:[\\/][\w\-.\\/]+)/);
+    if (absoluteMatch) {
+      return absoluteMatch[1];
+    }
+    
+    // 2단계: 상대 경로 또는 단순 파일명 패턴 식별 (예: cheese_report.md, docs/plan.txt 등)
+    // 단, Final Answer:, ID-2 같은 접두사 단어는 파일명으로 오판되지 않도록 배제한다.
+    const relativeMatch = text.match(/([\w\-.]+\.[a-zA-Z0-9]+)/);
+    if (relativeMatch && relativeMatch[1] && !relativeMatch[1].startsWith('ID-')) {
+      return relativeMatch[1];
+    }
+    
+    return null;
   }
 }

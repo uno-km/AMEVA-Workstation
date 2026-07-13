@@ -127,6 +127,7 @@ export function useAIAgent() {
    * - setEngineLogs: 터미널 로그 목록 보강 세터.
    */
   const { engineLogs, setEngineLogs } = useAIEngineLogs()
+  
 
   /*
    * [CONTRACT - IPC Session Manager]
@@ -284,14 +285,38 @@ export function useAIAgent() {
     // Rationale: 비동기 완료 시점에 에디터에 블록을 수정 삽입하기 위해 editorRef.current에 주입 보존한다.
     if (editor) editorRef.current = editor
 
-    // [PLAN APPROVAL INTERCEPT] 플랜 승인 대기 상태일 때 사용자가 새 메시지를 전송하면 계획의 피드백(리뷰)으로 전달한다.
+    /*
+     * [PLAN APPROVAL INTERCEPT]
+     * - Rationale: 플랜 승인 대기 상태이거나, 사용자의 메시지가 계획 리뷰 피드백 접두사([계획 리뷰])로 시작할 때 즉시 가로챈다.
+     * - Rationale: isGeneratingRef.current 락에 걸려 대기 큐(pendingQueue)에 쌓이는 예외를 방지하여 피드백이 즉시 재계획 루프에 주입되도록 보장한다.
+     */
     const currentState = useAIState.getState()
-    if (currentState.planApprovalState === 'pending') {
+    const isReviewFeedback = msg.startsWith('[계획 리뷰]')
+    if (currentState.planApprovalState === 'pending' || isReviewFeedback) {
       const resolve = currentState.resolvePlanApproval
       if (resolve) {
         // [계획 리뷰] 접두사 제거 후 피드백으로 전달
         const feedbackText = msg.replace(/^\[계획 리뷰\]\s*/, '').trim()
+        
+        /*
+         * [VISUAL SYNC]
+         * - Rationale: 피드백을 전송해도 화면 챗 리스트에 유저 질문으로 나타나지 않는 단절 현상을 완벽 해결하기 위해
+         *   AIMessage 객체를 생성해 setMessages로 채팅 히스토리 목록에 명시적 보존 추가한다.
+         */
+        const userMsg: AIMessage = {
+          id: `msg_${Date.now()}_user`,
+          role: 'user',
+          content: msg,
+          timestamp: Date.now(),
+          taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
+        }
+        setMessages([...messages, userMsg])
+        
         resolve({ approved: false, feedback: feedbackText })
+        return { success: true, hasPendingDecision: false }
+      } else {
+        // resolve 핸들러가 유실되었거나 이미 해제된 엣지 케이스 상황이라도 신규 챗 세션 기동이나 큐 적재를 막고 안전히 바이패스한다.
+        ipc.llmAddLog({ text: '[AgentOrchestrator] 계획 리뷰 피드백 처리기가 감지되었으나 resolve 핸들러가 유실되었습니다.', prefix: 'Orchestrator' })
         return { success: true, hasPendingDecision: false }
       }
     }

@@ -85,6 +85,7 @@ import { AIPluginViews } from './ai/AIPluginViews'
 import { useUIStore } from '../stores/useUIStore'
 import { useWorkspaceStore } from '../stores/useWorkspaceStore'
 import { useProcessStore } from '../stores/useProcessStore'
+import { useAIState } from '../stores/useAIState'
 
 /* 
  * [GLOBAL CONTEXT & INTERACTION HOOKS]
@@ -137,6 +138,13 @@ export function AIPanel() {
    * - setTaggedBlocks: 태그 지정 블록 세터.
    */
   const { currentContent, selectedText, setSelectedText, activeBlockId, taggedBlocks, setTaggedBlocks } = useWorkspaceStore()
+  
+  /*
+   * [CONTRACT - AI Approval state]
+   * - planApprovalState: 딥리즈닝 모드에서 오케스트레이터의 계획 승인 대기 상태.
+   * - Expected Value Flow: 'idle' | 'pending' | 'approved' | 'rejected'
+   */
+  const planApprovalState = useAIState((s) => s.planApprovalState)
   
   /*
    * [CONTRACT - Process store values]
@@ -824,6 +832,15 @@ export function AIPanel() {
             onOpenSettings={() => onOpenGlobalSettings?.('AIEngine')}
             onClearMessages={onClear}
             onClose={onClose}
+            deepReasoning={settings.deepReasoning}
+            onToggleDeepReasoning={() => {
+              /*
+               * [ALGORITHM BRANCH / DECISION]
+               * - Rationale: 메인 UI 토글 클릭 시 설정 상태의 deepReasoning 속성을 반전 갱신하며, 
+               *   이 상태는 전역 useAIState 설정과 실시간 동기화되어 설정 모달의 스위치와 1:1 싱크를 이룬다.
+               */
+              updateSettings({ deepReasoning: !settings.deepReasoning })
+            }}
           />
 
           {messages.length === 0 ? (
@@ -963,7 +980,7 @@ export function AIPanel() {
             <AIInputBar
               value={input}
               disabled={!isAvailable}
-              isGenerating={isGenerating}
+              isGenerating={isGenerating && planApprovalState !== 'pending' && !input.startsWith('[계획 리뷰]')}
               placeholder={isAvailable ? '메시지를 입력하세요...' : (settings.apiType === 'wasm' ? '웹LM 모델 연결이 필요합니다.' : '준비중...')}
               textareaRef={textareaRef}
               onChange={setInput}

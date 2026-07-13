@@ -1,34 +1,57 @@
 # AMEVA OS Changelog
 
-## 2026-07-13 (TypeScript 컴파일 에러 해결 및 미사용 변수/타입 경고 제거)
+## 2026-07-13 (TypeScript 컴파일 에러 해결, 메인 UI 딥리즈닝 똑딱이 토글 및 console.error 런타임 크래시 방어)
 
 ### 🚀 주요 아키텍처 및 소스 정비 사항
+- **메인 에이전트 UI 상단 딥리즈닝 똑딱이 토글 스위치 추가**:
+  - 사용자가 매번 설정 모달에 진입하여 조작하지 않고도 AI 패널 상단에서 딥리즈닝 모드를 즉시 똑딱 끄고 켤 수 있는 미니 토글 스위치를 `AIPanelHeader.tsx`에 이식했습니다.
+  - 가로 26px, 세로 14px 알약 모양 스위치를 렌더링하고, 온/오프 상태에 따라 원형 핸들이 좌우(2px ↔ 14px)로 부드러운 CSS transition(0.2초)과 함께 이동하는 인터랙티브 모션 가이드를 구현했습니다.
+  - 똑딱이 스위치는 Zustand 스토어의 `settings.deepReasoning` 전역 설정과 실시간 1:1 연동되며, 설정 창 내의 토글과 완벽하게 상호 동기화됩니다.
+- **계획 리뷰 피드백 대기 큐(pendingQueue) 적재 원천 차단 및 채팅 이력 출력**:
+  - 딥리즈닝 에이전트의 계획 수립 단계에서 사용자가 리뷰 피드백(`[계획 리뷰]`)을 전송했을 때, 생성 락(`isGenerating = true`) 상태로 인해 메시지가 대기 큐에 유입 및 적재되어 처리가 막히던 UX 교착 결함을 전격 해결했습니다.
+  - `useAIAgent.ts` 의 `generateResponse` 진입 시, 입력 메시지에 `[계획 리뷰]` 접두사가 감지되면 생성 락 상태와 관계없이 큐 검사 과정을 전면 우회(Bypass)하고, 즉시 계획 승인 대기 해제 콜백(`resolvePlanApproval`)으로 피드백을 전달하여 재계획(Re-planning) 루프가 지연 없이 즉각 구동되도록 견고한 방어 차단선을 구축했습니다.
+  - 피드백 전송 시 유저가 보낸 수정 의견이 챗창(글목록)에 노출되지 않던 단절감을 정복하기 위해, `setMessages`를 연동하여 사용자 리뷰 메시지를 즉시 유저 말풍선으로 추가 렌더링하도록 연동했습니다. 이때 새로운 어시스턴트 메시지를 추가로 쌍 개설하지 않고 기존 어시스턴트 말풍선(계획 카드가 있던 곳)의 상태 갱신을 공유하게 하여, 말풍선 ID 충돌을 방지하고 CoT(사고 과정)가 자연스럽게 그 안에서 계속 누적 출력되도록 흐름을 정교화했습니다.
+- **계획 리뷰 모드 진입 시 동적 전송 버튼(종이비행기) 복구**:
+  - 에이전트가 승인을 기다리는 중이거나 사용자가 피드백을 작성하는 상태에서도 챗 입력창에 중지(Abort, 빨간색 네모) 버튼만 노출되어 전송이 불가능해 보이던 심각한 UX 결함을 전격 정복했습니다.
+  - `AIPanel.tsx` 에서 인풋바에 `isGenerating` 속성을 주입할 때 `planApprovalState !== 'pending'` 및 입력창 접두사 검사(`!input.startsWith('[계획 리뷰]')`) 조건을 결합하여, 사용자가 계획을 수정·리뷰 중인 상황에는 무조건 전송(종이비행기) 버튼으로 렌더링되도록 동적 전환 규칙을 설계했습니다.
+- **TaskExecutor ReAct 빈 턴 조기 종료 완화 및 extractArtifactPath 경로 파싱 확장**:
+  - 소형 로컬 7B 모델이 ReAct의 첫 번째 턴에서 도구를 호출하지 않고 생각(thought)만 전개하는 과도기적 단계일 때, 루틴을 즉시 `break` 종료하여 `빈 답변` 검증 실패를 유발하던 루프 버그를 해결했습니다. 빈 턴이 연속 3회 이상 발생했을 때만 강제 탈출하도록 루프 제어를 완화했습니다.
+  - `extractArtifactPath` 가 절대 경로(`C:\...`) 형식만 추출하여 상대 파일명(`cheese_report.md`)이 산출물 증적으로 수집되지 못하던 정규식 패턴을 상대경로 및 파일명 단어군까지 식별할 수 있도록 파싱 범위를 대폭 확장했습니다.
+- **TaskVerifier LLM 동적 검수 프롬프트 완화 및 정규식 PASS/FAIL 판정 유연화**:
+  - LLM Critic 검수 프롬프트 상에 "내용을 완벽하게 작성했으나 형식이 다소 맞지 않는(예: 텍스트로 대답) 경우에도 내용적으로 완수했다면 통과시키라"는 지침을 추가하여, 로컬 모델의 정적 형식 준수 오류로 인한 억울한 탈락을 방지했습니다.
+  - 아울러 LLM의 응답에 긍정/부정 문법이 혼용되어 설명될 경우 무조건 탈락하던 문제점을 정규식 및 초반 15자 패턴 가중치 비교 판정으로 고도화했습니다. 이때 판정이 완전히 불명확하거나 모호할 경우에는 가짜 완료(False Completion)를 사전에 철저히 배제하기 위해 보수적으로 FAIL 처리되도록 안전망을 구축했습니다.
+- **console.error 가로채기(useAIEngineLogs.ts) 런타임 Fiber 붕괴 예방**:
+  - React 19 가 렌더링 도중 에러 방출 시 전달하는 순환 참조 구조(React Fiber/Element) 객체를 `JSON.stringify` 하려다 순환 참조 오류가 발생해 React core가 붕괴하여 `Expected static flag was missing` 크래시를 야기하는 현상을 정복했습니다.
+  - `useAIEngineLogs.ts`의 `interceptAndSend` 가로채기 본문 내에 `try-catch` 방어 코드를 내장하고, 직렬화 실패 시 `[Circular/Object]`로 안전히 우회 대피시켜 React 렌더링 사이클을 완전하게 보호했습니다.
+  - 아울러 해당 파일 내에서 임포트되어 있으나 전혀 사용되지 않던 `useRef` 임포트 구문을 제거하여 컴파일 경고를 해소했습니다.
 - **TypeScript `verbatimModuleSyntax` 컴파일 에러 정복**:
   - `useAIAgent.ts` 및 `useAIQueue.ts`에서 타입 전용 선언인 `AIMessage`와 `AgentModeResult`를 참조할 때 `import` 대신 `import type` 구문으로 강제하여 verbatimModuleSyntax 제약 조건하의 타입 오류를 정복했습니다.
   - `useAIQueue.ts`에서 큐 내 Zustand 스토어의 `pendingQueue` 데이터를 복사하는 과정에서 발생한 `unknown[]` -> `QueueItem[]` 타입 호환 에러를 명시적인 Type Assertion(`as QueueItem[]`)으로 해결했습니다.
   - `GenerateFn` 콜백의 리턴 타입을 `Promise<void>`에서 `Promise<void | AgentModeResult>`로 넓힘으로써, 에이전트 모드가 추가된 `generateResponse` 함수의 반환 시그니처와 매칭되도록 동기화시켰습니다.
 - **자가 치유 파이프라인 (SelfHealingMiddleware) 타입 Narrowing 개선**:
-  - Discriminated Union 타입인 `HealingResult`에서 TypeScript의 control flow analysis가 `success` 필드를 통한 narrowing을 잃어버리는 문제를 해결했습니다.
-  - Phase 1 실패 에러 로그 시 `if (!phase1Result.success)` 타입 가드 내에서 error를 명확히 참조하도록 개선했습니다.
-  - `llmAttemptCount` 업데이트 시 삼항 연산자를 사용하면 타입 narrowing이 깨지는 병목을 `if-else` 분기 구조로 리팩토링하여 `else` 분기 내부에서 `phase2Result.llmAttempts`와 `phase2Result.error`가 확실히 narrowing 되도록 구조화했습니다.
+  - Discriminated Union 타입인 `HealingResult`에서 TypeScript의 flow analysis가 조건 분기에서 타입 narrowing을 완벽히 잡지 못해 생기는 컴파일 에러를 해결하기 위해, `HealingFailureResult` 인터페이스를 임포트하여 명시적 타입 캐스팅(`as HealingFailureResult`)을 함으로써 `error` 및 `llmAttempts` 필드 접근을 안전하고 오류 없이 처리하도록 조치했습니다.
 - **미사용 컴포넌트 프롭스 및 로컬 변수 경고 전수 해결**:
   - `AgentTaskChecklist.tsx`에서 비구조화 할당되었으나 실제 렌더링에 사용되지 않는 `goal` 변수를 할당 목록에서 제외하여 unused local 경고를 제거했습니다.
   - `AgentThoughtBubble.tsx`에서 프롭으로 수신되나 활용되지 않는 `messageId`로 인한 linter 에러를 방지했습니다. 외부 호출 규격을 완벽히 보존하기 위해 시그니처에서 직접 구조 분해하지 않고 `props` 매개변수로 수신한 뒤 컴포넌트 내부에서 `isDeepReasoning`만 구조 분해하여 타입 검사를 안전하게 우회했습니다.
 - **에이전트 복구 엔진 (Checkpoint & Watchdog) Linter 경고 해소**:
   - `CheckpointSystem.ts` 내의 IndexedDB 이벤트 핸들러(`onupgradeneeded`, `onerror`)에서 사용되지 않는 `event` 매개변수를 `_event`로 변경하여 linter 경고를 방지했습니다.
   - `SupervisorAgent.ts`에서 사용되지 않는 `RecoveryState` 임포트를 제거했습니다. 아울러 감시 로직 내에서 상태 할당만 되고 읽히지 않는 `lastToolCallTime` 멤버 필드 및 관련 타임스탬프 갱신 연산들을 전부 삭제하여 불필요한 메모리/연산을 절약했습니다.
-- **일렉트론 메인 데몬 자동 기동 함수 주석 처리**:
-  - `packages/desktop/src/main/index.ts` 내에서 Ollama 자동 실행 비활성화 정책(2026-07-12)에 의해 호출부가 주석 처리되었으나, 함수 정의부 자체가 남아 발생하던 unused warning을 해소하기 위해 `autoStartOllamaIfInstalled` 함수 선언부 전체를 블록 주석 처리했습니다.
+- **일렉트론 메인 데몬 자동 기동 함수 중첩 주석 문법 파괴 정복**:
+  - `packages/desktop/src/main/index.ts` 내에서 Ollama 자동 기동 비활성화 처리를 위해 중첩 블록 주석을 적용했다가 자바스크립트의 중첩 주석 미지원으로 문법 파괴 에러가 나던 문제를 해결했습니다.
+  - 블록 주석을 해제하여 코드를 안전 복구한 후, Linter의 미사용 함수 경고(`never read`)를 방지하기 위해 파일 하단에 무해한 참조 바인딩(`void [autoStartOllamaIfInstalled]`)을 추가하여 문법적 결함과 컴파일 경고를 영구 해소했습니다.
 
 ### 📁 수정된 파일 목록
 - `[MODIFY]` [useAIAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/useAIAgent.ts) - AIMessage 타입 임포트를 import type으로 교정.
 - `[MODIFY]` [useAIQueue.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIQueue.ts) - AgentModeResult 임포트 교정, GenerateFn 리턴 타입 넓힘 및 QueueItem[] 캐스팅 추가.
-- `[MODIFY]` [SelfHealingMiddleware.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/healing/SelfHealingMiddleware.ts) - Discriminated Union 타입 narrowing 해소를 위해 삼항 연산자를 if-else 분기로 리팩토링.
+- `[MODIFY]` [useAIEngineLogs.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIEngineLogs.ts) - console.error 하이재킹 시 순환 참조 예외 처리 방어막 구축 및 useRef 미사용 임포트 제거.
+- `[MODIFY]` [SelfHealingMiddleware.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/healing/SelfHealingMiddleware.ts) - Discriminated Union 타입 narrowing 해소를 위해 HealingFailureResult 임포트 및 명시적 타입 단언 캐스팅 추가.
+- `[MODIFY]` [AIPanelHeader.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/AIPanelHeader.tsx) - 딥리즈닝 deepReasoning, onToggleDeepReasoning 프롭스 추가 및 작고 귀여운 미니 똑딱이 토글 스위치 마운트.
+- `[MODIFY]` [AIPanel.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/AIPanel.tsx) - AIPanelHeader 호출부에 딥리즈닝 상태 정보 및 토글 액션 바인딩.
 - `[MODIFY]` [AgentTaskChecklist.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/AgentTaskChecklist.tsx) - 구조 분해 할당문에서 미사용 goal 변수 제거.
 - `[MODIFY]` [AgentThoughtBubble.tsx](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/components/ai/AgentThoughtBubble.tsx) - messageId 미사용 경고 제거를 위해 props 매개변수 구조 분해 구조 개선.
 - `[MODIFY]` [CheckpointSystem.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/CheckpointSystem.ts) - IndexedDB 콜백 매개변수 event를 _event로 변경.
 - `[MODIFY]` [SupervisorAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/SupervisorAgent.ts) - 미사용 RecoveryState 타입 임포트 제거 및 미사용 lastToolCallTime 멤버 변수와 할당 코드 제거.
-- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - 미사용 autoStartOllamaIfInstalled 함수 선언부 전체 블록 주석 처리.
+- `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - autoStartOllamaIfInstalled 함수 문법 오류 복원 및 linter 우회 참조 바인딩 추가.
 
 ## 2026-07-12 (Recovery-First Agent Runtime Architecture 구현 및 Ollama 자동 기동 비활성화)
 
