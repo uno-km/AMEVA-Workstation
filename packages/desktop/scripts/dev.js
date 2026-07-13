@@ -7,7 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Start Marketplace Server (지연 실행)
 let marketProcess;
 setTimeout(() => {
-  const marketPath = path.resolve(__dirname, '../../AMEVA-Workstation-Market-Place/server.js');
+  const marketPath = path.resolve(__dirname, '../../../../AMEVA-Workstation-Market-Place/server.js');
   marketProcess = spawn('node', [marketPath], {
     stdio: 'inherit',
     shell: true

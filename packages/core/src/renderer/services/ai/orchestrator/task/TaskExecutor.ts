@@ -33,6 +33,9 @@ export class TaskExecutor {
     try {
       // 1. 선행 태스크 결과들로 누적된 컨텍스트 및 expectedOutput 제약 프롬프트 합성
       const taskPrompt = `
+[전체 목표 (Goal)]
+${session.goal || ''}
+
 [현재 실행할 태스크 정보]
 - ID: ${task.id}
 - 제목: ${task.title}

@@ -980,8 +980,10 @@ export function useAppFileOperations(
 
     const handleAutoWrite = async (e: Event) => {
       const detail = (e as CustomEvent).detail
-      const filePathVal = detail.filePath
-      const contentVal = detail.content
+      if (!detail) return
+      const filePathVal = detail.filePath || detail.path
+      const contentVal = detail.content || ''
+      if (!filePathVal) return
       
       const targetTab = tabs.find(t => t.filePath === filePathVal)
       

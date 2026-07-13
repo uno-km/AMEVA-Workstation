@@ -1,8 +1,22 @@
 # AMEVA OS Changelog
 
-## 2026-07-13 (TypeScript 컴파일 에러 해결, 메인 UI 딥리즈닝 똑딱이 토글 및 console.error 런타임 크래시 방어)
+## 2026-07-13 (재부팅 안전 지연 수행 보장, TypeScript 컴파일 에러 해결, 메인 UI 딥리즈닝 똑딱이 토글 및 console.error 런타임 크래시 방어, 데스크톱 마켓플레이스 서버 경로 탐색 결함 해결, VFS 실시간 동기화 브릿지 crash 방어, 태스크 실행기 내 미션 목표(Goal) 유실 수정)
 
 ### 🚀 주요 아키텍처 및 소스 정비 사항
+- **태스크 실행 모델 컨텍스트 내 전체 미션 목표(Goal) 유실 버그 수정**:
+  - `TaskExecutor.ts`에서 로컬 LLM의 컨텍스트 초과(400 Bad Request)를 예방하기 위한 컨텍스트 압축(Re-creation) 과정에서, 사용자의 최초 전체 목표(Goal)가 유입 컨텍스트에서 완전히 누적 배제되는 결함이 발견되었습니다.
+  - 이로 인해 개별 태스크의 제목/목표가 일반적(예: '보고서 제목 결정', '목차 작성')일 경우 실행기 모델이 전체 미션 주제(예: '사과 관련 보고서')를 알지 못하고 generic 보고서 양식으로 탈선하거나 예시 파일명(`cheese_report.md`)을 복제해 작성하는 현상을 해결했습니다.
+  - `AgentOrchestratorSession` 내에 `goal` 상태를 저장하고, `TaskExecutor`가 개별 태스크를 조립할 때 전체 목표를 명시적으로 최상단에 주입(`[전체 목표 (Goal)]`)하여 모델이 최초 지시 맥락을 끝까지 인지하며 일관되게 행동하도록 설계했습니다.
+- **VFS 실시간 동기화 브릿지 및 파일 변환기(`parseFileToMarkdown`) 런타임 crash 방어**:
+  - AI 에이전트 모드 기동 시 `/sys/agent_reasoning.log` 기록 및 VFS `write_file` 동적 감지 이벤트 수신(`handleAutoWrite`) 과정에서 `filePath`나 `content`가 누락되거나 `undefined`로 전달될 경우, `parseFileToMarkdown` 파일 형식 변환 유틸 내에서 `filePath.split`을 호출하다 런타임 크래시(TypeError: Cannot read properties of undefined)가 나던 결함을 해결했습니다.
+  - `parseFileToMarkdown` 함수의 파라미터 방어막(`(filePath || '').split`)을 구축하고, `handleAutoWrite` 수신기 내부에도 `detail.filePath`와 `detail.path`를 동시 감지하도록 예외 폴백 로직을 보강했으며, `useAIAgentMode.ts`의 로깅 커스텀 이벤트 페이로드 규격({ filePath, content })을 일관되게 정렬했습니다.
+- **데스크톱 개발 서버(packages/desktop/scripts/dev.js) 마켓플레이스 서버 경로 탐색 버그 해결**:
+  - `npm run dev` 실행 시 `packages/desktop/scripts/dev.js`에서 상대 경로 `../../`를 사용해 sibling 프로젝트인 `AMEVA-Workstation-Market-Place`의 `server.js` 파일을 로드하려고 시도할 때, 실행 위치의 깊이 차이로 인해 경로 탐색에 실패하던 문제를 해결했습니다.
+  - `__dirname` (`packages/desktop/scripts`)을 기준으로 올바른 sibling 경로인 `../../../../`로 수정하여 로컬 개발 환경 구동 시 마켓플레이스 백그라운드 서버가 정상적으로 기동되도록 조치했습니다.
+- **안전한 지연 재부팅 스킬 사양 확립 및 태스크 감시 모니터링 강제화**:
+  - 기존에 즉시 호스트 PC를 재부팅하도록 설계되었던 `restart` 스킬의 로직을 진행 중인 모든 백그라운드 태스크 및 명령어 작업이 완료될 때까지 대기하도록 전면 수정했습니다.
+  - 에이전트는 재부팅 요청을 받았을 때 즉각적인 CMD/PowerShell 명령어 송출을 멈추고, `manage_task` 도구를 통해 현재 기동 중인 백그라운드 태스크 리스트를 선조회합니다.
+  - 진행 중인 비동기 태스크가 존재할 경우, 사용자에게 지연 상황을 알림과 동시에 `schedule` 도구를 사용한 주기적인 완료 체크 및 대기 시나리오를 적용하여 활성 작업의 데이터가 손상되지 않도록 보호하고, 대기 후 안전하게 재부팅을 수행하도록 에이전트의 작동 지침을 수립했습니다.
 - **`AgentTaskChecklist.tsx` 내 React Hook Rules 붕괴 크래시 영구 완치**:
   - Vite HMR 및 핫 리로드, 마운트 상태 전이 시 조건부 렌더링에 의해 훅 호출 순서 및 개수가 불일치하여 렌더러가 붕괴되던 문제를 해결했습니다.
   - 컴포넌트 내부에 존재하던 로컬 `useState`를 완전히 걷어내고, 이를 Zustand 전역 AI 스토어(`useAIState.ts` 내 `agentTaskPlanCollapsed` 상태 및 액션)로 완벽히 마이그레이션하여 런타임 안정성을 확보했습니다.
@@ -86,6 +100,7 @@
   - 블록 주석을 해제하여 코드를 안전 복구한 후, Linter의 미사용 함수 경고(`never read`)를 방지하기 위해 파일 하단에 무해한 참조 바인딩(`void [autoStartOllamaIfInstalled]`)을 추가하여 문법적 결함과 컴파일 경고를 영구 해소했습니다.
 
 ### 📁 수정된 파일 목록
+- `[MODIFY]` [SKILL.md](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/.agents/skills/restart/SKILL.md) - 재부팅 수행 전 태스크 조회를 통한 안전한 지연 재부팅 처리 로직 및 실행 지침 구체화.
 - `[MODIFY]` [useAIAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/useAIAgent.ts) - AIMessage 타입 임포트를 import type으로 교정.
 - `[MODIFY]` [useAIQueue.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIQueue.ts) - AgentModeResult 임포트 교정, GenerateFn 리턴 타입 넓힘 및 QueueItem[] 캐스팅 추가.
 - `[MODIFY]` [useAIEngineLogs.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIEngineLogs.ts) - console.error 하이재킹 시 순환 참조 예외 처리 방어막 구축 및 useRef 미사용 임포트 제거.
@@ -97,6 +112,12 @@
 - `[MODIFY]` [CheckpointSystem.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/CheckpointSystem.ts) - IndexedDB 콜백 매개변수 event를 _event로 변경.
 - `[MODIFY]` [SupervisorAgent.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/recovery/SupervisorAgent.ts) - 미사용 RecoveryState 타입 임포트 제거 및 미사용 lastToolCallTime 멤버 변수와 할당 코드 제거.
 - `[MODIFY]` [index.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/src/main/index.ts) - autoStartOllamaIfInstalled 함수 문법 오류 복원 및 linter 우회 참조 바인딩 추가.
+- `[MODIFY]` [dev.js](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/desktop/scripts/dev.js) - 데스크톱 개발 환경 구동 스크립트 내 마켓플레이스 서버 탐색 경로 수정 (../../ -> ../../../../).
+- `[MODIFY]` [fileConverters.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/utils/fileConverters.ts) - filePath가 undefined로 넘어올 때 split 에러가 나지 않도록 방어 코드 추가.
+- `[MODIFY]` [useAppFileOperations.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/app/useAppFileOperations.ts) - handleAutoWrite 내 예외 방어막 추가 및 detail.filePath/path 혼용 수용.
+- `[MODIFY]` [useAIAgentMode.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/hooks/ai/useAIAgentMode.ts) - ameva:file-auto-write 커스텀 이벤트 방출 시 content(로그 내용) 및 filePath 속성 정상 포함 송출.
+- `[MODIFY]` [AgentOrchestrator.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/AgentOrchestrator.ts) - AgentOrchestratorSession 내 goal 필드 추가 및 run() 호출 시 저장하도록 구조 수정.
+- `[MODIFY]` [TaskExecutor.ts](file:///c:/Users/GAME/Desktop/uno-km/dev/AMEVA-Workstation/packages/core/src/renderer/services/ai/orchestrator/task/TaskExecutor.ts) - 태스크 프롬프트에 전체 미션 목표(Goal) 정보를 주입하여 태스크 압축 시 주제 유실 문제 수정.
 
 ## 2026-07-12 (Recovery-First Agent Runtime Architecture 구현 및 Ollama 자동 기동 비활성화)
 

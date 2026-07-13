@@ -104,7 +104,9 @@ function appendToVfsLog(text: string): void {
     
     localStorage.setItem('ameva_vfs', JSON.stringify(vfsData))
     // 탭 갱신 및 파일 탐색기 연동 트리거를 위한 커스텀 이벤트 방출
-    window.dispatchEvent(new CustomEvent('ameva:file-auto-write', { detail: { path: logPath } }))
+    window.dispatchEvent(new CustomEvent('ameva:file-auto-write', {
+      detail: { filePath: logPath, content: updatedLog }
+    }))
   } catch (err) {
     console.warn('[appendToVfsLog] Failed to append logs to AMEVA VFS:', err)
   }

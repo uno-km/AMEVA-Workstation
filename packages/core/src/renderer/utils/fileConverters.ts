@@ -486,7 +486,7 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const ext = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const ext = filePath.split('.').pop()?.toLowerCase() || ''
+  const ext = (filePath || '').split('.').pop()?.toLowerCase() || ''
   
   // 일반 텍스트 및 ipynb 파일 처리
   if (!isBinary) {

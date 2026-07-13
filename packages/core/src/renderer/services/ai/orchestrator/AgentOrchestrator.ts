@@ -192,6 +192,7 @@ export class AgentOrchestratorSession {
   private currentTurn: number = 0
   private isAborted: boolean = false
   public pendingToolCalls: ToolCallRequest[] = []
+  public goal: string = ''
   private executedToolHashes: Set<string> = new Set()
   // Recovery-First 아키텍처 멤버
   private readonly sessionId: string = 'sess_' + Math.random().toString(36).substring(2, 9)
@@ -397,6 +398,7 @@ export class AgentOrchestratorSession {
     userMessage: string,
     history: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = []
   ): Promise<string> {
+    this.goal = userMessage
     this.emitPhaseChange('thinking')
     ipc.llmAddLog({ text: `[AgentOrchestrator] 신규 Task Runtime Engine 가동 시작`, prefix: 'Orchestrator' })
 
