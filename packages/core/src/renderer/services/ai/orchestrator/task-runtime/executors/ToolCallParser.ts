@@ -155,6 +155,20 @@ export class ToolCallParser {
       return this.parseJsonBlock(jsonMatch[0].trim(), reasoningTurn, knownToolNames, jsonMatch[0]);
     }
 
+    // 5. 비정형 텍스트 도구 요청 감지 (도구가 필요합니다: write_file 등)
+    const informalMatch = responseText.match(/(?:도구가 필요합니다|도구 호출|Tool|Action)\s*:\s*([a-zA-Z0-9_]+)/i);
+    if (informalMatch && informalMatch[1]) {
+      const toolName = informalMatch[1].trim();
+      return {
+        success: false,
+        error: {
+          errorType: 'MALFORMED_JSON',
+          rawReference: informalMatch[0],
+          message: `도구 '${toolName}'을(를) 호출하려면 반드시 <tool_call> JSON 형식을 사용해야 합니다. 텍스트만 적으면 실행되지 않습니다. 다음 예시처럼 정확히 작성하세요:\n<tool_call>\n{"name": "${toolName}", "args": {"path": "보고서.md", "content": "# 내용..."}}\n</tool_call>`
+        }
+      };
+    }
+
     // Tool Call 없음 (정상 — LLM이 Tool 없이 응답)
     return {
       success: false,

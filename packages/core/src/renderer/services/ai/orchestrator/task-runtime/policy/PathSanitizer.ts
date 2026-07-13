@@ -158,7 +158,8 @@ export class PathSanitizer {
     // 쓰기 작업은 허용된 루트만 통과
     if (operation === 'write') {
       const normalizedForCheck = decoded.replace(/\//g, '\\');
-      const isAllowed = ALLOWED_WRITE_ROOT_PREFIXES.some(prefix =>
+      const isRelativePath = !normalizedForCheck.startsWith('\\') && !/^[A-Za-z]:/.test(normalizedForCheck);
+      const isAllowed = isRelativePath || ALLOWED_WRITE_ROOT_PREFIXES.some(prefix =>
         decoded.startsWith(prefix) || normalizedForCheck.startsWith(prefix.replace(/\//g, '\\'))
       );
 

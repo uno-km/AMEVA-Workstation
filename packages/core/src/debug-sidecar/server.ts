@@ -3,6 +3,8 @@
  * @system AMEVA OS Desktop Workstation
  */
 
+import './mock';
+
 import { DebugApiServer } from './api/DebugApiServer';
 import { MissionControlService } from './control/MissionControlService';
 import { MissionLogManager } from './logging/MissionLogManager';
@@ -15,6 +17,15 @@ async function bootstrap() {
   
   // Capture sidecar console output into events
   ConsoleCollector.initialize(logManager);
+
+  // Auto-Approve plan reviews in sidecar mode
+  const { useAIState } = await import('../renderer/stores/useAIState');
+  useAIState.subscribe((state) => {
+    if (state.planApprovalState === 'pending' && state.resolvePlanApproval) {
+      console.info('[Sidecar Auto-Approve] 자동 계획 승인 실행.');
+      state.resolvePlanApproval({ approved: true });
+    }
+  });
 
   const harnessFactory = new RuntimeHarnessFactory(logManager);
   const controlService = new MissionControlService(harnessFactory, logManager);

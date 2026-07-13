@@ -341,7 +341,11 @@ export class ThoughtParser {
    */
   private processToolCallState(): void {
     if (!this.buffer.includes(ThoughtParser.TOOL_CALL_CLOSE_TAG)) {
-      this.toolCallAccumulator = this.buffer
+      // 버퍼가 과도하게 커지는 것을 방지하고 청크를 안전하게 누적
+      if (this.buffer.length > 500 && !this.buffer.includes('<')) {
+        this.toolCallAccumulator += this.buffer
+        this.buffer = ''
+      }
       return
     }
 

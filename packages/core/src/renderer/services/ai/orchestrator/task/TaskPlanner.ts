@@ -80,7 +80,7 @@ export class TaskPlanner {
       });
       console.debug(`[TaskPlanner] LLM 원본 계획 데이터:\n`, rawOutput);
 
-      return this.parsePlanOutput(rawOutput);
+      return this.parsePlanOutput(rawOutput, goal);
     } catch (err: unknown) {
       console.error(`[TaskPlanner] LLM 추론 실패로 인한 폴백 목록 발동:`, err);
       return this.buildFallbackPlan(goal);
@@ -90,18 +90,19 @@ export class TaskPlanner {
   /**
    * LLM 문자열 출력물 내에서 JSON 세그먼트를 추출하고 역직렬화합니다.
    */
-  private parsePlanOutput(output: string): Task[] {
+  private parsePlanOutput(output: string, originalGoal: string = ''): Task[] {
     const cleanText = output.trim();
     
     // 마크다운 JSON 블록 감지 및 추출
     let jsonStr = cleanText;
-    const blockMatch = cleanText.match(/```json([\s\S]*?)```/);
+    const blockMatch = cleanText.match(/```(?:json)?([\s\S]*?)```/i);
     if (blockMatch && blockMatch[1]) {
       jsonStr = blockMatch[1].trim();
     } else {
-      const codeMatch = cleanText.match(/```([\s\S]*?)```/);
-      if (codeMatch && codeMatch[1]) {
-        jsonStr = codeMatch[1].trim();
+      const firstBracket = cleanText.indexOf('[');
+      const lastBracket = cleanText.lastIndexOf(']');
+      if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+        jsonStr = cleanText.substring(firstBracket, lastBracket + 1).trim();
       }
     }
 
@@ -140,7 +141,8 @@ export class TaskPlanner {
       return tasks;
     } catch (err: unknown) {
       console.warn(`[TaskPlanner] JSON 파싱 오류. fallback 리스트 가동. 원인:`, err);
-      return this.buildFallbackPlan(jsonStr);
+      const fallbackGoal = originalGoal.trim() || jsonStr.trim() || '목표 작업';
+      return this.buildFallbackPlan(fallbackGoal);
     }
   }
 
@@ -153,7 +155,7 @@ export class TaskPlanner {
       {
         id: 'task-1',
         title: '대상 기초 조사 및 자료 탐색',
-        objective: `${goal} 관련 기초 데이터 및 시장 동향을 브라우저 검색으로 탐색하고 정리합니다.`,
+        objective: `${goal} 관련 핵심 데이터와 내용을 내부 지식 및 가용 도구(write_file 등)를 활용하여 탐색하고 기초 조사 문서를 마크다운으로 작성합니다.`,
         dependencies: [],
         priority: 2,
         status: 'PENDING',

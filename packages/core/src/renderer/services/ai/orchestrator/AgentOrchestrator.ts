@@ -1045,9 +1045,9 @@ ${toolList}
 어떤 도구를 왜 사용할지 설명하세요.
 </thought>
 
-도구가 필요하다면:
+[도구 호출 시 필수 포맷]
 <tool_call>
-{"name": "도구명", "args": {"인자명": "값"}}
+{"name": "write_file", "args": {"path": "보고서.md", "content": "# 자동차 조사 보고서\n\n1. 개요..."}}
 </tool_call>
 
 모든 작업이 완료되어 최종 답변이 준비되면:

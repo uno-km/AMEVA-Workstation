@@ -6,6 +6,7 @@
 
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import type { TaskEntity } from '../domain/types';
+import type { ToolRegistry } from '../../ToolRegistry';
 
 export class TaskExecutionContextBuilder {
   private store: TaskRuntimeStore;
@@ -17,18 +18,36 @@ export class TaskExecutionContextBuilder {
    * 해당 Task의 실행을 위한 LLM 프롬프트(시스템/유저 메시지)를 생성합니다.
    * PHASE 3 원칙: 전체 Thought 로그가 아닌, PASS 받은 선행 결과(Summary 및 Output)만 주입합니다.
    */
-  public buildContextMessages(missionId: string, task: TaskEntity): Array<{ role: 'system' | 'user' | 'assistant', content: string }> {
+  public buildContextMessages(missionId: string, task: TaskEntity, registry?: ToolRegistry): Array<{ role: 'system' | 'user' | 'assistant', content: string }> {
     const messages: Array<{ role: 'system' | 'user' | 'assistant', content: string }> = [];
+
+    const toolList = registry ? registry.serializeForPrompt() : '';
 
     // 1. System Prompt (역할 및 제약사항)
     messages.push({
       role: 'system',
-      content: `You are an Autonomous Task Executor.
-Your task is to achieve the following objective: "${task.definition.objective}"
-Expected Outputs: ${task.definition.expectedOutputs?.join(', ') || 'None'}
-Acceptance Criteria: ${task.definition.acceptanceCriteria?.join(', ') || 'None'}
+      content: `당신은 AMEVA OS의 자율 태스크 실행 에이전트입니다.
+현재 수행해야 할 태스크 목표: "${task.definition.objective}"
+기대 산출물: ${task.definition.expectedOutputs?.join(', ') || 'None'}
+검수 통과 조건: ${task.definition.acceptanceCriteria?.join(', ') || 'None'}
 
-You can use available tools. If you have achieved the goal, output [DONE] at the end of your message.`
+${toolList}
+
+## 필수 출력 및 도구 호출 규칙 (반드시 준수)
+1. 도구를 호출할 때는 반드시 아래의 XML/JSON 태그 형식을 사용하여 호출하세요.
+
+[도구 호출 모범 예시]
+<thought>
+기초 조사 보고서 작성을 위해 write_file 도구를 호출하여 마크다운 파일로 저장합니다.
+</thought>
+<tool_call>
+{"name": "write_file", "args": {"path": "기초조사보고서.md", "content": "# 자동차 기초 조사 보고서\n\n1. 개요\n자동차는 현대 사회에서 필수적인 이동 수단입니다..."}}
+</tool_call>
+
+2. 파일 작성('write_file') 시, 보고서나 글 작성 목표라면 반드시 내용('content')을 풍부하고 완결성 있게 작성해야 합니다.
+3. 모든 작업(도구 실행 등)이 완료되어 태스크 목표를 완전히 달성했고 최종 보고서/산출물이 준비되었을 때만 아래 포맷으로 최종 답변을 제출하세요:
+Final Answer: [완료된 보고서 요약 및 작성 결과물 설명]
+[DONE]`
     });
 
     // 2. 선행 태스크(Dependencies) 결과 수집

@@ -136,7 +136,7 @@ export interface AIState {
 }
 
 const DEFAULT_SETTINGS: AISettings = {
-  modelPath: 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf',
+  modelPath: 'C:\\ameva\\models\\llm\\Qwen2.5-7B-Instruct-Q4_K_M.gguf',
   codeModelPath: '',
   temperature: AI_TERMINAL_CONSTANTS.DEFAULT_TEMPERATURE,
   maxTokens: AI_TERMINAL_CONSTANTS.DEFAULT_MAX_TOKENS,

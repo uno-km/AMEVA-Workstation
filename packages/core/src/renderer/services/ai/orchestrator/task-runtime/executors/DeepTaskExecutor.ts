@@ -134,9 +134,9 @@ export class DeepTaskExecutor {
     }
     const knownToolNames = new Set(registry.getAllDefinitions().map(t => t.name));
 
-    // 초기 컨텍스트(프롬프트) 생성
+    // 초기 컨텍스트(프롬프트) 생성 - 도구 정의 및 호출 포맷 주입
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> =
-      this.contextBuilder.buildContextMessages(missionId, task);
+      this.contextBuilder.buildContextMessages(missionId, task, registry);
 
     try {
       while (currentTurn < maxTurns) {
@@ -265,6 +265,9 @@ export class DeepTaskExecutor {
           if (!parseResult.success) {
             if (parseResult.error.errorType !== 'NO_TOOL_CALL_FOUND') {
               console.warn(`[DeepTaskExecutor] Tool 파싱 오류 (Turn ${currentTurn}):`, parseResult.error.message);
+              messages.push({ role: 'user', content: `[System Error] ${parseResult.error.message}` });
+              consecutiveNoToolTurns = 0;
+              continue;
             }
           }
           consecutiveNoToolTurns++;

@@ -141,7 +141,7 @@ export function registerLlmLifecycleIpc(): void {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const modelPath = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      let modelPath = 'C:\\ameva\\models\\llm\\qwen2.5-3b-instruct-q4_k_m.gguf'
+      let modelPath = 'C:\\ameva\\models\\llm\\Qwen2.5-7B-Instruct-Q4_K_M.gguf'
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `fs`
