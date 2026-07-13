@@ -115,9 +115,29 @@ export function useAppExport(editor: AmevaEditor | null) {
       // 최종 기입된 로컬 파일 경로 보존 변수
       let savedPath: string | null = null
 
+      // 문서 제목 추출 (H1 첫번째 블록 기준)
+      let docTitle = 'AMEVA_Document'
+      const h1Block = blocks.find((b: any) => b.type === 'heading' && b.props?.level === 1)
+      if (h1Block && Array.isArray(h1Block.content)) {
+        const text = h1Block.content.map((c: any) => c.text || '').join('').trim()
+        if (text) docTitle = text.replace(/[^a-zA-Z0-9가-힣_-]/g, '_').substring(0, 50)
+      }
+
+      // 날짜 포맷 (YYMMDDHHMMSS)
+      const now = new Date()
+      const yy = now.getFullYear().toString().slice(-2)
+      const mm = String(now.getMonth() + 1).padStart(2, '0')
+      const dd = String(now.getDate()).padStart(2, '0')
+      const hh = String(now.getHours()).padStart(2, '0')
+      const mins = String(now.getMinutes()).padStart(2, '0')
+      const ss = String(now.getSeconds()).padStart(2, '0')
+      const timestamp = `${yy}${mm}${dd}${hh}${mins}${ss}`
+
+      const dynamicFileName = `${timestamp}_${docTitle}_${format}.${format}`
+
       // 플랫폼 분기에 따른 이식 변환 라우팅
       if (ipc.isElectronEnv()) {
-        savedPath = await handleElectronExport(editor, format, blocks, setP)
+        savedPath = await handleElectronExport(editor, format, blocks, setP, dynamicFileName)
       } else {
         savedPath = await handleBrowserExport(editor, format, blocks)
       }

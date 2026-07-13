@@ -31,6 +31,7 @@ import { CollabServerManager } from '../services/collabServer.js'
 import { getProPlanMemory } from '../services/planState.js'
 import { fetchHtmlMetadata } from '../services/htmlScraper.js'
 import { WindowDefenseManager } from '../services/windowDefenseManager.js'
+import { renderMermaidToBuffer } from '../services/mermaidCompiler.js'
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -719,6 +720,39 @@ export function registerFileIpc(
 
     try {
       let outputBuffer: Buffer | string
+
+      // Mermaid 다이어그램 이미지 렌더링 치환 로직
+      const processBlocksForMermaid = async (blocks: any[]) => {
+        for (const block of blocks) {
+          if (block.type === 'codeBlock' && block.props?.language === 'mermaid') {
+            try {
+              let code = ''
+              if (Array.isArray(block.content)) {
+                code = block.content.map((c: any) => c.text || '').join('')
+              } else if (typeof block.content === 'string') {
+                code = block.content
+              }
+              if (code.trim()) {
+                const buffer = await renderMermaidToBuffer(code.trim())
+                block.type = 'image'
+                block.props = {
+                  url: `data:image/png;base64,${buffer.toString('base64')}`,
+                  caption: 'Mermaid Diagram',
+                  width: 800
+                }
+                block.content = [] 
+              }
+            } catch (err) {
+              console.error('[export:convert] Failed to render mermaid', err)
+            }
+          }
+          if (block.children && Array.isArray(block.children)) {
+            await processBlocksForMermaid(block.children)
+          }
+        }
+      }
+      
+      await processBlocksForMermaid(payload.blocks)
 
       /*
        * [SWITCH ROUTING CASE]
