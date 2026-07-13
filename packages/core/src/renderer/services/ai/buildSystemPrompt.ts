@@ -42,6 +42,8 @@ export interface SystemPromptBuildParams {
   taggedBlocks?: { id: string; text: string }[]
   /** 코딩 요청 여부 (코딩 특화 지침 주입용) */
   isCodingRequest: boolean
+  /** 딥리즈닝 에이전트 모드 활성화 여부 */
+  deepReasoning?: boolean
 }
 
 /**
@@ -52,7 +54,7 @@ export interface SystemPromptBuildParams {
  * @returns 조립된 시스템 프롬프트 문자열
  */
 export function buildSystemPrompt(params: SystemPromptBuildParams): string {
-  const { baseSystemPrompt, intent, context, taggedBlocks, isCodingRequest } = params
+  const { baseSystemPrompt, intent, context, taggedBlocks, isCodingRequest, deepReasoning } = params
 
   // 현재 시스템 날짜 정보 주입 (소형 모델의 시간 왜곡 방지)
   const sysDate = new Date()
@@ -176,6 +178,15 @@ export function buildSystemPrompt(params: SystemPromptBuildParams): string {
       `\n\n지금은 일반 질문 또는 이전 검색 결과에 대한 연쇄 질의입니다. ` +
       `이전 대화 기록을 참고하여 사용자의 의도에 맞게 간결하고 명확하게 답변하십시오. ` +
       `만약 제목 추천 요청인 경우 근사한 제목 후보들을 리스트로 추천하십시오.\n${codeRestriction}`
+  }
+
+  // 딥리즈닝 모드가 꺼진 경우(일반 대화)에는 도구를 실행할 수 없으므로 도구 호출 지시문 작성을 엄격히 금지함
+  if (!deepReasoning) {
+    prompt +=
+      `\n\n[⚠️ 초강력 절대 지침: 도구 사용 불가]\n` +
+      `- 당신은 현재 일반 대화 모드에 있습니다. 스스로 list_dir, read_file, write_file 등의 도구(Tool)를 직접 실행할 수 없습니다.\n` +
+      `- 따라서 답변 본문에 '{"name": "read_file", ...}' 과 같은 도구 호출용 JSON 블록이나 도구 호출 지시 텍스트(예: "도구가 필요합니다")를 절대 작성하지 마십시오.\n` +
+      `- 오직 일반 텍스트 형태로만 완성된 결과를 답변으로 작성하십시오.`
   }
 
   return prompt

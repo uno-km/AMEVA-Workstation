@@ -125,8 +125,8 @@ export function AgentTaskChecklist() {
   const taskProgress = useAIState((s) => s.taskProgress)
   const planApprovalState = useAIState((s) => s.planApprovalState)
   const resolvePlanApproval = useAIState((s) => s.resolvePlanApproval)
-
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const agentTaskPlanCollapsed = useAIState((s) => s.agentTaskPlanCollapsed)
+  const setAgentTaskPlanCollapsed = useAIState((s) => s.setAgentTaskPlanCollapsed)
 
   // Plan이 없으면 렌더링하지 않음
   if (!agentTaskPlan || agentTaskPlan.steps.length === 0) return null
@@ -153,16 +153,16 @@ export function AgentTaskChecklist() {
     >
       {/* ── 헤더: 목표 + 진행률 (클릭 시 아코디언 접기/펼치기 토글) ── */}
       <div 
-        onClick={() => setIsCollapsed(!isCollapsed)}
+        onClick={() => setAgentTaskPlanCollapsed(!agentTaskPlanCollapsed)}
         style={{
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
           cursor: 'pointer',
           userSelect: 'none',
-          paddingBottom: isCollapsed ? '0' : '10px',
-          borderBottom: isCollapsed ? 'none' : '1px solid rgba(255, 255, 255, 0.05)',
-          marginBottom: isCollapsed ? '0' : '10px'
+          paddingBottom: agentTaskPlanCollapsed ? '0' : '10px',
+          borderBottom: agentTaskPlanCollapsed ? 'none' : '1px solid rgba(255, 255, 255, 0.05)',
+          marginBottom: agentTaskPlanCollapsed ? '0' : '10px'
         }}
       >
         <ClipboardList size={14} style={{ color: '#34d399' }} />
@@ -185,11 +185,11 @@ export function AgentTaskChecklist() {
           }}>
             {progressPercent}%
           </span>
-          {isCollapsed ? <ChevronDown size={14} style={{ color: 'rgba(200, 200, 220, 0.6)' }} /> : <ChevronUp size={14} style={{ color: 'rgba(200, 200, 220, 0.6)' }} />}
+          {agentTaskPlanCollapsed ? <ChevronDown size={14} style={{ color: 'rgba(200, 200, 220, 0.6)' }} /> : <ChevronUp size={14} style={{ color: 'rgba(200, 200, 220, 0.6)' }} />}
         </div>
       </div>
 
-      {!isCollapsed && (
+      {!agentTaskPlanCollapsed && (
         <>
           {/* ── 진행률 바 ── */}
           <div style={{

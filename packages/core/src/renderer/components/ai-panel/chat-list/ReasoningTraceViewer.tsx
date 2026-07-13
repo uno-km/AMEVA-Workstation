@@ -64,48 +64,106 @@ export function ReasoningTraceViewer({
 
   return (
     <div style={{
-      marginBottom: '8px', borderRadius: '6px', overflow: 'hidden',
-      background: isWhiteTheme ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)',
-      border: isWhiteTheme ? '1px solid rgba(0,0,0,0.08)' : '1px solid rgba(255,255,255,0.06)',
+      marginBottom: '8px', 
+      borderRadius: '10px', 
+      overflow: 'hidden',
+      background: isWhiteTheme 
+        ? 'linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(99, 102, 241, 0.01) 100%)' 
+        : 'linear-gradient(135deg, rgba(139, 92, 246, 0.05) 0%, rgba(99, 102, 241, 0.02) 100%)',
+      border: isWhiteTheme 
+        ? '1px solid rgba(139, 92, 246, 0.15)' 
+        : '1px solid rgba(139, 92, 246, 0.22)',
+      boxShadow: '0 2px 6px rgba(0, 0, 0, 0.05)',
+      fontFamily: 'Inter, system-ui, sans-serif'
     }}>
+      {/* ── 아코디언 헤더 (클릭 시 토글) ── */}
       <div
         onClick={() => setThoughtExpanded(prev => !prev)}
         style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '6px 10px', cursor: 'pointer', fontSize: '11px', color: 'var(--text-muted)',
-          fontWeight: 600, userSelect: 'none', background: isWhiteTheme ? 'rgba(0,0,0,0.02)' : 'rgba(255,255,255,0.01)',
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          padding: '8px 12px', 
+          cursor: 'pointer', 
+          fontSize: '11px', 
+          color: isWhiteTheme ? 'rgba(75, 85, 99, 0.85)' : 'rgba(200, 200, 220, 0.8)',
+          fontWeight: 600, 
+          userSelect: 'none', 
+          background: isWhiteTheme ? 'rgba(139, 92, 246, 0.01)' : 'rgba(139, 92, 246, 0.02)',
+          transition: 'background 0.2s ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = isWhiteTheme ? 'rgba(139, 92, 246, 0.04)' : 'rgba(139, 92, 246, 0.08)'
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = isWhiteTheme ? 'rgba(139, 92, 246, 0.01)' : 'rgba(139, 92, 246, 0.02)'
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <Brain size={12} style={{ 
-              color: isStreaming ? 'var(--secondary)' : '#10b981',
-              animation: isStreaming ? 'pulseGlow 1.5s infinite ease-in-out' : 'none'
-          }} />
-          <span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Brain 
+            size={12} 
+            style={{ 
+              color: isStreaming ? '#a78bfa' : '#10b981',
+              animation: isStreaming ? 'pulseGlow 1.5s infinite ease-in-out' : 'none',
+              filter: isStreaming ? 'drop-shadow(0 0 4px rgba(167, 139, 250, 0.5))' : 'none'
+            }} 
+          />
+          <span style={{ letterSpacing: '0.2px' }}>
             {isStreaming 
-              ? (thinkingText ? `생각 과정 (추론 중, ${thoughtSummary.completedSteps}/${thoughtSummary.totalSteps}단계)` : `응답 대기 중...`)
-              : `생각 과정 (추론 완료, ${thoughtSummary.totalSteps}단계)`
+              ? (thinkingText ? `생각 과정 (추론 진행 중 · ${thoughtSummary.completedSteps}/${thoughtSummary.totalSteps}단계)` : `생각 구성 중...`)
+              : `생각 과정 (추론 완료 · 총 ${thoughtSummary.totalSteps}단계)`
             }
           </span>
         </div>
-        {thoughtExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+        
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '18px',
+          height: '18px',
+          borderRadius: '50%',
+          background: isWhiteTheme ? 'rgba(0,0,0,0.04)' : 'rgba(255,255,255,0.05)',
+          transition: 'transform 0.25s ease'
+        }}>
+          {thoughtExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
+        </div>
       </div>
       
-      {/* 확장 시 ThoughtTreeView로 파싱된 트리 렌더링 */}
+      {/* ── 아코디언 컨텐츠: 확장 시 ThoughtTreeView로 파싱된 트리 렌더링 ── */}
       {thoughtExpanded && (
         <div style={{
-          padding: '8px 10px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.5',
-          borderTop: isWhiteTheme ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255,255,255,0.04)',
-          background: isWhiteTheme ? 'rgba(0,0,0,0.04)' : 'rgba(0,0,0,0.12)',
-          whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-          minHeight: isStreaming && !thinkingText ? '28px' : undefined,
-          display: 'flex', alignItems: isStreaming && !thinkingText ? 'center' : 'flex-start',
+          padding: '10px 12px', 
+          fontSize: '11px', 
+          color: isWhiteTheme ? '#374151' : 'rgba(220, 220, 240, 0.85)', 
+          lineHeight: '1.55',
+          borderTop: isWhiteTheme ? '1px solid rgba(139, 92, 246, 0.08)' : '1px solid rgba(139, 92, 246, 0.12)',
+          background: isWhiteTheme ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.18)',
+          whiteSpace: 'pre-wrap', 
+          wordBreak: 'break-word',
+          minHeight: isStreaming && !thinkingText ? '32px' : undefined,
+          display: 'flex', 
+          alignItems: isStreaming && !thinkingText ? 'center' : 'flex-start',
+          transition: 'all 0.2s ease'
         }}>
           {thinkingText ? (
             <ThoughtTreeView text={thinkingText} isStreaming={isStreaming} />
           ) : (isStreaming
-            ? <span style={{ color: isWhiteTheme ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.25)', fontStyle: 'italic', fontSize: '10px' }}>{"<think> 태그 대기 중..."}</span>
-            : null
+            ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span className="spinner-mini" style={{
+                  width: '8px',
+                  height: '8px',
+                  border: '1.5px solid rgba(167, 139, 250, 0.35)',
+                  borderTop: '1.5px solid #a78bfa',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }} />
+                <span style={{ color: isWhiteTheme ? 'rgba(0,0,0,0.45)' : 'rgba(255,255,255,0.3)', fontStyle: 'italic', fontSize: '10px' }}>
+                  생각 흐름을 가다듬고 있습니다...
+                </span>
+              </div>
+            ) : null
           )}
         </div>
       )}

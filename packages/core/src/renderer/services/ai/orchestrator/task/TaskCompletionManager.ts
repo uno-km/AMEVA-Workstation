@@ -36,7 +36,7 @@ export class TaskCompletionManager {
     const tasks = this.queue.getGraph().getTasks();
     if (tasks.length === 0) return 0;
 
-    const finished = tasks.filter(t => t.status === 'COMPLETED' || t.status === 'SKIPPED').length;
+    const finished = tasks.filter(t => t.status === 'COMPLETED').length;
     return Math.round((finished / tasks.length) * 100);
   }
 

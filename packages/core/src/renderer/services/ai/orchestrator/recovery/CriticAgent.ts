@@ -43,17 +43,17 @@ export class CriticAgent {
 
     const elapsedMs = now - this.lastChangeTimestamp;
     
-    // 토큰이 들어오더라도 텍스트 길이가 20초 이상 늘어나지 않고 멈춰있다면 정체
-    if (elapsedMs >= 20000) {
+    // 토큰이 들어오더라도 텍스트 길이가 40초 이상 늘어나지 않고 멈춰있다면 정체
+    if (elapsedMs >= 40000) {
       return 'stalled';
     }
-    // 10초 이상 무반응이면 주의
-    if (elapsedMs >= 10000) {
+    // 20초 이상 무반응이면 주의
+    if (elapsedMs >= 20000) {
       return 'suspicious';
     }
 
     // 2. 룰 기반 반복(Repetition Loop) 검사
-    if (cleanText.length > 30) {
+    if (cleanText.length > 40) {
       // 오탐 방지 가드: 코드 블록(```)이나 테이블 기호(|)가 다량 포함된 청크는 검사에서 격리
       const isTable = (cleanText.match(/\|/g) || []).length > 4;
       const isCode = cleanText.includes('```') || cleanText.includes('    '); // 들여쓰기 가드
@@ -62,15 +62,17 @@ export class CriticAgent {
         // 공백 및 띄어쓰기를 전부 트리밍한 밀착 문자열로 변환하여 변칙 띄어쓰기 루프 대응
         const denseText = cleanText.replace(/\s+/g, '');
         
-        // N-gram 반복 탐지: 6자부터 15자까지 윈도우 크기를 유연하게 순회하며 연속 중복 탐색
-        for (let winSize = 6; winSize <= 15; winSize++) {
-          if (denseText.length >= winSize * 3) {
-            for (let i = 0; i <= denseText.length - winSize * 3; i++) {
+        // N-gram 반복 탐지: 8자부터 20자까지 윈도우 크기를 유연하게 순회하며 연속 중복 탐색
+        for (let winSize = 8; winSize <= 20; winSize++) {
+          if (denseText.length >= winSize * 4) { // 최소 4번 이상 반복 시
+            for (let i = 0; i <= denseText.length - winSize * 4; i++) {
               const pattern = denseText.slice(i, i + winSize);
               const subText = denseText.slice(i + winSize);
               
-              // 패턴이 직후 구역에서 또 연속 등장하는지 확인
-              if (subText.startsWith(pattern) && subText.slice(winSize).startsWith(pattern)) {
+              // 패턴이 직후 구역에서 또 3회 연속 등장하는지 확인 (총 4회 연속 반복)
+              if (subText.startsWith(pattern) && 
+                  subText.slice(winSize).startsWith(pattern) &&
+                  subText.slice(winSize * 2).startsWith(pattern)) {
                 console.warn('[CriticAgent] 사고 과정 무한 루프 감지! 패턴:', pattern);
                 return 'stalled'; // 즉시 교착 상태로 간주하여 복구 시그널 발송
               }

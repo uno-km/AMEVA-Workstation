@@ -283,7 +283,8 @@ export function useAIGenerator(
       intent,
       context,
       taggedBlocks,
-      isCodingRequest
+      isCodingRequest,
+      deepReasoning: finalSettings.deepReasoning
     })
 
     // 최근 10개의 대화 컨텍스트 히스토리 어레이 슬라이스 페이로드 작성

@@ -66,6 +66,51 @@ import type { AIMessage, AISettings } from '../../types/aiTypes'
 import type { OrchestratorConfig } from '../../services/ai/orchestrator/types'
 
 /**
+ * appendToVfsLog
+ * AMEVA 가상 파일 시스템(VFS)의 특정 로그 파일(/sys/agent_reasoning.log) 끝에 문자열을 누적하여 저장한다.
+ */
+function appendToVfsLog(text: string): void {
+  try {
+    const logPath = '/sys/agent_reasoning.log'
+    const vfsRaw = localStorage.getItem('ameva_vfs')
+    let vfsData: Record<string, any> = {}
+    if (vfsRaw) {
+      try {
+        vfsData = JSON.parse(vfsRaw)
+      } catch {
+        vfsData = {}
+      }
+    }
+    
+    let currentLog = ''
+    if (vfsData[logPath]) {
+      if (typeof vfsData[logPath] === 'object' && vfsData[logPath] !== null) {
+        currentLog = vfsData[logPath].content || ''
+      } else if (typeof vfsData[logPath] === 'string') {
+        currentLog = vfsData[logPath]
+      }
+    }
+    
+    const updatedLog = currentLog + text + '\n'
+    
+    // VFS 저장 규격 객체 바인딩
+    vfsData[logPath] = {
+      content: updatedLog,
+      meta: {
+        size: updatedLog.length,
+        modified: new Date().toISOString()
+      }
+    }
+    
+    localStorage.setItem('ameva_vfs', JSON.stringify(vfsData))
+    // 탭 갱신 및 파일 탐색기 연동 트리거를 위한 커스텀 이벤트 방출
+    window.dispatchEvent(new CustomEvent('ameva:file-auto-write', { detail: { path: logPath } }))
+  } catch (err) {
+    console.warn('[appendToVfsLog] Failed to append logs to AMEVA VFS:', err)
+  }
+}
+
+/**
  * AgentModeParams 인터페이스 정의.
  * 에이전트 루프 구동에 필요한 상태 및 세터 함수들의 주입 통로.
  */
@@ -420,6 +465,7 @@ async function runDeepReasoningMode(
 
   resetAgentState()
   ipc.llmAddLog({ text: '[딥 리즈닝] AgentOrchestrator 세션 기동', prefix: 'Orchestrator' })
+  appendToVfsLog(`\n\n==================================================\n🤖 [에이전트 실행 시작] Goal: "${userMessage}"\n시간: ${new Date().toLocaleString()}\n==================================================`)
 
   const orchestratorConfig: OrchestratorConfig = {
     maxTurns: finalSettings.maxAgentTurns ?? 10000,
@@ -493,6 +539,7 @@ async function runDeepReasoningMode(
 
       case 'tool_call_start':
         setAgentCurrentToolName(event.toolName)
+        appendToVfsLog(`⚙️ [도구 실행 시작] \`${event.toolName}\`\n인자: ${JSON.stringify(event.toolArgs, null, 2)}`)
         setMessages((prev) => prev.map((m) => {
           if (m.id !== assistantId) return m
           const existingTrace = m.reasoningTrace || []
@@ -515,28 +562,31 @@ async function runDeepReasoningMode(
 
       case 'tool_call_end':
         setAgentCurrentToolName(null)
-        setMessages((prev) => prev.map((m) => {
-          if (m.id !== assistantId) return m
-          const existingTrace = m.reasoningTrace || []
+        {
           const isSuccess = event.result?.success
           const detail = isSuccess 
             ? `결과: 성공\n산출 데이터: ${String(event.result?.result).slice(0, 300)}${String(event.result?.result).length > 300 ? '...' : ''}`
             : `결과: 실패 - ${event.result?.error || '알 수 없는 오류'}`
-          return {
-            ...m,
-            reasoningTrace: [
-              ...existingTrace,
-              {
-                id: `orch_tool_end_${m.id}_${Date.now()}`,
-                source: 'model' as const,
-                type: 'thinking' as const,
-                text: `🔹 [도구 실행 완료] ${detail}`,
-                model: 'System',
-                timestamp: new Date().toISOString()
-              }
-            ]
-          }
-        }))
+          appendToVfsLog(`🔹 [도구 실행 완료] ${detail}`)
+          setMessages((prev) => prev.map((m) => {
+            if (m.id !== assistantId) return m
+            const existingTrace = m.reasoningTrace || []
+            return {
+              ...m,
+              reasoningTrace: [
+                ...existingTrace,
+                {
+                  id: `orch_tool_end_${m.id}_${Date.now()}`,
+                  source: 'model' as const,
+                  type: 'thinking' as const,
+                  text: `🔹 [도구 실행 완료] ${detail}`,
+                  model: 'System',
+                  timestamp: new Date().toISOString()
+                }
+              ]
+            }
+          }))
+        }
         break
 
       case 'task_plan':
@@ -552,6 +602,7 @@ async function runDeepReasoningMode(
         break
 
       case 'task_exec_start':
+        appendToVfsLog(`⚙️ [태스크 실행] ${event.taskTitle} (시도: ${event.attempt}회차)`)
         setMessages((prev) => prev.map((m) => {
           if (m.id !== assistantId) return m
           const existingTrace = m.reasoningTrace || []
@@ -575,30 +626,34 @@ async function runDeepReasoningMode(
         break
 
       case 'critic_feedback':
-        setMessages((prev) => prev.map((m) => {
-          if (m.id !== assistantId) return m
-          const existingTrace = m.reasoningTrace || []
+        {
           const icon = event.verdict === 'PASS' ? '✅' : '❌'
-          return {
-            ...m,
-            isStreaming: true,
-            isThinking: true,
-            reasoningTrace: [
-              ...existingTrace,
-              {
-                id: `orch_critic_${m.id}_${Date.now()}`,
-                source: 'pipeline' as const,
-                type: 'thinking' as const,
-                text: `${icon} [자아비판 피드백] ${event.reason}`,
-                model: 'TaskVerifier',
-                timestamp: new Date().toISOString()
-              }
-            ]
-          }
-        }))
+          appendToVfsLog(`${icon} [자아비판 피드백] ${event.reason}`)
+          setMessages((prev) => prev.map((m) => {
+            if (m.id !== assistantId) return m
+            const existingTrace = m.reasoningTrace || []
+            return {
+              ...m,
+              isStreaming: true,
+              isThinking: true,
+              reasoningTrace: [
+                ...existingTrace,
+                {
+                  id: `orch_critic_${m.id}_${Date.now()}`,
+                  source: 'pipeline' as const,
+                  type: 'thinking' as const,
+                  text: `${icon} [자아비판 피드백] ${event.reason}`,
+                  model: 'TaskVerifier',
+                  timestamp: new Date().toISOString()
+                }
+              ]
+            }
+          }))
+        }
         break
 
       case 'final_answer':
+        appendToVfsLog(`\n🤖 [최종 답변 도출]\n${event.answer}\n==================================================\n`)
         setMessages((prev) => prev.map((m) => {
           if (m.id !== assistantId) return m
           return { ...m, content: event.answer, finalAnswer: event.answer, isStreaming: false, isThinking: false }
@@ -607,6 +662,7 @@ async function runDeepReasoningMode(
 
       case 'error':
         ipc.llmAddLog({ text: `[Orchestrator] 오류: ${event.message}`, prefix: 'Orchestrator' })
+        appendToVfsLog(`❌ [Orchestrator 에러]: ${event.message}`)
         break
     }
   })

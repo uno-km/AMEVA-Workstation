@@ -110,7 +110,16 @@ export function MessageBubble({
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const cleanContent = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const cleanContent = msg.content; // sanitization을 거친 최종 응답 본문 텍스트
+  // 딥리즈닝 모드가 꺼진 단순 대화에서 AI가 뿜어낸 도구 호출 찌꺼기(JSON, 도구 타령 문구) 및 ChatML 잔해를 완전히 소독합니다.
+  const isDeepReasoning = useAIState.getState().settings.deepReasoning ?? false;
+  const cleanContent = !isUser && !isDeepReasoning && msg.role === 'assistant'
+    ? msg.content
+        .replace(/\{\s*"?name"?\s*:\s*"?\w+"?,\s*"?args"?\s*:\s*\{.*?\}\s*\}/gi, '') // JSON 도구 지시자 제거
+        .replace(/(?:工具|도구가\s*필요합니다|할\s*수\s*있습니다).*?$/gi, '') // 도구 도입부 문구 및 하위 본문 삭제
+        .replace(/将继续生成\.*/gi, '') // 중국어 찌꺼기
+        .replace(/assistant\s*$/gi, '') // 역할 지시어
+        .trim()
+    : msg.content;
 
   // AI의 추론 텍스트의 볼륨과 단계를 요약(분석)하여 UI에 표시할 메타데이터 생성
   const thoughtSummary = getThoughtSummary(thinkingText, !!msg.isStreaming);

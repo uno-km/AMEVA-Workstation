@@ -81,6 +81,10 @@ export interface AIState {
   taskProgress: number;
   setTaskProgress: (progress: number) => void;
 
+  /** 에이전트 Task Plan UI의 접힘(Collapsed) 상태 */
+  agentTaskPlanCollapsed: boolean;
+  setAgentTaskPlanCollapsed: (collapsed: boolean) => void;
+
   /** 최종 작성된 미션 성적 보고서 마크다운 */
   finalReport: string | null;
   setFinalReport: (report: string | null) => void;
@@ -239,6 +243,9 @@ export const useAIState = create<AIState>((set) => ({
   taskProgress: 0,
   setTaskProgress: (taskProgress) => set({ taskProgress }),
 
+  agentTaskPlanCollapsed: false,
+  setAgentTaskPlanCollapsed: (agentTaskPlanCollapsed) => set({ agentTaskPlanCollapsed }),
+
   finalReport: null,
   setFinalReport: (finalReport) => set({ finalReport }),
 
@@ -273,6 +280,7 @@ export const useAIState = create<AIState>((set) => ({
     agentThoughts: [],
     agentTaskPlan: null,
     taskProgress: 0,
+    agentTaskPlanCollapsed: false,
     finalReport: null,
     agentCurrentToolName: null,
     agentAccumulatedAnswer: '',

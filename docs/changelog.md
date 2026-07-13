@@ -3,6 +3,28 @@
 ## 2026-07-13 (TypeScript 컴파일 에러 해결, 메인 UI 딥리즈닝 똑딱이 토글 및 console.error 런타임 크래시 방어)
 
 ### 🚀 주요 아키텍처 및 소스 정비 사항
+- **`AgentTaskChecklist.tsx` 내 React Hook Rules 붕괴 크래시 영구 완치**:
+  - Vite HMR 및 핫 리로드, 마운트 상태 전이 시 조건부 렌더링에 의해 훅 호출 순서 및 개수가 불일치하여 렌더러가 붕괴되던 문제를 해결했습니다.
+  - 컴포넌트 내부에 존재하던 로컬 `useState`를 완전히 걷어내고, 이를 Zustand 전역 AI 스토어(`useAIState.ts` 내 `agentTaskPlanCollapsed` 상태 및 액션)로 완벽히 마이그레이션하여 런타임 안정성을 확보했습니다.
+- **Watchdog 정체(TOKEN_FREEZE / STREAM_STALL) 오폭 및 LLM 무한 루프 탐지 임계 완화**:
+  - 로컬 소형 LLM(qwen2.5-3b 등)이 프롬프트를 평가하고 첫 토큰을 생성하는 데 걸리는 시간(TTFT)을 정체(Stall)로 오인하여 복구 루틴을 섣부르게 가동하던 문제를 해결했습니다.
+  - `SupervisorAgent.ts` 의 Watchdog 무반응 탐지 임계를 25초/45초/90초로 상향 조절했습니다.
+  - `CriticAgent.ts` 의 무반응 시간 한계를 40초로 넓히고, 단어나 문장 중복 등 오탐이 잦았던 N-gram 반복 루프 탐지 허들을 연속 4회 중복(최소 패턴 크기 8자)으로 상향 완화하여 모델이 차분히 작업을 끝마칠 수 있게 교정했습니다.
+- **`TaskCompletionManager.ts` 내 완수율(Completion Rate) 산출 공식 정합성 교정**:
+  - 실제 완성된 작업이 0개이고 스킵(SKIPPED)만 7개인데도 완수율이 100%로 잘못 계산되어 모순된 결과를 빌드하던 설계 결함을 해결했습니다.
+  - 백분율 산식의 분자 분모 필터에서 스킵(`SKIPPED`) 노드를 제외하고, 오직 실질 성공 완료(`COMPLETED`) 노드만 진행률에 카운트되도록 정교하게 수정했습니다.
+- **`ReasoningTraceViewer.tsx` 생각 상자(Thought Box) UI 럭셔리 퍼플 그라디언트 및 인터랙티브 아코디언 업그레이드**:
+  - 기존의 투박한 회색 생각 상자 레이아웃을 은은한 퍼플 그라디언트 테두리와 섀도우를 가미한 럭셔리 테마로 전격 개조했습니다.
+  - 마우스를 올렸을 때의 동적 밝기 피드백 모션 및 둥근 회전 Chevron 토글 칩을 추가하여 직관적인 접기/펼치기 사용성을 유도했습니다.
+  - 추론 대기 단계에서는 반투명 미니 로딩 스피너와 `"생각 흐름을 가다듬고 있습니다..."` 라는 디테일 문구를 입혀 대기 피드백을 가속했습니다.
+- **가상 파일 시스템(VFS) `/sys/agent_reasoning.log` 영구 누적 로그 시스템 구축**:
+  - 사용자가 세션을 새로고침하거나 대화를 전환하더라도 에이전트의 작동 역사(CoT, 도구 작동 결과 등)가 증발하지 않도록 가상 드라이브에 영구 누적 저장하는 메커니즘을 이식했습니다.
+  - `useAIAgentMode.ts` 내부의 에이전트 실행 이벤트(`task_exec_start`, `tool_call_start`, `tool_call_end`, `critic_feedback`, `final_answer`)가 발생할 때마다 로컬 스토리지 VFS의 `/sys/agent_reasoning.log` 파일에 실시간으로 로그를 덧붙여(Append) 보관합니다.
+  - 로그 갱신 즉시 `window.dispatchEvent` 커스텀 이벤트를 뿜어주어, 사용자가 에디터 상에서 해당 파일을 열어놓은 경우 실시간 로그 갱신이 캔버스에 즉각 반영되는 황홀한 라이브 터미널 경험을 제공합니다.
+- **일반 모드(딥리즈닝 OFF) 도구 호출 JSON 및 역할 찌꺼기 가드 방어선 구축**:
+  - 딥리즈닝 모드가 꺼진 단순 대화 세션에서 AI 모델이 스스로 에이전트 도구 호출 능력이 있는 것으로 착각해 본문에 `{"name": "read_file"}` 같은 JSON 마커를 뱉어내던 원인을 해결했습니다.
+  - `buildSystemPrompt.ts` 에 `deepReasoning` 파라미터 릴레이를 추가하여, 미사용 시 "도구 호출용 JSON을 절대 쓰지 말라"는 강력한 금지 지침을 심어 응답을 원천 교정했습니다.
+  - `MessageBubble.tsx` 에서 최종 응답 출력 직전에 정규식 필터 장벽을 통해 쌩 JSON 기호나 `"도구가 필요합니다"` 와 같은 LLM 발화 찌꺼기를 말끔히 소독(Sanitize)하여 챗창 가독성을 확보했습니다.
 - **`AgentTaskChecklist.tsx` 계획 리스트 접고 펼칠 수 있는 아코디언 토글 추가 및 Lucide 아이콘 기반 진행 상태 고도화**:
   - `Task Plan` 목록이 세로로 길어져 채팅 이력을 많이 가리던 문제를 정복하기 위해, 헤더 클릭 시 목록 전체가 접고 펼쳐지는 Accordion(Collapse) 토글을 이식하여 공간 효율을 극대화했습니다.
   - 태스크의 status(done, in_progress, pending, failed)에 따라 체크박스 문자 대신 Lucide 아이콘(`CheckCircle2`, `Loader2`, `Circle`, `XCircle`)을 매핑했습니다.

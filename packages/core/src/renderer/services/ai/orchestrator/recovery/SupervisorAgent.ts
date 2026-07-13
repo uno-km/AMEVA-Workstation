@@ -147,20 +147,20 @@ export class SupervisorAgent {
 
     // 2. 휴리스틱 기반 정체(Stall) 탐지
     // 60초 이상 아무 토큰도 공급되지 않은 상태
-    if (elapsedSinceLastChunk >= 60000) {
-      console.warn('[SupervisorAgent] 60초 이상 응답 정체 감지 (Recovery Required)');
+    if (elapsedSinceLastChunk >= 90000) {
+      console.warn('[SupervisorAgent] 90초 이상 응답 정체 감지 (Recovery Required)');
       this.triggerStall('STREAM_STALL');
     }
-    // 20초 이상 토큰 없음
-    else if (elapsedSinceLastChunk >= 20000) {
-      console.warn('[SupervisorAgent] 20초 이상 응답 지연 (Stalled)');
+    // 45초 이상 토큰 없음
+    else if (elapsedSinceLastChunk >= 45000) {
+      console.warn('[SupervisorAgent] 45초 이상 응답 지연 (Stalled)');
       useAIState.getState().setRecoveryState('stalled');
       useAIState.getState().setRecoveryReason('STREAM_STALL');
       useAIState.getState().setRecoveryElapsed(Math.round(elapsedSinceLastChunk / 1000));
     }
-    // 10초 이상 토큰 없고 Thought 변화 없음
-    else if (elapsedSinceLastChunk >= 10000 && elapsedSinceThoughtChange >= 10000) {
-      console.info('[SupervisorAgent] 10초 이상 무반응 (Suspicious)');
+    // 25초 이상 토큰 없고 Thought 변화 없음
+    else if (elapsedSinceLastChunk >= 25000 && elapsedSinceThoughtChange >= 25000) {
+      console.info('[SupervisorAgent] 25초 이상 무반응 (Suspicious)');
       useAIState.getState().setRecoveryState('suspicious');
       useAIState.getState().setRecoveryElapsed(Math.round(elapsedSinceLastChunk / 1000));
     } else {
