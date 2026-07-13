@@ -60,24 +60,24 @@ export async function renderMermaidToBuffer(code: string): Promise<Buffer> {
         </html>
       `
       
-      await win.loadURL(\`data:text/html;charset=utf-8,\${encodeURIComponent(html)}\`)
+      await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
       
       // 렌더링이 완료될 시간을 충분히 줍니다. (mermaid는 초기화 후 렌더링에 약간의 비동기 시간이 걸림)
-      await win.webContents.executeJavaScript(\`
+      await win.webContents.executeJavaScript(`
         new Promise((resolve) => {
           setTimeout(() => resolve(), 800); 
         })
-      \`)
+      `)
 
       // 요소의 정확한 크기 계산
-      const rect = await win.webContents.executeJavaScript(\`
+      const rect = await win.webContents.executeJavaScript(`
         (() => {
           const el = document.getElementById('container');
           if (!el) return { x: 0, y: 0, width: 800, height: 600 };
           const rect = el.getBoundingClientRect();
           return { x: Math.floor(rect.x), y: Math.floor(rect.y), width: Math.ceil(rect.width), height: Math.ceil(rect.height) };
         })();
-      \`)
+      `)
 
       const image = await win.webContents.capturePage(rect)
       clearTimeout(timeout)
