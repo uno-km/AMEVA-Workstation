@@ -78,6 +78,7 @@ export interface AISettings {
   deepReasoning?: boolean
   maxAgentTurns?: number
   agentContextPoolSize?: number
+  debugMode?: boolean
 }
 
   /*
@@ -96,6 +97,7 @@ export const DEFAULT_SETTINGS: AISettings = {
   gpuOnly: true,
   deepReasoning: false,
   maxAgentTurns: 10000,
-  agentContextPoolSize: 32768
+  agentContextPoolSize: 32768,
+  debugMode: false
 }
 

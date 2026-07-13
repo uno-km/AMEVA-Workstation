@@ -125,7 +125,8 @@ export function useAppFileOperations(
     setActiveTabId,
     activeTabId,
     updateActiveTab,
-    addTab
+    addTab,
+    tabs
   } = useWorkspaceStore()
 
   /**
@@ -971,44 +972,64 @@ export function useAppFileOperations(
   /*
    * [AUTO TABS SYNCHRONIZATION EFFECT]
    * - Rationale: AI 에이전트가 백그라운드 태스크 수행 중 VFS 파일 쓰기(write_file)를 성공하면,
-   *   자동으로 해당 파일의 에디터 탭을 신설(openFileInTab)하거나 실시간 본문 동기화(loadMarkdownIntoEditor)를 격발하여
-   *   사용자 화면에 편집 상태가 즉시 시각화되도록 조율한다.
+   *   Zustand 탭 리스트를 뒤져 탭이 없으면 신설(openFileInTab)하고, 있으면 탭을 포커싱한 후 
+   *   실시간 본문 렌더링(loadMarkdownIntoEditor)을 갱신하여 사용자 화면에 실시간 드로잉을 시각화한다.
    */
   useEffect(() => {
     if (!editor) return
 
-    const handleAutoOpened = (e: Event) => {
+    const handleAutoWrite = async (e: Event) => {
       const detail = (e as CustomEvent).detail
-      setEditorMode('edit')
-      void openFileInTab(editor, detail.content, detail.filePath, false)
-    }
-
-    const handleAutoUpdated = async (e: Event) => {
-      const detail = (e as CustomEvent).detail
-      if (activeTabId === detail.tabId) {
-        await loadMarkdownIntoEditor(editor, detail.content, false, detail.filePath)
+      const filePathVal = detail.filePath
+      const contentVal = detail.content
+      
+      const targetTab = tabs.find(t => t.filePath === filePathVal)
+      
+      if (!targetTab) {
+        // 새 탭 신설 및 활성화
+        const newTabId = 'tab_' + Math.random().toString(36).substring(2, 9)
+        const newTab = {
+          id: newTabId,
+          filePath: filePathVal,
+          content: contentVal,
+          blocks: [],
+          originalContent: contentVal,
+          lastSavedTime: new Date()
+        }
+        useWorkspaceStore.getState().addTab(newTab)
+        setActiveTabId(newTabId)
+        setEditorMode('edit')
+        
+        // 동기적으로 에디터에 로딩
+        await openFileInTab(editor, contentVal, filePathVal, false)
       } else {
-        try {
-          const parsed = await editor.tryParseMarkdownToBlocks(normalizeMarkdown(detail.content))
-          useWorkspaceStore.getState().updateActiveTab({
-            filePath: detail.filePath,
-            content: detail.content,
-            blocks: parsed
-          })
-        } catch (err: unknown) {
-          console.warn('[AutoUpdate] 비활성 탭 버퍼 동기화 오류:', err)
+        // 기존 탭 활성화 포커스
+        setActiveTabId(targetTab.id)
+        
+        // 포커싱 후 본문 내용 동기화
+        if (activeTabId === targetTab.id) {
+          await loadMarkdownIntoEditor(editor, contentVal, false, filePathVal)
+        } else {
+          try {
+            const parsed = await editor.tryParseMarkdownToBlocks(normalizeMarkdown(contentVal))
+            useWorkspaceStore.getState().updateActiveTab({
+              filePath: filePathVal,
+              content: contentVal,
+              blocks: parsed
+            })
+          } catch (err: unknown) {
+            console.warn('[AutoUpdate] 비활성 탭 버퍼 동기화 오류:', err)
+          }
         }
       }
     }
 
-    window.addEventListener('ameva:file-auto-opened', handleAutoOpened)
-    window.addEventListener('ameva:file-auto-updated', handleAutoUpdated)
+    window.addEventListener('ameva:file-auto-write', handleAutoWrite)
 
     return () => {
-      window.removeEventListener('ameva:file-auto-opened', handleAutoOpened)
-      window.removeEventListener('ameva:file-auto-updated', handleAutoUpdated)
+      window.removeEventListener('ameva:file-auto-write', handleAutoWrite)
     }
-  }, [editor, activeTabId, openFileInTab, loadMarkdownIntoEditor, setEditorMode])
+  }, [editor, activeTabId, tabs, openFileInTab, loadMarkdownIntoEditor, setEditorMode, setActiveTabId])
 
   return {
     loadMarkdownIntoEditor,

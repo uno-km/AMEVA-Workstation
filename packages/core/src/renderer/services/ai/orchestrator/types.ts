@@ -146,7 +146,7 @@ export type OrchestratorEventType =
  */
 export type OrchestratorEvent =
   | { type: 'phase_change'; phase: AgentPhase }
-  | { type: 'thought_token'; token: string; accumulated: string }
+  | { type: 'thought_token'; token: string; accumulated: string; taskTitle?: string }
   | { type: 'answer_token'; token: string; accumulated: string }
   | { type: 'tool_call_start'; toolName: string; toolArgs: Record<string, unknown> }
   | { type: 'tool_call_end'; result: ToolCallResult }

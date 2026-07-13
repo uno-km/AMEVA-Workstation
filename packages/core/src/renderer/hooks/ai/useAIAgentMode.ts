@@ -457,14 +457,28 @@ async function runDeepReasoningMode(
           if (m.id !== assistantId) return m
           return {
             ...m, content: '', isStreaming: true, isThinking: true,
-            reasoningTrace: [{
-              id: `orch_thought_${m.id}`,
-              source: 'model' as const,
-              type: 'thinking' as const,
-              text: event.accumulated,
-              model: finalSettings.modelPath || 'unknown',
-              timestamp: new Date().toISOString()
-            }]
+            reasoningTrace: (() => {
+              const existingTrace = m.reasoningTrace || []
+              const targetId = `orch_thought_${m.id}_${event.taskTitle || 'curr'}`
+              const foundIdx = existingTrace.findIndex((t: any) => t.id === targetId)
+              const updated = [...existingTrace]
+              if (foundIdx > -1) {
+                updated[foundIdx] = {
+                  ...updated[foundIdx],
+                  text: event.accumulated
+                }
+              } else {
+                updated.push({
+                  id: targetId,
+                  source: 'model' as const,
+                  type: 'thinking' as const,
+                  text: event.accumulated,
+                  model: finalSettings.modelPath || 'unknown',
+                  timestamp: new Date().toISOString()
+                })
+              }
+              return updated
+            })()
           }
         }))
         break
@@ -481,22 +495,48 @@ async function runDeepReasoningMode(
         setAgentCurrentToolName(event.toolName)
         setMessages((prev) => prev.map((m) => {
           if (m.id !== assistantId) return m
+          const existingTrace = m.reasoningTrace || []
           return {
             ...m, isStreaming: true,
-            reasoningTrace: [{
-              id: `orch_tool_${m.id}_${event.toolName}`,
-              source: 'model' as const,
-              type: 'thinking' as const,
-              text: `⚙️ [도구 실행 중] \`${event.toolName}\`\n인자: ${JSON.stringify(event.toolArgs, null, 2)}`,
-              model: finalSettings.modelPath || 'unknown',
-              timestamp: new Date().toISOString()
-            }]
+            reasoningTrace: [
+              ...existingTrace,
+              {
+                id: `orch_tool_${m.id}_${event.toolName}_${Date.now()}`,
+                source: 'model' as const,
+                type: 'thinking' as const,
+                text: `⚙️ [도구 실행 중] \`${event.toolName}\`\n인자: ${JSON.stringify(event.toolArgs, null, 2)}`,
+                model: finalSettings.modelPath || 'unknown',
+                timestamp: new Date().toISOString()
+              }
+            ]
           }
         }))
         break
 
       case 'tool_call_end':
         setAgentCurrentToolName(null)
+        setMessages((prev) => prev.map((m) => {
+          if (m.id !== assistantId) return m
+          const existingTrace = m.reasoningTrace || []
+          const isSuccess = event.result?.success
+          const detail = isSuccess 
+            ? `결과: 성공\n산출 데이터: ${String(event.result?.result).slice(0, 300)}${String(event.result?.result).length > 300 ? '...' : ''}`
+            : `결과: 실패 - ${event.result?.error || '알 수 없는 오류'}`
+          return {
+            ...m,
+            reasoningTrace: [
+              ...existingTrace,
+              {
+                id: `orch_tool_end_${m.id}_${Date.now()}`,
+                source: 'model' as const,
+                type: 'thinking' as const,
+                text: `🔹 [도구 실행 완료] ${detail}`,
+                model: 'System',
+                timestamp: new Date().toISOString()
+              }
+            ]
+          }
+        }))
         break
 
       case 'task_plan':
@@ -547,7 +587,7 @@ async function runDeepReasoningMode(
               ...existingTrace,
               {
                 id: `orch_critic_${m.id}_${Date.now()}`,
-                source: 'critic' as const,
+                source: 'pipeline' as const,
                 type: 'thinking' as const,
                 text: `${icon} [자아비판 피드백] ${event.reason}`,
                 model: 'TaskVerifier',

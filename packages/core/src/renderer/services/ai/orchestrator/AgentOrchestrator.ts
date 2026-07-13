@@ -44,6 +44,7 @@ import { ThoughtParser } from './ThoughtParser'
 import { ToolRegistry } from './ToolRegistry'
 
 // 신규 Task Runtime 모듈 임포트
+import type { Task } from './task/types'
 import { TaskGraph } from './task/TaskGraph'
 import { TaskQueue } from './task/TaskQueue'
 import { TaskExecutor } from './task/TaskExecutor'
@@ -200,6 +201,7 @@ export class AgentOrchestratorSession {
   // 신규 Task Runtime 멤버
   private taskQueue: TaskQueue | null = null
   private taskGraph: TaskGraph | null = null
+  private currentRunningTask: Task | null = null
 
   // Task Runtime V2 Core Store (Shadow Mode)
   private readonly eventLog: TaskEventLog = new TaskEventLog()
@@ -235,7 +237,12 @@ export class AgentOrchestratorSession {
     this.parser = new ThoughtParser({
       onThought: (token, accumulated) => {
         this.accumulatedThoughts.push(token)
-        this.emitEvent({ type: 'thought_token', token, accumulated })
+        this.emitEvent({
+          type: 'thought_token',
+          token,
+          accumulated,
+          taskTitle: this.currentRunningTask?.title
+        })
       },
       onToolCall: (request) => {
         /*
@@ -613,6 +620,7 @@ export class AgentOrchestratorSession {
       // 3. Task Dispatcher & Execution 루프 구동
       while (this.taskQueue && this.taskQueue.hasMoreTasks() && !this.isAborted) {
         const currentTask = this.taskQueue.dispatchNext()
+        this.currentRunningTask = currentTask
         if (!currentTask) {
           // READY 상태 노드가 없는데 PENDING이 남은 경우 (의존성 대기)
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -740,6 +748,7 @@ export class AgentOrchestratorSession {
 
       return finalReportText
     } finally {
+      this.currentRunningTask = null
       this.cleanupRecovery()
     }
   }
@@ -846,31 +855,20 @@ export class AgentOrchestratorSession {
 
     if (request.name === 'write_file' && result.success && request.args && typeof request.args.path === 'string') {
       try {
-        const { useWorkspaceStore } = await import('../../../stores/useWorkspaceStore')
-        const store = useWorkspaceStore.getState()
         const filePath = String(request.args.path)
         const content = String(request.args.content || '')
         
-        const targetTab = store.tabs.find(t => t.filePath === filePath)
-        if (!targetTab) {
-          const newTabId = 'tab_' + Math.random().toString(36).substring(2, 9)
-          const newTab = {
-            id: newTabId,
-            filePath: filePath,
-            content: content,
-            blocks: [],
-            originalContent: content,
-            lastSavedTime: new Date()
-          }
-          store.addTab(newTab)
-          store.setActiveTabId(newTabId)
-          window.dispatchEvent(new CustomEvent('ameva:file-auto-opened', { detail: { filePath, content } }))
-        } else {
-          store.setActiveTabId(targetTab.id)
-          window.dispatchEvent(new CustomEvent('ameva:file-auto-updated', { detail: { filePath, content, tabId: targetTab.id } }))
-        }
+        /*
+         * [PURE EVENT DELEGATION - CIRCULAR IMPORT PREVENTION]
+         * - Rationale: React 및 Zustand 스토어를 비JS 런타임 비동기 세션 내부에서 직접 dynamic import할 경우
+         *   순환 참조(Circular Dependency) 및 React 19 번들러 크래시(null reading 'getSnapshot')를 유발한다.
+         *   따라서 Zustand 스토어를 이곳에서 조작하지 않고, 순수 브라우저 CustomEvent를 통해 React 렌더러 단으로 데이터를 위임 처리한다.
+         */
+        window.dispatchEvent(new CustomEvent('ameva:file-auto-write', {
+          detail: { filePath, content }
+        }))
       } catch (syncErr: unknown) {
-        console.warn('[AgentOrchestrator] VFS 탭 실시간 동기화 브릿지 실패:', syncErr)
+        console.warn('[AgentOrchestrator] VFS 실시간 동기화 브릿지 전송 실패:', syncErr)
       }
     }
 

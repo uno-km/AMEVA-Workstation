@@ -25,6 +25,7 @@ import { renderMessageContent } from './MessageContent';
 import { InsertPreviewCard } from '../InsertPreviewCard';
 import { ReasoningTraceViewer } from './ReasoningTraceViewer';
 import { MessageActionBar } from './MessageActionBar';
+import { useAIState } from '../../../stores/useAIState';
 
 /**
  * MessageBubble 컴포넌트 Props 스키마
@@ -68,15 +69,14 @@ export function MessageBubble({
   const isUser = msg.role === 'user';
 
   // AI 스트리밍 중에는 사용자가 실시간 추론 과정을 추적할 수 있도록 '생각 과정' 아코디언을 자동으로 펼칩니다.
+  // 스트리밍이 완료되었을 때, debugMode가 true이면 펼친 상태를 유지하고, false이면 깔끔하게 접어둡니다.
   useEffect(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `msg.isStreaming) setThoughtExpanded(true`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (msg.isStreaming) setThoughtExpanded(true)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (msg.isStreaming) setThoughtExpanded(true);
+    if (msg.isStreaming) {
+      setThoughtExpanded(true);
+    } else {
+      const debugMode = useAIState.getState().settings.debugMode ?? false;
+      setThoughtExpanded(debugMode);
+    }
   }, [msg.isStreaming]);
 
   // msg.reasoningTrace 배열에서 type이 'thinking'인 트레이스 텍스트들을 추출해 하나로 결합합니다.

@@ -3,6 +3,14 @@
 ## 2026-07-13 (TypeScript 컴파일 에러 해결, 메인 UI 딥리즈닝 똑딱이 토글 및 console.error 런타임 크래시 방어)
 
 ### 🚀 주요 아키텍처 및 소스 정비 사항
+- **`AgentTaskChecklist.tsx` 계획 리스트 접고 펼칠 수 있는 아코디언 토글 추가 및 Lucide 아이콘 기반 진행 상태 고도화**:
+  - `Task Plan` 목록이 세로로 길어져 채팅 이력을 많이 가리던 문제를 정복하기 위해, 헤더 클릭 시 목록 전체가 접고 펼쳐지는 Accordion(Collapse) 토글을 이식하여 공간 효율을 극대화했습니다.
+  - 태스크의 status(done, in_progress, pending, failed)에 따라 체크박스 문자 대신 Lucide 아이콘(`CheckCircle2`, `Loader2`, `Circle`, `XCircle`)을 매핑했습니다.
+  - 진행 중인 태스크(in_progress)에는 은은한 보라빛 배경 펄 글로우(`pulseGlow`) 및 스핀(`spin`) 애니메이션을 입히고, 완료된 단계를 시각적으로 명확히 취소선 처리하여 현재 작동 상황을 강렬하고 뚜렷하게 인지시켰습니다.
+- **사고 과정(Thought) 및 도구 호출 흔적 소실 결함 전격 해결 및 `debugMode` 폴딩 제어 도입**:
+  - `useAIAgentMode.ts` 의 `thought_token` 및 `tool_call_start` 수신 시 기존 트레이스(`reasoningTrace`)를 덮어쓰던 치명적인 UI 덮어쓰기 결함을 고유 턴 ID 기반의 Append 방식으로 교정하여, 이전 단계의 생각과 도구 실행 결과가 챗창에 영구 보존되도록 개선했습니다.
+  - `tool_call_end` 에 결과 디테일(성공 여부 및 리턴 데이터 슬라이스)을 트레이스에 직접 덧붙여 개발/디버깅 유용성을 극대화했습니다.
+  - `AISettings` 에 `debugMode` 설정을 추가하고, `debugMode` 가 `false` 일 때는 AI 스트리밍 종료 시 생각 트레이스 아코디언이 이쁘게 접혀 깔끔한 레이아웃을 형성하도록, `true` 일 때는 항상 펼쳐져 있도록 셋했습니다.
 - **`AgentOrchestrator.ts` 유실된 `executeToolAndObserve` 메소드 복구 및 VFS 탭 동기화 브릿지 연결**:
   - 이전 병합 결함으로 인해 주석만 남고 본문이 소실되었던 `executeToolAndObserve` 와 `estimateContextTokens` 메소드를 완벽히 복구했습니다.
   - 에이전트가 `write_file` 도구를 성공적으로 마쳤을 때 `useWorkspaceStore` 의 탭 목록을 동적으로 갱신하여 새 탭을 추가하거나 활성화하고, `ameva:file-auto-opened` 및 `ameva:file-auto-updated` 이벤트를 발생시키도록 브릿지 통신망을 구축했습니다.

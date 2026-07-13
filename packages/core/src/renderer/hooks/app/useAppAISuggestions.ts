@@ -27,7 +27,7 @@
  * [IMPORT SEGMENTATION & CONTRACTS]
  * - useCallback: 에디터 DOM 제어 콜백이 하위 컴포넌트 프롭스 변경을 매번 촉발하지 않도록 메모이즈하는 기본 리액트 API.
  */
-import { useCallback } from 'react'
+import { useCallback, useRef } from 'react'
 
 /* 
  * [ZUSTAND GLOBAL STORES]
@@ -43,6 +43,95 @@ import { useUIStore } from '../../stores/useUIStore'
  * - AmevaPartialBlock: 블록 수정 시 일부 속성만 넘겨 갱신하기 위한 타입 구조.
  */
 import { type AmevaEditor, type AmevaPartialBlock } from '../../editor/amevaBlockSchema'
+
+/**
+ * cleanLlmGarbageText
+ * LLM 추론 마감 과정에서 발생하는 중국어 잔여 문자 및 역할 지시자 찌꺼기를 정밀 소독한다.
+ */
+function cleanLlmGarbageText(text: string): string {
+  return text
+    .replace(/将继续生成\.*/gi, '')
+    .replace(/<\|im_start\|>/gi, '')
+    .replace(/<\|im_end\|>/gi, '')
+    .replace(/assistant\s*$/gi, '')
+    .replace(/assistant\s*\n/gi, '')
+    .replace(/user\s*$/gi, '')
+    .trim()
+}
+
+/**
+ * parseMarkdownToBlockPayloads
+ * 마크다운 텍스트를 줄 단위로 파싱하여 BlockNote 규격의 개별 블록(AmevaPartialBlock) 배열로 정렬한다.
+ */
+function parseMarkdownToBlockPayloads(text: string): any[] {
+  const lines = text.split('\n')
+  const payloads: any[] = []
+
+  for (let line of lines) {
+    const rawLine = line.trim()
+    if (rawLine === '') {
+      payloads.push({
+        id: Math.random().toString(36).substring(2, 10),
+        type: 'paragraph',
+        content: []
+      })
+      continue
+    }
+
+    // 1. 헤딩 (#, ##, ###, ####)
+    const headingMatch = line.match(/^(#{1,6})\s+(.*)$/)
+    if (headingMatch) {
+      const level = Math.min(3, headingMatch[1].length)
+      const headingText = headingMatch[2]
+      payloads.push({
+        id: Math.random().toString(36).substring(2, 10),
+        type: 'heading',
+        props: { level },
+        content: [{ type: 'text', text: headingText, styles: {} }]
+      })
+      continue
+    }
+
+    // 2. 순서 없는 리스트 (- 또는 *)
+    const bulletMatch = line.match(/^[-*]\s+(.*)$/)
+    if (bulletMatch) {
+      payloads.push({
+        id: Math.random().toString(36).substring(2, 10),
+        type: 'bulletListItem',
+        content: [{ type: 'text', text: bulletMatch[1], styles: {} }]
+      })
+      continue
+    }
+
+    // 3. 순서 있는 리스트 (1. 또는 2.)
+    const numberMatch = line.match(/^\d+\.\s+(.*)$/)
+    if (numberMatch) {
+      payloads.push({
+        id: Math.random().toString(36).substring(2, 10),
+        type: 'numberedListItem',
+        content: [{ type: 'text', text: numberMatch[1], styles: {} }]
+      })
+      continue
+    }
+
+    // 4. 일반 텍스트 단락
+    payloads.push({
+      id: Math.random().toString(36).substring(2, 10),
+      type: 'paragraph',
+      content: [{ type: 'text', text: line, styles: {} }]
+    })
+  }
+
+  if (payloads.length === 0) {
+    payloads.push({
+      id: Math.random().toString(36).substring(2, 10),
+      type: 'paragraph',
+      content: []
+    })
+  }
+
+  return payloads
+}
 
 /**
  * @hook useAppAISuggestions
@@ -70,6 +159,7 @@ export function useAppAISuggestions(
    * - setSelectedText: 드래그 텍스트 해제용 세터.
    */
   const { taggedBlocks, setTaggedBlocks, setSelectedText } = useWorkspaceStore()
+  const appliedKeysRef = useRef<Set<string>>(new Set())
   
   /*
    * [ZUSTAND UI SELECTORS]
@@ -343,88 +433,53 @@ export function useAppAISuggestions(
   const handleApplyInsertSuggestion = useCallback((
     msgId: string,
     afterBlockId: string,
-    blockType: string,
+    _blockType: string,
     content: string,
-    level?: number,
+    _level?: number,
     suggestionIndex?: number
   ) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editor`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if (!editor) return
-    try {
-      // 신규 삽입용 블록 사양 객체 빌드
-      const blockPayload: any = {
-        id: Math.random().toString(36).substring(2, 10),
-        type: blockType === 'heading' ? 'heading'
-          : blockType === 'bulletListItem' ? 'bulletListItem'
-          : blockType === 'numberedListItem' ? 'numberedListItem'
-          : 'paragraph',
-        content: [{ type: 'text', text: content, styles: {} }],
-      }
-      
-      // 헤딩 블록일 때 level 속성 바인딩 제한 (H1 ~ H3 범위 보장)
-      if (blockType === 'heading' && level) {
-        blockPayload.props = { level: Math.min(3, Math.max(1, level)) as 1 | 2 | 3 }
-      }
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `doc`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const doc = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+    // 중복 제안 삽입 격발을 방지하는 캐시 락 가드
+    const appliedKey = `${msgId}-${suggestionIndex ?? 0}`
+    if (appliedKeysRef.current.has(appliedKey)) {
+      console.debug('[handleApplyInsertSuggestion] 이미 수락 처리된 제안이므로 실행을 차단합니다:', appliedKey)
+      return
+    }
+    appliedKeysRef.current.add(appliedKey)
+
+    try {
+      // 1. LLM 찌꺼기 텍스트 청소 (중국어, assistant 접미사 등)
+      const cleanContent = cleanLlmGarbageText(content)
+
+      // 2. 개행 단위 정밀 파싱을 통한 Block 목록 획득
+      const blockPayloads = parseMarkdownToBlockPayloads(cleanContent)
+
       const doc = editor.document
       
       // 문서 전체가 비어있을 경우 덮어쓰기
       if (!doc || doc.length === 0) {
-        editor.replaceBlocks(doc, [blockPayload as AmevaPartialBlock])
+        editor.replaceBlocks(doc, blockPayloads as AmevaPartialBlock[])
       } 
       // 문서 최선두에 삽입
       else if (afterBlockId === 'START') {
-        editor.insertBlocks([blockPayload as AmevaPartialBlock], doc[0], 'before')
+        editor.insertBlocks(blockPayloads as AmevaPartialBlock[], doc[0], 'before')
       } 
       // 문서 맨 마지막 뒤에 삽입
       else if (afterBlockId === 'END') {
-        editor.insertBlocks([blockPayload as AmevaPartialBlock], doc[doc.length - 1], 'after')
+        editor.insertBlocks(blockPayloads as AmevaPartialBlock[], doc[doc.length - 1], 'after')
       } 
       // 특정 블록 ID를 찾아 바로 뒤에 삽입
       else {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `flatBlocks`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const flatBlocks = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         const flatBlocks = (function flatten(blocks: any[]): any[] {
           return blocks.flatMap((b: any) => [b, ...flatten(b.children || [])])
         })(doc)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `targetBlock`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const targetBlock = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         const targetBlock = flatBlocks.find(b => b.id === afterBlockId)
         
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `targetBlock`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (targetBlock)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (targetBlock) {
-          editor.insertBlocks([blockPayload as AmevaPartialBlock], targetBlock, 'after')
+          editor.insertBlocks(blockPayloads as AmevaPartialBlock[], targetBlock, 'after')
         } else {
-          editor.insertBlocks([blockPayload as AmevaPartialBlock], doc[doc.length - 1], 'after')
+          editor.insertBlocks(blockPayloads as AmevaPartialBlock[], doc[doc.length - 1], 'after')
         }
       }
 
