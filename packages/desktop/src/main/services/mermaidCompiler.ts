@@ -60,7 +60,8 @@ export async function renderMermaidToBuffer(code: string): Promise<Buffer> {
       await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`)
       
       // 1. 오프라인(로컬) Mermaid 스크립트 주입 (CDN 통신 오류 원천 차단)
-      await win.webContents.executeJavaScript(mermaidScript)
+      // return 값을 void 0로 만들어 Electron IPC 직렬화 에러(An object could not be cloned) 방지
+      await win.webContents.executeJavaScript(mermaidScript + '\n; void 0;')
       
       // 2. Mermaid 초기화 및 렌더링 완료 대기
       await win.webContents.executeJavaScript(`
