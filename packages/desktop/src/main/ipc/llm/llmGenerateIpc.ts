@@ -89,67 +89,10 @@ export function registerLlmGenerateIpc(): void {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `modelPath`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const modelPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: `string` (예: `C:\ameva\models\llm\Qwen2.5-14B-Instruct-Q4_K_M.gguf` 등)
+       * - 시나리오: 사용자 파라미터(`:14B`, `:7B` 등) 및 payload.modelPath를 3단계 해소 로직을 통해 실제 GGUF 절대 경로로 변환
        */
-    let modelPath = payload.modelPath || 'C:\\ameva\\models\\llm\\Qwen2.5-7B-Instruct-Q4_K_M.gguf'
-
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!existsSync(modelPath) && !payload.modelPath`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!existsSync(modelPath) && !payload.modelPath)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (!existsSync(modelPath) && !payload.modelPath) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `llmDir`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const llmDir = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const llmDir = 'C:\\ameva\\models\\llm'
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `existsSync(llmDir)`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (existsSync(llmDir))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (existsSync(llmDir)) {
-        try {
-          const { readdirSync } = require('fs')
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `files`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const files = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-          const files = readdirSync(llmDir)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `firstGguf`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const firstGguf = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-          const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `firstGguf`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (firstGguf)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-          if (firstGguf) {
-            modelPath = join(llmDir, firstGguf)
-          }
-        } catch {}
-      }
-    }
+    let modelPath = LLMProcessManager.resolveModelPath(payload.modelPath)
 
       /*
        * [ALGORITHM BRANCH / DECISION]

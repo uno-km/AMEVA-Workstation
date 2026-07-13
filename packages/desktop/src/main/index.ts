@@ -797,66 +797,11 @@ app.whenReady().then(() => {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `defaultModelPath`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const defaultModelPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: `string`
+       * - 시나리오: 3단계 상수 규칙(`LLMProcessManager.DEFAULT_MODEL_PATH`)을 따라 기본 7B 모델 절대 경로 획득
        */
-      let defaultModelPath = 'C:\\ameva\\models\\llm\\Qwen2.5-7B-Instruct-Q4_K_M.gguf'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fs`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fs = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+      const defaultModelPath = LLMProcessManager.DEFAULT_MODEL_PATH
       const fs = require('fs')
-      
-      // 우선 지정 모델 존재 확인 분기
-      if (!fs.existsSync(defaultModelPath)) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `llmDir`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const llmDir = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const llmDir = 'C:\\ameva\\models\\llm'
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `fs.existsSync(llmDir)`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (fs.existsSync(llmDir))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-        if (fs.existsSync(llmDir)) {
-          try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `files`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const files = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const files = fs.readdirSync(llmDir)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `firstGguf`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const firstGguf = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `firstGguf) defaultModelPath = join(llmDir, firstGguf`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (firstGguf) defaultModelPath = join(llmDir, firstGguf)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-            if (firstGguf) defaultModelPath = join(llmDir, firstGguf)
-          } catch {}
-        }
-      }
       
       // 로컬 LLM CLI 바이너리와 GGUF 파일이 존재할 때만 웜업 서버 기동 트리거
       if (llamaPath && fs.existsSync(defaultModelPath)) {

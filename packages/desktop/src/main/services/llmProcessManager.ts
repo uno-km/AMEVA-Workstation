@@ -36,7 +36,7 @@
  */
 import { app } from 'electron'
 import { join, basename } from 'path'
-import { existsSync } from 'fs'
+import { existsSync, readdirSync } from 'fs'
 import { spawn, exec, type ChildProcess } from 'child_process'
 
 /**
@@ -153,6 +153,123 @@ export class LLMProcessManager {
   static formatters: Record<string, StreamLineFormatter> = {}
   // serverPort: 기본 바인딩 포트.
   static serverPort = 12345
+
+  /*
+   * [3-Tier Constants: Domain-Scoped LLM Directory & Default Model Path Constants]
+   * - LLM_MODELS_DIR: 시스템 전역 LLM 모델 적재 폴더 경로 (`C:\ameva\models\llm`).
+   * - DEFAULT_MODEL_PATH: 기본 로드되는 7B 모델 (`Qwen2.5-7B-Instruct-Q4_K_M.gguf`).
+   */
+  static readonly LLM_MODELS_DIR = 'C:\\ameva\\models\\llm';
+  static readonly DEFAULT_MODEL_PATH = 'C:\\ameva\\models\\llm\\Qwen2.5-7B-Instruct-Q4_K_M.gguf';
+
+  /**
+   * [CONTRACT - Model Parameter Resolution / ADR]
+   * - Rationale: 사용자가 `:14B`, `:7B`, `:coder`, `:8B`, `:3B` 등 단축 파라미터나 모델명 일부를 입력하거나
+   *   경로가 비어 있을 때 `C:\ameva\models\llm` 내부의 적절한 양자화 GGUF 모델 절대 경로로 매핑 및 해소한다.
+   *   기본 로딩 모델은 7B (`Qwen2.5-7B-Instruct-Q4_K_M.gguf`)로 동작한다.
+   *
+   * [Expected Value Flow]
+   * - modelInput (e.g. ":14B" | "14b" | undefined) -> 매칭 로직 -> 절대 경로 (`C:\ameva\models\llm\Qwen2.5-14B-Instruct-Q4_K_M.gguf`)
+   *
+   * @param modelInput - 사용자 또는 UI/API가 전달한 모델 ID/단축어 또는 절대 경로
+   * @returns 해소된 GGUF 모델 파일의 절대 경로
+   */
+  static resolveModelPath(modelInput?: string | null): string {
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `defaultModel`
+     * - 자료형 / 예상 값: `string`
+     * - 시나리오: 파라미터 미지정 시 기본 7B 모델 경로로 폴백
+     */
+    const defaultModel = this.DEFAULT_MODEL_PATH;
+    if (!modelInput || typeof modelInput !== 'string') {
+      return defaultModel;
+    }
+
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `trimmed`
+     * - 자료형 / 예상 값: `string`
+     * - 시나리오: 공백이 제거된 모델 입력 파라미터 보존
+     */
+    const trimmed = modelInput.trim();
+    if (existsSync(trimmed)) {
+      return trimmed;
+    }
+
+    /*
+     * [ALGORITHM BRANCH / DECISION]
+     * - 조건 식: `!existsSync(this.LLM_MODELS_DIR)`
+     * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
+     * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
+     * - 예시: `if (!existsSync(this.LLM_MODELS_DIR))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+     */
+    if (!existsSync(this.LLM_MODELS_DIR)) {
+      return trimmed || defaultModel;
+    }
+
+    try {
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `files`
+       * - 자료형 / 예상 값: `string[]` (`Qwen2.5-14B-Instruct-Q4_K_M.gguf` 등 파일 목록)
+       * - 시나리오: 디렉터리 내 `.gguf` 파일 목록 필터링
+       */
+      const files = readdirSync(this.LLM_MODELS_DIR).filter(f => f.endsWith('.gguf'));
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `cleanParam`
+       * - 자료형 / 예상 값: `string`
+       * - 시나리오: 단축 접두어 `:` 제거 및 소문자 변환
+       */
+      const cleanParam = trimmed.startsWith(':') ? trimmed.slice(1).toLowerCase() : trimmed.toLowerCase();
+      
+      if (cleanParam.includes('14b')) {
+        const found14B = files.find(f => f.toLowerCase().includes('14b'));
+        if (found14B) return join(this.LLM_MODELS_DIR, found14B);
+      }
+      if (cleanParam.includes('7b')) {
+        const found7B = files.find(f => f.toLowerCase().includes('7b') && !f.toLowerCase().includes('coder'));
+        if (found7B) return join(this.LLM_MODELS_DIR, found7B);
+      }
+      if (cleanParam.includes('coder')) {
+        const foundCoder = files.find(f => f.toLowerCase().includes('coder'));
+        if (foundCoder) return join(this.LLM_MODELS_DIR, foundCoder);
+      }
+      if (cleanParam.includes('8b')) {
+        const found8B = files.find(f => f.toLowerCase().includes('8b'));
+        if (found8B) return join(this.LLM_MODELS_DIR, found8B);
+      }
+      if (cleanParam.includes('3b')) {
+        const found3B = files.find(f => f.toLowerCase().includes('3b') && !f.toLowerCase().includes('coder'));
+        if (found3B) return join(this.LLM_MODELS_DIR, found3B);
+      }
+      if (cleanParam.includes('1.5b')) {
+        const found15B = files.find(f => f.toLowerCase().includes('1.5b') && !f.toLowerCase().includes('coder'));
+        if (found15B) return join(this.LLM_MODELS_DIR, found15B);
+      }
+      if (cleanParam.includes('0.5b')) {
+        const found05B = files.find(f => f.toLowerCase().includes('0.5b') && !f.toLowerCase().includes('coder'));
+        if (found05B) return join(this.LLM_MODELS_DIR, found05B);
+      }
+
+      /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `foundPartial`
+       * - 자료형 / 예상 값: `string | undefined`
+       * - 시나리오: cleanParam 부분 문자열 포함 파일 찾기
+       */
+      const foundPartial = files.find(f => f.toLowerCase().includes(cleanParam));
+      if (foundPartial) {
+        return join(this.LLM_MODELS_DIR, foundPartial);
+      }
+
+      return defaultModel;
+    } catch (e) {
+      console.error('[LLMProcessManager] resolveModelPath 중 오류:', e);
+      return defaultModel;
+    }
+  }
 
   /**
    * [CONTRACT - Find Llama CLI Binary Path / SEC-W-015]
@@ -426,14 +543,22 @@ export class LLMProcessManager {
     contextSize: number,
     gpuFirst: boolean
   ): Promise<boolean> {
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `resolvedModelPath`
+     * - 자료형 / 예상 값: `string`
+     * - 시나리오: 전달된 단축 파라미터(:14B, :7B 등) 및 경로를 실제 GGUF 파일 경로로 해소
+     */
+    const resolvedModelPath = this.resolveModelPath(modelPath);
+
     // 이미 같은 모델 파일 및 컨텍스트 크기로 실행 중이라면 바이패스
     if (
       this.activeServerProcess &&
-      this.activeServerModelPath === modelPath &&
+      this.activeServerModelPath === resolvedModelPath &&
       this.activeServerContextSize === contextSize &&
       !this.serverStartingPromise
     ) {
-      this.logToRenderer(`[System] 기존 llama-server 인스턴스 재사용 (모델: ${basename(modelPath)}, 컨텍스트: ${contextSize})\n`)
+      this.logToRenderer(`[System] 기존 llama-server 인스턴스 재사용 (모델: ${basename(resolvedModelPath)}, 컨텍스트: ${contextSize})\n`)
       return true
     }
 
@@ -501,7 +626,7 @@ export class LLMProcessManager {
        * - 예시 코드: `const cmdArgs = ...` 형태로 안전 캐싱 후 가공 기동.
        */
       const cmdArgs = [
-        '-m', modelPath,
+        '-m', resolvedModelPath,
         '-c', String(contextSize),
         '--port', String(this.serverPort),
         '-ngl', String(ngl),
@@ -569,7 +694,7 @@ export class LLMProcessManager {
             if (!isResolved) {
               isResolved = true
               this.activeServerProcess = proc
-              this.activeServerModelPath = modelPath
+              this.activeServerModelPath = resolvedModelPath
               this.activeServerContextSize = contextSize
               resolve(true)
             }
@@ -665,7 +790,7 @@ export class LLMProcessManager {
           if (!isResolved) {
             isResolved = true
             this.activeServerProcess = proc
-            this.activeServerModelPath = modelPath
+            this.activeServerModelPath = resolvedModelPath
             this.activeServerContextSize = contextSize
             resolve(true)
           }

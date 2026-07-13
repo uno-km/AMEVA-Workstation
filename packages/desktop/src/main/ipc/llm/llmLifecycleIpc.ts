@@ -115,7 +115,7 @@ export function registerLlmLifecycleIpc(): void {
   })
 
   // 🤖 [llm:restart] 서버 강제 재기동 웜업 핸들러
-  ipcMain.handle('llm:restart', async (_event) => {
+  ipcMain.handle('llm:restart', async (_event, payload?: { modelPath?: string }) => {
     try {
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -137,78 +137,17 @@ export function registerLlmLifecycleIpc(): void {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `modelPath`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const modelPath = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 자료형 / 예상 값: `string` (예: `C:\ameva\models\llm\Qwen2.5-14B-Instruct-Q4_K_M.gguf` 등)
+       * - 시나리오: 사용자 전달 payload.modelPath 또는 단축 파라미터를 3단계 해소 로직으로 GGUF 파일 경로 변환
        */
-      let modelPath = 'C:\\ameva\\models\\llm\\Qwen2.5-7B-Instruct-Q4_K_M.gguf'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fs`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fs = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+      const modelPath = LLMProcessManager.resolveModelPath(payload?.modelPath)
       const fs = require('fs')
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!fs.existsSync(modelPath)`
+       * - 조건 식: `!fs.existsSync(modelPath))`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
        * - 예시: `if (!fs.existsSync(modelPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (!fs.existsSync(modelPath)) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `llmDir`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const llmDir = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const llmDir = 'C:\\ameva\\models\\llm'
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `fs.existsSync(llmDir)`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (fs.existsSync(llmDir))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-        if (fs.existsSync(llmDir)) {
-          try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `files`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const files = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const files = fs.readdirSync(llmDir)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `firstGguf`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const firstGguf = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const firstGguf = files.find((f: string) => f.endsWith('.gguf'))
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `firstGguf) modelPath = join(llmDir, firstGguf`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (firstGguf) modelPath = join(llmDir, firstGguf)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-            if (firstGguf) modelPath = join(llmDir, firstGguf)
-          } catch {}
-        }
-      }
-      
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
       if (!fs.existsSync(modelPath)) return { success: false, error: '모델 파일(.gguf)을 찾을 수 없습니다.' }
       
@@ -269,14 +208,21 @@ export function registerLlmLifecycleIpc(): void {
        */
       const fs = require('fs')
       /*
+       * [RUN-TIME STATE / INVARIANT]
+       * - 변수 명: `resolvedModelPath`
+       * - 자료형 / 예상 값: `string` (예: `C:\ameva\models\llm\Qwen2.5-14B-Instruct-Q4_K_M.gguf` 등)
+       * - 시나리오: 사용자 전달 modelPath 또는 단축 파라미터를 3단계 해소 로직으로 GGUF 파일 경로 변환
+       */
+      const resolvedModelPath = LLMProcessManager.resolveModelPath(modelPath)
+      /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!fs.existsSync(modelPath)`
+       * - 조건 식: `!fs.existsSync(resolvedModelPath)`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!fs.existsSync(modelPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (!fs.existsSync(resolvedModelPath))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-      if (!fs.existsSync(modelPath)) {
-        return { success: false, error: `모델 파일을 찾을 수 없습니다: ${modelPath}` }
+      if (!fs.existsSync(resolvedModelPath)) {
+        return { success: false, error: `모델 파일을 찾을 수 없습니다: ${resolvedModelPath}` }
       }
 
       /*
@@ -290,7 +236,7 @@ export function registerLlmLifecycleIpc(): void {
         return { success: true }
       }
 
-      LLMProcessManager.logToRenderer(`[System] 로컬 AI 엔진 수동 기동 요청 수신 (모델: ${modelPath})\n`)
+      LLMProcessManager.logToRenderer(`[System] 로컬 AI 엔진 수동 기동 요청 수신 (모델: ${resolvedModelPath})\n`)
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `ok`
@@ -298,7 +244,7 @@ export function registerLlmLifecycleIpc(): void {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const ok = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, modelPath, 16384, true)
+      const ok = await LLMProcessManager.startLlamaServerWithFallback(llamaPath, resolvedModelPath, 16384, true)
       return { success: ok, error: ok ? undefined : '엔진 기동 실패' }
     } catch (err: any) {
       return { success: false, error: err.message }

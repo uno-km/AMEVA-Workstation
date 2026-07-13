@@ -1047,7 +1047,7 @@ ${toolList}
 
 [도구 호출 시 필수 포맷]
 <tool_call>
-{"name": "write_file", "args": {"path": "보고서.md", "content": "# 자동차 조사 보고서\n\n1. 개요..."}}
+{"name": "write_file", "args": {"path": "산출물.md", "content": "# [요청받은 주제/목표 문서 제목]\n\n1. 개요\n요구사항에 맞춘 본문 내용..."}}
 </tool_call>
 
 모든 작업이 완료되어 최종 답변이 준비되면:
