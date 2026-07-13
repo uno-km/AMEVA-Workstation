@@ -19,7 +19,7 @@
  * - MUST: agentTaskPlan이 null이면 렌더링하지 않을 것.
  */
 
-import React, { useState } from 'react'
+import React from 'react'
 import { useAIState } from '../../stores/useAIState'
 import type { TaskStepStatus } from '../../services/ai/orchestrator/types'
 import { 

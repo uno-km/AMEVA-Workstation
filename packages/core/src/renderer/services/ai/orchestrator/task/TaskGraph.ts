@@ -113,6 +113,9 @@ export class TaskGraph {
     const task = this.taskMap.get(taskId);
     if (task) {
       const prevStatus = task.status;
+      if (prevStatus === status) {
+        return; // [Issue 8] 동일한 상태로의 자기 전이(무한루프/중복 로깅) 방지
+      }
       task.status = status;
       if (status === 'COMPLETED' || status === 'SKIPPED') {
         task.completedAt = Date.now();

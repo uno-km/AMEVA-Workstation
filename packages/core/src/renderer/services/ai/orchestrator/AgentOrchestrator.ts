@@ -67,6 +67,7 @@ import { MissionExecutionRuntime } from './task-runtime/mission/MissionExecution
 
 // FINAL REMEDIATION — STAGE B: Feature Flag 및 Execution Ownership
 import { V2RuntimeFeatureFlag } from './task-runtime/domain/V2RuntimeFeatureFlag'
+import { UserAssistRuntime } from './task-runtime/assist/UserAssistRuntime'
 
 // [Item 3] 앱 재시작 복원 — RuntimeRestoreCoordinator + IndexedDB Adapter
 import { RuntimeRestoreCoordinator } from './task-runtime/persistence/RuntimeRestoreCoordinator';
@@ -190,8 +191,8 @@ export class AgentOrchestratorSession {
   private contextMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = []
   private currentTurn: number = 0
   private isAborted: boolean = false
-  private pendingToolCall: ToolCallRequest | null = null
-
+  public pendingToolCalls: ToolCallRequest[] = []
+  private executedToolHashes: Set<string> = new Set()
   // Recovery-First 아키텍처 멤버
   private readonly sessionId: string = 'sess_' + Math.random().toString(36).substring(2, 9)
   private readonly supervisor: SupervisorAgent = SupervisorAgent.getInstance()
@@ -248,9 +249,9 @@ export class AgentOrchestratorSession {
         /*
          * [TOOL CALL INTERCEPTION]
          * - ThoughtParser가 <tool_call> JSON을 파싱 완료하면 이 콜백이 실행된다.
-         * - 도구 요청을 pendingToolCall에 저장하여 스트리밍 완료 후 처리한다.
+         * - 도구 요청을 pendingToolCalls 배열에 저장하여 스트리밍 완료 후 처리한다.
          */
-        this.pendingToolCall = request
+        this.pendingToolCalls.push(request)
         this.emitEvent({ type: 'tool_call_start', toolName: request.name, toolArgs: request.args })
       },
       onFinalAnswerToken: (token, accumulated) => {
@@ -262,8 +263,8 @@ export class AgentOrchestratorSession {
          * [SELF-HEALING INTEGRATION POINT]
          * - ThoughtParser에서 <tool_call> JSON 파싱이 실패하면 이 콜백이 호출된다.
          * - selfHealingMiddleware가 주입된 경우 비동기 복구를 시도한다.
-         * - 복구 성공 시 healedJson을 파싱하여 pendingToolCall에 저장한다.
-         * - 미주입 또는 복구 실패 시 pendingToolCall은 null 상태를 유지한다.
+         * - 복구 성공 시 healedJson을 파싱하여 pendingToolCalls에 저장한다.
+         * - 미주입 또는 복구 실패 시 무시한다.
          *
          * 주의: ThoughtParser.onToolCallParseError는 동기 콜백이지만
          * SelfHealingMiddleware는 비동기(async)이므로 void IIFE 패턴을 사용한다.
@@ -287,16 +288,16 @@ export class AgentOrchestratorSession {
               try {
                 const healed = JSON.parse(result.healedJson) as ToolCallRequest
                 if (healed.name && typeof healed.name === 'string') {
-                  this.pendingToolCall = { name: healed.name, args: healed.args ?? {} }
+                  this.pendingToolCalls.push({ name: healed.name, args: healed.args ?? {} })
                   this.emitEvent({
                     type: 'tool_call_start',
                     toolName: healed.name,
                     toolArgs: healed.args ?? {}
                   })
-                  ipc.llmAddLog({
-                    text: `[AgentOrchestrator] Self-Healing 복구 성공 (${result.method}). 도구: ${healed.name}`,
-                    prefix: 'SelfHeal'
-                  })
+                    ipc.llmAddLog({
+                      text: `[AgentOrchestrator] Self-Healing 파싱 복구 완료 (ACTION_APPLIED). 도구: ${healed.name}`,
+                      prefix: 'SelfHeal'
+                    })
                 }
               } catch (reparseErr: unknown) {
                 const msg = reparseErr instanceof Error ? reparseErr.message : String(reparseErr)
@@ -560,7 +561,7 @@ export class AgentOrchestratorSession {
         goal: userMessage,
         thought: this.parser.getAccumulatedThought() ?? '',
         partialAnswer: this.accumulatedAnswer,
-        toolState: this.pendingToolCall ? JSON.stringify(this.pendingToolCall) : '',
+        toolState: this.pendingToolCalls.length > 0 ? JSON.stringify(this.pendingToolCalls) : '',
         step: this.currentTurn,
         contextMessages: this.contextMessages,
         tasks: this.taskGraph ? this.taskGraph.getTasks() : [] // 태스크 상태 직렬화 추가
@@ -627,7 +628,8 @@ export class AgentOrchestratorSession {
           continue
         }
 
-        ipc.llmAddLog({ text: `[AgentOrchestrator] 태스크 실행 개시: ${currentTask.id} (${currentTask.title})`, prefix: 'Orchestrator' })
+        const isV2 = V2RuntimeFeatureFlag.isV2OwnershipAcquired?.(this.sessionId) ?? false;
+        ipc.llmAddLog({ text: `[AgentOrchestrator] [${isV2 ? 'V2-Runtime' : 'Legacy-Runtime'}] 태스크 실행 개시: ${currentTask.id} (${currentTask.title})`, prefix: 'Orchestrator' })
         syncUIState()
 
         let verifyPassed = false;
@@ -715,9 +717,36 @@ export class AgentOrchestratorSession {
           ipc.llmAddLog({ text: `[AgentOrchestrator] 태스크 ${currentTask.id} 수행 또는 검증 실패 (시도 ${currentTask.retries}/${currentTask.maxRetries})`, prefix: 'Orchestrator' })
           
           if (currentTask.retries > currentTask.maxRetries) {
-            // Skip 처리
-            this.taskQueue.setSkipped(currentTask.id)
-            break
+            // [Issue 7] 필수 태스크는 자동 스킵하지 않고 USER_ASSIST 대기로 전환
+            if ((currentTask as any).required) {
+              ipc.llmAddLog({ text: `[AgentOrchestrator] 필수 태스크 ${currentTask.id} 실패. 사용자 개입(WAITING_USER)을 대기합니다.`, prefix: 'Orchestrator' });
+              
+              if (typeof this.taskStore !== 'undefined') {
+                 UserAssistRuntime.getInstance(this.taskStore).createRequest({
+                    missionId: this.sessionId,
+                    taskId: currentTask.id,
+                    attemptId: `attempt_${crypto.randomUUID()}`,
+                    title: `필수 태스크 실패: ${currentTask.title}`,
+                    summary: '최대 재시도 횟수 초과',
+                    failureReason: '반복된 에러로 인한 진행 불가',
+                    completedWork: '',
+                    missingWork: '필수 작업 미완수',
+                    recoveryAttempts: currentTask.retries,
+                    isTaskRequired: true
+                 });
+              } else {
+                 this.taskQueue.updateTaskStatus(currentTask.id, 'WAITING_USER');
+              }
+              
+              // 사용자가 다시 재개할 때까지 현재 루프 중단
+              break;
+            }
+
+            this.taskQueue.setSkipped(currentTask.id, {
+              status: 'ERROR',
+              error: `태스크 ${currentTask.id}의 최대 재시도 횟수(${currentTask.maxRetries})를 초과하여 스킵 처리되었습니다.`
+            });
+            break;
           } else {
             this.taskQueue.setFailed(currentTask.id)
             syncUIState()
@@ -789,7 +818,8 @@ export class AgentOrchestratorSession {
 
         const criticVerdict = this.critic.evaluateThought(this.parser.getAccumulatedThought() ?? '')
         if (criticVerdict === 'stalled') {
-          void RecoveryEngine.getInstance().handleStall('TOKEN_FREEZE', this.buildRecoveryBridge())
+          // [Issue 5] 의미론적 실패(Validation Fail)를 TOKEN_FREEZE로 오분류하지 않음
+          ipc.llmAddLog({ text: '[AgentOrchestrator] CriticAgent: 사고 흐름 정체(Stalled) 감지', prefix: 'Orchestrator' })
         }
 
         /*
@@ -842,6 +872,17 @@ export class AgentOrchestratorSession {
    * @param request - ThoughtParser가 파싱한 도구 호출 요청
    */
   public async executeToolAndObserve(request: ToolCallRequest): Promise<void> {
+    const idempotencyKey = crypto.subtle ? 
+      Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(request.name + JSON.stringify(request.args)))))
+        .map(b => b.toString(16).padStart(2, '0')).join('') :
+      request.name + JSON.stringify(request.args); // Fallback if crypto is unavailable
+      
+    if (this.executedToolHashes.has(idempotencyKey)) {
+      console.warn(`[AgentOrchestrator] 중복 도구 호출 감지 (Idempotency Key: ${idempotencyKey}), 스킵합니다.`, request.name);
+      return;
+    }
+    this.executedToolHashes.add(idempotencyKey);
+
     this.emitPhaseChange('tool_calling')
     ipc.llmAddLog({
       text: `[AgentOrchestrator] 도구 실행: ${request.name}(${JSON.stringify(request.args)})`,
@@ -852,6 +893,13 @@ export class AgentOrchestratorSession {
 
     this.emitPhaseChange('observing')
     this.emitEvent({ type: 'tool_call_end', result } as any)
+
+    if (result.success) {
+      ipc.llmAddLog({
+        text: `[AgentOrchestrator] 도구 실행 성공. 장애 RESOLVED.`,
+        prefix: 'Orchestrator'
+      })
+    }
 
     if (request.name === 'write_file' && result.success && request.args && typeof request.args.path === 'string') {
       try {
@@ -1060,7 +1108,7 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
           this.accumulatedAnswer = checkpoint.partialAnswer
           this.currentTurn = checkpoint.step
           if (checkpoint.toolState) {
-            this.pendingToolCall = JSON.parse(checkpoint.toolState)
+            this.pendingToolCalls = JSON.parse(checkpoint.toolState)
           }
           this.parser.reset()
           this.parser.feed(checkpoint.thought)

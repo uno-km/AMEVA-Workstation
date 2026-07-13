@@ -316,9 +316,11 @@ class LlamaLocalEngineAdapter implements ILLMEngineAdapter {
    * [PRIVATE STATE]
    * - endpointUrl: llama-server 주소. 기본값 http://localhost:12345.
    * - abortController: fetch 스트리밍 중단 제어기.
+   * - blockedPayloads: 에러가 발생한 요청 페이로드를 일시적으로 차단하기 위한 맵
    */
   private readonly endpointUrl: string
   private abortController: AbortController | null = null
+  private blockedPayloads: Map<string, number> = new Map()
 
   constructor(endpointUrl: string = 'http://localhost:12345') {
     this.endpointUrl = endpointUrl
@@ -353,18 +355,38 @@ class LlamaLocalEngineAdapter implements ILLMEngineAdapter {
     this.abortController = new AbortController()
 
     try {
+      const payloadString = JSON.stringify({
+        messages,
+        stream: true,
+        temperature: 0.1
+      });
+
+      let payloadHash = '';
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        payloadHash = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(payloadString))))
+          .map(b => b.toString(16).padStart(2, '0')).join('');
+      } else {
+        // Fallback for missing crypto
+        payloadHash = `hash-${payloadString.length}`;
+      }
+
+      const blockExpiry = this.blockedPayloads.get(payloadHash);
+      if (blockExpiry && Date.now() < blockExpiry) {
+        throw new Error(`[LlamaLocalEngineAdapter] TTL Blocked Bad Payload (Hash: ${payloadHash})`);
+      }
+
       const response = await fetch(`${this.endpointUrl}/v1/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages,
-          stream: true,
-          temperature: 0.1
-        }),
+        body: payloadString,
         signal: this.abortController.signal
       })
 
       if (!response.ok) {
+        if (response.status === 400) {
+          this.blockedPayloads.set(payloadHash, Date.now() + 60000); // 1 minute TTL
+          console.error(`[LlamaLocalEngineAdapter] 400 Bad Request. Blocked Payload Hash: ${payloadHash}`);
+        }
         throw new Error(`Llama.cpp HTTP Error: ${response.status}`)
       }
 

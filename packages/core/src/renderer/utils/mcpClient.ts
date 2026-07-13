@@ -53,6 +53,15 @@ export class MCPClientManager {
   private static servers: MCPServerConfig[] = []
   private static cachedTools: Map<string, MCPTool[]> = new Map()
 
+  // Circuit Breaker State
+  private static circuitState: 'CLOSED' | 'OPEN' | 'HALF_OPEN' = 'CLOSED'
+  private static failureCount: number = 0
+  private static lastFailureTime: number = 0
+  private static readonly MAX_FAILURES = 3
+  private static currentBackoffMs: number = 1000
+  private static inFlightRequests: Map<string, Promise<Response>> = new Map()
+  private static abortController: AbortController | null = null;
+
   /** 백엔드 플랜 상태와 동기화 (우회 시도 방지 및 교차 검증) */
   static async syncPlanStatus(): Promise<boolean> {
       /*
@@ -504,81 +513,105 @@ export class MCPClientManager {
     return this.mcpToken
   }
 
+  private static handleFetchFailure() {
+    this.failureCount++;
+    this.lastFailureTime = Date.now();
+    if (this.circuitState === 'HALF_OPEN' || this.failureCount >= this.MAX_FAILURES) {
+      this.circuitState = 'OPEN';
+      this.currentBackoffMs = Math.min(this.currentBackoffMs * 2, 30000);
+      console.error(`[MCPClientManager] Circuit Breaker OPEN. Backoff: ${this.currentBackoffMs}ms`);
+      
+      // TODO: Runtime CapabilityCatalog와 UI Store 모두에 UNAVAILABLE 반영 (외부 호출 통해 위임)
+      const event = new CustomEvent('mcp_circuit_breaker_open');
+      window.dispatchEvent(event);
+    }
+  }
+
+  public static unmountAbort() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+    this.inFlightRequests.clear();
+  }
+
   /** localhost / 127.0.0.1 네트워크 바인딩 실패 시 상호 폴백 재시도 헬퍼 */
   private static async safeMcpFetch(url: string, body: any): Promise<Response> {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `token`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const token = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const token = await this.getOrFetchToken()
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    }
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `token`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (token)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+    if (this.circuitState === 'OPEN') {
+      if (Date.now() - this.lastFailureTime > this.currentBackoffMs) {
+        this.circuitState = 'HALF_OPEN';
+      } else {
+        throw new Error('MCP Circuit is OPEN. Connection is UNAVAILABLE.');
+      }
     }
 
-    try {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `res`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body)
-      })
-      return res
-    } catch (e) {
-      // 127.0.0.1 -> localhost 폴백
-      if (url.includes('127.0.0.1')) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fallbackUrl`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fallbackUrl = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const fallbackUrl = url.replace('127.0.0.1', 'localhost')
-        console.warn(`[MCPClientManager] 127.0.0.1 fetch 실패. localhost 폴백 재시도... URL: ${fallbackUrl}`)
-        return await fetch(fallbackUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body)
-        })
-      }
-      // localhost -> 127.0.0.1 폴백
-      if (url.includes('localhost')) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `fallbackUrl`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const fallbackUrl = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-        const fallbackUrl = url.replace('localhost', '127.0.0.1')
-        console.warn(`[MCPClientManager] localhost fetch 실패. 127.0.0.1 폴백 재시도... URL: ${fallbackUrl}`)
-        return await fetch(fallbackUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body)
-        })
-      }
-      throw e
+    const requestKey = `${url}-${JSON.stringify(body)}`;
+    if (this.inFlightRequests.has(requestKey)) {
+      return this.inFlightRequests.get(requestKey)!;
     }
+
+    if (!this.abortController) {
+      this.abortController = new AbortController();
+    }
+
+    const fetchPromise = (async () => {
+      const token = await this.getOrFetchToken()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      }
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+
+      const doFetch = async (targetUrl: string) => {
+        const res = await fetch(targetUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+          signal: this.abortController!.signal
+        });
+        if (!res.ok && res.status >= 500) {
+          throw new Error(`HTTP Error ${res.status}`);
+        }
+        return res;
+      };
+
+      try {
+        let res: Response;
+        try {
+          res = await doFetch(url);
+        } catch (e: any) {
+          if (e.name === 'AbortError') throw e;
+          if (url.includes('127.0.0.1')) {
+            const fallbackUrl = url.replace('127.0.0.1', 'localhost');
+            console.warn(`[MCPClientManager] 127.0.0.1 fetch 실패. localhost 폴백 재시도... URL: ${fallbackUrl}`);
+            res = await doFetch(fallbackUrl);
+          } else if (url.includes('localhost')) {
+            const fallbackUrl = url.replace('localhost', '127.0.0.1');
+            console.warn(`[MCPClientManager] localhost fetch 실패. 127.0.0.1 폴백 재시도... URL: ${fallbackUrl}`);
+            res = await doFetch(fallbackUrl);
+          } else {
+            throw e;
+          }
+        }
+
+        // 성공
+        this.circuitState = 'CLOSED';
+        this.failureCount = 0;
+        this.currentBackoffMs = 1000;
+        return res;
+      } catch (e: any) {
+        if (e.name !== 'AbortError') {
+          this.handleFetchFailure();
+        }
+        throw e;
+      } finally {
+        this.inFlightRequests.delete(requestKey);
+      }
+    })();
+
+    this.inFlightRequests.set(requestKey, fetchPromise);
+    return fetchPromise;
   }
 }
 

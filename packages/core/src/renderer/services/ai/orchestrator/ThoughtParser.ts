@@ -341,55 +341,98 @@ export class ThoughtParser {
    */
   private processToolCallState(): void {
     if (!this.buffer.includes(ThoughtParser.TOOL_CALL_CLOSE_TAG)) {
-      /*
-       * [ACCUMULATE TOOL CALL JSON]
-       * - 닫기 태그가 아직 없으면 버퍼를 계속 누적한다.
-       */
       this.toolCallAccumulator = this.buffer
       return
     }
 
-    /*
-     * [PARSE TOOL CALL JSON]
-     * - </tool_call> 태그가 발견되면 누적된 JSON 문자열을 파싱한다.
-     */
     const parts = this.buffer.split(ThoughtParser.TOOL_CALL_CLOSE_TAG)
-    const jsonStr = this.toolCallAccumulator + parts[0]
+    const rawContent = this.toolCallAccumulator + parts[0]
     const afterClose = parts.slice(1).join(ThoughtParser.TOOL_CALL_CLOSE_TAG)
 
     this.toolCallAccumulator = ''
     this.buffer = afterClose
 
-    try {
-      const parsed = JSON.parse(jsonStr.trim()) as ToolCallRequest
-      if (parsed.name && typeof parsed.name === 'string') {
-        this.callbacks.onToolCall({
-          name: parsed.name,
-          args: parsed.args ?? {}
-        })
-      } else {
-        console.error('[ThoughtParser] tool_call JSON에 name 필드가 없습니다:', jsonStr)
-      }
-    } catch (parseErr: unknown) {
-      const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr)
-      console.error('[ThoughtParser] tool_call JSON 파싱 실패:', errMsg, '원본:', jsonStr)
+    const jsonStrings = this.extractJsonObjects(rawContent)
 
-      /*
-       * [SELF-HEALING HOOK CALL]
-       * - onToolCallParseError 콜백이 주입된 경우 AgentOrchestrator에 오류를 전달한다.
-       * - AgentOrchestrator는 SelfHealingMiddleware를 통해 Phase 1 → Phase 2 복구를 시도한다.
-       * - 선택적 콜백이므로 미주입 시에는 기존 동작(에러 로그만).
-       */
+    if (jsonStrings.length === 0) {
+      const errMsg = "No valid JSON object found in tool_call block."
+      console.error('[ThoughtParser] tool_call JSON 추출 실패:', errMsg, '원본:', rawContent)
       if (this.callbacks.onToolCallParseError) {
-        this.callbacks.onToolCallParseError(jsonStr.trim(), errMsg)
+        this.callbacks.onToolCallParseError(rawContent.trim(), errMsg)
+      }
+    } else {
+      for (const jsonStr of jsonStrings) {
+        try {
+          const parsed = JSON.parse(jsonStr) as ToolCallRequest
+          if (parsed.name && typeof parsed.name === 'string') {
+            this.callbacks.onToolCall({
+              name: parsed.name,
+              args: parsed.args ?? {}
+            })
+          } else {
+            console.error('[ThoughtParser] tool_call JSON에 name 필드가 없습니다:', jsonStr)
+          }
+        } catch (parseErr: unknown) {
+          const errMsg = parseErr instanceof Error ? parseErr.message : String(parseErr)
+          console.error('[ThoughtParser] 개별 tool_call JSON 파싱 실패:', errMsg, '원본:', jsonStr)
+          if (this.callbacks.onToolCallParseError) {
+            this.callbacks.onToolCallParseError(jsonStr.trim(), errMsg)
+          }
+        }
       }
     }
 
-    /*
-     * [STATE TRANSITION: in_tool_call → idle]
-     * - 도구 호출 처리 후 idle로 복귀하여 다음 구간을 처리한다.
-     */
     this.state = 'idle'
+  }
+
+  /**
+   * 내부 텍스트에서 Balanced-Brace 스캐닝 방식으로 중괄호 쌍({ })이 일치하는 모든 JSON 객체 문자열을 추출합니다.
+   * 여러 개의 JSON, 이스케이프 문자, 문자열 내부의 중괄호, 불필요한 마크다운 코드 펜스 등을 안전하게 우회합니다.
+   */
+  private extractJsonObjects(text: string): string[] {
+    const results: string[] = []
+    let braceCount = 0
+    let inString = false
+    let escape = false
+    let startIndex = -1
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i]
+
+      if (escape) {
+        escape = false
+        continue
+      }
+
+      if (char === '\\') {
+        escape = true
+        continue
+      }
+
+      if (char === '"') {
+        inString = !inString
+        continue
+      }
+
+      if (!inString) {
+        if (char === '{') {
+          if (braceCount === 0) {
+            startIndex = i
+          }
+          braceCount++
+        } else if (char === '}') {
+          braceCount--
+          if (braceCount === 0 && startIndex !== -1) {
+            results.push(text.substring(startIndex, i + 1))
+            startIndex = -1
+          } else if (braceCount < 0) {
+            braceCount = 0
+            startIndex = -1
+          }
+        }
+      }
+    }
+    return results
   }
 
   /**

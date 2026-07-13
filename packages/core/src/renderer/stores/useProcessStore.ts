@@ -232,3 +232,16 @@ export const useProcessStore = create<ProcessState>((set) => ({
     })
 }))
 
+// MCP Circuit Breaker 연동
+if (typeof window !== 'undefined') {
+  window.addEventListener('mcp_circuit_breaker_open', () => {
+    useProcessStore.setState((state) => {
+      const updatedServers = state.mcpServersState.map((server: any) => ({
+        ...server,
+        status: 'UNAVAILABLE'
+      }));
+      return { mcpServersState: updatedServers };
+    });
+  });
+}
+

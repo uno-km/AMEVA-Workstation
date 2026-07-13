@@ -57,7 +57,14 @@ export class CapabilityCatalog {
    * - Semantic Verifier: LLM Adapter 연결됨 (STAGE D 완성 후 활성화)
    * - Sub-Agent: NOT_IMPLEMENTED
    */
-  private readonly _toolRuntimeStatus: ToolRuntimeConnectionStatus = 'PARTIALLY_CONNECTED';
+  private _toolRuntimeStatus: ToolRuntimeConnectionStatus = 'PARTIALLY_CONNECTED';
+
+  constructor() {
+    window.addEventListener('mcp_circuit_breaker_open', () => {
+      this._toolRuntimeStatus = 'UNAVAILABLE';
+      console.warn('[CapabilityCatalog] MCP Circuit Breaker OPEN 감지, 연결 상태를 UNAVAILABLE로 전환합니다.');
+    });
+  }
 
   public hasCapability(cap: string): boolean {
     return this.availableCapabilities.has(cap);

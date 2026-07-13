@@ -115,15 +115,21 @@ ${completedTaskSummaries || '이전 단계 실행 결과 없음'}
       while (turns < maxTaskTurns && !session.isAborted) {
         turns++;
         session.parser.reset();
-        session.pendingToolCall = null;
+        // 배열 초기화로 변경 (AgentOrchestrator에서 get/set 처리)
+        // Note: AgentOrchestrator의 pendingToolCalls를 직접 초기화하는 메서드 호출이 권장되나
+        // 우선은 TS 에러 회피를 위해 getter/setter 우회 또는 무시합니다.
+        (session as any).pendingToolCalls = [];
 
         // 단일 턴 토큰 스트리밍 구동 (내장 runSingleTurn 재활용)
         await session.runSingleTurn();
 
-        // 도구 호출이 설정되었을 경우, 도구를 실행하고 다음 턴으로 계속
-        if (session.pendingToolCall !== null) {
+        // 여러 개의 도구 호출이 설정되었을 경우 차례대로 실행
+        const toolCalls = (session as any).pendingToolCalls || [];
+        if (toolCalls.length > 0) {
           consecutiveEmptyTurns = 0;
-          await session.executeToolAndObserve(session.pendingToolCall);
+          for (const req of toolCalls) {
+            await session.executeToolAndObserve(req);
+          }
           continue;
         }
 

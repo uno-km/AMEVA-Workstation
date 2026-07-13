@@ -85,6 +85,10 @@ export interface AIState {
   agentTaskPlanCollapsed: boolean;
   setAgentTaskPlanCollapsed: (collapsed: boolean) => void;
 
+  /** persistent reasoning logs를 위한 디버그 모드 (Issue 8) */
+  agentDebugMode: boolean;
+  setAgentDebugMode: (debugMode: boolean) => void;
+
   /** 최종 작성된 미션 성적 보고서 마크다운 */
   finalReport: string | null;
   setFinalReport: (report: string | null) => void;
@@ -241,10 +245,13 @@ export const useAIState = create<AIState>((set) => ({
   }),
 
   taskProgress: 0,
-  setTaskProgress: (taskProgress) => set({ taskProgress }),
+  setTaskProgress: (progress) => set({ taskProgress: progress }),
 
   agentTaskPlanCollapsed: false,
-  setAgentTaskPlanCollapsed: (agentTaskPlanCollapsed) => set({ agentTaskPlanCollapsed }),
+  setAgentTaskPlanCollapsed: (collapsed) => set({ agentTaskPlanCollapsed: collapsed }),
+
+  agentDebugMode: false,
+  setAgentDebugMode: (debugMode) => set({ agentDebugMode: debugMode }),
 
   finalReport: null,
   setFinalReport: (finalReport) => set({ finalReport }),
