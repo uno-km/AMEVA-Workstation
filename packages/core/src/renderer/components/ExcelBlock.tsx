@@ -73,24 +73,26 @@ const ExcelBlockSpec = createReactBlockSpec(
       })
 
       const handleSave = (latestData?: any) => {
-        try {
-          let allData = latestData
-          if (!allData || !Array.isArray(allData)) {
-            if (!workbookRef.current || typeof workbookRef.current.getAllSheets !== 'function') return
-            allData = workbookRef.current.getAllSheets()
-          }
-          if (!allData) return
+        setTimeout(() => {
+          try {
+            let allData = latestData
+            if (!allData || !Array.isArray(allData)) {
+              if (!workbookRef.current || typeof workbookRef.current.getAllSheets !== 'function') return
+              allData = workbookRef.current.getAllSheets()
+            }
+            if (!allData) return
 
-          const newDataString = JSON.stringify(allData)
-          if (newDataString !== props.block.props.data) {
-            props.editor.updateBlock(props.block.id, {
-              type: 'excel',
-              props: { data: newDataString }
-            })
+            const newDataString = JSON.stringify(allData)
+            if (newDataString !== props.block.props.data) {
+              props.editor.updateBlock(props.block.id, {
+                type: 'excel',
+                props: { data: newDataString }
+              })
+            }
+          } catch (e) {
+            console.error('Failed to save excel data', e)
           }
-        } catch (e) {
-          console.error('Failed to save excel data', e)
-        }
+        }, 100)
       }
       const handleExportTable = async () => {
         if (!workbookRef.current) return
