@@ -62,6 +62,7 @@ const ExcelBlockSpec = createReactBlockSpec(
         } catch (e) {
           console.error('Failed to save excel data', e)
         }
+      }
       const handleExportTable = async () => {
         if (!workbookRef.current) return
         try {
