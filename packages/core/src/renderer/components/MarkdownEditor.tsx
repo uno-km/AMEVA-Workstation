@@ -692,7 +692,9 @@ export function MarkdownEditor({
             />
           </BlockNoteView>
         ) : editorMode === 'preview' ? (
-          <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable={false} slashMenu={false} />
+          <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable={false}>
+            <></>
+          </BlockNoteView>
         ) : (
           /* RAW 마크다운 원문 텍스트 영역 직접 편집 뷰 */
           <div style={{
