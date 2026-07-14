@@ -271,106 +271,98 @@ export function blocksToHTML(rawBlocks: any): string {
      * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
      * - 예시: `case 'codeBlock': {` 만족 시 해당 포맷 바이너리 빌더 호출.
      */
-      case 'excel': {
-        const excelDataRaw = block.props?.data || '[]'
-        try {
-          const sheets = JSON.parse(excelDataRaw)
-          if (Array.isArray(sheets) && sheets.length > 0) {
-            let html = ''
-            for (const sheet of sheets) {
-              const celldata = sheet.celldata || []
-              if (celldata.length === 0) continue
-              
-              let maxRow = 0
-              let maxCol = 0
-              for (const cell of celldata) {
-                if (cell.r > maxRow) maxRow = cell.r
-                if (cell.c > maxCol) maxCol = cell.c
-              }
-              
-              const grid: any[][] = Array(maxRow + 1).fill(null).map(() => Array(maxCol + 1).fill(null))
-              for (const cell of celldata) {
-                grid[cell.r][cell.c] = cell.v
-              }
-
-              html += `<div style="margin-bottom: 2rem;">`
-              html += `<h4 style="margin-bottom: 0.5rem; color: #475569;">[Excel] ${escapeHtml(sheet.name || 'Sheet')}</h4>`
-              html += `<table border="1" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 13px;">\n<tbody>\n`
-              
-              for (let r = 0; r <= maxRow; r++) {
-                html += '<tr>\n'
-                for (let c = 0; c <= maxCol; c++) {
-                  const v = grid[r][c]
-                  let val = ''
-                  if (v) {
-                    if (typeof v === 'string' || typeof v === 'number') val = String(v)
-                    else if (v.m !== undefined) val = String(v.m)
-                    else if (v.v !== undefined) val = String(v.v)
-                  }
-                  html += `<td style="border: 1px solid #cbd5e1; padding: 4px 8px; min-width: 50px;">${escapeHtml(val)}</td>\n`
-                }
-                html += '</tr>\n'
-              }
-              html += '</tbody>\n</table>\n</div>\n'
-            }
-            return html || `<p><em>(Empty Excel Block)</em></p>\n`
-          }
-        } catch (e) {
-          console.error('Failed to render excel for export', e)
-        }
-        return `<p><em>(Invalid Excel Data)</em></p>\n`
-      }
-      case 'kanban': {
-        const kanbanDataRaw = block.props?.data || '{}'
-        try {
-          const board = JSON.parse(kanbanDataRaw)
-          const cols = board.columns || []
-          if (cols.length === 0) return `<p><em>(Empty Kanban Board)</em></p>\n`
-          
-          let html = `<div style="margin-bottom: 2rem;">`
-          html += `<h4 style="margin-bottom: 1rem; color: #475569;">[Kanban Board]</h4>`
-          html += `<table style="width: 100%; border-collapse: separate; border-spacing: 16px 0; table-layout: fixed;">\n<tbody>\n<tr>\n`
-          
-          for (const col of cols) {
-            html += `<td style="vertical-align: top; background: #f8fafc; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; width: ${100/cols.length}%;">`
-            html += `<h5 style="margin-bottom: 12px; font-size: 14px; font-weight: 600; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">${escapeHtml(col.title || 'Untitled')} (${col.cards?.length || 0})</h5>`
-            html += `<ul style="list-style: none; padding: 0; margin: 0;">`
-            
-            const cards = col.cards || []
-            for (const card of cards) {
-              html += `<li style="background: #ffffff; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">`
-              html += `<strong style="font-size: 14px; color: #1e293b; display: block; margin-bottom: 4px;">${escapeHtml(card.title || '')}</strong>`
-              if (card.description) {
-                html += `<span style="font-size: 12px; color: #64748b; display: block; white-space: pre-wrap;">${escapeHtml(card.description)}</span>`
-              }
-              html += `</li>`
-            }
-            html += `</ul></td>\n`
-          }
-          
-          html += `</tr>\n</tbody>\n</table>\n</div>\n`
-          return html
-        } catch (e) {
-          console.error('Failed to render kanban for export', e)
-        }
-        return `<p><em>(Invalid Kanban Data)</em></p>\n`
-      }
       case 'codeBlock': {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `lang`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const lang = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         const lang = block.props?.language || ''
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `code`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const code = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+        
+        // INTERCEPT AMEVA-EXCEL
+        if (lang === 'ameva-excel') {
+          const excelDataRaw = getPlainTextFromNormalized(block) || '[]'
+          try {
+            const sheets = JSON.parse(excelDataRaw)
+            if (Array.isArray(sheets) && sheets.length > 0) {
+              let html = ''
+              for (const sheet of sheets) {
+                const celldata = sheet.celldata || []
+                if (celldata.length === 0) continue
+                
+                let maxRow = 0
+                let maxCol = 0
+                for (const cell of celldata) {
+                  if (cell.r > maxRow) maxRow = cell.r
+                  if (cell.c > maxCol) maxCol = cell.c
+                }
+                
+                const grid: any[][] = Array(maxRow + 1).fill(null).map(() => Array(maxCol + 1).fill(null))
+                for (const cell of celldata) {
+                  grid[cell.r][cell.c] = cell.v
+                }
+
+                html += `<div style="margin-bottom: 2rem;">`
+                html += `<h4 style="margin-bottom: 0.5rem; color: #475569;">[Excel] ${escapeHtml(sheet.name || 'Sheet')}</h4>`
+                html += `<table border="1" style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; font-size: 13px;">\n<tbody>\n`
+                
+                for (let r = 0; r <= maxRow; r++) {
+                  html += '<tr>\n'
+                  for (let c = 0; c <= maxCol; c++) {
+                    const v = grid[r][c]
+                    let val = ''
+                    if (v) {
+                      if (typeof v === 'string' || typeof v === 'number') val = String(v)
+                      else if (v.m !== undefined) val = String(v.m)
+                      else if (v.v !== undefined) val = String(v.v)
+                    }
+                    html += `<td style="border: 1px solid #cbd5e1; padding: 4px 8px; min-width: 50px;">${escapeHtml(val)}</td>\n`
+                  }
+                  html += '</tr>\n'
+                }
+                html += '</tbody>\n</table>\n</div>\n'
+              }
+              return html || `<p><em>(Empty Excel Block)</em></p>\n`
+            }
+          } catch (e) {
+            console.error('Failed to render excel for export', e)
+          }
+          return `<p><em>(Invalid Excel Data)</em></p>\n`
+        }
+
+        // INTERCEPT AMEVA-KANBAN
+        if (lang === 'ameva-kanban') {
+          const kanbanDataRaw = getPlainTextFromNormalized(block) || '{}'
+          try {
+            const board = JSON.parse(kanbanDataRaw)
+            const cols = board.columns || []
+            if (cols.length === 0) return `<p><em>(Empty Kanban Board)</em></p>\n`
+            
+            let html = `<div style="margin-bottom: 2rem;">`
+            html += `<h4 style="margin-bottom: 1rem; color: #475569;">[Kanban Board]</h4>`
+            html += `<table style="width: 100%; border-collapse: separate; border-spacing: 16px 0; table-layout: fixed;">\n<tbody>\n<tr>\n`
+            
+            for (const col of cols) {
+              html += `<td style="vertical-align: top; background: #f8fafc; border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0; width: ${100/cols.length}%;">`
+              html += `<h5 style="margin-bottom: 12px; font-size: 14px; font-weight: 600; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">${escapeHtml(col.title || 'Untitled')} (${col.cards?.length || 0})</h5>`
+              html += `<ul style="list-style: none; padding: 0; margin: 0;">`
+              
+              const cards = col.cards || []
+              for (const card of cards) {
+                html += `<li style="background: #ffffff; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">`
+                html += `<strong style="font-size: 14px; color: #1e293b; display: block; margin-bottom: 4px;">${escapeHtml(card.title || '')}</strong>`
+                if (card.description) {
+                  html += `<span style="font-size: 12px; color: #64748b; display: block; white-space: pre-wrap;">${escapeHtml(card.description)}</span>`
+                }
+                html += `</li>`
+              }
+              html += `</ul></td>\n`
+            }
+            
+            html += `</tr>\n</tbody>\n</table>\n</div>\n`
+            return html
+          } catch (e) {
+            console.error('Failed to render kanban for export', e)
+          }
+          return `<p><em>(Invalid Kanban Data)</em></p>\n`
+        }
+
+        // Default codeblock rendering
         const code = escapeHtml(getPlainTextFromNormalized(block))
         return `<pre><span class="lang-badge">${escapeHtml(lang)}</span><code class="language-${lang}">${code}</code></pre>\n`
       }
