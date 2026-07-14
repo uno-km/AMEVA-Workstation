@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useAppContext } from '../../contexts/AppContext'
-import * as ipc from '../../../services/ipc/electronApiAdapter'
-import { WebLLMEngine } from '../../../services/ai/WebLLMEngine'
+import * as ipc from '../../services/ipc/electronApiAdapter'
+import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
 import { useAIIpc } from './useAIIpc'
 
 export function useLLMInference() {

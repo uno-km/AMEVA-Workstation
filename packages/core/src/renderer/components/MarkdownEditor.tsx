@@ -98,7 +98,7 @@ import mermaid from 'mermaid'
  */
 import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
-import { KanbanBoard } from './KanbanBoard'
+import { DynamicRemotePluginLoader } from './ai/DynamicRemotePluginLoader'
 import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
 // Mermaid 초기화 시도
@@ -382,29 +382,8 @@ export function MarkdownEditor({
    * - installedPlugins: 폰트 강제 변경 등이 설치 완료된 플러그인 리스트.
    */
   const wordWrap = settings?.wordWrap || false
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `showCodeRunner`
-       * - 자료형 / 예상 값: 상태 계산 결과에 따라 동적으로 할당되는 불리언 데이터 타입 (예: true/false).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 연산 소비에 매핑.
-       * - 예시 코드: `const showCodeRunner = ...` 형태로 안전 캐싱하여 가동.
-       */
   const showCodeRunner = settings?.showCodeConsole || false
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `theme`
-       * - 자료형 / 예상 값: 테마 문자열 타입 (예: 'dark' | 'light').
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 테마 색상 코드 매핑에 소비.
-       * - 예시 코드: `const theme = ...` 형태로 안전 캐싱하여 가동.
-       */
   const theme = settings?.theme || 'dark'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `installedPlugins`
-       * - 자료형 / 예상 값: 플러그인 문자열 배열 타입 (예: ['rich-styling']).
-       * - 시나리오: 본 함수 영역 내에서 설치 상태를 보존하고 분기 연산에 소비.
-       * - 예시 코드: `const installedPlugins = ...` 형태로 가동.
-       */
   const installedPlugins = settings?.installedPlugins || []
 
   // Rationale: console.debug 경고 누락 및 미사용 변수 체크 해결
@@ -438,30 +417,9 @@ export function MarkdownEditor({
    * - Rationale: rich-styling 플러그인이 로드되어 있을 때만 선택한 폰트와 크기를 에디터 본문 DOM에 강제 인젝션한다.
    */
   useEffect(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editorContainerRef.current`
-       * - 만족 시: 참조 DOM이 아직 로딩되지 않았으므로 즉시 리턴하여 에러 방지.
-       */
     if (!editorContainerRef.current) return
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `editorDom`
-       * - 자료형 / 예상 값: 에디터 내부 컨테이너 DOM 요소 객체.
-       * - 시나리오: 해당 돔 요소가 화면에 표출되었을 때 폰트 패밀리 및 크기 속성값 할당.
-       */
     const editorDom = editorContainerRef.current.querySelector('.bn-editor') as HTMLElement
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `editorDom`
-       * - 만족 시: 에디터 내부 DOM이 조회가 완료되었으므로 스타일 주입 격발.
-       */
     if (editorDom) {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `hasRichStyling`
-       * - 만족 시: 리치 스타일링 플러그인이 설치되어 있으므로 폰트 커스텀 주입.
-       */
       if (hasRichStyling) {
         editorDom.style.fontFamily = selectedFont
         editorDom.style.fontSize = selectedSize
@@ -494,11 +452,6 @@ export function MarkdownEditor({
   const { selectedImg, setSelectedImg } = useImageLightbox(editorContainerRef)
   const { handleSelection } = useSelectionTracking(editor, onSelectedTextChange, onSelectionChange)
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editor`
-       * - 만족 시: 에디터 인스턴스가 준비되지 않았으므로 로딩 스피너 및 문구 렌더링.
-       */
   if (!editor) {
     return (
       <div style={{ display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
@@ -564,17 +517,7 @@ export function MarkdownEditor({
             title="이 블록을 AI 채팅 컨텍스트로 태그하여 참조"
             onClick={(e) => {
               e.stopPropagation()
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `taggedBlocks.some(b => b.id === hoverBlock.id)`
-       * - 만족 시: 이미 태그된 블록이므로 중복 등록 방지를 위해 리턴 처리.
-       */
               if (taggedBlocks.some(b => b.id === hoverBlock.id)) return
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `snippet`
-       * - 자료형 / 예상 값: 블록 원문이 길 경우 생략하여 담는 문자열 데이터.
-       */
               const snippet = hoverBlock.text.length > 20
                 ? hoverBlock.text.slice(0, 20) + '...'
                 : hoverBlock.text || '본문 문단'
@@ -587,11 +530,6 @@ export function MarkdownEditor({
 
         {/* 작업 참여자의 드래그 선택 범위 박스 실시간 투영 */}
         {peers.map((peer) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!peer.dragSelection?.rects`
-       * - 만족 시: 피어 드래그 범위가 비어있으므로 null 반환.
-       */
           if (!peer.dragSelection?.rects) return null
           return peer.dragSelection.rects.map((rect, idx) => (
             <div
@@ -608,11 +546,6 @@ export function MarkdownEditor({
 
         {/* 작업 참여자 마우스 포인터 실시간 이동 투영 */}
         {peers.map((peer) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!peer.pointer`
-       * - 만족 시: 피어 마우스 포인터 좌표 정보가 없으므로 null 반환.
-       */
           if (!peer.pointer) return null
           return (
             <div
@@ -651,25 +584,11 @@ export function MarkdownEditor({
           />
         ) : editorMode === 'edit' ? (
           <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
-            {/*
-              * [CONTRACT - Stable Component Reference]
-              * - sideMenu prop에 인라인 화살표 함수를 넘기면 부모 리렌더링마다 함수 참조가 
-              *   새로 생성되어 SideMenu가 언마운트/리마운트를 반복하는 렌더링 버그가 발생한다.
-              *   (마우스를 움직일 때마다 사이드 메뉴가 깜빡이는 현상)
-              * - CustomSideMenu를 파일 최상단 영역에 Named 컴포넌트로 분리 정의하여
-              *   안정적인 참조를 보장하고 불필요한 리마운트를 완전히 방어한다.
-              */}
             <SideMenuController sideMenu={CustomSideMenu} />
             {/* 1. 슬래시(/) 명령어 단축 팝업 제어 */}
             <SuggestionMenuController
               triggerCharacter="/"
               getItems={async (query) => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `items`
-       * - 자료형 / 예상 값: 슬래시 명령어 객체 리스트 배열.
-       * - 시나리오: 입력된 query와 매칭되는 커스텀 슬래시 메뉴 목록 필터링 소비.
-       */
                 const items = getCustomSlashMenuItems(editor, installedPlugins)
                 return items.filter(item =>
                   item.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -681,17 +600,7 @@ export function MarkdownEditor({
             <SuggestionMenuController
               triggerCharacter="@"
               getItems={async (query) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!editor`
-       * - 만족 시: 에디터 미지정 시 팝업 아이템으로 빈 배열 반환.
-       */
                 if (!editor) return []
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `peerItems`
-       * - 자료형 / 예상 값: 피어 리스트 기반 멘션 단축 메뉴 배열.
-       */
                 const peerItems = peers.map(p => ({
                   title: p.name || '이름없는 사용자',
                   subtext: '작업 참여자 멘션',
@@ -700,17 +609,7 @@ export function MarkdownEditor({
                     editor.insertInlineContent([{ type: 'text', text: `@${p.name} `, styles: { bold: true } as any }])
                   }
                 }))
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `docItems`
-       * - 자료형 / 예상 값: 탭 문서 리스트 기반 문서 링크 단축 메뉴 배열.
-       */
                 const docItems = tabs.map(t => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `title`
-       * - 자료형 / 예상 값: 탭 경로를 파싱하여 구한 파일명 문자열.
-       */
                   const title = t.filePath ? t.filePath.split(/[\\/]/).pop() || '문서' : '제목 없음'
                   return {
                     title: title,
@@ -772,6 +671,7 @@ export function MarkdownEditor({
        * - 자료형 / 예상 값: 헤더 수준 정수값 (1~6).
        */
                   const level = b.props?.level || 1
+
                   return {
                     title: textContent,
                     subtext: `H${level} 헤더 참조 링크`,
@@ -792,7 +692,7 @@ export function MarkdownEditor({
             />
           </BlockNoteView>
         ) : editorMode === 'kanban' ? (
-          <KanbanBoard editor={editor} />
+          <DynamicRemotePluginLoader pluginId="KanbanBoard" />
         ) : editorMode === 'preview' ? (
           <MarkdownPreview markdown={currentContent} editor={editor} />
         ) : (

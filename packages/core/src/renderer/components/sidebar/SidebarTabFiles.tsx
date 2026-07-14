@@ -20,7 +20,7 @@
 import React, { useState } from 'react'
 import {
   FileText, Save, Download, Terminal, Eye,
-  ChevronDown, ChevronRight, X, Trello
+  ChevronDown, ChevronRight, X, KanbanSquare
 } from 'lucide-react'
 import type { EditorMode, ExportFormat } from '../../../shared/types'
 import type { HotkeyConfig } from '../SettingsModal'
@@ -218,7 +218,7 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
             }}
             title={`칸반 보드 뷰 (Pro)`}
           >
-            <Trello size={12} /> 보드 뷰
+            <KanbanSquare size={12} /> 보드 뷰
           </button>
           <button
             className={`btn btn-glass ${editorMode === 'raw' ? 'active' : ''}`}
