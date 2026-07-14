@@ -57,7 +57,6 @@ export const KanbanBlockSpec = createReactBlockSpec(
     propSchema: {
       data: {
         default: JSON.stringify(DEFAULT_DATA),
-        parse: (v: string) => v
       }
     },
     content: 'none'
@@ -265,6 +264,7 @@ export const KanbanBlockSpec = createReactBlockSpec(
           contentEditable={false}
           style={{ 
             width: '100%', 
+            maxWidth: '100%',
             overflowX: 'auto', 
             padding: '16px 0', 
             display: 'flex', 
@@ -280,6 +280,7 @@ export const KanbanBlockSpec = createReactBlockSpec(
               style={{
                 minWidth: '280px',
                 width: '280px',
+                flexShrink: 0,
                 backgroundColor: 'var(--bg-glass)',
                 border: '1px solid var(--border-muted)',
                 borderRadius: '8px',
@@ -564,6 +565,7 @@ export const KanbanBlockSpec = createReactBlockSpec(
               style={{
                 minWidth: '280px',
                 width: '280px',
+                flexShrink: 0,
                 backgroundColor: 'rgba(255, 255, 255, 0.03)',
                 border: '1px dashed var(--border-muted)',
                 borderRadius: '8px',
@@ -592,31 +594,27 @@ export const KanbanBlockSpec = createReactBlockSpec(
         </div>
       )
     },
-    toExternalHTML: ({ block }) => {
-      let data: KanbanData
-      try {
-        data = JSON.parse(block.props.data)
-      } catch (e) {
-        return <p>Invalid Kanban Data</p>
+    parse: (el) => {
+      let a = el.tagName.toLowerCase() === 'a' ? el : el.querySelector('a')
+      if (a) {
+        const href = a.getAttribute('href')
+        if (href && href.startsWith('ameva-kanban://data/')) {
+          try {
+            const dataStr = href.replace('ameva-kanban://data/', '')
+            return { data: decodeURIComponent(dataStr) }
+          } catch (e) {
+            console.error('Failed to parse Kanban data from link', e)
+          }
+        }
       }
-
+      return undefined
+    },
+    toExternalHTML: ({ block }) => {
+      const dataStr = encodeURIComponent(block.props.data)
       return (
-        <div data-content-type="kanban">
-          <h3>Kanban Board</h3>
-          {data.columns.map(col => (
-            <div key={col.id}>
-              <h4>{col.title} ({col.cards.length})</h4>
-              <ul>
-                {col.cards.map(card => (
-                  <li key={card.id}>
-                    [{card.completed ? 'x' : ' '}] {card.id}: {card.title} (Priority: {card.priority})
-                    {card.assignee ? ` - Assigned to: ${card.assignee.name}` : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <p>
+          <a href={`ameva-kanban://data/${dataStr}`}>[AMEVA Kanban Board Data]</a>
+        </p>
       )
     }
   }

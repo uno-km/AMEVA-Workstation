@@ -225,48 +225,27 @@ const ExcelBlockSpec = createReactBlockSpec(
         </div>
       )
     },
+    parse: (el) => {
+      let a = el.tagName.toLowerCase() === 'a' ? el : el.querySelector('a')
+      if (a) {
+        const href = a.getAttribute('href')
+        if (href && href.startsWith('ameva-excel://data/')) {
+          try {
+            const dataStr = href.replace('ameva-excel://data/', '')
+            return { data: decodeURIComponent(dataStr) }
+          } catch (e) {
+            console.error('Failed to parse Excel data from link', e)
+          }
+        }
+      }
+      return undefined
+    },
     toExternalHTML: ({ block }) => {
-      let sheetData = []
-      try {
-        sheetData = JSON.parse(block.props.data)
-      } catch(e) {}
-      
-      const sheet = sheetData[0]
-      if (!sheet || !sheet.celldata) {
-        return <p>Empty Excel Block</p>
-      }
-
-      let maxR = 0; let maxC = 0;
-      sheet.celldata.forEach((cell: any) => {
-        if (cell.r > maxR) maxR = cell.r;
-        if (cell.c > maxC) maxC = cell.c;
-      });
-
-      if (maxR === 0 && maxC === 0 && (!sheet.celldata[0] || (!sheet.celldata[0].v?.m && !sheet.celldata[0].v?.v))) {
-        return <p>Empty Excel Spreadsheet</p>
-      }
-
-      const matrix: string[][] = Array.from({ length: maxR + 1 }, () => Array(maxC + 1).fill(''));
-      sheet.celldata.forEach((cell: any) => {
-        matrix[cell.r][cell.c] = cell.v?.m || cell.v?.v || '';
-      });
-
+      const dataStr = encodeURIComponent(block.props.data)
       return (
-        <div data-content-type="excel" style={{ overflowX: 'auto', margin: '16px 0' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid #ccc', textAlign: 'left' }}>
-            <tbody>
-              {matrix.map((row, i) => (
-                <tr key={i}>
-                  {row.map((cell, j) => (
-                    <td key={j} style={{ border: '1px solid #ccc', padding: '6px 12px' }}>
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <p>
+          <a href={`ameva-excel://data/${dataStr}`}>[AMEVA Excel Spreadsheet Data]</a>
+        </p>
       )
     }
   }
