@@ -82,7 +82,32 @@ const ExcelBlockSpec = createReactBlockSpec(
             }
             if (!allData) return
 
-            const newDataString = JSON.stringify(allData)
+            // Reconstruct celldata from data matrix and remove huge data array for serialization
+            const processedData = allData.map(sheet => {
+              const copy = { ...sheet }
+              if (copy.data && Array.isArray(copy.data)) {
+                const newCelldata: any[] = []
+                for (let r = 0; r < copy.data.length; r++) {
+                  const row = copy.data[r]
+                  if (Array.isArray(row)) {
+                    for (let c = 0; c < row.length; c++) {
+                      const cell = row[c]
+                      if (cell && cell !== null && Object.keys(cell).length > 0) {
+                        newCelldata.push({ r, c, v: cell })
+                      }
+                    }
+                  }
+                }
+                copy.celldata = newCelldata
+                delete copy.data // remove to save markdown space
+              }
+              // Also remove luckysheet_select_save which can cause focus issues
+              delete copy.luckysheet_select_save
+              delete copy.luckysheet_selection_range
+              return copy
+            })
+
+            const newDataString = JSON.stringify(processedData)
             if (newDataString !== props.block.props.data) {
               props.editor.updateBlock(props.block.id, {
                 type: 'excel',
