@@ -45,6 +45,19 @@ export function MarketplaceModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
+  const handlePreview = (pluginOrId: any) => {
+    let url = '';
+    if (typeof pluginOrId === 'string') {
+      // It's a SaaS plugin ID
+      url = `http://localhost:3010/plugins/premium/${pluginOrId}-preview.html`;
+    } else {
+      // It's a PluginMetadata
+      url = pluginOrId.previewUrl || `http://localhost:3010/plugins/${pluginOrId.type === 'premium' ? 'premium/' : ''}${pluginOrId.id}-preview.html`;
+    }
+    setPreviewUrl(url);
+  }
 
   // 🦾 SaaS 유료 기능 토글 상태 관리
   const [enabledPlugins, setEnabledPlugins] = useState<Record<string, boolean>>({
@@ -463,6 +476,7 @@ export function MarketplaceModal({
               description={p.description}
               isEnabled={enabledPlugins[p.id] ?? false}
               onToggle={handleToggleSaaSPlugin}
+              onPreview={handlePreview}
             />
           ))
         })()}
@@ -474,9 +488,54 @@ export function MarketplaceModal({
             isInstalled={installedPlugins.includes(p.id)}
             isActionLoading={!!actionLoading[p.id]}
             onToggleInstall={handleToggleInstall}
+            onPreview={handlePreview}
           />
         ))}
       </div>
+      
+      {previewUrl && (
+        <div
+          onClick={() => setPreviewUrl(null)}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.8)',
+            backdropFilter: 'blur(10px)',
+            zIndex: 99999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              width: '90%',
+              maxWidth: '1100px',
+              height: '90vh',
+              animation: 'slideUp 0.3s ease'
+            }}
+          >
+            <button
+              onClick={() => setPreviewUrl(null)}
+              style={{
+                position: 'absolute', top: '-40px', right: 0,
+                background: 'transparent', border: 'none', color: '#fff', fontSize: '24px',
+                cursor: 'pointer', opacity: 0.7
+              }}
+              onMouseEnter={e => e.currentTarget.style.opacity = '1'}
+              onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
+            >
+              ✕
+            </button>
+            <iframe
+              src={previewUrl}
+              style={{ width: '100%', height: '100%', border: 'none', borderRadius: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
+            />
+          </div>
+        </div>
+      )}
       
       {/* 슬림 다크 스크롤바 커스텀 주입 */}
       <style>{`

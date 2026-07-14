@@ -22,8 +22,9 @@ export interface PluginMetadata {
   name: string
   description: string
   scriptUrl: string
+  previewUrl?: string
   version: string
-  type: 'tool' | 'feature' | 'collab'
+  type: 'tool' | 'feature' | 'collab' | 'premium'
 }
 
 export interface MarketplaceModalProps {

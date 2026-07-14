@@ -26,6 +26,7 @@ interface SaaSPluginCardProps {
   description: string
   isEnabled: boolean
   onToggle: (id: string) => void
+  onPreview: (id: string) => void
 }
 
   /*
@@ -42,6 +43,7 @@ export function SaaSPluginCard({
   description,
   isEnabled,
   onToggle,
+  onPreview,
 }: SaaSPluginCardProps) {
   return (
     <div
@@ -92,27 +94,51 @@ export function SaaSPluginCard({
         </div>
       </div>
 
-      <button
-        onClick={() => onToggle(id)}
-        style={{
-          padding: '5px 12px',
-          borderRadius: '6px',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          cursor: 'pointer',
-          background: isEnabled ? 'color-mix(in srgb, var(--primary) 20%, transparent)' : 'var(--bg-panel)',
-          border: isEnabled ? '1px solid color-mix(in srgb, var(--primary) 40%, transparent)' : '1px solid var(--border-muted)',
-          color: isEnabled ? 'var(--primary)' : 'var(--text-muted)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          transition: 'all 0.15s',
-          outline: 'none',
-          flexShrink: 0
-        }}
-      >
-        {isEnabled ? 'ENABLED' : 'DISABLED'}
-      </button>
+      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+        <button
+          onClick={() => onPreview(id)}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'var(--text-main)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'all 0.15s',
+            outline: 'none',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+        >
+          👁️ Preview
+        </button>
+
+        <button
+          onClick={() => onToggle(id)}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: isEnabled ? 'color-mix(in srgb, var(--primary) 20%, transparent)' : 'var(--bg-panel)',
+            border: isEnabled ? '1px solid color-mix(in srgb, var(--primary) 40%, transparent)' : '1px solid var(--border-muted)',
+            color: isEnabled ? 'var(--primary)' : 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'all 0.15s',
+            outline: 'none',
+          }}
+        >
+          {isEnabled ? 'ENABLED' : 'DISABLED'}
+        </button>
+      </div>
     </div>
   )
 }

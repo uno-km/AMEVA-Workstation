@@ -25,6 +25,7 @@ interface PluginCardProps {
   isInstalled: boolean
   isActionLoading: boolean
   onToggleInstall: (plugin: PluginMetadata) => void
+  onPreview: (plugin: PluginMetadata) => void
 }
 
   /*
@@ -38,6 +39,7 @@ export function PluginCard({
   isInstalled,
   isActionLoading,
   onToggleInstall,
+  onPreview,
 }: PluginCardProps) {
   return (
     <div
@@ -71,7 +73,7 @@ export function PluginCard({
           </span>
           <span style={{
             fontSize: '9px',
-            color: p.type === 'tool' ? '#f59e0b' : p.type === 'feature' ? '#06b6d4' : '#ec4899',
+            color: p.type === 'tool' ? '#f59e0b' : p.type === 'feature' ? '#06b6d4' : p.type === 'premium' ? '#ec4899' : '#ec4899',
             background: 'rgba(255,255,255,0.03)',
             border: '1px solid rgba(255,255,255,0.05)',
             padding: '1px 5px',
@@ -88,35 +90,59 @@ export function PluginCard({
         </div>
       </div>
 
-      <button
-        onClick={() => onToggleInstall(p)}
-        disabled={isActionLoading}
-        style={{
-          padding: '5px 12px',
-          borderRadius: '6px',
-          fontSize: '11px',
-          fontWeight: 'bold',
-          cursor: isActionLoading ? 'not-allowed' : 'pointer',
-          background: isInstalled ? 'rgba(16,185,129,0.12)' : 'var(--primary)',
-          border: isInstalled ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent',
-          color: isInstalled ? '#34d399' : '#000',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          transition: 'all 0.15s',
-          outline: 'none',
-          flexShrink: 0
-        }}
-      >
-        {isInstalled ? (
-          <>
-            <Check size={11} />
-            Installed
-          </>
-        ) : (
-          'Subscribe'
-        )}
-      </button>
+      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+        <button
+          onClick={() => onPreview(p)}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: 'var(--text-main)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'all 0.15s',
+            outline: 'none',
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+        >
+          👁️ Preview
+        </button>
+
+        <button
+          onClick={() => onToggleInstall(p)}
+          disabled={isActionLoading}
+          style={{
+            padding: '5px 12px',
+            borderRadius: '6px',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            cursor: isActionLoading ? 'not-allowed' : 'pointer',
+            background: isInstalled ? 'rgba(16,185,129,0.12)' : p.type === 'premium' ? 'var(--premium)' : 'var(--primary)',
+            border: isInstalled ? '1px solid rgba(16,185,129,0.3)' : '1px solid transparent',
+            color: isInstalled ? '#34d399' : '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+            transition: 'all 0.15s',
+            outline: 'none',
+          }}
+        >
+          {isInstalled ? (
+            <>
+              <Check size={11} />
+              Installed
+            </>
+          ) : (
+            'Subscribe'
+          )}
+        </button>
+      </div>
     </div>
   )
 }
