@@ -40,37 +40,7 @@ import type { SanitizeResult } from '../responseSanitizer'
 // Minimal test harness (works with vitest AND standalone)
 // ---------------------------------------------------------------------------
 
-type TestFn = () => void | Promise<void>
-
-const suites: Array<{ name: string; tests: Array<{ name: string; fn: TestFn }> }> = []
-let currentSuite: { name: string; tests: Array<{ name: string; fn: TestFn }> } | null = null
-
-// Vitest globals may or may not be available
-declare const describe: ((name: string, fn: () => void) => void) | undefined
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `it`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `it(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
-declare const it: ((name: string, fn: TestFn) => void) | undefined
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `expect`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `expect(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
-declare const expect: ((val: unknown) => Matchers) | undefined
-
-interface Matchers {
-  toBe(expected: unknown): void
-  toEqual(expected: unknown): void
-  toContain(expected: unknown): void
-  not: Matchers
-  toBeTruthy(): void
-  toBeFalsy(): void
-  toStrictEqual(expected: unknown): void
-}
+import { describe, it, expect } from 'vitest'
 
 // ---------------------------------------------------------------------------
 // Test helpers — used in both vitest and standalone modes
@@ -649,14 +619,7 @@ function test16_whitespace(): void {
    * - 예시: `registerVitestSuites(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
    */
 function registerVitestSuites(): void {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `typeof describe === 'undefined' || typeof it === 'undefined'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (typeof describe === 'undefined' || typeof it === 'undefined')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-  if (typeof describe === 'undefined' || typeof it === 'undefined') return
+  // vitest executes describes unconditionally
 
   describe('sanitizeResponse', () => {
     it('strips <thought>...</thought> correctly', test1_thought_tag)

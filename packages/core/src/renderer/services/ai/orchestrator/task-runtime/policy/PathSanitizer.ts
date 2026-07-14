@@ -90,7 +90,8 @@ export class PathSanitizer {
   public static sanitizePath(
     inputPath: string,
     operation: 'read' | 'write' | 'list' = 'write',
-    missionId?: string
+    missionId?: string,
+    baseDir?: string
   ): string {
     if (!inputPath || typeof inputPath !== 'string') {
       throw new PathSanitizationError(
@@ -139,7 +140,26 @@ export class PathSanitizer {
       }
     }
 
-    const traversalDepth = (decoded.match(/\.\.[/\\]/g) ?? []).length;
+    // 1. Canonicalize (using URL or simple replace since we might not have 'path' module)
+    // Replace all backslashes with forward slashes, resolve . and .. manually
+    let canonical = decoded.replace(/\\/g, '/');
+    const parts = canonical.split('/');
+    const resolvedParts: string[] = [];
+    for (const p of parts) {
+       if (p === '.' || p === '') continue; // ignore current dir or empty
+       if (p === '..') {
+          if (resolvedParts.length > 0 && resolvedParts[resolvedParts.length - 1] !== '..') {
+             resolvedParts.pop();
+          } else {
+             resolvedParts.push('..');
+          }
+       } else {
+          resolvedParts.push(p);
+       }
+    }
+    
+    // Check traversal depth
+    const traversalDepth = resolvedParts.filter(p => p === '..').length;
     if (traversalDepth >= 2) {
       throw new PathSanitizationError(
         `Path contains deep directory traversal (${traversalDepth} levels).`,
@@ -148,10 +168,12 @@ export class PathSanitizer {
       );
     }
 
-    // Mission isolation check
+    let finalPath = resolvedParts.join('/');
+    if (canonical.startsWith('/')) finalPath = '/' + finalPath;
+    
+    // 2. Join & Check Mission Isolation
     if (missionId) {
-      const normalizedPath = decoded.replace(/\\/g, '/');
-      const missionDirMatch = normalizedPath.match(/missions\/([^/]+)\/(staging|final)/i);
+      const missionDirMatch = finalPath.match(/missions\/([^/]+)\/(staging|final)/i);
       if (missionDirMatch) {
         const targetMissionId = missionDirMatch[1];
         if (targetMissionId !== missionId) {
@@ -161,14 +183,18 @@ export class PathSanitizer {
             'MISSION_ISOLATION_VIOLATION'
           );
         }
+      } else if (operation === 'write') {
+        const prefix = `/missions/${missionId}/staging/`;
+        finalPath = prefix + (finalPath.startsWith('/') ? finalPath.slice(1) : finalPath);
       }
     }
 
+    // 3. Write check against allowed roots
     if (operation === 'write') {
-      const normalizedForCheck = decoded.replace(/\//g, '\\');
+      const normalizedForCheck = finalPath.replace(/\//g, '\\');
       const isRelativePath = !normalizedForCheck.startsWith('\\') && !/^[A-Za-z]:/.test(normalizedForCheck);
       const isAllowed = isRelativePath || ALLOWED_WRITE_ROOT_PREFIXES.some(prefix =>
-        decoded.startsWith(prefix) || normalizedForCheck.startsWith(prefix.replace(/\//g, '\\'))
+        finalPath.startsWith(prefix) || normalizedForCheck.startsWith(prefix.replace(/\//g, '\\'))
       );
 
       if (!isAllowed) {
@@ -180,7 +206,7 @@ export class PathSanitizer {
       }
     }
 
-    return decoded;
+    return finalPath;
   }
 
   /**

@@ -26,7 +26,7 @@
  * - IndexedDB: 없음 (Node.js test 환경)
  */
 
-import { describe, it, before, after } from 'node:test';
+import { describe, it, beforeAll as before, afterAll as after } from 'vitest';
 import assert from 'node:assert/strict';
 
 // Core domain

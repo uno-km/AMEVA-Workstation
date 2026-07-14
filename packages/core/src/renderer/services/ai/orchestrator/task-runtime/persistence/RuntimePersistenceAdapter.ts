@@ -51,6 +51,11 @@ export interface IRuntimePersistenceAdapter {
   saveArtifactManifest(manifest: any): Promise<void>; // using any here to avoid circular dep or we can import ArtifactManifest
   loadArtifactManifest(missionId: string, artifactId: string): Promise<any | null>;
   listArtifactManifests(missionId: string): Promise<any[]>;
+
+  // Idempotency
+  saveIdempotencyRecord(record: any): Promise<void>;
+  loadIdempotencyRecord(key: string): Promise<any | null>;
+  deleteIdempotencyRecord(key: string): Promise<void>;
 }
 
 /*
@@ -89,6 +94,9 @@ function openRuntimeDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_ARTIFACT_MANIFESTS)) {
         db.createObjectStore(STORE_ARTIFACT_MANIFESTS, { keyPath: ['missionId', 'artifactId'] });
+      }
+      if (!db.objectStoreNames.contains('idempotency_records')) {
+        db.createObjectStore('idempotency_records', { keyPath: 'idempotencyKey' });
       }
 
       // [Item 4] Schema Migration 실행
@@ -322,6 +330,58 @@ export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAd
       return [];
     }
   }
+
+  // Idempotency
+  public async saveIdempotencyRecord(record: any): Promise<void> {
+    try {
+      const db = await openRuntimeDB();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('idempotency_records', 'readwrite');
+        const req = tx.objectStore('idempotency_records').put(record);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[RuntimePersistenceAdapter] Idempotency 저장 실패 (${record.idempotencyKey}):`, msg);
+      throw new Error(`Idempotency save failed: ${msg}`);
+    }
+  }
+
+  public async loadIdempotencyRecord(key: string): Promise<any | null> {
+    try {
+      const db = await openRuntimeDB();
+      const result = await new Promise<any | null>((resolve, reject) => {
+        const tx = db.transaction('idempotency_records', 'readonly');
+        const req = tx.objectStore('idempotency_records').get(key);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      });
+      db.close();
+      return result;
+    } catch (err: unknown) {
+      console.error(`[RuntimePersistenceAdapter] Idempotency 조회 실패 (${key}):`, err);
+      return null;
+    }
+  }
+
+  public async deleteIdempotencyRecord(key: string): Promise<void> {
+    try {
+      const db = await openRuntimeDB();
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('idempotency_records', 'readwrite');
+        const req = tx.objectStore('idempotency_records').delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+        tx.onerror = () => reject(tx.error);
+      });
+      db.close();
+    } catch (err: unknown) {
+      console.error(`[RuntimePersistenceAdapter] Idempotency 삭제 실패 (${key}):`, err);
+    }
+  }
 }
 
 /**
@@ -384,5 +444,20 @@ export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAda
       }
     }
     return results;
+  }
+
+  // Idempotency
+  private readonly idempotencyRecords = new Map<string, any>();
+
+  public async saveIdempotencyRecord(record: any): Promise<void> {
+    this.idempotencyRecords.set(record.idempotencyKey, record);
+  }
+
+  public async loadIdempotencyRecord(key: string): Promise<any | null> {
+    return this.idempotencyRecords.get(key) ?? null;
+  }
+
+  public async deleteIdempotencyRecord(key: string): Promise<void> {
+    this.idempotencyRecords.delete(key);
   }
 }

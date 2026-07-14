@@ -87,6 +87,12 @@ export class ToolRegistry {
    */
   private readonly tools: Map<string, ToolDefinition> = new Map()
 
+  private readonly fileAdapter?: import('./task-runtime/artifact/IFileSystemAdapter').IFileSystemAdapter
+
+  constructor(fileAdapter?: import('./task-runtime/artifact/IFileSystemAdapter').IFileSystemAdapter) {
+    this.fileAdapter = fileAdapter;
+  }
+
   /**
    * 도구를 레지스트리에 등록한다.
    * 동일한 name이 이미 존재하면 덮어씌운다(Override).
@@ -255,11 +261,20 @@ export class ToolRegistry {
           };
         }
 
+        if (!this.fileAdapter) {
+          return {
+            success: false,
+            error: `fileAdapter is not initialized. Cannot read file.`,
+            toolName: BUILTIN_TOOL_NAMES.READ_FILE,
+            toolArgs: args
+          };
+        }
+
         try {
-          const result = await executeTerminal(`Get-Content -Path "${safePath}" -Raw -Encoding UTF8`, undefined)
+          const content = await this.fileAdapter.read(safePath);
           return {
             success: true,
-            result: result.stdout || '(빈 파일)',
+            result: content ?? '(빈 파일)',
             toolName: BUILTIN_TOOL_NAMES.READ_FILE,
             toolArgs: args
           }
@@ -308,18 +323,38 @@ export class ToolRegistry {
           };
         }
 
-        try {
-          // PowerShell heredoc 방식으로 멀티라인 내용을 안전하게 저장한다
-          const escapedContent = content.replace(/'/g, "''")
-          const result = await executeTerminal(
-            `Set-Content -Path "${safePath}" -Value '${escapedContent}' -Encoding UTF8`,
-            undefined
-          )
+        if (!this.fileAdapter) {
           return {
-            success: !result.stderr,
-            result: result.stderr || `파일 저장 완료: ${safePath}`,
+            success: false,
+            error: `fileAdapter is not initialized. Cannot write file.`,
             toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
             toolArgs: args
+          };
+        }
+
+        try {
+          await this.fileAdapter.write(safePath, content);
+          
+          const stat = await this.fileAdapter.stat(safePath);
+          const hash = await this.fileAdapter.hash(safePath);
+
+          return {
+            success: true,
+            result: `파일 저장 완료: ${safePath}`,
+            toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
+            toolArgs: args,
+            // [Phase 2.2] Artifact Return Contract
+            artifactId: context?.artifactId,
+            missionId: context?.missionId,
+            taskId: context?.taskId,
+            attemptId: context?.attemptId,
+            outputId: context?.expectedOutput, // Legacy mapping from context
+            expectedPath: rawPath,
+            normalizedStagedPath: safePath,
+            size: stat.size,
+            contentHash: hash ?? undefined,
+            revision: 1, // Basic default, managed by IdempotencyStore in actual impl
+            idempotencyKey: context?.idempotencyKey
           }
         } catch (err: unknown) {
           return {

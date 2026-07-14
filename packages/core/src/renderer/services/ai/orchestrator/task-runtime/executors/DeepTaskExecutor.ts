@@ -67,6 +67,7 @@ export class DeepTaskExecutor {
   private ledger: MissionBudgetLedger;
   private adapter: ILLMEngineAdapter;
   private toolRegistry?: ToolRegistry;
+  private artifactManager?: any; // any for now to avoid circular deps if they exist, or import type later
 
   constructor(
     store: TaskRuntimeStore,
@@ -74,13 +75,15 @@ export class DeepTaskExecutor {
     ledger: MissionBudgetLedger,
     adapter: ILLMEngineAdapter,
     toolRegistry?: ToolRegistry,
-    checkpointRuntimeInjected?: CheckpointRuntime
+    checkpointRuntimeInjected?: CheckpointRuntime,
+    artifactManager?: any
   ) {
     this.store = store;
     this.leaseManager = leaseManager;
     this.ledger = ledger;
     this.adapter = adapter;
     this.toolRegistry = toolRegistry;
+    this.artifactManager = artifactManager;
     this.contextBuilder = new TaskExecutionContextBuilder(store);
     this.resultAssembler = new TaskResultAssembler();
     this.toolCallParser = new ToolCallParser();
@@ -184,7 +187,26 @@ export class DeepTaskExecutor {
             ToolPolicyChecker.assertAllowed(candidate.toolName, knownToolNames);
 
             // Tool 실행 (Timeout 포함) — DI된 registry 인스턴스 사용
-            const toolContext = { missionId, taskId, attemptId };
+            // [Item 4] Legacy expectedOutput 호환
+            let resolvedOutputId: string | undefined = undefined;
+            if (candidate.toolName === 'write_file') {
+              const fileOutputs = task.definition.expectedOutputs?.filter(o => o.kind === 'FILE') || [];
+              if (fileOutputs.length === 1) {
+                resolvedOutputId = fileOutputs[0].id;
+                console.warn(`[DeepTaskExecutor] LEGACY_SINGLE_OUTPUT_MAPPING: Auto-mapping to ${resolvedOutputId}`);
+              } else {
+                throw new Error('AMBIGUOUS_EXPECTED_OUTPUT: Cannot resolve exact expectedOutput for write_file');
+              }
+            }
+
+            const toolContext = { 
+              missionId, 
+              taskId, 
+              attemptId,
+              artifactId: resolvedOutputId || `artifact-${crypto.randomUUID()}`,
+              expectedOutput: resolvedOutputId,
+              idempotencyKey: `${taskId}-${attemptId}-${candidate.toolCallId}`
+            };
             const toolResultPromise = registry.executeTool(candidate.toolName, candidate.arguments, toolContext);
 
             const timeoutPromise = new Promise<never>((_, reject) =>
@@ -192,6 +214,45 @@ export class DeepTaskExecutor {
             );
 
             const toolResult = await Promise.race([toolResultPromise, timeoutPromise]);
+
+            // [Item 2.1 & 3 & 5] Artifact Staging/Manifest Interaction
+            if (candidate.toolName === 'write_file' && toolResult.success && this.artifactManager) {
+              const { 
+                artifactId: retAid, 
+                missionId: retMid, 
+                taskId: retTid, 
+                attemptId: retAttId, 
+                normalizedStagedPath, 
+                size, 
+                contentHash 
+              } = toolResult;
+
+              if (retMid !== missionId || retTid !== taskId || retAttId !== attemptId || !normalizedStagedPath) {
+                throw new Error('Artifact context mismatch or normalizedStagedPath missing. WRITTEN transition denied.');
+              }
+
+              const aid = retAid || toolContext.artifactId;
+              
+              // No silent catch! Propagate error.
+              await this.artifactManager.declareArtifact({
+                artifactId: aid,
+                missionId,
+                taskId,
+                attemptId: String(attemptId),
+                kind: 'FILE',
+                required: false, // Wait, task definition tells us if it's required. Default false.
+                stagedPath: normalizedStagedPath,
+                status: 'DECLARED',
+                revision: 1,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                provenance: { missionId, taskId, attemptId: String(attemptId), producer: 'write_file' }
+              });
+              // Store size and hash if supported by markWritten, otherwise the manager has to fetch it.
+              // Assuming markWritten can take it, or declareArtifact takes it.
+              await this.artifactManager.markWritten(missionId, aid);
+              console.log(`[DeepTaskExecutor] Artifact ${aid} marked WRITTEN for mission ${missionId}`);
+            }
 
             // Observation 빌드 (False Success 방지: success=false → FAILED 관측)
             const observation = this.observationBuilder.buildSuccess(candidate, toolResult);

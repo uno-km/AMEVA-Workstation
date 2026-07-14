@@ -3,7 +3,7 @@
  * @system AMEVA OS Desktop Workstation
  */
 
-import { test } from 'node:test';
+import { test } from 'vitest';
 import * as assert from 'node:assert/strict';
 
 import { GoalInterpreter } from '../goal/GoalInterpreter';

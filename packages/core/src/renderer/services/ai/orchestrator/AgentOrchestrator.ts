@@ -42,6 +42,7 @@ import { LLMEngineAdapterFactory } from './LLMEngineAdapter'
 import type { ILLMEngineAdapter } from './types'
 import { ThoughtParser } from './ThoughtParser'
 import { ToolRegistry } from './ToolRegistry'
+import { PowerShellArtifactFileAdapter } from './task-runtime/artifact/PowerShellArtifactFileAdapter'
 
 // 신규 Task Runtime 모듈 임포트
 import type { Task } from './task/types'
@@ -315,8 +316,8 @@ export class AgentOrchestratorSession {
       }
     })
 
-    // 도구 레지스트리 생성
-    this.registry = new ToolRegistry()
+    // 도구 레지스트리 생성 (운영 환경 Adapter 주입)
+    this.registry = new ToolRegistry(new PowerShellArtifactFileAdapter())
   }
 
   /**

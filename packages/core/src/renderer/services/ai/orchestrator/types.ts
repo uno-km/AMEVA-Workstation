@@ -78,6 +78,19 @@ export interface ToolCallResult {
   toolName: string
   /** 실행된 인자 (로깅용) */
   toolArgs: Record<string, unknown>
+
+  // [Phase 2.2] Artifact 반환 계약
+  artifactId?: string
+  missionId?: string
+  taskId?: string
+  attemptId?: string
+  outputId?: string
+  expectedPath?: string
+  normalizedStagedPath?: string
+  size?: number
+  contentHash?: string
+  revision?: number
+  idempotencyKey?: string
 }
 
 /* ============================================================
@@ -284,5 +297,12 @@ export interface ToolDefinition {
     required?: string[]
   }
   /** 실제 도구 실행 함수. args를 받아 비동기로 결과를 반환한다. */
-  execute: (args: Record<string, unknown>, context?: { missionId?: string; taskId?: string; attemptId?: string }) => Promise<ToolCallResult>
+  execute: (args: Record<string, unknown>, context?: { 
+    missionId?: string; 
+    taskId?: string; 
+    attemptId?: string;
+    artifactId?: string;
+    expectedOutput?: string;
+    idempotencyKey?: string;
+  }) => Promise<ToolCallResult>
 }

@@ -60,10 +60,12 @@ export class CapabilityCatalog {
   private _toolRuntimeStatus: ToolRuntimeConnectionStatus = 'PARTIALLY_CONNECTED';
 
   constructor() {
-    window.addEventListener('mcp_circuit_breaker_open', () => {
-      this._toolRuntimeStatus = 'UNAVAILABLE';
-      console.warn('[CapabilityCatalog] MCP Circuit Breaker OPEN 감지, 연결 상태를 UNAVAILABLE로 전환합니다.');
-    });
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mcp_circuit_breaker_open', () => {
+        this._toolRuntimeStatus = 'UNAVAILABLE';
+        console.warn('[CapabilityCatalog] MCP Circuit Breaker OPEN 감지, 연결 상태를 UNAVAILABLE로 전환합니다.');
+      });
+    }
   }
 
   public hasCapability(cap: string): boolean {

@@ -8,8 +8,11 @@ import { CorrelationContext } from '../observability/CorrelationContext';
 import { SecretRedactor } from '../security/SecretRedactor';
 import * as assert from 'node:assert';
 
-async function runTests() {
-  console.log('[Test] Running Unit Tests...');
+import { describe, it, expect } from 'vitest';
+
+describe('UnifiedEventEnvelope', () => {
+  it('should run all unit tests for Sidecar', async () => {
+    console.log('[Test] Running Unit Tests...');
 
   // Test 1: Event Envelope Millisecond Timestamps and Sequence
   const e1 = EventNormalizer.info('LIFECYCLE', 'Test', 'TEST', 'test');
@@ -44,10 +47,6 @@ async function runTests() {
   const tokenString = SecretRedactor.redactString('Authorization: Bearer my-super-secret-token');
   assert.ok(tokenString.includes('[REDACTED]'), 'Bearer token must be redacted');
 
-  console.log('[Test] All tests passed.');
-}
-
-runTests().catch(err => {
-  console.error(err);
-  process.exit(1);
+    console.log('[Test] All tests passed.');
+  });
 });

@@ -1,4 +1,4 @@
-import { executeTerminal } from '../../../ipc/electronApiAdapter';
+import { executeTerminal } from '../../../../ipc/electronApiAdapter';
 import type { IFileSystemAdapter } from './IFileSystemAdapter';
 
 export class PowerShellArtifactFileAdapter implements IFileSystemAdapter {
@@ -53,6 +53,22 @@ export class PowerShellArtifactFileAdapter implements IFileSystemAdapter {
     if (res.stderr && res.stderr.includes('File not found')) return null;
     if (res.stderr) throw new Error(`read error: ${res.stderr}`);
     return res.stdout;
+  }
+
+  public async write(path: string, content: string): Promise<void> {
+    this.validatePath(path);
+    const escapedContent = content.replace(/'/g, "''");
+    const script = `
+      $path = "${path}"
+      $dir = [System.IO.Path]::GetDirectoryName($path)
+      if (-not [System.IO.Directory]::Exists($dir)) {
+        [System.IO.Directory]::CreateDirectory($dir) | Out-Null
+      }
+      Set-Content -Path $path -Value '${escapedContent}' -Encoding UTF8
+    `;
+    const b64 = Buffer.from(script, 'utf-8').toString('base64');
+    const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
+    if (res.stderr) throw new Error(`write error: ${res.stderr}`);
   }
 
   public async move(sourcePath: string, destPath: string, backupPath?: string): Promise<void> {

@@ -21,6 +21,10 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     return this.files.get(path) ?? null;
   }
 
+  public async write(path: string, content: string): Promise<void> {
+    this.files.set(path, content);
+  }
+
   public async move(sourcePath: string, destPath: string, backupPath?: string): Promise<void> {
     const content = this.files.get(sourcePath);
     if (content === undefined) {

@@ -12,7 +12,8 @@ export class IllegalTransitionError extends Error {
 export class ArtifactTransactionManager {
   constructor(
     private readonly store: ArtifactStore,
-    private readonly fsAdapter: IFileSystemAdapter
+    private readonly fsAdapter: IFileSystemAdapter,
+    private readonly idempotencyStore?: import('./IdempotencyStore').IIdempotencyStore
   ) {}
 
   private validateTransition(current: ArtifactStatus, next: ArtifactStatus, artifactId: string) {
@@ -90,7 +91,25 @@ export class ArtifactTransactionManager {
       return; // Already committed
     }
 
+    if (this.idempotencyStore && manifest.idempotencyKey) {
+      const acquired = await this.idempotencyStore.acquireLease(
+        manifest.idempotencyKey,
+        manifest.artifactId,
+        manifest.revision,
+        manifest.missionId,
+        manifest.taskId,
+        manifest.attemptId,
+        30000 // 30 seconds ttl
+      );
+      if (!acquired) {
+         throw new Error(`Commit locked or already committed for ${artifactId}`);
+      }
+    }
+
     if (!manifest.stagedPath || !manifest.finalPath) {
+      if (this.idempotencyStore && manifest.idempotencyKey) {
+         await this.idempotencyStore.releaseLease(manifest.idempotencyKey);
+      }
       throw new Error(`Paths are missing in manifest for commit: ${artifactId}`);
     }
 
@@ -124,6 +143,9 @@ export class ArtifactTransactionManager {
         manifest.status = 'CORRUPTED';
         manifest.validationErrors = [...(manifest.validationErrors || []), 'Hash mismatch after move'];
         await this.store.saveManifest(manifest);
+        if (this.idempotencyStore && manifest.idempotencyKey) {
+           await this.idempotencyStore.markCorrupted(manifest.idempotencyKey);
+        }
         // Attempt rollback
         try {
           const backupStat = await this.fsAdapter.stat(backupPath);
@@ -149,6 +171,10 @@ export class ArtifactTransactionManager {
       manifest.status = 'COMMITTED';
       await this.store.saveManifest(manifest);
 
+      if (this.idempotencyStore && manifest.idempotencyKey && finalHash) {
+         await this.idempotencyStore.markCommitted(manifest.idempotencyKey, finalHash);
+      }
+
       // Cleanup backup if exists
       const backupStat = await this.fsAdapter.stat(backupPath);
       if (backupStat.exists) {
@@ -156,6 +182,9 @@ export class ArtifactTransactionManager {
       }
 
     } catch (e: unknown) {
+      if (this.idempotencyStore && manifest.idempotencyKey) {
+         await this.idempotencyStore.releaseLease(manifest.idempotencyKey);
+      }
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`[ArtifactTransactionManager] Commit failed for ${artifactId}: ${msg}`);
       

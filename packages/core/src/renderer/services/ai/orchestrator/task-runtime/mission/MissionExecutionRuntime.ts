@@ -45,6 +45,11 @@ import {
   InMemoryRuntimePersistenceAdapter,
   type IRuntimePersistenceAdapter,
 } from '../persistence/RuntimePersistenceAdapter';
+import type { IFileSystemAdapter } from '../artifact/IFileSystemAdapter';
+import { ArtifactStore } from '../artifact/ArtifactStore';
+import { ArtifactTransactionManager } from '../artifact/ArtifactTransactionManager';
+import { PersistenceIdempotencyStore } from '../artifact/IdempotencyStore';
+import { ToolRegistry } from '../../ToolRegistry';
 
 /*
  * [도메인 종속 지역 상수]
@@ -102,7 +107,13 @@ export class MissionExecutionRuntime {
      * 영속화 어댑터를 주입하여 테스트에서 InMemory 폴백 사용 가능.
      * 프로덕션에서는 IndexedDBRuntimePersistenceAdapter 주입.
      */
-    persistence?: IRuntimePersistenceAdapter
+    persistence?: import('../persistence/RuntimePersistenceAdapter').IRuntimePersistenceAdapter,
+    
+    /*
+     * [DI - IFileSystemAdapter]
+     * 테스트 환경에서는 NodeArtifactFileAdapter를, 운영에서는 PowerShellArtifactFileAdapter 주입
+     */
+    fileSystemAdapter?: import('../artifact/IFileSystemAdapter').IFileSystemAdapter
   ) {
     this.store = store;
     this.missionId = missionId;
@@ -119,9 +130,24 @@ export class MissionExecutionRuntime {
     const resolver = new ExecutionStrategyResolver(catalog);
     this.checkpointRuntime = new CheckpointRuntime();
     this.userAssistRuntime = new UserAssistRuntime(store);
+    
+    // Create Artifact Manager and Tool Registry if file system adapter is provided
+    let artifactTxManager: any = undefined;
+    let toolRegistry: any = undefined;
+    
+    if (fileSystemAdapter) {
+       const persistenceAdapterForStore = persistence ?? new InMemoryRuntimePersistenceAdapter();
+       const artifactStore = new ArtifactStore(persistenceAdapterForStore);
+       const idempotencyStore = new PersistenceIdempotencyStore(persistenceAdapterForStore);
+       artifactTxManager = new ArtifactTransactionManager(artifactStore, fileSystemAdapter, idempotencyStore);
+       toolRegistry = new ToolRegistry(fileSystemAdapter);
+    }
+    
     this.dispatcher = new TaskDispatcher(
       store, this.leaseManager, this.ledger, resolver, adapter,
-      this.checkpointRuntime // CheckpointRuntime 주입
+      this.checkpointRuntime,
+      toolRegistry,
+      artifactTxManager
     );
 
     /*

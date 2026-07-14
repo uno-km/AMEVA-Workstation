@@ -161,19 +161,21 @@ const DEFAULT_SETTINGS: AISettings = {
 
 const loadInitialSettings = (): AISettings => {
   try {
-    const saved = localStorage.getItem('ameva_ai_settings') || localStorage.getItem('ai-settings');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (parsed.systemPrompt && (
-        parsed.systemPrompt.includes('치즈') ||
-        parsed.systemPrompt.includes('간결하고 명확하게 답하세요') ||
-        !parsed.systemPrompt.includes('CoT 사고 과정 지침')
-      )) {
-        parsed.systemPrompt = DEFAULT_SETTINGS.systemPrompt;
-        localStorage.setItem('ameva_ai_settings', JSON.stringify(parsed));
-        localStorage.setItem('ai-settings', JSON.stringify(parsed));
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('ameva_ai_settings') || localStorage.getItem('ai-settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.systemPrompt && (
+          parsed.systemPrompt.includes('치즈') ||
+          parsed.systemPrompt.includes('간결하고 명확하게 답하세요') ||
+          !parsed.systemPrompt.includes('CoT 사고 과정 지침')
+        )) {
+          parsed.systemPrompt = DEFAULT_SETTINGS.systemPrompt;
+          localStorage.setItem('ameva_ai_settings', JSON.stringify(parsed));
+          localStorage.setItem('ai-settings', JSON.stringify(parsed));
+        }
+        return { ...DEFAULT_SETTINGS, ...parsed };
       }
-      return { ...DEFAULT_SETTINGS, ...parsed };
     }
   } catch (e) {
     console.error('설정 로드 실패:', e);

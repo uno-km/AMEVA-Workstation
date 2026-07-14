@@ -30,6 +30,8 @@ export class TaskDispatcher {
   private resolver: ExecutionStrategyResolver;
   private adapter: ILLMEngineAdapter;
   private checkpointRuntime?: CheckpointRuntime;
+  private toolRegistry?: import('../../ToolRegistry').ToolRegistry;
+  private artifactManager?: import('../artifact/ArtifactTransactionManager').ArtifactTransactionManager;
 
   constructor(
     store: TaskRuntimeStore,
@@ -37,7 +39,9 @@ export class TaskDispatcher {
     ledger: MissionBudgetLedger,
     resolver: ExecutionStrategyResolver,
     adapter: ILLMEngineAdapter,
-    checkpointRuntime?: CheckpointRuntime
+    checkpointRuntime?: CheckpointRuntime,
+    toolRegistry?: import('../../ToolRegistry').ToolRegistry,
+    artifactManager?: import('../artifact/ArtifactTransactionManager').ArtifactTransactionManager
   ) {
     this.store = store;
     this.leaseManager = leaseManager;
@@ -45,6 +49,8 @@ export class TaskDispatcher {
     this.resolver = resolver;
     this.adapter = adapter;
     this.checkpointRuntime = checkpointRuntime;
+    this.toolRegistry = toolRegistry;
+    this.artifactManager = artifactManager;
   }
 
   /**
@@ -147,8 +153,9 @@ export class TaskDispatcher {
         this.leaseManager,
         this.ledger,
         this.adapter,
-        undefined, // toolRegistry: 기본 사용
-        this.checkpointRuntime // [Item 1] CheckpointRuntime 주입
+        this.toolRegistry,
+        this.checkpointRuntime,
+        this.artifactManager
       );
       await executor.execute(missionId, taskId, attemptId, leaseId, abortSignal);
     } catch (e: unknown) {

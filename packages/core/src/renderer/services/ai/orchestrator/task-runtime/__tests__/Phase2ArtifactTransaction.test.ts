@@ -3,18 +3,21 @@ import { ArtifactTransactionManager } from '../artifact/ArtifactTransactionManag
 import { ArtifactStore } from '../artifact/ArtifactStore';
 import { InMemoryRuntimePersistenceAdapter } from '../persistence/RuntimePersistenceAdapter';
 import { InMemoryFileSystemAdapter } from '../artifact/InMemoryFileSystemAdapter';
+import { PersistenceIdempotencyStore } from '../artifact/IdempotencyStore';
 
 describe('Phase 2: Artifact Transaction', () => {
   let adapter: InMemoryRuntimePersistenceAdapter;
   let store: ArtifactStore;
   let fsAdapter: InMemoryFileSystemAdapter;
   let manager: ArtifactTransactionManager;
+  let idempotencyStore: PersistenceIdempotencyStore;
 
   beforeEach(() => {
     adapter = new InMemoryRuntimePersistenceAdapter();
     store = new ArtifactStore(adapter);
     fsAdapter = new InMemoryFileSystemAdapter();
-    manager = new ArtifactTransactionManager(store, fsAdapter);
+    idempotencyStore = new PersistenceIdempotencyStore(adapter);
+    manager = new ArtifactTransactionManager(store, fsAdapter, idempotencyStore);
   });
 
   it('should declare an artifact', async () => {
