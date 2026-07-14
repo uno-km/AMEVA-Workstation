@@ -45,9 +45,9 @@ export async function renderMermaidToBuffer(code: string): Promise<Buffer> {
         <head>
           <meta charset="utf-8">
           <style>
-            body { margin: 0; padding: 20px; background: transparent; display: flex; justify-content: center; width: 100%; box-sizing: border-box; }
-            #container { background: white; border-radius: 8px; padding: 20px; width: 100%; display: flex; justify-content: center; align-items: center; }
-            svg { max-width: 100% !important; height: auto !important; width: 100% !important; }
+            body { margin: 0; padding: 20px; background: transparent; display: inline-block; }
+            #container { background: white; border-radius: 8px; padding: 20px; display: inline-block; }
+            svg { min-width: 1000px; max-width: 1920px; height: auto; }
           </style>
         </head>
         <body>

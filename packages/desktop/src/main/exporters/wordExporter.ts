@@ -46,11 +46,10 @@ const docx = require('docx')
  */
 import { getPlainTextFromNormalized, inlineToText, type ExporterBlock, type ExporterInlineContent, type ExporterTableRow } from './exportersHelper.js'
 
-// docx API 디스트럭처링 추출
 const {
   Document, Packer, Paragraph, TextRun, Table: DocxTable, TableRow, TableCell,
   BorderStyle, HeadingLevel, AlignmentType, WidthType, TableLayoutType,
-  ShadingType, convertInchesToTwip
+  ShadingType, convertInchesToTwip, ImageRun
 } = docx
 
 /**
@@ -213,13 +212,49 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
         break
       }
 
-      // 6) 이미지 요소 (경로 텍스트화 대체)
-      case 'image':
-        docChildren.push(new Paragraph({
-          children: [new TextRun({ text: `[이미지: ${block.props?.url || ''}]`, italics: true, color: '9CA3AF', size: 20 })],
-          spacing: { after: 120 },
-        }))
+      // 6) 이미지 요소
+      case 'image': {
+        const url = block.props?.url || ''
+        if (url.startsWith('data:image/png;base64,')) {
+          try {
+            const base64Data = url.replace(/^data:image\/png;base64,/, '')
+            const buffer = Buffer.from(base64Data, 'base64')
+            // PNG 헤더에서 해상도 추출 (IHDR 청크)
+            let width = buffer.readUInt32BE(16)
+            let height = buffer.readUInt32BE(20)
+            
+            // DOCX 페이지 폭(약 600px)에 맞춰 스케일링
+            const maxWidth = 600
+            if (width > maxWidth) {
+              height = Math.round(height * (maxWidth / width))
+              width = maxWidth
+            }
+
+            docChildren.push(new Paragraph({
+              children: [
+                new ImageRun({
+                  data: buffer,
+                  transformation: { width, height }
+                })
+              ],
+              alignment: AlignmentType.CENTER,
+              spacing: { after: 120 },
+            }))
+          } catch (imgErr) {
+            console.error('[exportToWord] 이미지 파싱 실패:', imgErr)
+            docChildren.push(new Paragraph({
+              children: [new TextRun({ text: '[이미지 렌더링 실패]', color: 'EF4444' })],
+              spacing: { after: 120 },
+            }))
+          }
+        } else {
+          docChildren.push(new Paragraph({
+            children: [new TextRun({ text: `[이미지: ${url}]`, italics: true, color: '9CA3AF', size: 20 })],
+            spacing: { after: 120 },
+          }))
+        }
         break
+      }
 
       // 7) 표/테이블 요소 (가드 절차 적용)
       case 'table': {
