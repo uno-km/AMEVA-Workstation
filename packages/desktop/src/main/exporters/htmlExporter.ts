@@ -175,6 +175,21 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
      */
       case 'codeBlock': {
         const lang = block.props?.language || ''
+        if (lang === 'ameva-map') {
+          const tempBlock = { type: 'map', props: {} };
+          try { tempBlock.props = JSON.parse(getPlainTextFromNormalized(block)); } catch(e) {}
+          return renderBlock(tempBlock, depth);
+        }
+        if (lang === 'ameva-youtube') {
+          const tempBlock = { type: 'youtube', props: {} };
+          try { tempBlock.props = JSON.parse(getPlainTextFromNormalized(block)); } catch(e) {}
+          return renderBlock(tempBlock, depth);
+        }
+        if (lang === 'ameva-link') {
+          const tempBlock = { type: 'linkPreview', props: {} };
+          try { tempBlock.props = JSON.parse(getPlainTextFromNormalized(block)); } catch(e) {}
+          return renderBlock(tempBlock, depth);
+        }
         const code = escapeHtml(getPlainTextFromNormalized(block))
         const isJs = lang.toLowerCase() === 'js' || lang.toLowerCase() === 'javascript'
         return `<div class="code-container">
