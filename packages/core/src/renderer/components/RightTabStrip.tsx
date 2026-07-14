@@ -184,6 +184,15 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
        */
   const dragStartPos = useRef({ x: 0, y: 0 });
 
+  const dragListenersRef = useRef<{ move: ((e: MouseEvent) => void) | null, up: (() => void) | null }>({ move: null, up: null });
+
+  useEffect(() => {
+    return () => {
+      if (dragListenersRef.current.move) window.removeEventListener('mousemove', dragListenersRef.current.move);
+      if (dragListenersRef.current.up) window.removeEventListener('mouseup', dragListenersRef.current.up);
+    };
+  }, []);
+
   const [contextMenu, setContextMenu] = useState<{
     x: number; y: number; tabId: string; tabLabel: string
   } | null>(null);
@@ -415,9 +424,13 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
        * - 예시 코드: `const onUp = ...` 형태로 안전 캐싱 후 가공 기동.
        */
     const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      if (dragListenersRef.current.move) window.removeEventListener('mousemove', dragListenersRef.current.move);
+      if (dragListenersRef.current.up) window.removeEventListener('mouseup', dragListenersRef.current.up);
+      dragListenersRef.current.move = null;
+      dragListenersRef.current.up = null;
     };
+    dragListenersRef.current.move = onMove;
+    dragListenersRef.current.up = onUp;
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
   }, []);

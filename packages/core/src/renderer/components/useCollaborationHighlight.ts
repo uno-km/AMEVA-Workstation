@@ -64,6 +64,8 @@ export function useCollaborationHighlight(
        * - 예시 코드: `const isCurrentlyEditing = ...` 형태로 안전 캐싱 후 가공 기동.
        */
     let isCurrentlyEditing = false
+    let activeBlockEl: Element | null = null
+    let activeBnEditor: Element | null = null
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -96,25 +98,22 @@ export function useCollaborationHighlight(
        * - 예시 코드: `const clearActive = ...` 형태로 안전 캐싱 후 가공 기동.
        */
     const clearActive = () => {
-      document.querySelectorAll('[data-bn-active]').forEach(el =>
-        el.removeAttribute('data-bn-active')
-      )
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `bnEditor`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bnEditor = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const bnEditor = document.querySelector('.bn-editor')
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `bnEditor) bnEditor.removeAttribute('data-bn-editor-focused'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')
+      if (activeBlockEl) {
+        activeBlockEl.removeAttribute('data-bn-active')
+        activeBlockEl = null
+      } else {
+        const root = editorContainerRef.current || document
+        root.querySelectorAll('[data-bn-active]').forEach(el => el.removeAttribute('data-bn-active'))
+      }
+
+      if (activeBnEditor) {
+        activeBnEditor.removeAttribute('data-bn-editor-focused')
+        activeBnEditor = null
+      } else {
+        const root = editorContainerRef.current || document
+        const bnEditor = root.querySelector('.bn-editor')
+        if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')
+      }
     }
 
     // 디바운스된 브로드캐스트 전송 (부모 컴포넌트 렌더링 무한 루프 예방)
@@ -201,7 +200,8 @@ export function useCollaborationHighlight(
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const blockOuter = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-        const blockOuter = document.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
+        const root = editorContainerRef.current || document
+        const blockOuter = root.querySelector(`[data-id="${blockId}"], [data-block-id="${blockId}"]`)
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `blockOuter`
@@ -219,24 +219,22 @@ export function useCollaborationHighlight(
        */
           const outerEl = blockOuter.closest('.bn-block-outer') ?? blockOuter
           outerEl.setAttribute('data-bn-active', 'true')
+          activeBlockEl = outerEl
         }
 
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `bnEditor`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bnEditor = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 변수 시나리오: 에디터 컨테이너
        */
-        const bnEditor = document.querySelector('.bn-editor')
+        const bnEditor = root.querySelector('.bn-editor')
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `bnEditor) bnEditor.setAttribute('data-bn-editor-focused', 'true'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (bnEditor) bnEditor.setAttribute('data-bn-editor-focused', 'true')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-        if (bnEditor) bnEditor.setAttribute('data-bn-editor-focused', 'true')
+        if (bnEditor) {
+          bnEditor.setAttribute('data-bn-editor-focused', 'true')
+          activeBnEditor = bnEditor
+        }
 
         prevActiveId = blockId
       } catch {
@@ -262,21 +260,8 @@ export function useCollaborationHighlight(
     const handleFocusOut = () => {
       clearActive()
       /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `bnEditor`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bnEditor = ...` 형태로 안전 캐싱 후 가공 기동.
+       * clearActive() 内部에서 activeBnEditor 해제까지 완벽히 커버하므로 추가 쿼리 생략
        */
-      const bnEditor = document.querySelector('.bn-editor')
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `bnEditor) bnEditor.removeAttribute('data-bn-editor-focused'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (bnEditor) bnEditor.removeAttribute('data-bn-editor-focused')
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `prevActiveId && cbRef.current) cbRef.current(null, false`

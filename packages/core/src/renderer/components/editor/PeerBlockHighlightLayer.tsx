@@ -191,17 +191,15 @@ export function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighli
       })
     }
 
-    computeOverlays()
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `timer`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const timer = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const timer = setInterval(computeOverlays, 300)
+    let rafId: number | null = null
+    const scheduleCompute = () => {
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      rafId = requestAnimationFrame(computeOverlays)
+    }
 
-    window.addEventListener('resize', computeOverlays)
+    scheduleCompute()
+
+    window.addEventListener('resize', scheduleCompute)
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `container`
@@ -212,24 +210,31 @@ export function PeerBlockHighlightLayer({ peers, containerRef }: PeerBlockHighli
     const container = containerRef.current
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `container) container.addEventListener('scroll', computeOverlays`
+       * - 조건 식: `container) container.addEventListener('scroll', scheduleCompute`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (container) container.addEventListener('scroll', computeOverlays)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (container) container.addEventListener('scroll', scheduleCompute)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-    if (container) container.addEventListener('scroll', computeOverlays)
+    if (container) container.addEventListener('scroll', scheduleCompute)
+
+    let observer: MutationObserver | null = null
+    if (container) {
+      observer = new MutationObserver(scheduleCompute)
+      observer.observe(container, { childList: true, subtree: true, characterData: true })
+    }
 
     return () => {
-      clearInterval(timer)
-      window.removeEventListener('resize', computeOverlays)
+      if (rafId !== null) cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', scheduleCompute)
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `container) container.removeEventListener('scroll', computeOverlays`
+       * - 조건 식: `container) container.removeEventListener('scroll', scheduleCompute`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (container) container.removeEventListener('scroll', computeOverlays)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (container) container.removeEventListener('scroll', scheduleCompute)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-      if (container) container.removeEventListener('scroll', computeOverlays)
+      if (container) container.removeEventListener('scroll', scheduleCompute)
+      if (observer) observer.disconnect()
     }
   }, [peers, containerRef])
 
