@@ -77,13 +77,59 @@ export class ToolApprovalPolicy {
   private static approvals: Map<string, ApprovalRequest> = new Map();
   private static processedIdempotencyKeys: Set<string> = new Set();
 
+  private static testRiskClassifier?: (
+    toolName: string,
+    args?: Record<string, any>,
+    definition?: any
+  ) => { riskLevel: ToolRiskLevel; approvalRequired: boolean; reason: string } | null;
+
+  /**
+   * 테스트 전용 Custom Risk Classifier 주입
+   */
+  public static injectTestRiskClassifier(
+    classifier?: (
+      toolName: string,
+      args?: Record<string, any>,
+      definition?: any
+    ) => { riskLevel: ToolRiskLevel; approvalRequired: boolean; reason: string } | null
+  ): void {
+    this.testRiskClassifier = classifier;
+  }
+
   /**
    * Tool 및 인자를 기반으로 위험도(Risk Level)를 평가한다.
    */
   public static evaluateRisk(
     toolName: string,
-    args?: Record<string, any>
+    args?: Record<string, any>,
+    definition?: any
   ): { riskLevel: ToolRiskLevel; approvalRequired: boolean; reason: string } {
+    // 1. TestRiskClassifier가 주입된 경우 우선 평가 (테스트 환경 전용)
+    if (this.testRiskClassifier) {
+      const custom = this.testRiskClassifier(toolName, args, definition);
+      if (custom) {
+        if (typeof custom === 'string') {
+          return {
+            riskLevel: custom as ToolRiskLevel,
+            approvalRequired: custom === 'HIGH' || custom === 'CRITICAL',
+            reason: `Risk evaluated from injected test classifier (${custom}).`
+          };
+        }
+        return custom;
+      }
+    }
+
+    // 2. Definition에 명시된 고정 riskLevel 또는 capability metadata 확인
+    if (definition?.riskLevel) {
+      const riskLevel: ToolRiskLevel = definition.riskLevel;
+      const approvalRequired = definition.approvalRequired ?? (riskLevel === 'HIGH' || riskLevel === 'CRITICAL');
+      return {
+        riskLevel,
+        approvalRequired,
+        reason: `Risk evaluated from ToolDefinition metadata (${riskLevel}).`
+      };
+    }
+
     if (CRITICAL_RISK_TOOLS.has(toolName)) {
       return {
         riskLevel: 'CRITICAL',
@@ -109,11 +155,11 @@ export class ToolApprovalPolicy {
       };
     }
 
-    if (LOW_RISK_TOOLS.has(toolName) || toolName.startsWith('mock_') || toolName === 'mock_tool') {
+    if (LOW_RISK_TOOLS.has(toolName)) {
       return {
         riskLevel: 'LOW',
         approvalRequired: false,
-        reason: `Tool '${toolName}' is classified as LOW risk (Read-only/status query or test mock).`
+        reason: `Tool '${toolName}' is classified as LOW risk (Read-only/status query).`
       };
     }
 
@@ -226,5 +272,6 @@ export class ToolApprovalPolicy {
   public static clear(): void {
     ToolApprovalPolicy.approvals.clear();
     ToolApprovalPolicy.processedIdempotencyKeys.clear();
+    ToolApprovalPolicy.testRiskClassifier = undefined;
   }
 }

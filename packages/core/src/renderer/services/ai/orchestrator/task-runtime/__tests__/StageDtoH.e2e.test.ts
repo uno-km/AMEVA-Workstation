@@ -113,11 +113,18 @@ class SequentialMockAdapter implements ILLMEngineAdapter {
  */
 class MockToolRegistry extends ToolRegistry {
   private mockResults: Map<string, ToolCallResult> = new Map();
+  private mockDefinitions: Map<string, any> = new Map();
 
   // IPC 의존성을 제거하기 위해 register를 Override
   register(_def: any): void {
-    // 내부 맵에만 저장 (원래 ToolRegistry의 Map을 우회할 수는 없으므로,
-    // executeTool 오버라이드를 통해 해결하거나 기본 register 기능을 최소화)
+  }
+
+  getDefinition(name: string): any {
+    return this.mockDefinitions.get(name);
+  }
+
+  getAllDefinitions(): any[] {
+    return Array.from(this.mockDefinitions.values());
   }
 
   // 실행 시 Mock 결과 반환
@@ -128,8 +135,14 @@ class MockToolRegistry extends ToolRegistry {
     return { success: false, error: 'Not mock registered', toolName: name, toolArgs: args };
   }
 
-  registerMockTool(name: string, result: ToolCallResult): void {
+  registerMockTool(name: string, result: ToolCallResult, riskLevel: string = 'LOW'): void {
     this.mockResults.set(name, result);
+    this.mockDefinitions.set(name, {
+      name,
+      description: `Mock tool ${name}`,
+      parameters: { type: 'object', properties: {} },
+      riskLevel
+    });
   }
 
   // registerDefaultTools를 Override하여 window 의존성 제거

@@ -189,11 +189,29 @@ export class DeepTaskExecutor {
             ToolPolicyChecker.assertAllowed(candidate.toolName, knownToolNames);
 
             const traceManager = this.store.getTraceManager();
+            const toolDefinition = registry.getDefinition(candidate.toolName);
+
+            traceManager.recordDecisionSummary(missionId, taskId, String(attemptId), {
+              objective: task.definition.title || task.definition.goal || `Execute task ${taskId}`,
+              knownFacts: [`Current task status is ${task.state.status}`, `Attempting turn ${currentTurn}`],
+              missingInformation: [],
+              selectedAction: `Execute tool ${candidate.toolName}`,
+              selectedTool: candidate.toolName,
+              selectionReason: `Selected tool '${candidate.toolName}' to advance task '${task.definition.title || taskId}' towards completion.`,
+              alternativesConsidered: [],
+              rejectionReasons: {},
+              expectedOutcome: `Tool execution result will be processed into observation for the next reasoning turn.`,
+              riskLevel: toolDefinition?.riskLevel || 'HIGH',
+              approvalRequired: toolDefinition?.approvalRequired ?? (toolDefinition?.riskLevel === 'HIGH' || toolDefinition?.riskLevel === 'CRITICAL'),
+              nextStepIfFailed: `Examine failure observation and attempt recovery or report defect.`
+            });
+
             const { toolTrace } = traceManager.recordToolSelected(
               missionId, taskId, String(attemptId),
               candidate.toolCallId, candidate.toolName, 'general',
               `Executing tool '${candidate.toolName}' for task '${taskId}'`,
-              candidate.arguments
+              candidate.arguments,
+              toolDefinition
             );
             activeToolTrace = toolTrace;
 
@@ -316,6 +334,7 @@ export class DeepTaskExecutor {
 
             // Observation 빌드 (False Success 방지: success=false → FAILED 관측)
             const observation = this.observationBuilder.buildSuccess(candidate, toolResult);
+            this.store.getTraceManager().recordToolObservation(missionId, taskId, String(attemptId), observation);
             observations.push(observation);
 
             // Evidence 기록
@@ -386,6 +405,7 @@ export class DeepTaskExecutor {
               isShadowBlock ? 'ERROR' :
               'ERROR'
             );
+            this.store.getTraceManager().recordToolObservation(missionId, taskId, String(attemptId), failedObservation);
             observations.push(failedObservation);
 
             const observationText = this.observationBuilder.toContextMessage(failedObservation);

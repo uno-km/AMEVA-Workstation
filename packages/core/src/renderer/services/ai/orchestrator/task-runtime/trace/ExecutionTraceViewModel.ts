@@ -79,11 +79,12 @@ export class ExecutionTraceViewModel {
       let cardType: TimelineCard['type'] = 'TASK';
       if (ev.eventType.startsWith('mission_')) cardType = 'MISSION';
       else if (ev.eventType.startsWith('tool_approval_')) cardType = 'APPROVAL';
+      else if (ev.eventType === 'tool_observation_created') cardType = 'OBSERVATION' as any;
       else if (ev.eventType.startsWith('tool_')) cardType = 'TOOL';
       else if (ev.eventType.startsWith('artifact_')) cardType = 'ARTIFACT';
       else if (ev.eventType.startsWith('verification_')) cardType = 'VERIFICATION';
       else if (ev.eventType.startsWith('retry_') || ev.eventType.startsWith('repair_')) cardType = 'RETRY';
-      else if (ev.eventType === 'decision_summary_created') cardType = 'DECIDED' as any;
+      else if (ev.eventType === 'decision_summary_created' || ev.eventType === 'decision_summary_fallback_used') cardType = 'DECIDED' as any;
 
       cards.push({
         id: ev.eventId,
@@ -94,11 +95,39 @@ export class ExecutionTraceViewModel {
         summary: ev.summary ?? '',
         status: ev.status,
         severity: ev.severity,
-        data: ev.toolExecution ?? ev.artifactChanges ?? ev.verification ?? ev.retry ?? ev.approval ?? ev.decision ?? {}
+        data: ev.toolExecution ?? ev.artifactChanges ?? ev.verification ?? ev.retry ?? ev.approval ?? ev.decision ?? (ev as any).observation ?? {}
       });
     }
 
     return cards.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+  }
+
+  /**
+   * Decision Summary 카드 목록을 추출한다.
+   */
+  public static getDecisionSummaries(events: ReadonlyArray<TraceEvent>): any[] {
+    const cards: any[] = [];
+    const filtered = ExecutionTraceViewModel.filterByVisibility(events);
+    for (const ev of filtered) {
+      if (ev.decision) {
+        cards.push(ev.decision);
+      }
+    }
+    return cards;
+  }
+
+  /**
+   * Tool Observation 카드 목록을 추출한다.
+   */
+  public static getObservations(events: ReadonlyArray<TraceEvent>): any[] {
+    const cards: any[] = [];
+    const filtered = ExecutionTraceViewModel.filterByVisibility(events);
+    for (const ev of filtered) {
+      if ((ev as any).observation) {
+        cards.push((ev as any).observation);
+      }
+    }
+    return cards;
   }
 
   /**

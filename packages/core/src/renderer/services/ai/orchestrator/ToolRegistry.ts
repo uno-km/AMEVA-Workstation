@@ -130,6 +130,13 @@ export class ToolRegistry {
   }
 
   /**
+   * 도구 명칭으로 도구 명세를 조회한다.
+   */
+  public getDefinition(name: string): ToolDefinition | undefined {
+    return this.tools.get(name)
+  }
+
+  /**
    * 도구를 이름으로 조회하여 실행한다.
    *
    * @param name - 실행할 도구 명칭 (ThoughtParser가 파싱한 name 필드)

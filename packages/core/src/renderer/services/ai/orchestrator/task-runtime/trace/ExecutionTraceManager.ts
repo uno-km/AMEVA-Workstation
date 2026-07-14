@@ -104,6 +104,55 @@ export class ExecutionTraceManager {
     attemptId: string,
     decision: DecisionSummary
   ): TraceEvent {
+    let validDecision = decision;
+    const isValid = decision &&
+      typeof decision.objective === 'string' &&
+      Array.isArray(decision.knownFacts) &&
+      Array.isArray(decision.missingInformation) &&
+      typeof decision.selectedAction === 'string' &&
+      typeof decision.selectedTool === 'string' &&
+      typeof decision.selectionReason === 'string' &&
+      typeof decision.expectedOutcome === 'string' &&
+      typeof decision.riskLevel === 'string' &&
+      typeof decision.approvalRequired === 'boolean' &&
+      typeof decision.nextStepIfFailed === 'string';
+
+    if (!isValid) {
+      validDecision = {
+        objective: decision?.objective || 'Execute current task objective',
+        knownFacts: Array.isArray(decision?.knownFacts) ? decision.knownFacts : [],
+        missingInformation: Array.isArray(decision?.missingInformation) ? decision.missingInformation : [],
+        selectedAction: decision?.selectedAction || (decision?.selectedTool ? `Execute ${decision.selectedTool}` : 'Execute tool action'),
+        selectedTool: decision?.selectedTool || 'unknown_tool',
+        selectionReason: decision?.selectionReason || 'Safe fallback decision summary due to schema validation failure.',
+        alternativesConsidered: Array.isArray(decision?.alternativesConsidered) ? decision.alternativesConsidered : [],
+        rejectionReasons: typeof decision?.rejectionReasons === 'object' && decision.rejectionReasons !== null ? decision.rejectionReasons : {},
+        expectedOutcome: decision?.expectedOutcome || 'Advance task state safely.',
+        riskLevel: decision?.riskLevel || 'HIGH',
+        approvalRequired: decision?.approvalRequired ?? true,
+        nextStepIfFailed: decision?.nextStepIfFailed || 'Review failure observation and retry or escalate.'
+      };
+
+      const fallbackNoticeSeq = this.store.nextSequenceNumber(missionId);
+      this.store.appendEvent({
+        eventId: `${missionId}_${fallbackNoticeSeq}_dec_fallback`,
+        traceId: missionId,
+        spanId: `span-t-${taskId}-${attemptId}`,
+        parentSpanId: `span-m-${missionId}`,
+        missionId,
+        taskId,
+        attemptId,
+        timestamp: Date.now(),
+        eventType: 'decision_summary_fallback_used',
+        status: 'WARNING',
+        title: 'DecisionSummary Schema Validation Failed - Fallback Used',
+        summary: 'DecisionSummary failed validation. Safe fallback summary applied; raw LLM response suppressed.',
+        sequenceNumber: fallbackNoticeSeq,
+        visibility: 'OPERATOR',
+        schemaVersion: '4.0.0'
+      });
+    }
+
     const seq = this.store.nextSequenceNumber(missionId);
     const spanId = `span-t-${taskId}-${attemptId}`;
     const ev: TraceEvent = {
@@ -117,12 +166,12 @@ export class ExecutionTraceManager {
       timestamp: Date.now(),
       eventType: 'decision_summary_created',
       status: 'DECIDED',
-      title: `Tool Selection Decision: ${decision.selectedTool}`,
-      summary: decision.selectionReason,
+      title: `Tool Selection Decision: ${validDecision.selectedTool}`,
+      summary: validDecision.selectionReason,
       sequenceNumber: seq,
       visibility: 'USER',
       schemaVersion: '4.0.0',
-      decision
+      decision: validDecision
     };
     this.store.appendEvent(ev);
     return ev;
@@ -139,13 +188,14 @@ export class ExecutionTraceManager {
     toolName: string,
     toolCategory: string,
     selectionReason: string,
-    args: Record<string, any>
+    args: Record<string, any>,
+    definition?: any
   ): { traceEvent: TraceEvent; toolTrace: ToolExecutionTrace } {
     const seq = this.store.nextSequenceNumber(missionId);
     const spanId = toolCallId;
     const parentSpanId = `span-t-${taskId}-${attemptId}`;
 
-    const { riskLevel, approvalRequired } = ToolApprovalPolicy.evaluateRisk(toolName, args);
+    const { riskLevel, approvalRequired } = ToolApprovalPolicy.evaluateRisk(toolName, args, definition);
 
     const toolTrace: ToolExecutionTrace = {
       toolCallId,
@@ -394,6 +444,38 @@ export class ExecutionTraceManager {
       schemaVersion: '4.0.0',
       artifactChanges: [change]
     };
+    this.store.appendEvent(ev);
+    return ev;
+  }
+
+  /**
+   * Tool Observation 생성 이벤트 기록
+   */
+  public recordToolObservation(
+    missionId: string,
+    taskId: string,
+    attemptId: string,
+    observation: any
+  ): TraceEvent {
+    const seq = this.store.nextSequenceNumber(missionId);
+    const ev: TraceEvent = {
+      eventId: `${missionId}_${seq}_obs_${observation.toolCallId || seq}`,
+      traceId: missionId,
+      spanId: observation.toolCallId || `obs-${seq}`,
+      parentSpanId: `span-t-${taskId}-${attemptId}`,
+      missionId,
+      taskId,
+      attemptId,
+      timestamp: observation.createdAt || Date.now(),
+      eventType: 'tool_observation_created' as any,
+      status: observation.status === 'SUCCESS' ? 'OBSERVED' : 'FAILED',
+      title: `Tool Observation: ${observation.toolName || 'unknown'}`,
+      summary: observation.summary || 'Observation created',
+      sequenceNumber: seq,
+      visibility: 'USER',
+      schemaVersion: '4.0.0',
+      observation
+    } as any;
     this.store.appendEvent(ev);
     return ev;
   }

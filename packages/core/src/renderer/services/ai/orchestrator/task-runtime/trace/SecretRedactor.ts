@@ -20,10 +20,10 @@
  */
 const SENSITIVE_KEY_PATTERN = /(api[-_]?key|access[-_]?token|refresh[-_]?token|auth[-_]?token|authorization|cookie|password|secret|private[-_]?key|connection[-_]?string|credential|passwd|pwd|bearer|jwt)/i;
 
-const BEARER_TOKEN_REGEX = /Bearer\s+[A-Za-z0-9\-\._~\+\/]+=*/gi;
+const BEARER_TOKEN_REGEX = /Bearer\s+[A-Za-z0-9\-\._~\+\/=_:]+/gi;
 const PRIVATE_KEY_REGEX = /-----BEGIN [A-Z ]+PRIVATE KEY-----\s*[\s\S]*?\s*-----END [A-Z ]+PRIVATE KEY-----/gi;
 const COOKIE_HEADER_REGEX = /(Cookie|Set-Cookie)\s*:\s*[^\r\n]+/gi;
-const AUTH_HEADER_REGEX = /(Authorization|X-API-Key|Proxy-Authorization)\s*:\s*[^\r\n]+/gi;
+const AUTH_HEADER_REGEX = /(Authorization|X-API-Key|Proxy-Authorization)\s*:\s*(?!Bearer\b)[^\r\n]+/gi;
 const ENV_SECRET_REGEX = /\b(API_KEY|SECRET|PASSWORD|TOKEN|ACCESS_KEY|PRIVATE_KEY)\s*=\s*['"]?([^\r\n'"\s]+)['"]?/gi;
 const LONG_BASE64_REGEX = /\b(?![A-Za-z0-9+/]{0,59}$)[A-Za-z0-9+/]{60,}={0,2}\b/g;
 
@@ -49,7 +49,6 @@ export class SecretRedactor {
       if (depth > 15 || obj === null || obj === undefined) return obj;
 
       if (typeof obj === 'string') {
-        // 경로 자체가 민감 키이거나 문자열 내부에 민감 데이터 패턴이 있는 경우
         if (SENSITIVE_KEY_PATTERN.test(currentPath)) {
           redactedKeys.add(currentPath);
           return '[REDACTED_CREDENTIAL]';
@@ -97,7 +96,6 @@ export class SecretRedactor {
         redactedArgumentKeys: Array.from(redactedKeys)
       };
     } catch (err) {
-      // Redaction 중 예기치 못한 실패 시 원본 유출 방지를 위해 기본 비공개 처리
       console.error('[SecretRedactor] redactArguments 실패, 안전 비공개 처리:', err);
       return {
         redactedArguments: { _redactorError: 'Failed to safely redact arguments', _raw: '[REDACTED_ON_ERROR]' },
@@ -118,16 +116,18 @@ export class SecretRedactor {
     try {
       let result = text;
       result = result.replace(PRIVATE_KEY_REGEX, '[REDACTED_PRIVATE_KEY]');
+      result = result.replace(/((?:Authorization|X-API-Key|Proxy-Authorization)\s*:\s*)([^\r\n]+)/gi, (match, prefix, value) => {
+        if (/^Bearer\s+/i.test(value)) {
+          return `${prefix}Bearer [REDACTED_TOKEN]`;
+        }
+        return `${prefix}[REDACTED_AUTH]`;
+      });
       result = result.replace(BEARER_TOKEN_REGEX, 'Bearer [REDACTED_TOKEN]');
       result = result.replace(COOKIE_HEADER_REGEX, '$1: [REDACTED_COOKIE]');
-      result = result.replace(AUTH_HEADER_REGEX, '$1: [REDACTED_AUTH]');
       result = result.replace(ENV_SECRET_REGEX, (match, key) => `${key}=[REDACTED_SECRET]`);
 
-      // 긴 Base64 문자열이 Credential 키워드 근처에 있거나 단독일 때 마스킹
-      // 단, 일반 JSON 해시나 UUID는 제외
       if (LONG_BASE64_REGEX.test(result)) {
         result = result.replace(LONG_BASE64_REGEX, (match) => {
-          // 길이가 60자 이상인 Base64 패턴이 Authorization이나 Token 패턴일 경우 마스킹
           if (match.length >= 80 || /ey[A-Za-z0-9\-_=]+\.[A-Za-z0-9\-_=]+\.?[A-Za-z0-9\-_+/=]*/.test(match)) {
             return '[REDACTED_BASE64_CREDENTIAL]';
           }
@@ -181,6 +181,19 @@ export class SecretRedactor {
         if (copy.commandResult.stderrPreview) {
           copy.commandResult.stderrPreview = SecretRedactor.redactText(copy.commandResult.stderrPreview);
         }
+      }
+
+      if (copy.decision) {
+        if (copy.decision.objective) copy.decision.objective = SecretRedactor.redactText(copy.decision.objective);
+        if (copy.decision.selectionReason) copy.decision.selectionReason = SecretRedactor.redactText(copy.decision.selectionReason);
+        if (copy.decision.expectedOutcome) copy.decision.expectedOutcome = SecretRedactor.redactText(copy.decision.expectedOutcome);
+      }
+
+      if (copy.observation) {
+        if (copy.observation.summary) copy.observation.summary = SecretRedactor.redactText(copy.observation.summary);
+        if (copy.observation.output) copy.observation.output = SecretRedactor.redactText(copy.observation.output);
+        if (copy.observation.stdoutPreview) copy.observation.stdoutPreview = SecretRedactor.redactText(copy.observation.stdoutPreview);
+        if (copy.observation.stderrPreview) copy.observation.stderrPreview = SecretRedactor.redactText(copy.observation.stderrPreview);
       }
 
       if (copy.summary) {
