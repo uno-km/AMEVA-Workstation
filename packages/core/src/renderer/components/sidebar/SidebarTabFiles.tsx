@@ -20,7 +20,7 @@
 import React, { useState } from 'react'
 import {
   FileText, Save, Download, Terminal, Eye,
-  ChevronDown, ChevronRight, X
+  ChevronDown, ChevronRight, X, Trello
 } from 'lucide-react'
 import type { EditorMode, ExportFormat } from '../../../shared/types'
 import type { HotkeyConfig } from '../SettingsModal'
@@ -52,7 +52,7 @@ export interface SidebarTabFilesProps {
 export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
   const {
     editorMode, setEditorMode, handleOpenFile, handleSaveFile, handleExport,
-    settings
+    settings, isProPlan
   } = useAppContext()
   
   const {
@@ -208,6 +208,17 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
             title={`미리보기 모드 전환 (${formatHotkey(hkeys.toggleMode)})`}
           >
             <Eye size={12} /> 미리보기
+          </button>
+          <button
+            className={`btn btn-glass ${editorMode === 'kanban' ? 'active' : ''}`}
+            style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center', opacity: isProPlan ? 1 : 0.5 }}
+            onClick={() => {
+              if (isProPlan) setEditorMode('kanban');
+              else alert('Kanban Board는 Pro 플랜 전용 기능입니다.');
+            }}
+            title={`칸반 보드 뷰 (Pro)`}
+          >
+            <Trello size={12} /> 보드 뷰
           </button>
           <button
             className={`btn btn-glass ${editorMode === 'raw' ? 'active' : ''}`}

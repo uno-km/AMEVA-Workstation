@@ -24,7 +24,16 @@ export const UTILITY_TAB_LABELS: Record<string, string> = {
   google: '구글 검색',
   calendar: '스케줄 캘린더',
   'google-drive': '구글 드라이브',
-  'google-maps': '구글 지도'
+  'google-maps': '구글 지도',
+  'pdf-rag': 'PDF 문서 대화 (RAG)',
+  'web-browser': '웹 브라우저 & RPA',
+  'db-explorer': '데이터베이스 탐색기',
+  'mind-map': '마인드맵 생성기',
+  'presentation': '프레젠테이션 모드',
+  'pomodoro': '집중력 & 뽀모도로',
+  'voice-dictation': '음성 회의록 작성',
+  'rest-client': 'REST API 클라이언트',
+  'wireframe': 'UI 와이어프레임'
 };
 
 /**

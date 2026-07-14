@@ -98,6 +98,7 @@ import mermaid from 'mermaid'
  */
 import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
+import { KanbanBoard } from './KanbanBoard'
 import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
 // Mermaid 초기화 시도
@@ -790,6 +791,8 @@ export function MarkdownEditor({
               }}
             />
           </BlockNoteView>
+        ) : editorMode === 'kanban' ? (
+          <KanbanBoard editor={editor} />
         ) : editorMode === 'preview' ? (
           <MarkdownPreview markdown={currentContent} editor={editor} />
         ) : (

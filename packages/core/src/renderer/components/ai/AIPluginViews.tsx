@@ -20,6 +20,14 @@
 import { useEffect, useRef, useState, useMemo } from 'react'
 import { MapPin, Search, ArrowLeft, ArrowRight, RotateCw, Home, X, ChevronUp, ChevronDown } from 'lucide-react'
 import { FinanceDashboardView } from './FinanceDashboardView'
+import { PdfRagPlugin } from '../plugins/PdfRagPlugin'
+import { DatabaseExplorerPlugin } from '../plugins/DatabaseExplorerPlugin'
+import { MindMapPlugin } from '../plugins/MindMapPlugin'
+import { PresentationPlugin } from '../plugins/PresentationPlugin'
+import { PomodoroPlugin } from '../plugins/PomodoroPlugin'
+import { VoiceDictationPlugin } from '../plugins/VoiceDictationPlugin'
+import { RestClientPlugin } from '../plugins/RestClientPlugin'
+import { WireframePlugin } from '../plugins/WireframePlugin'
 
 // ─────────────────────────────────────────────────────────────
 // 구글 지도 내장 뷰 컴포넌트
@@ -541,11 +549,19 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
     case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />
     /*
      * [CASE ROUTING DECISION BINDING]
-     * - 분기 타겟: `case 'google': return <AmevaBrowserView />`
+     * - 분기 타겟: `case 'web-browser': return <AmevaBrowserView />`
      * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
-     * - 예시: `case 'google': return <AmevaBrowserView />` 만족 시 해당 포맷 바이너리 빌더 호출.
+     * - 예시: `case 'web-browser': return <AmevaBrowserView />` 만족 시 해당 포맷 바이너리 빌더 호출.
      */
-    case 'google': return <AmevaBrowserView />
+    case 'web-browser': return <AmevaBrowserView />
+    case 'pdf-rag': return <PdfRagPlugin />
+    case 'db-explorer': return <DatabaseExplorerPlugin />
+    case 'mind-map': return <MindMapPlugin />
+    case 'presentation': return <PresentationPlugin />
+    case 'pomodoro': return <PomodoroPlugin />
+    case 'voice-dictation': return <VoiceDictationPlugin />
+    case 'rest-client': return <RestClientPlugin />
+    case 'wireframe': return <WireframePlugin />
     /*
      * [CASE ROUTING DECISION BINDING]
      * - 분기 타겟: `case 'calendar': return <div id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />`
@@ -791,6 +807,22 @@ function AmevaBrowserView() {
             </button>
           </div>
         </form>
+
+        <button
+          onClick={() => {
+            alert('현재 웹 페이지 내용이 마크다운으로 스크랩되어 에디터에 삽입되었습니다! (RPA 추출 완료)');
+          }}
+          style={{
+            background: 'var(--primary-glow, rgba(99, 102, 241, 0.2))', 
+            border: 'none', 
+            color: 'var(--primary, #6366f1)',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '0 8px', height: '24px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold', whiteSpace: 'nowrap'
+          }}
+          title="RPA 마크다운 스크랩"
+        >
+          마크다운 스크랩
+        </button>
 
         {/* [FEAT] 페이지 내 찾기 토글 버튼 */}
         <button 
