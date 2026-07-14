@@ -36,6 +36,10 @@ const ExcelBlockSpec = createReactBlockSpec(
 
       useEffect(() => {
         setIsMounted(true)
+        const timer = setTimeout(() => {
+          window.dispatchEvent(new Event('resize'))
+        }, 150)
+        return () => clearTimeout(timer)
       }, [])
 
       let sheetData = []
@@ -129,7 +133,11 @@ const ExcelBlockSpec = createReactBlockSpec(
           onPointerUp={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onFocus={(e) => e.stopPropagation()}
-          onBlur={(e) => e.stopPropagation()}
+          onBlur={(e) => {
+            e.stopPropagation()
+            handleSave()
+          }}
+          onMouseLeave={handleSave}
         >
           {isFullScreen ? (
             <div
@@ -207,10 +215,46 @@ const ExcelBlockSpec = createReactBlockSpec(
       )
     },
     toExternalHTML: ({ block }) => {
-      // 마크다운 원문보기(HTML 추출) 시 빈 태그가 아닌 안내 문구 렌더링
+      let sheetData = []
+      try {
+        sheetData = JSON.parse(block.props.data)
+      } catch(e) {}
+      
+      const sheet = sheetData[0]
+      if (!sheet || !sheet.celldata) {
+        return <p>Empty Excel Block</p>
+      }
+
+      let maxR = 0; let maxC = 0;
+      sheet.celldata.forEach((cell: any) => {
+        if (cell.r > maxR) maxR = cell.r;
+        if (cell.c > maxC) maxC = cell.c;
+      });
+
+      if (maxR === 0 && maxC === 0 && (!sheet.celldata[0] || (!sheet.celldata[0].v?.m && !sheet.celldata[0].v?.v))) {
+         return <p>Empty Excel Spreadsheet</p>
+      }
+
+      const matrix: string[][] = Array.from({ length: maxR + 1 }, () => Array(maxC + 1).fill(''));
+      sheet.celldata.forEach((cell: any) => {
+        matrix[cell.r][cell.c] = cell.v?.m || cell.v?.v || '';
+      });
+
       return (
-        <div data-content-type="excel">
-          <p>[AMEVA Excel Spreadsheet Data: {block.props.data.length} bytes]</p>
+        <div data-content-type="excel" style={{ overflowX: 'auto', margin: '16px 0' }}>
+          <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid var(--border-muted)', textAlign: 'left' }}>
+            <tbody>
+              {matrix.map((row, r) => (
+                <tr key={r}>
+                  {row.map((cell, c) => (
+                    <td key={c} style={{ border: '1px solid var(--border-muted)', padding: '6px 12px' }}>
+                      {cell}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )
     }
