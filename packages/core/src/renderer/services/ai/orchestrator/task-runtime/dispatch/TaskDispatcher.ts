@@ -92,6 +92,9 @@ export class TaskDispatcher {
         'RUNNING'
       );
 
+      // Phase 4 Trace 기록: Task Started
+      this.store.getTraceManager().recordTaskStarted(missionId, taskId, lease.attemptId, task.definition.title);
+
       // 3. 전략 판별
       const strategy = this.resolver.resolve(task);
       console.debug(`[TaskDispatcher] Strategy for ${taskId}: ${strategy}`);
@@ -179,6 +182,26 @@ export class TaskDispatcher {
           'FAILED',
           { lastFailure: { errorType: 'ExecutorCrash', message: errorMsg, timestamp: Date.now() } }
         );
+
+        const seq = this.store.getTraceManager().getStore().nextSequenceNumber(missionId);
+        this.store.getTraceManager().getStore().appendEvent({
+          eventId: `${missionId}_tfail_${taskId}_${seq}`,
+          traceId: missionId,
+          spanId: `span-t-${taskId}-${attemptId}`,
+          parentSpanId: `span-m-${missionId}`,
+          missionId,
+          taskId,
+          attemptId,
+          timestamp: Date.now(),
+          eventType: 'task_failed',
+          status: 'FAILED',
+          title: `Task Failed: ${taskId}`,
+          summary: `Executor crashed: ${errorMsg}`,
+          sequenceNumber: seq,
+          visibility: 'USER',
+          severity: 'HIGH',
+          schemaVersion: '4.0.0'
+        });
       } catch (transitionError: unknown) {
         const tMsg = transitionError instanceof Error ? transitionError.message : String(transitionError);
         console.error(`[TaskDispatcher] Failed to transition to FAILED after crash:`, tMsg);

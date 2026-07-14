@@ -312,3 +312,5 @@ export interface MissionCompletionReviewInput {
   completionCandidateStatus: CompletionCandidateStatus;
   createdAt: number;
 }
+
+export * from '../trace/ExecutionTraceTypes';

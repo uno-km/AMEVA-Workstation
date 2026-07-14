@@ -10,11 +10,17 @@ export class IllegalTransitionError extends Error {
 }
 
 export class ArtifactTransactionManager {
+  private traceManager?: import('../trace/ExecutionTraceManager').ExecutionTraceManager;
+
   constructor(
     private readonly store: ArtifactStore,
     private readonly fsAdapter: IFileSystemAdapter,
     private readonly idempotencyStore?: import('./IdempotencyStore').IIdempotencyStore
   ) {}
+
+  public setTraceManager(traceManager: import('../trace/ExecutionTraceManager').ExecutionTraceManager): void {
+    this.traceManager = traceManager;
+  }
 
   public static resolveStagingPath(missionId: string, taskId: string, attemptId: string, artifactId: string, revision: number): string {
     return `/missions/${missionId}/staging/${taskId}/${attemptId}/${artifactId}_rev${revision}.txt`;
@@ -44,6 +50,25 @@ export class ArtifactTransactionManager {
     manifest.status = nextStatus;
     manifest.updatedAt = Date.now();
     await this.store.saveManifest(manifest);
+
+    if (this.traceManager && manifest.provenance) {
+      this.traceManager.recordArtifactChange(
+        manifest.provenance.missionId,
+        manifest.provenance.taskId,
+        manifest.provenance.attemptId,
+        {
+          artifactId: manifest.artifactId,
+          kind: manifest.kind,
+          previousRevision: manifest.revision,
+          newRevision: manifest.revision,
+          stagedPath: manifest.stagedPath,
+          finalPath: manifest.finalPath,
+          status: nextStatus as any,
+          commitStatus: nextStatus === 'COMMITTED' ? 'COMMITTED' : nextStatus === 'COMMITTING' ? 'PENDING' : 'NONE',
+          validationSummary: `Artifact status changed to ${nextStatus}`
+        }
+      );
+    }
   }
 
   public async getManifest(missionId: string, artifactId: string): Promise<ArtifactManifest | null> {

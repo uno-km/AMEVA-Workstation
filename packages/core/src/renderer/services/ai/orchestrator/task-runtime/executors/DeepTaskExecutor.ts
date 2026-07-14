@@ -44,6 +44,7 @@ import { ToolCallParser } from './ToolCallParser';
 import { ToolObservationBuilder, type ToolObservation } from './ToolObservationBuilder';
 import { CheckpointRuntime } from '../checkpoint/CheckpointRuntime';
 import { ToolPolicyChecker, ToolPolicyViolationError } from '../policy/ToolPolicyChecker';
+import { ToolApprovalPolicy, ToolApprovalViolationError } from '../policy/ToolApprovalPolicy';
 import type { TaskEvidence } from '../domain/types';
 import { ToolRegistry } from '../../ToolRegistry';
 
@@ -180,11 +181,38 @@ export class DeepTaskExecutor {
            */
           const candidate = parseResult.candidate;
           consecutiveNoToolTurns = 0;
+          let activeToolTrace: any = undefined;
 
           try {
             // [Item 6] Tool 실행 전 정책 검증
             // Shadow Mode 차단, 맰드 등록 확인 등 수행
             ToolPolicyChecker.assertAllowed(candidate.toolName, knownToolNames);
+
+            const traceManager = this.store.getTraceManager();
+            const { toolTrace } = traceManager.recordToolSelected(
+              missionId, taskId, String(attemptId),
+              candidate.toolCallId, candidate.toolName, 'general',
+              `Executing tool '${candidate.toolName}' for task '${taskId}'`,
+              candidate.arguments
+            );
+            activeToolTrace = toolTrace;
+
+            // Phase 4 위험도 및 승인 정책 검사
+            if (toolTrace.approvalRequired) {
+              const idempotencyKey = `idemp-appr-${missionId}-${candidate.toolCallId}`;
+              const existingAppr = ToolApprovalPolicy.getApprovalRequest(`appr-${idempotencyKey}`);
+              const status = existingAppr?.status ?? 'PENDING';
+              if (status !== 'APPROVED') {
+                traceManager.recordApprovalRequested(
+                  missionId, taskId, String(attemptId),
+                  candidate.toolCallId, candidate.toolName, toolTrace.riskLevel,
+                  candidate.arguments, [], `Tool '${candidate.toolName}' requires user approval (${toolTrace.riskLevel} risk).`
+                );
+              }
+              ToolApprovalPolicy.assertApproved(candidate.toolName, status, toolTrace.riskLevel);
+            }
+
+            traceManager.recordToolExecutionStarted(missionId, taskId, String(attemptId), toolTrace);
 
             // Tool 실행 (Timeout 포함) — DI된 registry 인스턴스 사용
             // [Item 4] Legacy expectedOutput 호환
@@ -276,6 +304,16 @@ export class DeepTaskExecutor {
               console.log(`[DeepTaskExecutor] Artifact ${aid} marked WRITTEN for mission ${missionId}`);
             }
 
+            // Phase 4 Trace 완료 기록
+            if (activeToolTrace) {
+              this.store.getTraceManager().recordToolExecutionTerminal(
+                missionId, taskId, String(attemptId),
+                activeToolTrace,
+                toolResult.success ? 'SUCCEEDED' : 'FAILED',
+                `Tool '${candidate.toolName}' finished with status ${toolResult.success ? 'SUCCEEDED' : 'FAILED'}`
+              );
+            }
+
             // Observation 빌드 (False Success 방지: success=false → FAILED 관측)
             const observation = this.observationBuilder.buildSuccess(candidate, toolResult);
             observations.push(observation);
@@ -316,11 +354,25 @@ export class DeepTaskExecutor {
              */
             const errorMsg = toolError instanceof Error ? toolError.message : String(toolError);
             const isShadowBlock = toolError instanceof ToolPolicyViolationError && toolError.violationType === 'SHADOW_MODE_BLOCKED';
+            const isApprovalBlock = toolError instanceof ToolApprovalViolationError;
+
+            if (activeToolTrace) {
+              this.store.getTraceManager().recordToolExecutionTerminal(
+                missionId, taskId, String(attemptId),
+                activeToolTrace,
+                isApprovalBlock ? 'CANCELLED' : errorMsg.includes('timed out') ? 'TIMED_OUT' : 'FAILED',
+                errorMsg
+              );
+            }
 
             if (isShadowBlock) {
               console.info(
                 `[DeepTaskExecutor] Tool '${candidate.toolName}' blocked by Shadow Mode policy. ` +
                 `Observation: POLICY_BLOCKED.`
+              );
+            } else if (isApprovalBlock) {
+              console.warn(
+                `[DeepTaskExecutor] Tool '${candidate.toolName}' blocked waiting for user approval (${(toolError as ToolApprovalViolationError).riskLevel} risk).`
               );
             } else {
               console.error(`[DeepTaskExecutor] Tool '${candidate.toolName}' 실행 실패:`, errorMsg);
@@ -329,6 +381,7 @@ export class DeepTaskExecutor {
             const failedObservation = this.observationBuilder.buildFailure(
               candidate,
               errorMsg,
+              isApprovalBlock ? 'REJECTED' :
               errorMsg.includes('timed out') ? 'TIMED_OUT' :
               isShadowBlock ? 'ERROR' :
               'ERROR'

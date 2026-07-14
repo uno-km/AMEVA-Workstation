@@ -13,6 +13,7 @@ import type { MissionExecutionState } from '../domain/ExecutionTypes';
 import { TaskNotFoundError } from '../domain/errors';
 import { TaskStateMachine } from '../state/TaskStateMachine';
 import { TaskEventLog } from '../events/TaskEventLog';
+import { ExecutionTraceManager } from '../trace/ExecutionTraceManager';
 
 export class TaskRuntimeStore {
   // missionId -> (taskId -> TaskEntity)
@@ -20,9 +21,14 @@ export class TaskRuntimeStore {
   // missionId -> MissionExecutionState
   private missionStates: Map<string, MissionExecutionState> = new Map();
   private eventLog: TaskEventLog;
+  private traceManager: ExecutionTraceManager = new ExecutionTraceManager();
 
   constructor(eventLog: TaskEventLog) {
     this.eventLog = eventLog;
+  }
+
+  public getTraceManager(): ExecutionTraceManager {
+    return this.traceManager;
   }
 
   /**
@@ -223,6 +229,82 @@ export class TaskRuntimeStore {
       // Store 갱신 (메모리 맵이므로 예외가 발생할 가능성이 거의 없음)
       const missionTasks = this.missions.get(command.missionId)!;
       missionTasks.set(command.taskId, updatedTask);
+
+      // Phase 4 Execution Trace 동기화
+      const attemptId = command.attemptId ?? updatedTask.state.activeAttemptId ?? '1';
+      if (targetStatus === 'COMPLETED') {
+        const seq = this.traceManager.getStore().nextSequenceNumber(command.missionId);
+        this.traceManager.getStore().appendEvent({
+          eventId: `${command.missionId}_done_${command.taskId}_${seq}`,
+          traceId: command.missionId,
+          spanId: `span-t-${command.taskId}-${attemptId}`,
+          parentSpanId: `span-m-${command.missionId}`,
+          missionId: command.missionId,
+          taskId: command.taskId,
+          attemptId,
+          timestamp: Date.now(),
+          eventType: 'task_completed',
+          status: 'COMPLETED',
+          title: `Task Completed: ${updatedTask.definition.title ?? command.taskId}`,
+          summary: command.reason || 'Task successfully verified and completed.',
+          sequenceNumber: seq,
+          visibility: 'USER',
+          severity: 'LOW',
+          schemaVersion: '4.0.0'
+        });
+      } else if (targetStatus === 'FAILED') {
+        const seq = this.traceManager.getStore().nextSequenceNumber(command.missionId);
+        this.traceManager.getStore().appendEvent({
+          eventId: `${command.missionId}_tfail_${command.taskId}_${seq}`,
+          traceId: command.missionId,
+          spanId: `span-t-${command.taskId}-${attemptId}`,
+          parentSpanId: `span-m-${command.missionId}`,
+          missionId: command.missionId,
+          taskId: command.taskId,
+          attemptId,
+          timestamp: Date.now(),
+          eventType: 'task_failed',
+          status: 'FAILED',
+          title: `Task Failed: ${updatedTask.definition.title ?? command.taskId}`,
+          summary: command.reason || updatedTask.state.lastFailure?.message || 'Task failed.',
+          sequenceNumber: seq,
+          visibility: 'USER',
+          severity: 'HIGH',
+          schemaVersion: '4.0.0'
+        });
+      } else if (targetStatus === 'RETRY_WAIT') {
+        const nextRetries = updatedTask.state.retries || 1;
+        this.traceManager.recordRetryTrace(
+          command.missionId, command.taskId, attemptId,
+          {
+            retryNumber: nextRetries,
+            retryReason: command.reason || 'Attempting partial repair',
+            previousAttemptId: attemptId,
+            newAttemptId: `${attemptId}-r${nextRetries}`,
+            defectsAddressed: []
+          }
+        );
+      } else if (targetStatus === 'VERIFYING') {
+        const seq = this.traceManager.getStore().nextSequenceNumber(command.missionId);
+        this.traceManager.getStore().appendEvent({
+          eventId: `${command.missionId}_verif_${command.taskId}_${seq}`,
+          traceId: command.missionId,
+          spanId: `span-t-${command.taskId}-${attemptId}`,
+          parentSpanId: `span-m-${command.missionId}`,
+          missionId: command.missionId,
+          taskId: command.taskId,
+          attemptId,
+          timestamp: Date.now(),
+          eventType: 'task_verifying',
+          status: 'VERIFYING',
+          title: `Verifying Task: ${updatedTask.definition.title ?? command.taskId}`,
+          summary: command.reason || 'Running semantic and contract verification.',
+          sequenceNumber: seq,
+          visibility: 'USER',
+          severity: 'LOW',
+          schemaVersion: '4.0.0'
+        });
+      }
 
     } catch (error: any) {
       // 거부된 전이 이벤트 기록

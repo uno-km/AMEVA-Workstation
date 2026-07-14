@@ -156,6 +156,10 @@ export class MissionExecutionRuntime {
      */
     const persistenceAdapter = persistence ?? new InMemoryRuntimePersistenceAdapter();
     this.restoreCoordinator = new RuntimeRestoreCoordinator(persistenceAdapter);
+    this.store.getTraceManager().getStore().setPersistence(persistenceAdapter);
+    if (artifactTxManager) {
+      artifactTxManager.setTraceManager(this.store.getTraceManager());
+    }
   }
 
   // ─── 공개 API ───────────────────────────────────────────────────────────
@@ -180,6 +184,9 @@ export class MissionExecutionRuntime {
       consumedRecoveries: 0,
     });
     this.store.updateMissionState(this.missionId, { status: 'RUNNING', startedAt: Date.now() });
+
+    // Phase 4 Trace 기록: Mission Started
+    this.store.getTraceManager().recordMissionStarted(this.missionId, this.missionId);
 
     // [Item 3] Mission 상태 영속화
     this.persistMissionState('RUNNING');
@@ -221,6 +228,24 @@ export class MissionExecutionRuntime {
     this.store.updateMissionState(this.missionId, {
       status: 'CANCELLED',
       cancellationReason: reason
+    });
+
+    // Phase 4 Trace 기록: Mission Cancelled/Failed
+    const seq = this.store.getTraceManager().getStore().nextSequenceNumber(this.missionId);
+    this.store.getTraceManager().getStore().appendEvent({
+      eventId: `${this.missionId}_cancel_${seq}`,
+      traceId: this.missionId,
+      spanId: `span-m-${this.missionId}`,
+      missionId: this.missionId,
+      timestamp: Date.now(),
+      eventType: 'mission_failed',
+      status: 'CANCELLED',
+      title: 'Mission Cancelled',
+      summary: reason,
+      sequenceNumber: seq,
+      visibility: 'USER',
+      severity: 'HIGH',
+      schemaVersion: '4.0.0'
     });
 
     // [Item 3] 상태 영속화
@@ -383,6 +408,27 @@ export class MissionExecutionRuntime {
             isTaskRequired: task.definition.required !== false
           });
 
+          // Phase 4 Trace 기록: task_waiting_user
+          const seq = this.store.getTraceManager().getStore().nextSequenceNumber(this.missionId);
+          this.store.getTraceManager().getStore().appendEvent({
+            eventId: `${this.missionId}_wait_${task.definition.id}_${seq}`,
+            traceId: this.missionId,
+            spanId: `span-t-${task.definition.id}-${task.state.activeAttemptId ?? '1'}`,
+            parentSpanId: `span-m-${this.missionId}`,
+            missionId: this.missionId,
+            taskId: task.definition.id,
+            attemptId: task.state.activeAttemptId,
+            timestamp: Date.now(),
+            eventType: 'task_waiting_user',
+            status: 'WAITING_USER',
+            title: `Waiting for User Intervention: ${task.definition.title ?? task.definition.id}`,
+            summary: task.state.lastFailure?.message ?? 'Task requires manual intervention or decision.',
+            sequenceNumber: seq,
+            visibility: 'USER',
+            severity: 'HIGH',
+            schemaVersion: '4.0.0'
+          });
+
           // [Item 3] WAITING_USER 상태 영속화
           this.persistMissionState('WAITING_USER');
         }
@@ -443,6 +489,23 @@ export class MissionExecutionRuntime {
       ) {
         // 모든 작업 종료 — Mission 완료
         console.log(`[MissionExecutionRuntime] Mission ${this.missionId} has no more work.`);
+        const anyFailed = allTasks.some(t => t.state.status === 'FAILED');
+        const finalSeq = this.store.getTraceManager().getStore().nextSequenceNumber(this.missionId);
+        this.store.getTraceManager().getStore().appendEvent({
+          eventId: `${this.missionId}_final_${finalSeq}`,
+          traceId: this.missionId,
+          spanId: `span-m-${this.missionId}`,
+          missionId: this.missionId,
+          timestamp: Date.now(),
+          eventType: anyFailed ? 'mission_failed' : 'mission_completed',
+          status: anyFailed ? 'FAILED' : 'COMPLETED',
+          title: anyFailed ? 'Mission Finished with Failures' : 'Mission Completed Successfully',
+          summary: anyFailed ? 'Mission stopped as some tasks failed to complete or verify.' : 'All tasks successfully executed and verified.',
+          sequenceNumber: finalSeq,
+          visibility: 'USER',
+          severity: anyFailed ? 'HIGH' : 'LOW',
+          schemaVersion: '4.0.0'
+        });
         this.pause();
       } else if (hasWaitingUser) {
         // WAITING_USER 존재 — 30초 주기로 만료만 체크

@@ -78,6 +78,29 @@ export class VerificationRuntime {
         const finalResult = this.policy.evaluate(input, criterionResults, jobId);
         results.push(finalResult);
 
+        // Phase 4 Trace: verification_passed/failed
+        this.store.getTraceManager().recordVerificationTrace(
+          missionId, task.definition.id, task.state.activeAttemptId ?? '1',
+          {
+            verificationId: `verif-${crypto.randomUUID()}`,
+            stage: 'SEMANTIC',
+            verifierName: 'VerificationPolicy',
+            startedAt: Date.now(),
+            completedAt: Date.now(),
+            durationMs: 0,
+            verdict: finalResult.verdict === 'PASS' ? 'PASS' : finalResult.verdict === 'RETRY' ? 'NEEDS_RETRY' : 'FAIL',
+            score: finalResult.semanticScore,
+            defectCount: finalResult.defects?.length ?? 0,
+            defects: finalResult.defects?.map(d => ({
+              signature: d.signature,
+              description: d.description,
+              severity: 'HIGH' as const
+            })) ?? [],
+            semanticCriticCalled: (task.state.semanticCriticCallCount || 0) > 0,
+            autoPassBlockTriggered: false
+          }
+        );
+
         if (finalResult.verdict === 'PASS') {
           // Commit phase: Commit VALIDATED artifacts BEFORE task completion
           let commitFailed = false;

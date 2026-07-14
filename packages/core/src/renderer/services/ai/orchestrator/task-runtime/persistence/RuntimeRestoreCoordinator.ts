@@ -53,6 +53,10 @@ export class RuntimeRestoreCoordinator {
     this.artifactTxManager = artifactTxManager;
   }
 
+  public getPersistence(): IRuntimePersistenceAdapter {
+    return this.persistence;
+  }
+
   /**
    * 앱 시작 시 미완료 Mission 목록을 조회하고 복원 정보를 반환한다.
    *
