@@ -320,7 +320,7 @@ graph TD
 웹사이트 링크를 깔끔한 카드 형태로 렌더링하여 보여줍니다.
 
 \`\`\`ameva-link
-{"url":"https://github.com/AMEVA-OS/AMEVA-Workstation","title":"AMEVA Workstation 공식 깃허브","description":"차세대 AI 기반 통합 협업 워크스테이션 AMEVA의 소스코드가 공개된 공식 깃허브 레포지토리입니다.","thumbnail":""}
+{"url":"https://uno-km.github.io/AMEVA-Workstation/","title":"AMEVA Workstation 공식 사이트","description":"차세대 AI 기반 통합 협업 워크스테이션 AMEVA의 공식 소개 페이지입니다.","thumbnail":""}
 \`\`\`
 `
       setCurrentContent(welcomeMD)
