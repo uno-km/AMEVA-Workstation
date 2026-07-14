@@ -96,7 +96,19 @@ export class VerificationRuntime {
 
           if (routingResult.status === 'SUCCESS' && routingResult.selectedModelId) {
             try {
-              const verifierAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, task.definition.privacyLevel as import('../../domain/types').PrivacyLevel);
+              const rawAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, task.definition.privacyLevel as import('../../domain/types').PrivacyLevel);
+              const { ModelCallGatewayAdapter } = await import('../../routing/gateway/ModelCallGatewayAdapter');
+              const { ExecutionTraceManager } = await import('../../trace/ExecutionTraceManager');
+              
+              const verifierAdapter = new ModelCallGatewayAdapter(
+                rawAdapter,
+                routingResult.selectedModelId,
+                new ExecutionTraceManager(),
+                missionId,
+                task.definition.id,
+                task.state.activeAttemptId,
+                routingResult.routingDecisionId
+              );
               
               // Privacy Gate
               if (verifierAdapter.isRemote) {

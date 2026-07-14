@@ -144,13 +144,18 @@ export interface TaskDefinition {
   plannerMetadata?: Record<string, any>; // 플래너가 남긴 추가 메타데이터
 }
 
-export interface RoutingDecisionRecord {
+export interface RoutingAffinityState {
   routingDecisionId: string;
   selectedModelId: string;
   selectedRole: string;
   selectedPromptProfile?: string;
+  affinityStatus: 'ACTIVE' | 'INVALIDATED';
+  invalidationReason?: string;
+  previousModelIds: string[];
+  failedCombinationDigests: string[];
+  privacyLocalRerouteCount: number;
+  contextDigest?: string;
   selectedAt: number;
-  routingReason: string;
   adapterInstanceId?: string;
 }
 
@@ -196,8 +201,17 @@ export interface TaskRuntimeState {
   /**
    * [Phase 3 — Progress Tracking]
    */
-  previousFailures?: any[]; // To store previous defect signatures or hash
+  previousFailures?: unknown[]; // To store previous defect signatures or hash
   
+  /**
+   * [Phase 5 — Model Router]
+   */
+  routingAffinity?: RoutingAffinityState;
+  
+  metadata?: {
+    [key: string]: unknown;
+  };
+
   /**
    * [STAGE E — Recovery 폐루프]
    * RETRY_WAIT 상태에서 재시도가 허용되는 Unix Timestamp(ms).
@@ -205,12 +219,6 @@ export interface TaskRuntimeState {
    * RecoveryCoordinator가 RETRY_WAIT 전이 시 이 값을 설정해야 함.
    */
   retryAfter?: number;
-
-  /**
-   * [Phase 5.1 — Model Routing Affinity]
-   * Task 실행 시 결정된 라우팅 정보. 재시도 시 불필요한 라우팅을 막고 Affinity를 유지.
-   */
-  routingDecision?: RoutingDecisionRecord;
 }
 
 /**

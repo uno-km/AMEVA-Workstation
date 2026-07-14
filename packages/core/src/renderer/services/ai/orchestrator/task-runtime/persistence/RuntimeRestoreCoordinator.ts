@@ -187,4 +187,34 @@ export class RuntimeRestoreCoordinator {
       console.warn(`[RuntimeRestoreCoordinator] Mission 상태 저장 실패 (${missionId}): ${msg}`);
     }
   }
+
+  /**
+   * Task 상태를 복원하고 Affinity의 유효성을 검사한다.
+   * 복원만 수행하며 실제 라우팅이나 Budget 소비는 TaskDispatcher 등에서 처리한다.
+   */
+  public restoreTaskRuntimeState(
+    savedState: any, // or TaskRuntimeState
+    registry: { getModel: (modelId: string) => { availability: string; healthStatus: string } | undefined }
+  ): {
+    state: any; // Restored state
+    rerouteRequired: boolean;
+  } {
+    const state = JSON.parse(JSON.stringify(savedState));
+    let rerouteRequired = false;
+
+    if (state.routingAffinity) {
+      const affinity = state.routingAffinity;
+      const model = registry.getModel(affinity.selectedModelId);
+      
+      if (!model || model.availability !== 'AVAILABLE' || model.healthStatus === 'OOM') {
+        affinity.affinityStatus = 'INVALIDATED';
+        affinity.invalidationReason = 'RESTORE_MODEL_UNAVAILABLE';
+        rerouteRequired = true;
+      } else if (affinity.affinityStatus === 'INVALIDATED') {
+        rerouteRequired = true;
+      }
+    }
+
+    return { state, rerouteRequired };
+  }
 }

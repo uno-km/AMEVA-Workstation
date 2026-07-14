@@ -196,15 +196,20 @@ export class ModelRouter {
     };
   }
 
-  private static canUseRuleEngine(profile: TaskRoutingProfile): boolean {
+  private static canUseRuleEngine(profile: TaskRoutingProfile, config: RoutingConfig): boolean {
     // Only if it's a very simple task without required reasoning or tools
     if (profile.instructionComplexity < 0.2 && profile.reasoningComplexity < 0.2 && !profile.toolRequired) {
       // Examples: JSON validation, simple string formatting, file existence checks
       return false; // In Phase 5, if task requires LLM, this returns false.
     }
     
-    if (profile.taskType === 'SUMMARIZATION' && profile.contextSize < 500) {
-      return true; // Use RULE_ENGINE for very small summarization
+    // "RULE_ENGINE이 처리 가능한 Summarization은 다음으로 제한한다: 로그 절단, 중복 제거, 구조화 통계 집계, 기존 Summary 선택, 길이 제한 및 정규화."
+    // 의미 요약, 결론 생성, 문맥 통합은 SMALL 또는 MEDIUM 모델을 요구한다.
+    if (profile.taskType === 'SUMMARIZATION') {
+      const maxTokens = config.maxRuleEngineContextTokens ?? 500;
+      if (profile.contextSize <= maxTokens && profile.reasoningComplexity <= 0.2) {
+        return true; // Use RULE_ENGINE for very small, non-semantic summarization
+      }
     }
     
     return false;

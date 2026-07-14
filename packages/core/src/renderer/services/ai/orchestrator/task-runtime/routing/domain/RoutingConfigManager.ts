@@ -30,7 +30,8 @@ export class RoutingConfigManager {
     },
     disabledModelIds: [],
     forcedLocalTaskTypes: ['VERIFICATION'],
-    forcedModelByCapability: {}
+    forcedModelByCapability: {},
+    maxRuleEngineContextTokens: 500
   };
 
   private constructor() {}

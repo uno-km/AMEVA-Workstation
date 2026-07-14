@@ -157,16 +157,16 @@ export class TaskDispatcher {
 
       // [Item 2] ModelRouter.route() -> ModelAdapterProvider
       if (routingConfig.routingEnabled) {
-        let routingResult = task.state.routingDecision as import('../routing/domain/RoutingDecisionResult').RoutingDecisionResult | undefined;
+        let routingAffinity = task.state.routingAffinity;
 
         // Affinity Status Check or UNAVAILABLE check
-        let needsRouting = !routingResult || routingResult.affinityStatus !== 'ACTIVE';
+        let needsRouting = !routingAffinity || routingAffinity.affinityStatus !== 'ACTIVE';
         
-        if (!needsRouting && routingResult?.selectedModelId) {
+        if (!needsRouting && routingAffinity?.selectedModelId) {
            const adapterProvider = ModelAdapterProvider.getInstance();
            try {
              // Just check if we can get it, if it throws UNAVAILABLE it will be caught
-             await adapterProvider.getAdapterForModel(routingResult.selectedModelId, task.definition.privacyLevel as import('../domain/types').PrivacyLevel);
+             await adapterProvider.getAdapterForModel(routingAffinity.selectedModelId, task.definition.privacyLevel as import('../domain/types').PrivacyLevel);
            } catch(e: unknown) {
              const error = e as Error;
              if (error.message && error.message.includes('UNAVAILABLE')) {
@@ -221,6 +221,19 @@ export class TaskDispatcher {
           routingResult = await ModelRouter.route(profile, routingConfig);
           
           if (routingResult.status === 'SUCCESS') {
+            // Preserve other metadata from routingAffinity if it existed
+            const prevAffinity = task.state.routingAffinity || {} as any;
+            routingAffinity = {
+              routingDecisionId: routingResult.routingDecisionId,
+              selectedModelId: routingResult.selectedModelId,
+              selectedRole: routingResult.selectedRole,
+              affinityStatus: 'ACTIVE',
+              previousModelIds: prevAffinity.previousModelIds || [],
+              failedCombinationDigests: prevAffinity.failedCombinationDigests || [],
+              privacyLocalRerouteCount: prevAffinity.privacyLocalRerouteCount || 0,
+              selectedAt: routingResult.decidedAt
+            };
+
             // Save Affinity
             this.store.updateTaskMetadata(
               {
@@ -233,19 +246,10 @@ export class TaskDispatcher {
                 timestamp: Date.now()
               } as unknown as import('../domain/types').TransitionCommand,
               {
-                routingDecision: {
-                  ...routingResult,
-                  routingDecisionId: routingResult.routingDecisionId,
-                  selectedModelId: routingResult.selectedModelId,
-                  selectedRole: routingResult.selectedRole,
-                  selectedAt: routingResult.decidedAt,
-                  affinityStatus: 'ACTIVE'
-                },
+                routingAffinity,
                 routingBudget: budgetManager.getState()
               }
             );
-            // Update routingResult to include affinityStatus so it's used below
-            routingResult.affinityStatus = 'ACTIVE';
           }
           
           this.store.getTraceManager().recordRoutingDecision(
@@ -256,11 +260,181 @@ export class TaskDispatcher {
           );
         }
 
-        if (routingResult && (routingResult.status === 'SUCCESS' || routingResult.selectedModelId)) {
+        if (routingAffinity && (routingAffinity.affinityStatus === 'ACTIVE' && routingAffinity.selectedModelId)) {
           try {
-            taskAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, task.definition.privacyLevel as import('../domain/types').PrivacyLevel);
+            const rawAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingAffinity.selectedModelId, task.definition.privacyLevel as import('../domain/types').PrivacyLevel);
+            const { ModelCallGatewayAdapter } = await import('../routing/gateway/ModelCallGatewayAdapter');
+            taskAdapter = new ModelCallGatewayAdapter(
+              rawAdapter, 
+              routingAffinity.selectedModelId, 
+              this.store.getTraceManager(), 
+              missionId, 
+              taskId, 
+              attemptId, 
+              routingAffinity.routingDecisionId
+            );
           } catch (e: unknown) {
-            console.warn(`[TaskDispatcher] Adapter load failed for ${routingResult.selectedModelId}, falling back`, e);
+            const err = e as Error;
+              // Privacy 차단 흐름
+              const newAffinity = {
+                ...routingAffinity!,
+                affinityStatus: 'INVALIDATED' as const,
+                invalidationReason: 'PRIVACY_POLICY_BLOCKED'
+              };
+
+              this.store.updateTaskMetadata(
+                {
+                  commandId: `cmd-privacy-block-${crypto.randomUUID()}`,
+                  missionId,
+                  taskId,
+                  expectedStateVersion: task.state.stateVersion,
+                  reason: 'Privacy Gate Blocked Remote Model',
+                  actor: 'TaskDispatcher',
+                  timestamp: Date.now()
+                } as unknown as import('../domain/types').TransitionCommand,
+                {
+                  routingAffinity: newAffinity
+                }
+              );
+              
+              // Local 후보로 최대 1회 재라우팅
+              const budgetManager = new RoutingBudgetManager(routingConfig, task.state.routingBudget);
+              const currentRerouteCount = newAffinity.privacyLocalRerouteCount || 0;
+              
+              if (currentRerouteCount >= 1) {
+                // 더 이상 재라우팅 불가, WAITING_USER 전환
+                this.store.dispatchTransition(
+                  {
+                    commandId: `cmd-wait-user-${crypto.randomUUID()}`,
+                    missionId,
+                    taskId,
+                    expectedCurrentStatus: 'DISPATCHED',
+                    expectedStateVersion: task.state.stateVersion + 1,
+                    reason: 'Local Reroute Failed after Privacy Block',
+                    actor: 'TaskDispatcher',
+                    timestamp: Date.now()
+                  },
+                  'WAITING_USER',
+                  {}
+                );
+                return;
+              }
+              
+              // Consume budget and retry
+              if (!budgetManager.recordDecision()) {
+                this.store.dispatchTransition(
+                  {
+                    commandId: `cmd-fail-${crypto.randomUUID()}`,
+                    missionId,
+                    taskId,
+                    expectedCurrentStatus: 'DISPATCHED',
+                    expectedStateVersion: task.state.stateVersion + 1,
+                    reason: 'Routing budget exhausted',
+                    actor: 'TaskDispatcher',
+                    timestamp: Date.now()
+                  },
+                  'FAILED',
+                  { taskResult: { status: 'FAILED', result: {}, error: 'Routing budget exhausted' } }
+                );
+                return;
+              }
+              
+              const profile: import('../routing/domain/types').TaskRoutingProfile = {
+                taskType: 'EXECUTION',
+                requiredCapabilities: task.definition.requiredCapabilities || [],
+                contextSize: 2000,
+                expectedOutputTokens: task.definition.expectedOutputTokens || 1000,
+                privacyLevel: task.definition.privacyLevel || 'INTERNAL',
+                instructionComplexity: 0.8,
+                reasoningComplexity: 0.7,
+                toolRequired: true,
+                codeExecutionRequired: task.definition.requiredCapabilities?.includes('CODE_GENERATION') || false,
+                latencyPreference: 'balance',
+                qualityPreference: 'high',
+                previousModelIds: [...(task.state.previousFailures?.map(f => f.modelId || '') || []), routingResult.selectedModelId],
+                routingBudgetRemaining: 5,
+                sourceModelId: undefined,
+                previousDefectSignatures: []
+              };
+
+              // Force local only
+              const localConfig = { ...routingConfig, localFirst: true, allowRemoteForInternal: false, allowRemoteForPublic: false };
+              const { ModelRouter } = await import('../routing/router/ModelRouter');
+              const newRoutingResult = await ModelRouter.route(profile, localConfig);
+              
+              this.store.updateTaskMetadata(
+                {
+                  commandId: `cmd-privacy-reroute-${crypto.randomUUID()}`,
+                  missionId,
+                  taskId,
+                  expectedStateVersion: task.state.stateVersion + 2,
+                  reason: 'Privacy Reroute Executed',
+                  actor: 'TaskDispatcher',
+                  timestamp: Date.now()
+                } as unknown as import('../domain/types').TransitionCommand,
+                {
+                  routingDecision: {
+                    ...newRoutingResult,
+                    affinityStatus: 'ACTIVE'
+                  },
+                  metadata: {
+                    ...task.state.metadata,
+                    privacyLocalRerouteCount: currentRerouteCount + 1
+                  },
+                  routingBudget: budgetManager.getState()
+                }
+              );
+              
+              if (newRoutingResult.status === 'SUCCESS' && newRoutingResult.selectedModelId) {
+                try {
+                  const reroutedAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(newRoutingResult.selectedModelId, task.definition.privacyLevel as import('../domain/types').PrivacyLevel);
+                  const { ModelCallGatewayAdapter } = await import('../routing/gateway/ModelCallGatewayAdapter');
+                  taskAdapter = new ModelCallGatewayAdapter(
+                    reroutedAdapter, 
+                    newRoutingResult.selectedModelId, 
+                    this.store.getTraceManager(), 
+                    missionId, 
+                    taskId, 
+                    attemptId, 
+                    newRoutingResult.routingDecisionId
+                  );
+                } catch (retryE: unknown) {
+                  this.store.dispatchTransition(
+                    {
+                      commandId: `cmd-wait-user-${crypto.randomUUID()}`,
+                      missionId,
+                      taskId,
+                      expectedCurrentStatus: 'DISPATCHED',
+                      expectedStateVersion: task.state.stateVersion + 3,
+                      reason: 'No Local Candidates Available after Privacy Block',
+                      actor: 'TaskDispatcher',
+                      timestamp: Date.now()
+                    },
+                    'WAITING_USER',
+                    {}
+                  );
+                  return;
+                }
+              } else {
+                 this.store.dispatchTransition(
+                    {
+                      commandId: `cmd-wait-user-${crypto.randomUUID()}`,
+                      missionId,
+                      taskId,
+                      expectedCurrentStatus: 'DISPATCHED',
+                      expectedStateVersion: task.state.stateVersion + 3,
+                      reason: 'No Local Candidates Available after Privacy Block',
+                      actor: 'TaskDispatcher',
+                      timestamp: Date.now()
+                    },
+                    'WAITING_USER',
+                    {}
+                  );
+                  return;
+              }
+            } else {
+              console.warn(`[TaskDispatcher] Adapter load failed for ${routingResult.selectedModelId}, falling back`, e);
+            }
           }
         }
       } else {

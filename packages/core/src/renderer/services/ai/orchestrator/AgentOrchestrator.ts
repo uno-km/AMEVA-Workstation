@@ -1197,12 +1197,32 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
 
       if (routingResult.status === 'SUCCESS' && routingResult.selectedModelId) {
         try {
-          plannerAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, profile.privacyLevel as import('./task-runtime/domain/types').PrivacyLevel);
+          const rawAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, profile.privacyLevel as import('./task-runtime/domain/types').PrivacyLevel);
+          const { ModelCallGatewayAdapter } = await import('./task-runtime/routing/gateway/ModelCallGatewayAdapter');
+          // For V2 Planning, we don't have task trace context yet, so we use a mock/internal trace manager if needed or skip trace in adapter.
+          // Wait, we need traceManager for ModelCallGatewayAdapter.
+          // AgentOrchestrator has `this.traceManager`? AgentOrchestrator has no traceManager field, only `this.eventLog`.
+          // I will import ExecutionTraceManager and get instance.
+          const { ExecutionTraceManager } = await import('./task-runtime/trace/ExecutionTraceManager');
+          
+          plannerAdapter = new ModelCallGatewayAdapter(
+            rawAdapter,
+            routingResult.selectedModelId,
+            new ExecutionTraceManager(),
+            missionId,
+            'planning',
+            '1',
+            routingResult.routingDecisionId
+          );
           ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning: Routed to ${routingResult.selectedModelId}`, prefix: 'Orchestrator' });
         } catch (e: unknown) {
           const errorMessage = e instanceof Error ? e.message : String(e);
           ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning Adapter Load Failed: ${errorMessage}`, prefix: 'Orchestrator' });
-          // Fallback to default
+          if (errorMessage.includes('Privacy Gate Violation')) {
+             throw new Error(`Privacy Gate Violation: ${errorMessage}`);
+             // Note: In AgentOrchestrator we just throw for now since Mission Planning is usually CONFIDENTIAL/INTERNAL
+             // and if blocked, we fail the V2 Planning routing.
+          }
         }
       } else {
         ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning Routing Failed: ${routingResult.status}`, prefix: 'Orchestrator' });

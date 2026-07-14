@@ -55,6 +55,21 @@ export class RoutingBudgetManager {
   }
 
   public isExhausted(): boolean {
+    if (this.config.maxRoutingDecisions <= 0 ||
+        this.config.maxModelEscalations <= 0 ||
+        this.config.maxModelSwitches <= 0 ||
+        this.config.maxTotalModelCalls <= 0 ||
+        this.config.maxEstimatedTokens <= 0) {
+      return true; // Limit is 0 or negative -> exhausted
+    }
+
+    // Time budget check if maxRoutingTimeMs is provided
+    if (this.config.maxRoutingTimeMs && this.config.maxRoutingTimeMs > 0) {
+      if (Date.now() - this.state.routingStartedAt >= this.config.maxRoutingTimeMs) {
+        return true;
+      }
+    }
+
     return (
       this.state.routingDecisionCount >= this.config.maxRoutingDecisions ||
       this.state.modelEscalationCount >= this.config.maxModelEscalations ||
@@ -67,10 +82,28 @@ export class RoutingBudgetManager {
   public getRemainingRatio(): number {
     if (this.isExhausted()) return 0.0;
     
-    const callRatio = 1.0 - (this.state.totalModelCallCount / this.config.maxTotalModelCalls);
-    const tokenRatio = 1.0 - (this.state.estimatedTokensUsed / this.config.maxEstimatedTokens);
+    let callRatio = 0;
+    if (this.config.maxTotalModelCalls > 0 && isFinite(this.config.maxTotalModelCalls)) {
+      callRatio = 1.0 - (this.state.totalModelCallCount / this.config.maxTotalModelCalls);
+    }
     
-    return Math.min(callRatio, tokenRatio);
+    let tokenRatio = 0;
+    if (this.config.maxEstimatedTokens > 0 && isFinite(this.config.maxEstimatedTokens)) {
+      tokenRatio = 1.0 - (this.state.estimatedTokensUsed / this.config.maxEstimatedTokens);
+    }
+
+    let timeRatio = 1.0;
+    if (this.config.maxRoutingTimeMs && this.config.maxRoutingTimeMs > 0 && isFinite(this.config.maxRoutingTimeMs)) {
+      timeRatio = 1.0 - ((Date.now() - this.state.routingStartedAt) / this.config.maxRoutingTimeMs);
+    }
+    
+    // clamp all ratios to [0, 1]
+    const clamp = (val: number) => {
+      if (isNaN(val)) return 0;
+      return Math.max(0, Math.min(1, val));
+    };
+
+    return Math.min(clamp(callRatio), clamp(tokenRatio), clamp(timeRatio));
   }
 
   public getState(): RoutingBudgetState {

@@ -115,6 +115,7 @@ export interface RoutingConfig {
   disabledModelIds: string[];
   forcedLocalTaskTypes: string[];
   forcedModelByCapability: Partial<Record<Capability, string>>;
+  maxRuleEngineContextTokens: number;
 }
 
 export interface EscalationPackage {

@@ -545,8 +545,8 @@ export class MissionExecutionRuntime {
       if (t.state.budget) {
         taskBudgets[t.definition.id] = t.state.budget;
       }
-      if (t.state.routingDecision) {
-        taskRoutingDecisions[t.definition.id] = t.state.routingDecision;
+      if (t.state.routingAffinity) {
+        taskRoutingDecisions[t.definition.id] = t.state.routingAffinity;
       }
     }
     this.restoreCoordinator.saveMissionState(this.missionId, this.missionId, status, taskIds, taskBudgets, taskRoutingDecisions)

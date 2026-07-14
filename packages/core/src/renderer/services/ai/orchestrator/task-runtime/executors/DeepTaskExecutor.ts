@@ -165,17 +165,11 @@ export class DeepTaskExecutor {
         currentTurn++;
 
         // ─── LLM 호출 직전 검증 (Privacy Gate & Trace) ──────────────────────
-        const routingDecision = task.state.routingDecision;
-        const selectedModelId = routingDecision?.selectedModelId;
-        const actualModelId = this.adapter.modelId;
-        
-        if (selectedModelId && actualModelId && selectedModelId !== actualModelId) {
-          throw new Error(`MODEL_ADAPTER_MISMATCH: Router selected ${selectedModelId} but adapter is for ${actualModelId}`);
-        }
-
+        const routingAffinity = task.state.routingAffinity;
+        const selectedModelId = routingAffinity?.selectedModelId;
         const traceManager = this.store.getTraceManager();
         
-        if (routingDecision && this.adapter.isRemote) {
+        if (routingAffinity && this.adapter.isRemote) {
           const privacyLevel = task.definition.privacyLevel;
           if (privacyLevel === 'RESTRICTED') {
             traceManager.getStore().appendEvent({
@@ -199,8 +193,8 @@ export class DeepTaskExecutor {
 
         traceManager.getStore().appendEvent({
           eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
-          eventType: 'model_call_started', status: 'SUCCESS', title: `Model Call Started`, summary: `Calling ${actualModelId || selectedModelId}`, sequenceNumber: 0, visibility: 'INTERNAL', schemaVersion: '4.0.0',
-          metadata: { selectedModelId, actualModelId }
+          eventType: 'model_call_started', status: 'SUCCESS', title: `Model Call Started`, summary: `Calling ${this.adapter.modelId || selectedModelId}`, sequenceNumber: 0, visibility: 'INTERNAL', schemaVersion: '4.0.0',
+          metadata: { selectedModelId, actualModelId: this.adapter.modelId }
         });
 
         let responseText = '';
@@ -587,8 +581,8 @@ export class DeepTaskExecutor {
         const availableRetries = (currentTask.state.maxExecutionRetries || 3) - (currentTask.state.executionRetryCount || 0);
 
         if (routingConfig.routingEnabled && isModelError && availableRetries > 0) {
-          const prevDecision = currentTask.state.routingDecision;
-          if (prevDecision) {
+          const prevAffinity = currentTask.state.routingAffinity;
+          if (prevAffinity) {
              const escalationPkg = {
                missionId,
                taskId,
@@ -665,8 +659,8 @@ export class DeepTaskExecutor {
                  modelEscalationCount: (currentTask.state.modelEscalationCount || 0) + 1,
                  previousFailures: [...previousFailures, newFailure],
                  retryAfter: Date.now() + 5000,
-                 routingDecision: {
-                   ...currentTask.state.routingDecision,
+                 routingAffinity: {
+                   ...currentTask.state.routingAffinity!,
                    affinityStatus: 'ESCALATION_REQUIRED',
                    invalidationReason: errorMsg,
                    selectedRole: nextRole
