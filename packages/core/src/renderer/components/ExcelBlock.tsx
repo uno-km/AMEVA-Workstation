@@ -7,7 +7,7 @@
 
 import React, { useRef, useState, useEffect, lazy, Suspense } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
-import { Maximize2, X } from 'lucide-react'
+import { Maximize2, X, Table } from 'lucide-react'
 
 const LazyWorkbook = lazy(() =>
   import('@fortune-sheet/react').then((m) => {
@@ -62,6 +62,43 @@ const ExcelBlockSpec = createReactBlockSpec(
         } catch (e) {
           console.error('Failed to save excel data', e)
         }
+      const handleExportTable = async () => {
+        if (!workbookRef.current) return
+        try {
+          const allData = workbookRef.current.getAllSheets()
+          const sheet = allData[0]
+          if (!sheet || !sheet.celldata) return
+          
+          let maxR = 0
+          let maxC = 0
+          sheet.celldata.forEach((cell: any) => {
+            if (cell.r > maxR) maxR = cell.r
+            if (cell.c > maxC) maxC = cell.c
+          })
+          
+          if (maxR === 0 && maxC === 0 && (!sheet.celldata[0] || (!sheet.celldata[0].v?.m && !sheet.celldata[0].v?.v))) {
+             return // Empty sheet
+          }
+
+          const matrix: string[][] = Array.from({ length: maxR + 1 }, () => Array(maxC + 1).fill(''))
+          sheet.celldata.forEach((cell: any) => {
+            const val = cell.v?.m || cell.v?.v || ''
+            matrix[cell.r][cell.c] = String(val).replace(/\|/g, '\\|')
+          })
+          
+          let mdTable = ''
+          matrix.forEach((row, r) => {
+            mdTable += '| ' + row.join(' | ') + ' |\n'
+            if (r === 0) {
+              mdTable += '|' + row.map(() => '---').join('|') + '|\n'
+            }
+          })
+          
+          const blocks = await props.editor.tryParseMarkdownToBlocks(mdTable)
+          props.editor.insertBlocks(blocks, props.block.id, 'after')
+        } catch (e) {
+          console.error('Failed to export table', e)
+        }
       }
 
       return (
@@ -71,6 +108,10 @@ const ExcelBlockSpec = createReactBlockSpec(
           onKeyDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
+          onMouseMove={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerMove={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
           onFocus={(e) => e.stopPropagation()}
           onBlur={(e) => e.stopPropagation()}
@@ -121,13 +162,22 @@ const ExcelBlockSpec = createReactBlockSpec(
             <div style={{ width: '100%', height: '400px', border: '1px solid var(--border-muted)', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               <div style={{ padding: '4px 8px', backgroundColor: 'var(--bg-glass-active)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-muted)' }}>
                 <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Excel Spreadsheet</span>
-                <button
-                  onClick={() => setIsFullScreen(true)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-main)' }}
-                  title="Fullscreen Editor"
-                >
-                  <Maximize2 size={14} />
-                </button>
+                <div>
+                  <button
+                    onClick={handleExportTable}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-main)', marginRight: '8px' }}
+                    title="Export as Markdown Table"
+                  >
+                    <Table size={14} />
+                  </button>
+                  <button
+                    onClick={() => setIsFullScreen(true)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--text-main)' }}
+                    title="Fullscreen Editor"
+                  >
+                    <Maximize2 size={14} />
+                  </button>
+                </div>
               </div>
               <div style={{ flex: 1, position: 'relative' }}>
                 {isMounted && (
