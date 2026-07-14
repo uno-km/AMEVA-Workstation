@@ -737,8 +737,7 @@ export function registerFileIpc(
                 block.type = 'image'
                 block.props = {
                   url: `data:image/png;base64,${buffer.toString('base64')}`,
-                  caption: 'Mermaid Diagram',
-                  width: 800
+                  caption: 'Mermaid Diagram'
                 }
                 block.content = [] 
               }
