@@ -222,7 +222,9 @@ const ExcelBlockSpec = createReactBlockSpec(
       
       const sheet = sheetData[0]
       if (!sheet || !sheet.celldata) {
-        return <p>Empty Excel Block</p>
+        const p = document.createElement('p')
+        p.textContent = 'Empty Excel Block'
+        return p
       }
 
       let maxR = 0; let maxC = 0;
@@ -232,7 +234,9 @@ const ExcelBlockSpec = createReactBlockSpec(
       });
 
       if (maxR === 0 && maxC === 0 && (!sheet.celldata[0] || (!sheet.celldata[0].v?.m && !sheet.celldata[0].v?.v))) {
-         return <p>Empty Excel Spreadsheet</p>
+        const p = document.createElement('p')
+        p.textContent = 'Empty Excel Spreadsheet'
+        return p
       }
 
       const matrix: string[][] = Array.from({ length: maxR + 1 }, () => Array(maxC + 1).fill(''));
@@ -240,23 +244,34 @@ const ExcelBlockSpec = createReactBlockSpec(
         matrix[cell.r][cell.c] = cell.v?.m || cell.v?.v || '';
       });
 
-      return (
-        <div data-content-type="excel" style={{ overflowX: 'auto', margin: '16px 0' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%', border: '1px solid var(--border-muted)', textAlign: 'left' }}>
-            <tbody>
-              {matrix.map((row, r) => (
-                <tr key={r}>
-                  {row.map((cell, c) => (
-                    <td key={c} style={{ border: '1px solid var(--border-muted)', padding: '6px 12px' }}>
-                      {cell}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )
+      const div = document.createElement('div')
+      div.setAttribute('data-content-type', 'excel')
+      div.style.overflowX = 'auto'
+      div.style.margin = '16px 0'
+
+      const table = document.createElement('table')
+      table.style.borderCollapse = 'collapse'
+      table.style.width = '100%'
+      table.style.border = '1px solid #ccc'
+      table.style.textAlign = 'left'
+
+      const tbody = document.createElement('tbody')
+      matrix.forEach(row => {
+        const tr = document.createElement('tr')
+        row.forEach(cell => {
+          const td = document.createElement('td')
+          td.style.border = '1px solid #ccc'
+          td.style.padding = '6px 12px'
+          td.textContent = cell
+          tr.appendChild(td)
+        })
+        tbody.appendChild(tr)
+      })
+
+      table.appendChild(tbody)
+      div.appendChild(table)
+      
+      return div
     }
   }
 )

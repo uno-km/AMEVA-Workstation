@@ -54,6 +54,7 @@ import { YoutubeBlock } from '../components/YoutubeBlock'
 import { MapBlock } from '../components/MapBlock'
 import { PresentationBlock } from '../components/PresentationBlock'
 import { ExcelBlock } from '../components/ExcelBlock'
+import { KanbanBlock } from '../components/KanbanBlock'
 
 /**
  * [CONTRACT - Root Custom Schema Configuration]
@@ -69,7 +70,8 @@ export const amevaSchema = BlockNoteSchema.create({
     youtube: YoutubeBlock,
     map: MapBlock,
     presentation: PresentationBlock,
-    excel: ExcelBlock
+    excel: ExcelBlock,
+    kanban: KanbanBlock
   }
 })
 

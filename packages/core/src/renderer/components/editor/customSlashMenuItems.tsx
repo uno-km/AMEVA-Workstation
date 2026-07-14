@@ -19,7 +19,7 @@
 
 
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
-import { Code2, Globe, Eye, Terminal, FileImage } from 'lucide-react'
+import { Code2, Globe, Eye, Terminal, FileImage, Layout } from 'lucide-react'
 import { type AmevaEditor } from '../../editor/amevaBlockSchema'
 
   /*
@@ -263,6 +263,40 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     subtext: '구글 지도 임베드 블록 삽입 (/map)',
   }
 
+  // 칸반 보드 플러그인 확인
+  let isKanbanEnabled = false
+  try {
+    const storedSaaS = localStorage.getItem('enabled-plugins')
+    if (storedSaaS) {
+      const parsed = JSON.parse(storedSaaS)
+      if (parsed.kanbanBoard) isKanbanEnabled = true
+    }
+  } catch (e) {}
+
+  const insertKanbanBlock = () => {
+    try {
+      const pos = editorInstance.getTextCursorPosition()
+      if (!pos) return
+      
+      editorInstance.updateBlock(pos.block.id, {
+        type: 'kanban'
+      } as any)
+      editorInstance.setTextCursorPosition(pos.block.id, 'start')
+      editorInstance.focus()
+    } catch {}
+  }
+
+  const kanbanItems = isKanbanEnabled ? [
+    {
+      title: 'Kanban Board',
+      onItemClick: insertKanbanBlock,
+      aliases: ['kanban', 'board', 'jira', '칸반', '보드'],
+      group: 'Workflow',
+      icon: <Layout size={16} color="#3b82f6" />,
+      subtext: '지라 스타일의 AI 협업 칸반 보드 삽입 (/kanban)',
+    }
+  ] : []
+
   // 엑셀 시트 구독(활성화) 여부 확인
   let isExcelSubscribed = installedPlugins.includes('excel-viewer')
   try {
@@ -300,6 +334,6 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     }
   ] : []
 
-  return [...filtered, ...codeItems, ...drawingItems, mapItem, ...excelItems]
+  return [...filtered, ...codeItems, ...drawingItems, mapItem, ...excelItems, ...kanbanItems]
 }
 
