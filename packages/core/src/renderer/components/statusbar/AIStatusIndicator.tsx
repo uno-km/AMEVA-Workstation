@@ -91,7 +91,7 @@ export function AIStatusIndicator({
    * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
    * - 예시 코드: `const portInfo = ...` 형태로 안전 캐싱 후 가공 기동.
    */
-  let portInfo = '포트: 3010 (로컬)'
+  let portInfo = '호스팅: GitHub Pages (정적)'
   
   /*
    * [ALGORITHM BRANCH / DECISION]

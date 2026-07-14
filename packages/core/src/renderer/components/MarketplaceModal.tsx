@@ -254,7 +254,7 @@ export function MarketplaceModal({
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      const res = await fetch('http://localhost:3010/api/plugins', { signal: controller.signal })
+      const res = await fetch('https://uno-km.github.io/AMEVA-Workstation-Market-Place/api/plugins.json', { signal: controller.signal })
       clearTimeout(timeoutId)
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -283,9 +283,9 @@ export function MarketplaceModal({
        * - 예시: `if (err.name === 'AbortError')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
       if (err.name === 'AbortError') {
-        setError('Marketplace 서버 연결 시간 초과 (5초). 서버가 실행 중인지 확인하세요. (Port: 3010)')
+        setError('Marketplace 서버 연결 시간 초과 (5초). 깃허브 페이지 호스팅 상태를 확인하세요.')
       } else {
-        setError('Marketplace 서버를 찾을 수 없거나 오프라인 상태입니다. (Port: 3010) — 앱을 완전히 종료 후 재시작하거나 아래 버튼을 눌러 재시도하세요.')
+        setError('Marketplace 서버를 찾을 수 없거나 오프라인 상태입니다. 인터넷 연결을 확인하거나 아래 버튼을 눌러 재시도하세요.')
       }
     } finally {
       setLoading(false)
