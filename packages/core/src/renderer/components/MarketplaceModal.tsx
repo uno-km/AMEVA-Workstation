@@ -18,6 +18,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { PluginMetadata, MarketplaceModalProps } from './marketplace/types'
 import { MarketplaceToolbar } from './marketplace/MarketplaceToolbar'
 import { SaaSPluginCard } from './marketplace/SaaSPluginCard'
@@ -26,6 +27,44 @@ import { FreeModal } from './ui/modals/FreeModal'
 import { Layers } from 'lucide-react'
 
 export type { PluginMetadata, MarketplaceModalProps }
+
+const SAAS_ITEMS = [
+  {
+    id: 'webSearch',
+    name: 'DuckDuckGo Web Search API (Pro)',
+    description: 'ReAct 에이전트가 외부 웹 검색(실시간 인터넷 정보 및 뉴스)을 통해 추론하고 결과를 조합할 수 있게 권한을 위임합니다.',
+    type: 'tool' as const,
+    version: '1.2.0'
+  },
+  {
+    id: 'pythonConsole',
+    name: 'Python Sandbox Executor (Pro)',
+    description: '로컬 파이썬 샌드박스를 연동하여 복잡한 수식 연산 및 데이터 처리 알고리즘 코드를 실제 런타임에서 실행해 줍니다.',
+    type: 'tool' as const,
+    version: '2.0.4'
+  },
+  {
+    id: 'requestQueue',
+    name: 'Sequential Request Queue (Pro)',
+    description: '질문을 연달아 우다다닥 보낼 때 취소되지 않고 안전하게 백그라운드 큐 버퍼에 쌓여 차례로 실행해 주는 순차 처리기입니다.',
+    type: 'feature' as const,
+    version: '1.0.1'
+  },
+  {
+    id: 'excelViewer',
+    name: 'Excel Viewer & Editor (Pro)',
+    description: '로컬 마크다운 문서 내에 엑셀 스프레드시트를 삽입하고 편집할 수 있는 확장 기능입니다.',
+    type: 'feature' as const,
+    version: '1.0.0'
+  },
+  {
+    id: 'kanbanBoard',
+    name: 'Jira-Style Kanban Workflow (Pro)',
+    description: '지라(Jira) 스타일의 드래그 앤 드롭 칸반 보드. AI 에이전트 담당자 할당, 우선순위 관리, 마크다운 실시간 동기화 지원.',
+    type: 'feature' as const,
+    version: '1.0.0'
+  }
+]
 
   /*
    * [FUNCTION CONTRACT]
@@ -45,18 +84,30 @@ export function MarketplaceModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<Record<string, boolean>>({})
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [previewData, setPreviewData] = useState<{ url?: string; name?: string; description?: string; isPremium?: boolean } | null>(null)
 
   const handlePreview = (pluginOrId: any) => {
-    let url = '';
-    if (typeof pluginOrId === 'string') {
-      // It's a SaaS plugin ID
-      url = `http://localhost:3010/plugins/premium/${pluginOrId}-preview.html`;
-    } else {
-      // It's a PluginMetadata
-      url = pluginOrId.previewUrl || `http://localhost:3010/plugins/${pluginOrId.type === 'premium' ? 'premium/' : ''}${pluginOrId.id}-preview.html`;
+    // Check if we have an explicit preview URL (e.g. external Youtube link)
+    if (typeof pluginOrId !== 'string' && pluginOrId.previewUrl) {
+      setPreviewData({ url: pluginOrId.previewUrl });
+      return;
     }
-    setPreviewUrl(url);
+
+    // Otherwise, use fallback React UI data
+    const isPremium = typeof pluginOrId === 'string' || pluginOrId.type === 'premium';
+    let name = 'Plugin';
+    let desc = 'No description available.';
+
+    if (typeof pluginOrId === 'string') {
+      const premium = SAAS_ITEMS.find(p => p.id === pluginOrId);
+      name = premium?.name || 'Premium Feature';
+      desc = premium?.description || 'No description available.';
+    } else {
+      name = pluginOrId.name || 'Extension';
+      desc = pluginOrId.description || 'No description available.';
+    }
+
+    setPreviewData({ name, description: desc, isPremium });
   }
 
   // 🦾 SaaS 유료 기능 토글 상태 관리
@@ -411,59 +462,7 @@ export function MarketplaceModal({
 
         {/* 👑 SaaS Premium Toggles (DuckDuckGo, Python Sandbox, Request Queue) */}
         {!loading && categories.length > 0 && (() => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `saasItems`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const saasItems = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-          const saasItems = [
-            {
-              id: 'webSearch',
-              name: 'DuckDuckGo Web Search API (Pro)',
-              description: 'ReAct 에이전트가 외부 웹 검색(실시간 인터넷 정보 및 뉴스)을 통해 추론하고 결과를 조합할 수 있게 권한을 위임합니다.',
-              type: 'tool' as const,
-              version: '1.2.0'
-            },
-            {
-              id: 'pythonConsole',
-              name: 'Python Sandbox Executor (Pro)',
-              description: '로컬 파이썬 샌드박스를 연동하여 복잡한 수식 연산 및 데이터 처리 알고리즘 코드를 실제 런타임에서 실행해 줍니다.',
-              type: 'tool' as const,
-              version: '2.0.4'
-            },
-            {
-              id: 'requestQueue',
-              name: 'Sequential Request Queue (Pro)',
-              description: '질문을 연달아 우다다닥 보낼 때 취소되지 않고 안전하게 백그라운드 큐 버퍼에 쌓여 차례로 실행해 주는 순차 처리기입니다.',
-              type: 'feature' as const,
-              version: '1.0.1'
-            },
-            {
-              id: 'excelViewer',
-              name: 'Excel Viewer & Editor (Pro)',
-              description: '로컬 마크다운 문서 내에 엑셀 스프레드시트를 삽입하고 편집할 수 있는 확장 기능입니다.',
-              type: 'feature' as const,
-              version: '1.0.0'
-            },
-            {
-              id: 'kanbanBoard',
-              name: 'Jira-Style Kanban Workflow (Pro)',
-              description: '지라(Jira) 스타일의 드래그 앤 드롭 칸반 보드. AI 에이전트 담당자 할당, 우선순위 관리, 마크다운 실시간 동기화 지원.',
-              type: 'feature' as const,
-              version: '1.0.0'
-            }
-          ]
-
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `filteredSaas`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const filteredSaas = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-          const filteredSaas = saasItems.filter(p => {
+          const filteredSaas = SAAS_ITEMS.filter(p => {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `matchesCategory`
@@ -510,15 +509,15 @@ export function MarketplaceModal({
         ))}
       </div>
       
-      {previewUrl && (
+      {previewData && createPortal(
         <div
-          onClick={() => setPreviewUrl(null)}
+          onClick={() => setPreviewData(null)}
           style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
             background: 'rgba(0,0,0,0.8)',
             backdropFilter: 'blur(10px)',
-            zIndex: 99999,
+            zIndex: 999999,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center'
@@ -531,27 +530,67 @@ export function MarketplaceModal({
               width: '90%',
               maxWidth: '1100px',
               height: '90vh',
-              animation: 'slideUp 0.3s ease'
+              animation: 'slideUp 0.3s ease',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
             }}
           >
             <button
-              onClick={() => setPreviewUrl(null)}
+              onClick={() => setPreviewData(null)}
               style={{
                 position: 'absolute', top: '-40px', right: 0,
                 background: 'transparent', border: 'none', color: '#fff', fontSize: '24px',
-                cursor: 'pointer', opacity: 0.7
+                cursor: 'pointer', opacity: 0.7, zIndex: 10
               }}
               onMouseEnter={e => e.currentTarget.style.opacity = '1'}
               onMouseLeave={e => e.currentTarget.style.opacity = '0.7'}
             >
               ✕
             </button>
-            <iframe
-              src={previewUrl}
-              style={{ width: '100%', height: '100%', border: 'none', borderRadius: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }}
-            />
+            {previewData.url ? (
+              <iframe
+                src={previewData.url}
+                style={{ width: '100%', height: '100%', border: 'none', borderRadius: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', background: '#fff' }}
+              />
+            ) : (
+              <div style={{
+                textAlign: 'center', maxWidth: '600px', padding: '40px',
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)', backdropFilter: 'blur(10px)'
+              }}>
+                <div style={{
+                  display: 'inline-block', padding: '6px 12px', borderRadius: '20px',
+                  fontSize: '12px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '20px',
+                  ...(previewData.isPremium ? {
+                    background: 'linear-gradient(135deg, #a855f7, #ec4899)', color: '#fff'
+                  } : {
+                    background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff'
+                  })
+                }}>
+                  {previewData.isPremium ? 'PRO EXCLUSIVE' : 'EXTENSION'}
+                </div>
+                <h1 style={{
+                  fontSize: '28px', margin: '0 0 16px 0', fontWeight: 700,
+                  background: 'linear-gradient(to right, #fff, #a1a1aa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent'
+                }}>
+                  {previewData.name}
+                </h1>
+                <p style={{ fontSize: '15px', lineHeight: '1.6', color: '#a1a1aa', margin: '0 0 30px 0' }}>
+                  {previewData.description}
+                </p>
+                <div style={{
+                  height: '200px', background: '#18181b', borderRadius: '12px',
+                  border: '1px dashed rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', color: '#52525b', fontSize: '14px'
+                }}>
+                  Interactive Preview is not available offline
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
       
       {/* 슬림 다크 스크롤바 커스텀 주입 */}

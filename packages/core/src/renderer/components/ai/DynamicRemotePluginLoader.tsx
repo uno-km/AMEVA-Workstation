@@ -20,17 +20,25 @@ export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
         if (!res.ok) throw new Error("플러그인 다운로드에 실패했습니다. 유효한 라이센스인지 확인하세요.");
         let code = await res.text();
 
-        // 1. 모든 import 구문 제거 (원격 모듈은 로컬 파일 시스템에 접근 불가)
-        code = code.replace(/import\s+.*?from\s+['"].*?['"];?/g, '');
+        // 1. React import 처리
+        code = code.replace(/import\s+React(?:,\s*\{([^}]+)\})?\s+from\s+['"]react['"];?/gs, (m, p1) => {
+          return `var React = window.AMEVA_CORE.React;\n${p1 ? `var {${p1}} = React;` : ''}`;
+        });
+
+        // 2. Lucide-react import 처리 (플러그인이 요구하는 아이콘을 동적으로 모두 추출)
+        code = code.replace(/import\s+\{([^}]+)\}\s+from\s+['"]lucide-react['"];?/gs, 'var {$1} = window.AMEVA_CORE.LucideIcons;');
+
+        // 3. 커스텀 훅 import 처리
+        code = code.replace(/import\s+\{([^}]+)\}\s+from\s+['"].*?useLLMInference.*?['"];?/gs, 'var {$1} = window.AMEVA_CORE;');
+
+        // 4. 나머지 모든 import 구문 제거 (지원되지 않는 모듈 방어)
+        code = code.replace(/import\s+.*?from\s+['"].*?['"];?/gs, '');
         
-        // 2. AMEVA 코어 객체에서 필수 라이브러리 및 훅 추출하는 코드 헤더에 주입
+        // 5. 공통 객체 주입 (var를 사용하여 중복 선언 에러 방지)
         const injection = `
-          const React = window.AMEVA_CORE.React;
-          const { useState, useEffect, useRef, useMemo, useCallback } = React;
-          const { useLLMInference } = window.AMEVA_CORE;
-          const Lucide = window.AMEVA_CORE.LucideIcons;
-          // 자주 쓰는 아이콘들 미리 추출
-          const { Search, MapPin, ArrowLeft, ArrowRight, RotateCw, Home, ChevronUp, ChevronDown, X, Play, Square, Save, Trash2, Edit3, Image, FileText, Code, Database, Mic, Video, Camera, FileVideo, Activity, BrainCircuit, Globe, KanbanSquare, Table, PieChart, VideoIcon, Calculator } = Lucide;
+          var React = window.AMEVA_CORE.React;
+          var { useLLMInference } = window.AMEVA_CORE;
+          var Lucide = window.AMEVA_CORE.LucideIcons;
         `;
 
         // export 키워드 제거
@@ -38,7 +46,10 @@ export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
 
         // 3. Babel을 통한 실시간 JSX/TSX 컴파일 (클라이언트 런타임에서 JIT 컴파일)
         const compiled = Babel.transform(code, { 
-          presets: ['react', 'typescript'], 
+          presets: [
+            ['react', { runtime: 'classic' }], 
+            'typescript'
+          ], 
           filename: 'plugin.tsx' 
         }).code;
 
