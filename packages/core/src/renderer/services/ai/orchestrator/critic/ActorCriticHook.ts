@@ -251,8 +251,10 @@ export class ActorCriticHook implements IActorCriticHook {
      */
     this.rejectionCount++
 
+    const reason = verdict.verdict === 'UNCERTAIN' ? (verdict.reason || 'UNCERTAIN judgment') : (verdict as CriticRejectVerdict).reason;
+
     ipc.llmAddLog({
-      text: `[Critic] ${targetKind} REJECT (${this.rejectionCount}/${this.config.maxCriticRejections}). 사유: ${verdict.reason}`,
+      text: `[Critic] ${targetKind} ${verdict.verdict} (${this.rejectionCount}/${this.config.maxCriticRejections}). 사유: ${reason}`,
       prefix: 'ActorCritic'
     })
 
@@ -262,11 +264,18 @@ export class ActorCriticHook implements IActorCriticHook {
      * - actorHistory가 비어있으면 주입을 건너뛴다 (안전 가드).
      */
     if (this.actorHistory.length > 0) {
-      this.config.feedbackInjector.injectRejection(
-        verdict as CriticRejectVerdict,
-        this.actorHistory,
-        targetKind
-      )
+      if (verdict.verdict === 'UNCERTAIN') {
+        this.actorHistory.push({
+          role: 'user',
+          content: `[System Critic] Your proposed action could not be verified safely (UNCERTAIN). Reason: ${reason}. Please revise your approach.`
+        });
+      } else {
+        this.config.feedbackInjector.injectRejection(
+          verdict as CriticRejectVerdict,
+          this.actorHistory,
+          targetKind
+        )
+      }
     } else {
       console.warn('[ActorCriticHook] actorHistory가 비어있습니다. setActorHistory()를 먼저 호출하세요.')
     }

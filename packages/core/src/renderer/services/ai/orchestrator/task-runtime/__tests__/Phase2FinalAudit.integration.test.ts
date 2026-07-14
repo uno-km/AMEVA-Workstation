@@ -335,4 +335,84 @@ describe('Phase 2.3 - Final Audit Integration', () => {
     manifest = await txManager.getManifest('m1', artifactId);
     expect(manifest!.status).toBe('CORRUPTED');
   });
+
+  it('6. State Sequence Validation (WRITTEN -> VALIDATED -> COMMITTING -> COMMITTED -> Task COMPLETED -> Mission Completion Review)', async () => {
+    const sequenceLog: string[] = [];
+    const artifactId = '/art-seq';
+    
+    // Spies to record the sequence
+    vi.spyOn(txManager, 'markWritten').mockImplementation(async () => { sequenceLog.push('WRITTEN'); });
+    vi.spyOn(txManager, 'markValidated').mockImplementation(async () => { sequenceLog.push('VALIDATED'); });
+    const originalCommit = txManager.commitArtifact.bind(txManager);
+    vi.spyOn(txManager, 'commitArtifact').mockImplementation(async (mId, aId) => {
+      sequenceLog.push('COMMITTING');
+      // Simulate real commit
+      await txManager['store'].saveManifest({ missionId: mId, artifactId: aId, status: 'COMMITTED' } as any);
+      sequenceLog.push('COMMITTED');
+    });
+
+    vi.spyOn(store, 'dispatchTransition').mockImplementation((command, status) => {
+      if (status === 'COMPLETED') sequenceLog.push('Task COMPLETED');
+      return { state: { status } } as any;
+    });
+
+    vi.spyOn(completionRuntime, 'executeCompletionReview').mockImplementation(async () => {
+      sequenceLog.push('Mission Completion Review');
+      return { outcome: 'SUCCESS', warnings: [] } as any;
+    });
+
+    // Mock initial setup
+    vi.spyOn(store, 'getAllTasks').mockReturnValue([{
+      definition: { id: 't1', title: 'T1', required: true, priority: 1, dependencies: [], expectedOutputs: [artifactId] },
+      state: { 
+        status: 'VERIFYING', stateVersion: 1, retries: 0, activeAttemptId: 'a1', 
+        attempts: { 
+          'a1': { 
+            id: 'a1',
+            status: 'COMPLETED',
+            taskResult: {
+              outputs: [{ type: artifactId, content: 'test' }]
+            }
+          } as any 
+        } 
+      }
+    } as any]);
+
+    vi.spyOn(store, 'getTask').mockReturnValue({
+      definition: { id: 't1', title: 'T1', required: true, priority: 1, dependencies: [], expectedOutputs: [artifactId] },
+      state: { 
+        status: 'VERIFYING', stateVersion: 1, retries: 0, activeAttemptId: 'a1', 
+        attempts: { 
+          'a1': { 
+            id: 'a1',
+            status: 'COMPLETED',
+            taskResult: {
+              outputs: [{ type: artifactId, content: 'test' }]
+            }
+          } as any 
+        } 
+      }
+    } as any);
+
+    vi.spyOn(verificationRuntime['coordinator'], 'runVerificationPipeline').mockResolvedValue([] as any);
+    vi.spyOn(verificationRuntime['policy'], 'evaluate').mockReturnValue({
+      verdict: 'PASS', reasons: [], deliverableResults: [{ deliverableId: artifactId, expectedType: 'FILE', exists: true, nonEmpty: true, accessible: true, integrity: true, required: true, producerTaskId: 't1', artifactReference: artifactId }]
+    } as any);
+
+    // Trigger the flow
+    await txManager.markWritten('m1', artifactId);
+    await txManager.markValidated('m1', artifactId);
+    await verificationRuntime.processVerifyingTasks('m1');
+    await completionRuntime.executeCompletionReview('m1', 1, 'goal');
+
+    expect(sequenceLog).toEqual([
+      'WRITTEN',
+      'VALIDATED',
+      'VALIDATED', // Called again by VerificationRuntime before commit
+      'COMMITTING',
+      'COMMITTED',
+      'Task COMPLETED',
+      'Mission Completion Review'
+    ]);
+  });
 });

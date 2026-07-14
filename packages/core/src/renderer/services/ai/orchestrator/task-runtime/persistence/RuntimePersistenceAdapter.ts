@@ -21,6 +21,19 @@
  * - DISABLED_SAFELY: Event Retention 상한 (인메모리 EventLog로 대체)
  */
 
+export interface TaskBudgetSnapshot {
+  maxExecutionRetries: number;
+  executionRetryCount: number;
+  maxSemanticCriticCalls: number;
+  semanticCriticCallCount: number;
+  maxRepairAttempts: number;
+  repairAttemptCount: number;
+  maxSameDefectRepeats: number;
+  sameDefectRepeatCount: number;
+  maxTotalVerificationTimeMs: number;
+  verificationStartedAt?: number;
+}
+
 /**
  * Mission 상태 스냅샷 (영속화 대상).
  */
@@ -29,6 +42,7 @@ export interface MissionSnapshot {
   goalId: string;
   status: string;
   taskIds: string[];
+  taskBudgets?: Record<string, TaskBudgetSnapshot>; // Phase 3.1
   createdAt: number;
   updatedAt: number;
   schemaVersion: number;

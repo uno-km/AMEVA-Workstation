@@ -244,10 +244,7 @@ export class ToolRegistry {
         },
         required: ['path']
       },
-      execute: async (args, context: any) => {
-        if (context?.retryScope === 'SECTION' || context?.retryScope === 'FUNCTION' || context?.retryScope === 'FIELD') {
-          return { success: false, error: 'UNAUTHORIZED_TOOL_USE: Cannot use write_file for partial repair scopes. Use apply_patch instead.', toolName: BUILTIN_TOOL_NAMES.WRITE_FILE, toolArgs: args };
-        }
+      execute: async (args, context) => {
         const rawPath = String(args['path'] ?? '')
 
         // [Item 7] Path traversal 방어
@@ -308,77 +305,7 @@ export class ToolRegistry {
         },
         required: ['path', 'content']
       },
-      execute: async (args, context: any) => {
-        if (context?.retryScope === 'SECTION' || context?.retryScope === 'FUNCTION' || context?.retryScope === 'FIELD') {
-          return { success: false, error: 'UNAUTHORIZED_TOOL_USE: Cannot use write_file for partial repair scopes. Use apply_patch instead.', toolName: BUILTIN_TOOL_NAMES.WRITE_FILE, toolArgs: args };
-        }
-        const rawPath = String(args['path'] ?? '')
-        const content = String(args['content'] ?? '')
-
-        // [Item 7] Path traversal 방어 — 쓰기 작업은 허용된 루트에서만
-        let safePath: string;
-        try {
-          safePath = PathSanitizer.sanitizePath(rawPath, 'write', context?.missionId);
-        } catch (sanitizeErr: unknown) {
-          const reason = sanitizeErr instanceof PathSanitizationError
-            ? sanitizeErr.reason : 'UNKNOWN';
-          return {
-            success: false,
-            error: `Write blocked: ${sanitizeErr instanceof Error ? sanitizeErr.message : String(sanitizeErr)} (reason: ${reason})`,
-            toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
-            toolArgs: args
-          };
-        }
-
-        if (!this.fileAdapter) {
-          return {
-            success: false,
-            error: `fileAdapter is not initialized. Cannot write file.`,
-            toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
-            toolArgs: args
-          };
-        }
-
-        try {
-          await this.fileAdapter.write(safePath, content);
-          
-          const stat = await this.fileAdapter.stat(safePath);
-          const hash = await this.fileAdapter.hash(safePath);
-
-          return {
-            success: true,
-            result: `파일 저장 완료: ${safePath}`,
-            toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
-            toolArgs: args,
-            // [Phase 2.2] Artifact Return Contract
-            artifactId: context?.artifactId,
-            missionId: context?.missionId,
-            taskId: context?.taskId,
-            attemptId: context?.attemptId,
-            outputId: context?.expectedOutput, // Legacy mapping from context
-            expectedPath: rawPath,
-            normalizedStagedPath: safePath,
-            size: stat.size,
-            contentHash: hash ?? undefined,
-            revision: 1, // Basic default, managed by IdempotencyStore in actual impl
-            idempotencyKey: context?.idempotencyKey
-          }
-        } catch (err: unknown) {
-          return {
-            success: false,
-            error: err instanceof Error ? err.message : String(err),
-            toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
-            toolArgs: args
-          }
-        }
-      }
-    })
-
-    this.register({
-      name: BUILTIN_TOOL_NAMES.APPLY_PATCH,
-      description: 'Patch a file',
-      parameters: { type: 'object', properties: {}, required: [] },
-      execute: async (args, context: any) => {
+            execute: async (args, context: any) => {
         const rawPath = String(args['targetPath'] ?? args['path'] ?? '');
         const expectedOldHash = args['expectedOldHash'] ? String(args['expectedOldHash']) : undefined;
         const patchContent = String(args['replacement'] ?? args['patch'] ?? '');
@@ -531,13 +458,6 @@ export class ToolRegistry {
           }
         }
       }
-    });
-
-    /*
-     * [TOOL: list_dir]
-     * - 지정된 디렉토리의 파일 및 하위 디렉토리 목록을 반환한다.
-     */
-    this.register({
     });
 
     /*

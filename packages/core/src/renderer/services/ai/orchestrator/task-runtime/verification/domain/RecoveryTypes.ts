@@ -28,6 +28,49 @@ export type RecoveryAction =
   | 'FAIL_REQUIRED_TASK';
 
 /**
+ * Progress Delta 기반 NO_PROGRESS 계산용 지표
+ */
+export interface ProgressDelta {
+  previousArtifactHash?: string;
+  currentArtifactHash?: string;
+  artifactHashChanged: boolean;
+  previousContractCoverage?: number;
+  currentContractCoverage?: number;
+  contractCoverageDelta: number;
+  previousSemanticScore?: number;
+  currentSemanticScore?: number;
+  semanticScoreDelta: number;
+  resolvedDefectCount: number;
+  newDefectCount: number;
+  repeatedDefectCount: number;
+  repeatedRequiredDefectCount: number;
+}
+
+/**
+ * 정식 RepairRequest (부분 수정 요청)
+ */
+export interface RepairRequest {
+  repairRequestId: string;
+  missionId: string;
+  taskId: string;
+  artifactId?: string;
+  sourceRevision?: number;
+  sourceContentHash?: string;
+  defectSignatures: string[];
+  retryScope: string;
+  targetSection?: string;
+  targetPath?: string;
+  repairInstructions: string;
+  allowedRanges?: string[];
+  protectedRanges?: string[];
+  doNotModify?: string[];
+  attemptId?: string;
+  strategyId?: string;
+  idempotencyKey: string;
+  createdAt: number;
+}
+
+/**
  * Recovery Request 본체
  */
 export interface TaskRecoveryRequest {
@@ -43,7 +86,16 @@ export interface TaskRecoveryRequest {
   defectSignatures?: string[];
   retryScope?: string;
   targetSection?: string;
+  targetPath?: string;
   repairInstructions?: string;
+  protectedRanges?: string[];
+  doNotModify?: string[];
+  
+  // Phase 3.1 Progress Tracking
+  contentHash?: string;
+  semanticScore?: number;
+  contractCoverage?: number;
+  progressDelta?: ProgressDelta;
   
   status: RecoveryRequestStatus;
   

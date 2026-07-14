@@ -476,7 +476,13 @@ export class MissionExecutionRuntime {
   private persistMissionState(status: string): void {
     const allTasks = this.store.getAllTasks(this.missionId);
     const taskIds = allTasks.map(t => t.definition.id);
-    this.restoreCoordinator.saveMissionState(this.missionId, this.missionId, status, taskIds)
+    const taskBudgets: Record<string, any> = {};
+    for (const t of allTasks) {
+      if (t.state.budget) {
+        taskBudgets[t.definition.id] = t.state.budget;
+      }
+    }
+    this.restoreCoordinator.saveMissionState(this.missionId, this.missionId, status, taskIds, taskBudgets)
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[MissionExecutionRuntime] Mission 상태 영속화 실패 (${this.missionId}):`, msg);

@@ -50,6 +50,9 @@ export class RecoveryCoordinator {
       status: 'PENDING',
       retryCount: task.state.retries,
       recoveryCount: task.state.repairAttemptCount || 0,
+      contentHash: verification.contentHash,
+      semanticScore: verification.semanticScore,
+      contractCoverage: verification.contractCoverage,
       createdAt: Date.now()
     };
     
@@ -78,31 +81,98 @@ export class RecoveryCoordinator {
     const requiredDefects = verification.defects?.filter(d => d.required) || [];
     const optionalDefects = verification.defects?.filter(d => !d.required) || [];
 
-    // Check No Progress
+    // Check No Progress using Delta
     let isNoProgress = false;
     let repeatedDefectCount = 0;
-    const currentSignatures = requiredDefects.map(d => d.signature);
     
+    let artifactHashChanged = false;
+    let contractCoverageDelta = 0;
+    let semanticScoreDelta = 0;
+    let resolvedDefectCount = 0;
+    let newDefectCount = 0;
+    let repeatedRequiredDefectCount = 0;
+
+    const currentSignatures = requiredDefects.map(d => d.signature);
+    const currentHash = verification.contentHash;
+    const currentScore = verification.semanticScore || 0;
+    const currentCoverage = verification.contractCoverage || 0;
+
     if (task.state.previousFailures && task.state.previousFailures.length > 0) {
-      const lastFailure = task.state.previousFailures[task.state.previousFailures.length - 1];
-      if (lastFailure.type === 'VerificationFailed' && lastFailure.defectSignatures) {
-        // Compare signatures
-        const prevSignatures: string[] = lastFailure.defectSignatures;
-        repeatedDefectCount = currentSignatures.filter(s => prevSignatures.includes(s)).length;
+      const previousFailures = task.state.previousFailures;
+      const lastFailure = previousFailures[previousFailures.length - 1];
+
+      if (lastFailure.errorType === 'VerificationFailed') {
+        const lastSignatures = lastFailure.defectSignatures || [];
+        const lastHash = lastFailure.contentHash;
+        const lastScore = lastFailure.semanticScore || 0;
+        const lastCoverage = lastFailure.contractCoverage || 0;
+
+        artifactHashChanged = currentHash !== undefined && currentHash !== lastHash;
+        contractCoverageDelta = currentCoverage - lastCoverage;
+        semanticScoreDelta = currentScore - lastScore;
+
+        const repeatedSignatures = currentSignatures.filter(sig => lastSignatures.includes(sig));
+        repeatedRequiredDefectCount = repeatedSignatures.length;
+        repeatedDefectCount = repeatedRequiredDefectCount; 
+
+        resolvedDefectCount = lastSignatures.filter((sig: string) => !currentSignatures.includes(sig)).length;
+        newDefectCount = currentSignatures.filter(sig => !lastSignatures.includes(sig)).length;
+
+        const noMeaningfulImprovement = (contractCoverageDelta <= 0 && semanticScoreDelta <= 0 && resolvedDefectCount === 0);
         
-        if (repeatedDefectCount > 0 && currentSignatures.length >= prevSignatures.length) {
-          isNoProgress = true; // Same or more defects, and at least one is repeated
+        const sameScope = lastFailure.retryScope === verification.retryScope;
+        
+        if (repeatedRequiredDefectCount > 0 && sameScope) {
+           if (!artifactHashChanged) {
+             isNoProgress = true;
+           } else if (noMeaningfulImprovement) {
+             isNoProgress = true;
+           }
+        }
+
+        if (isNoProgress) {
+           repeatedDefectCount = (task.state.sameDefectRepeatCount || 0) + 1;
+        } else {
+           repeatedDefectCount = 0;
         }
       }
     }
 
+    request.progressDelta = {
+      previousArtifactHash: task.state.previousFailures?.[task.state.previousFailures.length - 1]?.contentHash,
+      currentArtifactHash: currentHash,
+      artifactHashChanged,
+      previousContractCoverage: task.state.previousFailures?.[task.state.previousFailures.length - 1]?.contractCoverage,
+      currentContractCoverage: currentCoverage,
+      contractCoverageDelta,
+      previousSemanticScore: task.state.previousFailures?.[task.state.previousFailures.length - 1]?.semanticScore,
+      currentSemanticScore: currentScore,
+      semanticScoreDelta,
+      resolvedDefectCount,
+      newDefectCount,
+      repeatedDefectCount,
+      repeatedRequiredDefectCount
+    };
+
+    const hasCriticFailure = requiredDefects.some(d => d.type === 'CRITIC_RESPONSE_INVALID' || d.type === 'CRITIC_UNAVAILABLE');
+
     if (verification.verdict === 'NEEDS_REPAIR' || verification.verdict === 'RETRY') {
       const availableRetries = (task.state.maxExecutionRetries || 3) - (task.state.executionRetryCount || 0);
+      const availableCriticRetries = (task.state.maxSemanticCriticCalls || 3) - (task.state.semanticCriticCallCount || 0);
       
       if (isNoProgress && repeatedDefectCount >= 2) {
         decision.action = 'WAIT_FOR_USER';
-        decision.reason = 'NO_PROGRESS detected with repeated required defects.';
+        decision.reason = 'NO_PROGRESS detected: The same defects are occurring without measurable progress.';
         decision.userPrompt = 'The same defects are occurring. Please intervene.';
+      } else if (hasCriticFailure) {
+        if (availableCriticRetries > 0) {
+          decision.action = 'REVERIFY_RESULT';
+          decision.reason = 'Critic parsing failed or unavailable. Retrying verification.';
+          decision.recoveryBudgetCost = 1; // Uses semanticCriticCallCount mapped later
+        } else {
+          decision.action = 'FAIL_REQUIRED_TASK';
+          decision.reason = 'Semantic critic budget exhausted';
+        }
       } else if (availableRetries > 0) {
         decision.action = verification.verdict === 'NEEDS_REPAIR' ? 'REPAIR_RESULT' : 'RETRY_SAME_STRATEGY';
         decision.reason = 'Budget allows retry';
@@ -135,10 +205,15 @@ export class RecoveryCoordinator {
         errorType: 'VerificationFailed',
         message: decision.reason,
         timestamp: Date.now(),
-        defectSignatures: request.defectSignatures || []
+        defectSignatures: request.defectSignatures || [],
+        contentHash: request.contentHash,
+        semanticScore: request.semanticScore,
+        contractCoverage: request.contractCoverage,
+        retryScope: request.retryScope
       };
 
       if (decision.action === 'REPAIR_RESULT' || decision.action === 'RETRY_SAME_STRATEGY') {
+        const sameDefectRepeatCount = request.progressDelta?.repeatedDefectCount || 0;
         this.store.dispatchTransition(
           {
             commandId: `cmd-rec-${crypto.randomUUID()}`,
@@ -155,8 +230,30 @@ export class RecoveryCoordinator {
           {
             retries: request.retryCount + 1,
             executionRetryCount,
+            sameDefectRepeatCount,
             previousFailures: [...previousFailures, newFailure],
             retryAfter: Date.now() + 30_000
+          }
+        );
+        this.recoveryStore.updateRequestStatus(request.recoveryRequestId, 'RESOLVED');
+      } else if (decision.action === 'REVERIFY_RESULT') {
+        const semanticCriticCallCount = (task.state.semanticCriticCallCount || 0) + decision.recoveryBudgetCost;
+        this.store.dispatchTransition(
+          {
+            commandId: `cmd-rec-${crypto.randomUUID()}`,
+            missionId: decision.missionId,
+            taskId: decision.taskId,
+            expectedCurrentStatus: 'VERIFYING',
+            expectedStateVersion: task.state.stateVersion,
+            reason: decision.reason,
+            actor: 'RecoveryCoordinator',
+            timestamp: Date.now(),
+            metadata: { decision }
+          },
+          'VERIFYING',
+          {
+            semanticCriticCallCount,
+            previousFailures: [...previousFailures, newFailure],
           }
         );
         this.recoveryStore.updateRequestStatus(request.recoveryRequestId, 'RESOLVED');
@@ -176,6 +273,7 @@ export class RecoveryCoordinator {
           'WAITING_USER',
           {
             executionRetryCount,
+            sameDefectRepeatCount: request.progressDelta?.repeatedDefectCount || 0,
             previousFailures: [...previousFailures, newFailure],
           }
         );

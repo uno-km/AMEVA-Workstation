@@ -72,18 +72,30 @@ function parseLLMJudgement(raw: string): LLMJudgementResponse | null {
     const parsed: unknown = JSON.parse(jsonStr);
     if (
       typeof parsed !== 'object' || parsed === null ||
-      !('verdict' in parsed) || !('reason' in parsed)
+      !('verdict' in parsed) || !('reason' in parsed) || !('confidence' in parsed)
     ) return null;
     
     const p = parsed as Record<string, unknown>;
     const verdict = p['verdict'];
     if (verdict !== 'PASS' && verdict !== 'FAIL' && verdict !== 'UNCERTAIN') return null;
     
+    if (typeof p['reason'] !== 'string') return null;
+    if (typeof p['confidence'] !== 'number') return null;
+
+    if ('defects' in p) {
+      if (!Array.isArray(p['defects'])) return null;
+      for (const d of p['defects']) {
+        if (typeof d !== 'object' || d === null) return null;
+        const def = d as Record<string, unknown>;
+        if (typeof def['type'] !== 'string' || typeof def['severity'] !== 'string' || typeof def['message'] !== 'string') return null;
+      }
+    }
+
     return {
       verdict,
-      reason: String(p['reason']),
-      confidence: typeof p['confidence'] === 'number' ? Math.max(0, Math.min(1, p['confidence'])) : 0.5,
-      defects: Array.isArray(p['defects']) ? p['defects'] : undefined
+      reason: p['reason'],
+      confidence: Math.max(0, Math.min(1, p['confidence'])),
+      defects: p['defects'] as any[] | undefined
     };
   } catch {
     return null;
@@ -177,25 +189,71 @@ export class SemanticVerifier implements TaskVerifier {
           { role: 'user', content: userPrompt }
         ];
 
-        let rawResponse = '';
-        // [Critical 0-D Fix] VERIFICATION_TIMEOUT_POLICY.totalVerificationTimeoutMs 사용 (하드코딩 5000 제거)
-        const timeoutMs = VERIFICATION_TIMEOUT_POLICY.totalVerificationTimeoutMs;
-        const timeoutPromise = new Promise<string>((_, reject) =>
-          setTimeout(() => reject(new Error(`SemanticVerifier LLM timeout (${timeoutMs}ms)`)), timeoutMs)
-        );
-        const generatePromise = this.adapter.generateStream(messages, () => { /* 스트림 토큰 불필요 */ });
+        let judgement: LLMJudgementResponse | null = null;
+        let attempt = 0;
+        let lastRawResponse = '';
+        let localLlmCalls = 0;
 
-        rawResponse = await Promise.race([generatePromise, timeoutPromise]);
+        while (attempt < 2) {
+          attempt++;
+          let rawResponse = '';
+          const timeoutMs = VERIFICATION_TIMEOUT_POLICY.totalVerificationTimeoutMs;
+          const timeoutPromise = new Promise<string>((_, reject) =>
+            setTimeout(() => reject(new Error(`SemanticVerifier LLM timeout (${timeoutMs}ms)`)), timeoutMs)
+          );
+          
+          let repairMessage = '';
+          if (attempt === 2) {
+            repairMessage = `\nYour previous response was invalid JSON or missing required schema fields. Please try again with valid JSON only. Raw response was: ${lastRawResponse.slice(0, 500)}`;
+          }
 
-        const judgement = parseLLMJudgement(rawResponse);
+          const generatePromise = this.adapter.generateStream([
+            { role: 'system', content: SEMANTIC_JUDGE_SYSTEM_PROMPT },
+            { role: 'user', content: userPrompt + repairMessage }
+          ], () => { /* noop */ });
+
+          localLlmCalls++;
+          rawResponse = await Promise.race([generatePromise, timeoutPromise]);
+          lastRawResponse = rawResponse;
+
+          // 1차 파싱 시도
+          judgement = parseLLMJudgement(rawResponse);
+          
+          if (!judgement) {
+            // 로컬 deterministic JSON repair (추가 LLM 호출 없음)
+            const jsonMatch = rawResponse.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+               try {
+                 // 좀 더 적극적인 복구 (예: 누락된 괄호 채우기, trailing comma 제거 등 - 여기서는 단순 정규식 기반)
+                 let fixed = jsonMatch[0].replace(/,\s*}/g, '}').replace(/,\s*]/g, ']');
+                 judgement = parseLLMJudgement(fixed);
+               } catch {
+                 judgement = null;
+               }
+            }
+          }
+
+          // 자유 텍스트 PASS 방어
+          if (judgement && judgement.verdict === 'PASS') {
+             if (rawResponse.trim() === 'PASS' || rawResponse.trim() === '[PASS]' || rawResponse.trim() === '') {
+                 judgement = null; // 절대 PASS 처리 금지
+             }
+          }
+
+          if (judgement) {
+            break;
+          }
+        }
+
         if (!judgement) {
           results.push({
             criterionId,
             verifierType: this.verifierType,
             verdict: 'UNCERTAIN',
-            reason: `LLM response could not be parsed for criterion "${criterion}". Raw: ${rawResponse.slice(0, 200)}`,
+            reason: `LLM response could not be parsed for criterion "${criterion}". Raw: ${lastRawResponse.slice(0, 200)}`,
             repairHint: 'Check LLM output format. Ensure model follows JSON verdict format.',
             confidence: 0.0,
+            llmCallCount: localLlmCalls,
             defect: {
               defectId: `def-${crypto.randomUUID()}`,
               signature: `SEMANTIC:CRITIC_RESPONSE_INVALID:parse_error`,
@@ -218,6 +276,7 @@ export class SemanticVerifier implements TaskVerifier {
                 verdict: 'FAIL',
                 reason: judgement.reason,
                 confidence: judgement.confidence,
+                llmCallCount: localLlmCalls,
                 defect: {
                   defectId: `def-${crypto.randomUUID()}`,
                   signature: `SEMANTIC:${d.type || 'SEMANTIC_INCONSISTENCY'}:${d.targetSection || 'unknown'}:${criterionId}`,
@@ -241,6 +300,7 @@ export class SemanticVerifier implements TaskVerifier {
               reason: judgement.reason,
               repairHint: judgement.verdict !== 'PASS' ? `LLM determined criterion "${criterion}" was not met.` : undefined,
               confidence: judgement.confidence,
+              llmCallCount: localLlmCalls,
               defect: judgement.verdict === 'FAIL' ? {
                 defectId: `def-${crypto.randomUUID()}`,
                 signature: `SEMANTIC:SEMANTIC_INCONSISTENCY:unknown:${criterionId}`,

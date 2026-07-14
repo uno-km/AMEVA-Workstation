@@ -43,7 +43,18 @@ export class PlanActivationService {
         attempts: {},
         stateVersion: 1,
         retries: 0,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        // Phase 3 Budget Default Limits
+        maxExecutionRetries: 3,
+        executionRetryCount: 0,
+        maxSemanticCriticCalls: 3,
+        semanticCriticCallCount: 0,
+        maxRepairAttempts: 5,
+        repairAttemptCount: 0,
+        maxSameDefectRepeats: 2,
+        sameDefectRepeatCount: 0,
+        maxTotalVerificationTimeMs: 600000,
+        previousFailures: []
       };
       
       // PHASE 2 에서는 definition에 planId와 missionId를 명시적으로 주입한다.

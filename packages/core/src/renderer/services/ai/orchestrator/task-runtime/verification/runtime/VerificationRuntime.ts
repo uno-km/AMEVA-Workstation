@@ -49,6 +49,32 @@ export class VerificationRuntime {
         const jobId = `vjob-${crypto.randomUUID()}`;
         const input = this.inputBuilder.build(missionId, task.definition.id, task.state.activeAttemptId);
         const criterionResults = await this.coordinator.runVerificationPipeline(input);
+        
+        // Update Budget
+        let totalLlmCalls = 0;
+        for (const res of criterionResults) {
+          if (res.llmCallCount) totalLlmCalls += res.llmCallCount;
+        }
+
+        if (totalLlmCalls > 0) {
+          const newCount = (task.state.semanticCriticCallCount || 0) + totalLlmCalls;
+          this.store.updateTaskMetadata(
+            {
+              commandId: `cmd-budget-${crypto.randomUUID()}`,
+              missionId,
+              taskId: task.definition.id,
+              attemptId: task.state.activeAttemptId,
+              expectedStateVersion: task.state.stateVersion,
+              reason: 'Increment semanticCriticCallCount',
+              actor: 'VerificationRuntime',
+              timestamp: Date.now()
+            } as any,
+            { semanticCriticCallCount: newCount }
+          );
+          // Pass the updated count to the policy
+          input.taskState = { ...input.taskState, semanticCriticCallCount: newCount };
+        }
+
         const finalResult = this.policy.evaluate(input, criterionResults, jobId);
         results.push(finalResult);
 

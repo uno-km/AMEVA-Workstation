@@ -77,6 +77,7 @@ export interface CriterionResult {
   score?: number;
   confidence?: number;
   defect?: Defect;
+  llmCallCount?: number;
 }
 
 export interface TaskVerificationResult {
@@ -93,6 +94,9 @@ export interface TaskVerificationResult {
   verdict: TaskVerdict;
   score?: number;
   confidence?: number;
+  contentHash?: string;
+  semanticScore?: number;
+  contractCoverage?: number;
   
   criterionResults: CriterionResult[];
   passedCriteria: string[];

@@ -101,10 +101,26 @@ export class VerificationDecisionPolicy {
     } else if (hasUnverifiable) {
       finalVerdict = 'NEEDS_USER';
     } else if (hasSemanticUncertain) {
-      // We set UNCERTAIN instead of PASS.
-      // But we must return a valid TaskVerdict.
-      // We will map UNCERTAIN to RETRY so it can retry Semantic Critic if budget allows.
-      finalVerdict = 'RETRY'; 
+      // Check budget
+      const calls = input.taskState.semanticCriticCallCount || 0;
+      const maxCalls = input.taskState.maxSemanticCriticCalls || 5;
+      if (calls >= maxCalls) {
+        finalVerdict = 'WAITING_USER';
+        warnings.push(`[BUDGET_EXHAUSTED] maxSemanticCriticCalls reached (${calls}/${maxCalls}). Escalating to WAITING_USER.`);
+        defects.push({
+          defectId: `def-${crypto.randomUUID()}`,
+          signature: `VERIFICATION:BUDGET_EXHAUSTED:semantic_critic`,
+          stage: 'SEMANTIC',
+          type: 'BUDGET_EXHAUSTED',
+          severity: 'CRITICAL',
+          required: true,
+          message: `Semantic critic budget exhausted after ${calls} calls.`,
+          retryable: false,
+          retryScope: 'FULL_TASK'
+        });
+      } else {
+        finalVerdict = 'RETRY'; 
+      }
     } else if (requiredDefects.length > 0) {
       // Check if all required defects are retryable
       const allRetryable = requiredDefects.every(d => d.retryable);

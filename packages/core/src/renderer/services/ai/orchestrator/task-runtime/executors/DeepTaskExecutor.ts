@@ -190,6 +190,15 @@ export class DeepTaskExecutor {
             // [Item 4] Legacy expectedOutput 호환
             let resolvedOutputId: string | undefined = undefined;
             if (candidate.toolName === 'write_file') {
+              // [Phase 3.1] Enforce write_file restriction based on retryScope
+              const previousFailures = task.state.previousFailures || [];
+              if (previousFailures.length > 0) {
+                const lastFailure = previousFailures[previousFailures.length - 1];
+                if (lastFailure.retryScope && lastFailure.retryScope !== 'FULL_TASK') {
+                  throw new ToolPolicyViolationError('write_file is blocked for partial repair. Use apply_patch tool instead.', 'SHADOW_MODE_BLOCKED');
+                }
+              }
+
               const fileOutputs = task.definition.expectedOutputs?.filter(o => o.kind === 'FILE') || [];
               if (fileOutputs.length === 1) {
                 resolvedOutputId = fileOutputs[0].id;
@@ -199,7 +208,7 @@ export class DeepTaskExecutor {
               }
             }
 
-            const toolContext = { 
+            const toolContext: any = { 
               missionId, 
               taskId, 
               attemptId,
@@ -207,6 +216,17 @@ export class DeepTaskExecutor {
               expectedOutput: resolvedOutputId,
               idempotencyKey: `${taskId}-${attemptId}-${candidate.toolCallId}`
             };
+
+            if (candidate.toolName === 'apply_patch' && this.artifactManager) {
+               const targetAid = candidate.arguments['artifactId'] || toolContext.artifactId;
+               const manifest = await this.artifactManager.getManifest(missionId, targetAid);
+               if (manifest) {
+                  toolContext.currentRevision = manifest.revision;
+                  toolContext.finalPath = manifest.finalPath;
+                  toolContext.retryScope = task.state.previousFailures?.slice(-1)[0]?.retryScope;
+               }
+            }
+
             const toolResultPromise = registry.executeTool(candidate.toolName, candidate.arguments, toolContext);
 
             const timeoutPromise = new Promise<never>((_, reject) =>
@@ -216,7 +236,7 @@ export class DeepTaskExecutor {
             const toolResult = await Promise.race([toolResultPromise, timeoutPromise]);
 
             // [Item 2.1 & 3 & 5] Artifact Staging/Manifest Interaction
-            if (candidate.toolName === 'write_file' && toolResult.success && this.artifactManager) {
+            if ((candidate.toolName === 'write_file' || candidate.toolName === 'apply_patch') && toolResult.success && this.artifactManager) {
               const { 
                 artifactId: retAid, 
                 missionId: retMid, 
@@ -224,7 +244,8 @@ export class DeepTaskExecutor {
                 attemptId: retAttId, 
                 normalizedStagedPath, 
                 size, 
-                contentHash 
+                contentHash,
+                newRevision
               } = toolResult;
 
               if (retMid !== missionId || retTid !== taskId || retAttId !== attemptId || !normalizedStagedPath) {
@@ -243,10 +264,10 @@ export class DeepTaskExecutor {
                 required: false, // Wait, task definition tells us if it's required. Default false.
                 stagedPath: normalizedStagedPath,
                 status: 'DECLARED',
-                revision: 1,
+                revision: newRevision || 1,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
-                provenance: { missionId, taskId, attemptId: String(attemptId), producer: 'write_file' }
+                provenance: { missionId, taskId, attemptId: String(attemptId), producer: candidate.toolName }
               });
               // Store size and hash if supported by markWritten, otherwise the manager has to fetch it.
               // Assuming markWritten can take it, or declareArtifact takes it.
