@@ -47,6 +47,26 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
   public async remove(path: string): Promise<void> {
     this.files.delete(path);
   }
+
+  public async list(path: string): Promise<string> {
+    const lines = ['Name\tLength\tLastWriteTime', '----\t------\t-------------'];
+    let count = 0;
+    const prefix = path === '.' || path === '' ? '' : path + '/';
+    
+    for (const [key, content] of this.files.entries()) {
+      if (prefix === '' || key.startsWith(prefix)) {
+        // Just return simple info for mock
+        const relPath = prefix === '' ? key : key.slice(prefix.length);
+        const name = relPath.split('/')[0]; // Top level inside dir
+        lines.push(`${name}\t${content.length}\t2026-01-01T00:00:00Z`);
+        count++;
+      }
+    }
+    if (count === 0) return '(디렉토리가 비어있습니다)';
+    // Deduplicate names for directories
+    const uniqueLines = Array.from(new Set(lines));
+    return uniqueLines.join('\n');
+  }
   
   // Test utility
   public setFile(path: string, content: string) {

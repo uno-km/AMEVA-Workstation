@@ -46,8 +46,8 @@ describe('Recovery-First Architecture 단위 테스트 (Legacy Agents)', () => {
     });
 
     it('동일 문장이 연속 3회 이상 노출되는 N-gram 루프 발생 시 stalled 로 판단한다', () => {
-      // 15자 패턴: "동일패턴을반복중입니다"
-      const repeatUnit = '동일패턴을반복중입니다 동일패턴을반복중입니다 동일패턴을반복중입니다';
+      // 15자 패턴: "동일패턴을반복중입니다" x 4회 반복 (N-gram 4회 요구)
+      const repeatUnit = '동일패턴을반복중입니다 동일패턴을반복중입니다 동일패턴을반복중입니다 동일패턴을반복중입니다';
       const verdict = critic.evaluateThought(repeatUnit);
       expect(verdict).toBe('stalled');
     });

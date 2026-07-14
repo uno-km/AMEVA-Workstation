@@ -23,7 +23,7 @@ export class ArtifactTransactionManager {
       'WRITTEN': ['VALIDATED', 'REJECTED'],
       'VALIDATED': ['COMMITTING', 'REJECTED'],
       'COMMITTING': ['COMMITTED', 'CORRUPTED', 'STALE'],
-      'COMMITTED': ['STALE'], // e.g. overwritten by new attempt
+      'COMMITTED': ['STALE', 'WRITTEN'], // e.g. overwritten by new attempt
       'REJECTED': [],
       'CORRUPTED': [],
       'STALE': []
@@ -92,6 +92,25 @@ export class ArtifactTransactionManager {
     }
 
     if (this.idempotencyStore && manifest.idempotencyKey) {
+      const record = await this.idempotencyStore.getRecord(manifest.idempotencyKey);
+      if (record && record.status === 'COMMITTED') {
+         // Already committed by a previous attempt. Verify hash.
+         if (manifest.stagedPath) {
+           const stagingHash = await this.fsAdapter.hash(manifest.stagedPath);
+           if (stagingHash && stagingHash !== record.contentHash) {
+             manifest.status = 'CORRUPTED';
+             manifest.validationErrors = [...(manifest.validationErrors || []), `Hash mismatch with already committed artifact`];
+             await this.store.saveManifest(manifest);
+             await this.idempotencyStore.markCorrupted(manifest.idempotencyKey);
+             throw new Error(`Hash mismatch with already committed artifact for ${artifactId}`);
+           }
+         }
+         // Idempotent success
+         manifest.status = 'COMMITTED';
+         await this.store.saveManifest(manifest);
+         return;
+      }
+
       const acquired = await this.idempotencyStore.acquireLease(
         manifest.idempotencyKey,
         manifest.artifactId,
@@ -102,7 +121,7 @@ export class ArtifactTransactionManager {
         30000 // 30 seconds ttl
       );
       if (!acquired) {
-         throw new Error(`Commit locked or already committed for ${artifactId}`);
+         throw new Error(`Commit locked for ${artifactId}`);
       }
     }
 
@@ -151,7 +170,6 @@ export class ArtifactTransactionManager {
           const backupStat = await this.fsAdapter.stat(backupPath);
           if (backupStat.exists) {
             await this.fsAdapter.move(backupPath, finalPath);
-            await this.fsAdapter.remove(finalPath); // or keep? move overwrites?
           } else {
             await this.fsAdapter.move(finalPath, stagedPath);
           }

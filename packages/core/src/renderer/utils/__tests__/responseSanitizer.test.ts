@@ -759,5 +759,3 @@ runStandalone().catch(err => {
   console.error('Unexpected error in test runner:', err)
   process.exit(1)
 })
-
-console.debug(suites, currentSuite);

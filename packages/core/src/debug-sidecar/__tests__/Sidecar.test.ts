@@ -1,13 +1,13 @@
 /**
  * @file debug-sidecar/__tests__/UnifiedEventEnvelope.test.ts
+/**
+ * @file debug-sidecar/__tests__/UnifiedEventEnvelope.test.ts
  * @system AMEVA OS Desktop Workstation
  */
 
 import { EventNormalizer } from '../observability/EventNormalizer';
 import { CorrelationContext } from '../observability/CorrelationContext';
 import { SecretRedactor } from '../security/SecretRedactor';
-import * as assert from 'node:assert';
-
 import { describe, it, expect } from 'vitest';
 
 describe('UnifiedEventEnvelope', () => {
@@ -18,8 +18,8 @@ describe('UnifiedEventEnvelope', () => {
   const e1 = EventNormalizer.info('LIFECYCLE', 'Test', 'TEST', 'test');
   const e2 = EventNormalizer.info('LIFECYCLE', 'Test', 'TEST', 'test');
   
-  assert.ok(e1.timestamp_ms > 0, 'timestamp_ms must exist');
-  assert.ok(e2.sequence > e1.sequence, 'Sequence must strictly increase');
+  expect(e1.timestamp_ms).toBeGreaterThan(0);
+  expect(e2.sequence).toBeGreaterThan(e1.sequence);
 
   // Test 2: Correlation Context is retained
   let contextEvent: any;
@@ -27,8 +27,8 @@ describe('UnifiedEventEnvelope', () => {
     contextEvent = EventNormalizer.info('LIFECYCLE', 'Test', 'TEST', 'test');
   });
   
-  assert.strictEqual(contextEvent.trace_id, '123', 'Trace ID must be captured');
-  assert.strictEqual(contextEvent.mission_id, 'm1', 'Mission ID must be captured');
+  expect(contextEvent.trace_id).toBe('123');
+  expect(contextEvent.mission_id).toBe('m1');
 
   // Test 3: Secret Redaction
   const rawData = {
@@ -40,12 +40,12 @@ describe('UnifiedEventEnvelope', () => {
     }
   };
   const redacted = SecretRedactor.redactObject(rawData);
-  assert.strictEqual(redacted.apikey, '[REDACTED]', 'API Key must be redacted');
-  assert.strictEqual(redacted.metadata.password, '[REDACTED]', 'Nested password must be redacted');
-  assert.strictEqual(redacted.metadata.safe, 'data', 'Safe data must not be touched');
+  expect(redacted.apikey).toBe('[REDACTED]');
+  expect(redacted.metadata.password).toBe('[REDACTED]');
+  expect(redacted.metadata.safe).toBe('data');
   
   const tokenString = SecretRedactor.redactString('Authorization: Bearer my-super-secret-token');
-  assert.ok(tokenString.includes('[REDACTED]'), 'Bearer token must be redacted');
+  expect(tokenString).toContain('[REDACTED]');
 
     console.log('[Test] All tests passed.');
   });

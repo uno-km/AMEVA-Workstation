@@ -2,12 +2,11 @@ export interface IdempotencyRecord {
   idempotencyKey: string;
   artifactId: string;
   revision: number;
-  missionId: string;
-  taskId: string;
-  attemptId: string;
   status: 'IN_PROGRESS' | 'COMMITTED' | 'CORRUPTED';
   contentHash?: string;
-  expiresAt?: number;
+  leaseOwner: string;
+  leaseExpiresAt?: number;
+  committedResult?: any;
 }
 
 export interface IIdempotencyStore {
@@ -19,35 +18,43 @@ export interface IIdempotencyStore {
 }
 
 export class PersistenceIdempotencyStore implements IIdempotencyStore {
+  private readonly locks = new Set<string>();
+
   constructor(private adapter: import('./../persistence/RuntimePersistenceAdapter').IRuntimePersistenceAdapter) {}
 
   public async acquireLease(key: string, artifactId: string, revision: number, missionId: string, taskId: string, attemptId: string, ttlMs: number): Promise<boolean> {
-    const existing = await this.adapter.loadIdempotencyRecord(key);
-    const now = Date.now();
+    if (this.locks.has(key)) return false;
+    this.locks.add(key);
 
-    if (existing) {
-      if (existing.status === 'COMMITTED') {
-        return false; // Already committed
+    try {
+      const existing = await this.adapter.loadIdempotencyRecord(key);
+      const now = Date.now();
+
+      if (existing) {
+        if (existing.status === 'COMMITTED') {
+          return false; // Already committed
+        }
+        if (existing.status === 'IN_PROGRESS' && existing.leaseExpiresAt && existing.leaseExpiresAt > now) {
+          return false; // Valid lease exists
+        }
+        // If IN_PROGRESS but expired, or CORRUPTED, we can acquire
       }
-      if (existing.status === 'IN_PROGRESS' && existing.expiresAt && existing.expiresAt > now) {
-        return false; // Valid lease exists
-      }
-      // If IN_PROGRESS but expired, or CORRUPTED, we can acquire
+
+      const leaseOwner = `${missionId}:${taskId}:${attemptId}`;
+      const record: IdempotencyRecord = {
+        idempotencyKey: key,
+        artifactId,
+        revision,
+        status: 'IN_PROGRESS',
+        leaseOwner,
+        leaseExpiresAt: now + ttlMs
+      };
+
+      await this.adapter.saveIdempotencyRecord(record);
+      return true;
+    } finally {
+      this.locks.delete(key);
     }
-
-    const record: IdempotencyRecord = {
-      idempotencyKey: key,
-      artifactId,
-      revision,
-      missionId,
-      taskId,
-      attemptId,
-      status: 'IN_PROGRESS',
-      expiresAt: now + ttlMs
-    };
-
-    await this.adapter.saveIdempotencyRecord(record);
-    return true;
   }
 
   public async getRecord(key: string): Promise<IdempotencyRecord | null> {
@@ -55,7 +62,7 @@ export class PersistenceIdempotencyStore implements IIdempotencyStore {
     if (!record) return null;
     
     // Check expiration
-    if (record.status === 'IN_PROGRESS' && record.expiresAt && record.expiresAt <= Date.now()) {
+    if (record.status === 'IN_PROGRESS' && record.leaseExpiresAt && record.leaseExpiresAt <= Date.now()) {
       return null; // Consider it gone if expired
     }
     return record;
@@ -66,7 +73,9 @@ export class PersistenceIdempotencyStore implements IIdempotencyStore {
     if (existing) {
       existing.status = 'COMMITTED';
       existing.contentHash = contentHash;
-      existing.expiresAt = undefined;
+      existing.leaseExpiresAt = undefined;
+      // We can mock a committedResult for now
+      existing.committedResult = { contentHash, timestamp: Date.now() };
       await this.adapter.saveIdempotencyRecord(existing);
     }
   }
@@ -75,7 +84,7 @@ export class PersistenceIdempotencyStore implements IIdempotencyStore {
     const existing = await this.adapter.loadIdempotencyRecord(key);
     if (existing) {
       existing.status = 'CORRUPTED';
-      existing.expiresAt = undefined;
+      existing.leaseExpiresAt = undefined;
       await this.adapter.saveIdempotencyRecord(existing);
     }
   }

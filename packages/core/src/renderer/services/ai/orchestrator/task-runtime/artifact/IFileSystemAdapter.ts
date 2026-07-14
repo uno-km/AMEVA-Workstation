@@ -5,4 +5,5 @@ export interface IFileSystemAdapter {
   move(sourcePath: string, destPath: string, backupPath?: string): Promise<void>;
   hash(path: string): Promise<string | null>;
   remove(path: string): Promise<void>;
+  list(path: string): Promise<string>;
 }

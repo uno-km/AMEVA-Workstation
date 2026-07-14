@@ -140,4 +140,23 @@ export class PowerShellArtifactFileAdapter implements IFileSystemAdapter {
     const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
     if (res.stderr) throw new Error(`remove error: ${res.stderr}`);
   }
+
+  public async list(path: string): Promise<string> {
+    this.validatePath(path);
+    const script = `
+      $path = "${path}"
+      if (-not [System.IO.Directory]::Exists($path)) {
+        Write-Error "Directory not found"
+      } else {
+        Get-ChildItem -Path $path | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize | Out-String
+      }
+    `;
+    const b64 = Buffer.from(script, 'utf-8').toString('base64');
+    const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
+    if (res.stderr && res.stderr.includes('Directory not found')) {
+      throw new Error(`Directory not found: ${path}`);
+    }
+    if (res.stderr) throw new Error(`list error: ${res.stderr}`);
+    return res.stdout.trim() || '(디렉토리가 비어있습니다)';
+  }
 }
