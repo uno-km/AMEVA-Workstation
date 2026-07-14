@@ -114,8 +114,8 @@ export class LLMCriticStrategy implements ICriticStrategy {
        * - 미준비 상태면 안전 폴백(PASS)을 반환한다.
        */
       if (!ctx.criticEngineAdapter.isReady()) {
-        console.warn('[LLMCriticStrategy] Critic 엔진 미준비. 안전 폴백(PASS) 반환.')
-        return { verdict: 'PASS', latencyMs: Date.now() - startTime }
+        console.warn('[LLMCriticStrategy] Critic 엔진 미준비. UNCERTAIN 반환.')
+        return { verdict: 'UNCERTAIN', latencyMs: Date.now() - startTime }
       }
 
       /*
@@ -153,8 +153,8 @@ export class LLMCriticStrategy implements ICriticStrategy {
        * - 에러는 console.error로 기록하여 침묵시키지 않는다.
        */
       const msg = err instanceof Error ? err.message : String(err)
-      console.error('[LLMCriticStrategy] Critic 실행 예외. 안전 폴백(PASS) 반환:', msg)
-      return { verdict: 'PASS', latencyMs: Date.now() - startTime }
+      console.error('[LLMCriticStrategy] Critic 실행 예외. UNCERTAIN 반환:', msg)
+      return { verdict: 'UNCERTAIN', latencyMs: Date.now() - startTime }
     }
   }
 
@@ -224,9 +224,9 @@ export class LLMCriticStrategy implements ICriticStrategy {
      * - console.warn으로 기록하여 추후 디버깅이 가능하게 한다.
      */
     console.warn(
-      '[LLMCriticStrategy] 판정 포맷 파싱 실패. 안전 폴백(PASS) 반환.',
+      '[LLMCriticStrategy] 판정 포맷 파싱 실패. UNCERTAIN 반환.',
       `출력: "${output.slice(0, 100)}"`
     )
-    return { verdict: 'PASS', latencyMs }
+    return { verdict: 'UNCERTAIN', latencyMs }
   }
 }

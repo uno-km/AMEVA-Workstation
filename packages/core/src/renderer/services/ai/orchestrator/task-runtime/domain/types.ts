@@ -162,6 +162,25 @@ export interface TaskRuntimeState {
   taskResult?: TaskResult; // COMPLETED 시 최종 결과
   verification?: TaskVerificationResult; // COMPLETED 전이 시 PASS 객체 필수
   /**
+   * [Phase 3 — Budget & Limits]
+   */
+  maxExecutionRetries: number;
+  executionRetryCount: number;
+  maxSemanticCriticCalls: number;
+  semanticCriticCallCount: number;
+  maxRepairAttempts: number;
+  repairAttemptCount: number;
+  maxSameDefectRepeats: number;
+  sameDefectRepeatCount: number;
+  maxTotalVerificationTimeMs: number;
+  verificationStartedAt?: number;
+
+  /**
+   * [Phase 3 — Progress Tracking]
+   */
+  previousFailures?: any[]; // To store previous defect signatures or hash
+  
+  /**
    * [STAGE E — Recovery 폐루프]
    * RETRY_WAIT 상태에서 재시도가 허용되는 Unix Timestamp(ms).
    * MissionExecutionRuntime의 tick()이 이 값을 확인하여 PENDING으로 전이함.

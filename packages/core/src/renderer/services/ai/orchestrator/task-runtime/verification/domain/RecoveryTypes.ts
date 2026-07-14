@@ -40,6 +40,9 @@ export interface TaskRecoveryRequest {
   
   failureReason: string; // DependencyFailureReason 등 포함
   failedCriteria?: string[];
+  defectSignatures?: string[];
+  retryScope?: string;
+  targetSection?: string;
   repairInstructions?: string;
   
   status: RecoveryRequestStatus;

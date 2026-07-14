@@ -222,6 +222,11 @@ describe('Phase 2.3 - Final Audit Integration', () => {
 
   it('3. Commit Failure triggers Rollback and CORRUPTED marking', async () => {
     const artifactId = 'art-fail';
+    
+    // Create an existing final file to simulate backup and rollback
+    await fileAdapter.write('/final/fail.txt', 'old valid content');
+    const oldHash = await fileAdapter.hash('/final/fail.txt');
+
     await txManager.declareArtifact({
       missionId: 'm1',
       artifactId,
@@ -241,14 +246,26 @@ describe('Phase 2.3 - Final Audit Integration', () => {
 
     await fileAdapter.write('/staged/fail.txt', 'to be corrupted');
 
-    // Mock move to fail
-    vi.spyOn(fileAdapter, 'move').mockRejectedValueOnce(new Error('Simulated move error'));
+    // Mock move to fail during the actual move to final
+    const originalMove = fileAdapter.move.bind(fileAdapter);
+    vi.spyOn(fileAdapter, 'move').mockImplementation(async (src, dest) => {
+      if (dest === '/final/fail.txt') {
+        throw new Error('Simulated move error');
+      }
+      return originalMove(src, dest);
+    });
 
     await expect(txManager.commitArtifact('m1', artifactId)).rejects.toThrow('Simulated move error');
 
     manifest = await txManager.getManifest('m1', artifactId);
     expect(manifest!.status).toBe('CORRUPTED');
     expect(manifest!.validationErrors?.some(e => e.includes('Commit failed: Simulated move error'))).toBe(true);
+
+    // Verify rollback: final file should still have old content
+    const finalContent = await fileAdapter.read('/final/fail.txt');
+    expect(finalContent).toBe('old valid content');
+    const newHash = await fileAdapter.hash('/final/fail.txt');
+    expect(newHash).toBe(oldHash);
   });
 
   it('4. Isolation Tests: enforce mission namespace and file separation', async () => {

@@ -31,7 +31,23 @@ import type { ILLMEngineAdapter } from '../../../types';
  */
 const SEMANTIC_JUDGE_SYSTEM_PROMPT = `You are a strict task completion evaluator.
 Given a task result text and an acceptance criterion, determine if the result satisfies the criterion.
-Respond ONLY with JSON: {"verdict":"PASS"|"FAIL"|"UNCERTAIN","reason":"<concise reason>","confidence":0.0-1.0}
+Respond ONLY with JSON matching this structure:
+{
+  "verdict": "PASS" | "FAIL" | "UNCERTAIN",
+  "reason": "<concise reason>",
+  "confidence": 0.0-1.0,
+  "defects": [
+    {
+      "type": "SEMANTIC_INCONSISTENCY" | "REQUIREMENT_UNCOVERED" | "INSUFFICIENT_EVIDENCE",
+      "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+      "targetSection": "Optional section name",
+      "message": "Specific defect description",
+      "repairInstruction": "How to fix",
+      "retryScope": "ARTIFACT" | "SECTION" | "FIELD" | "FILE" | "FUNCTION" | "TEST" | "TOOL_CALL" | "FULL_TASK",
+      "retryable": true
+    }
+  ]
+}
 Do NOT add any text outside the JSON. Be conservative: if unsure, respond UNCERTAIN, never PASS.`;
 
 /**
@@ -41,30 +57,33 @@ interface LLMJudgementResponse {
   verdict: 'PASS' | 'FAIL' | 'UNCERTAIN';
   reason: string;
   confidence: number;
+  defects?: any[];
 }
 
 /**
  * [LLM 응답 판정 안전 파싱]
- * LLM 출력에서 JSON 블록을 추출하여 파싱합니다.
- * 파싱 실패 시 null 반환 (PASS 추측 절대 금지).
  */
 function parseLLMJudgement(raw: string): LLMJudgementResponse | null {
   try {
-    // JSON 코드 블록 추출
-    const jsonMatch = raw.match(/\{[\s\S]*"verdict"[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    const parsed: unknown = JSON.parse(jsonMatch[0]);
+    let jsonStr = raw;
+    const jsonMatch = raw.match(/\{[\s\S]*\}/);
+    if (jsonMatch) jsonStr = jsonMatch[0];
+    
+    const parsed: unknown = JSON.parse(jsonStr);
     if (
       typeof parsed !== 'object' || parsed === null ||
-      !('verdict' in parsed) || !('reason' in parsed) || !('confidence' in parsed)
+      !('verdict' in parsed) || !('reason' in parsed)
     ) return null;
+    
     const p = parsed as Record<string, unknown>;
     const verdict = p['verdict'];
     if (verdict !== 'PASS' && verdict !== 'FAIL' && verdict !== 'UNCERTAIN') return null;
+    
     return {
       verdict,
       reason: String(p['reason']),
-      confidence: typeof p['confidence'] === 'number' ? Math.max(0, Math.min(1, p['confidence'])) : 0.5
+      confidence: typeof p['confidence'] === 'number' ? Math.max(0, Math.min(1, p['confidence'])) : 0.5,
+      defects: Array.isArray(p['defects']) ? p['defects'] : undefined
     };
   } catch {
     return null;
@@ -170,26 +189,71 @@ export class SemanticVerifier implements TaskVerifier {
 
         const judgement = parseLLMJudgement(rawResponse);
         if (!judgement) {
-          // 파싱 실패 — UNCERTAIN으로 처리 (PASS 추측 절대 금지)
           results.push({
             criterionId,
             verifierType: this.verifierType,
             verdict: 'UNCERTAIN',
             reason: `LLM response could not be parsed for criterion "${criterion}". Raw: ${rawResponse.slice(0, 200)}`,
             repairHint: 'Check LLM output format. Ensure model follows JSON verdict format.',
-            confidence: 0.0
+            confidence: 0.0,
+            defect: {
+              defectId: `def-${crypto.randomUUID()}`,
+              signature: `SEMANTIC:CRITIC_RESPONSE_INVALID:parse_error`,
+              stage: 'SEMANTIC',
+              type: 'CRITIC_RESPONSE_INVALID',
+              severity: 'HIGH',
+              required: true,
+              message: 'Failed to parse LLM judgment',
+              retryable: true,
+              retryScope: 'FULL_TASK'
+            }
           });
         } else {
-          results.push({
-            criterionId,
-            verifierType: this.verifierType,
-            verdict: judgement.verdict,
-            reason: judgement.reason,
-            repairHint: judgement.verdict !== 'PASS'
-              ? `LLM determined criterion "${criterion}" was not met. Consider re-execution.`
-              : undefined,
-            confidence: judgement.confidence
-          });
+          // If verdict is FAIL and defects array is provided, map them
+          if (judgement.verdict === 'FAIL' && judgement.defects && judgement.defects.length > 0) {
+            for (const d of judgement.defects) {
+              results.push({
+                criterionId,
+                verifierType: this.verifierType,
+                verdict: 'FAIL',
+                reason: judgement.reason,
+                confidence: judgement.confidence,
+                defect: {
+                  defectId: `def-${crypto.randomUUID()}`,
+                  signature: `SEMANTIC:${d.type || 'SEMANTIC_INCONSISTENCY'}:${d.targetSection || 'unknown'}:${criterionId}`,
+                  stage: 'SEMANTIC',
+                  type: d.type || 'SEMANTIC_INCONSISTENCY',
+                  severity: d.severity || 'MEDIUM',
+                  required: true,
+                  targetSection: d.targetSection,
+                  message: d.message || judgement.reason,
+                  repairInstruction: d.repairInstruction,
+                  retryable: d.retryable ?? true,
+                  retryScope: d.retryScope || 'FULL_TASK'
+                }
+              });
+            }
+          } else {
+            results.push({
+              criterionId,
+              verifierType: this.verifierType,
+              verdict: judgement.verdict,
+              reason: judgement.reason,
+              repairHint: judgement.verdict !== 'PASS' ? `LLM determined criterion "${criterion}" was not met.` : undefined,
+              confidence: judgement.confidence,
+              defect: judgement.verdict === 'FAIL' ? {
+                defectId: `def-${crypto.randomUUID()}`,
+                signature: `SEMANTIC:SEMANTIC_INCONSISTENCY:unknown:${criterionId}`,
+                stage: 'SEMANTIC',
+                type: 'SEMANTIC_INCONSISTENCY',
+                severity: 'MEDIUM',
+                required: true,
+                message: judgement.reason,
+                retryable: true,
+                retryScope: 'FULL_TASK'
+              } : undefined
+            });
+          }
         }
       } catch (error: unknown) {
         /*
@@ -205,7 +269,18 @@ export class SemanticVerifier implements TaskVerifier {
           verdict: 'UNCERTAIN',
           reason: `LLM verification error for "${criterion}": ${errorMessage}`,
           repairHint: 'Semantic verification failed due to LLM error. Manual review required.',
-          confidence: 0.0
+          confidence: 0.0,
+          defect: {
+            defectId: `def-${crypto.randomUUID()}`,
+            signature: `SEMANTIC:CRITIC_UNAVAILABLE:error`,
+            stage: 'SEMANTIC',
+            type: 'CRITIC_UNAVAILABLE',
+            severity: 'HIGH',
+            required: true,
+            message: errorMessage,
+            retryable: true,
+            retryScope: 'FULL_TASK'
+          }
         });
       }
     }

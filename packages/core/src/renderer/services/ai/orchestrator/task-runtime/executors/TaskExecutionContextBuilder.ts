@@ -41,7 +41,7 @@ ${toolList}
 현재 부여된 태스크 목표와 요구사항을 바탕으로 write_file 도구를 호출하여 마크다운 파일로 저장합니다.
 </thought>
 <tool_call>
-{"name": "write_file", "args": {"path": "산출물.md", "content": "# [요청받은 주제/태스크 제목]\n\n1. 개요\n본 문서에서는 부여된 태스크 요구사항에 맞춰 풍부하고 정교한 본문을 구성합니다..."}}
+{"name": "write_file", "args": {"path": "산출물.md", "content": "# [요청받은 주제/태스크 제목]\\n\\n1. 개요\\n본 문서에서는 부여된 태스크 요구사항에 맞춰 풍부하고 정교한 본문을 구성합니다..."}}
 </tool_call>
 
 2. 파일 작성('write_file') 시, 보고서나 글 작성 목표라면 반드시 내용('content')을 풍부하고 완결성 있게 작성해야 합니다.
@@ -81,11 +81,28 @@ Final Answer: [완료된 보고서 요약 및 작성 결과물 설명]
       });
     }
 
-    // 3. User Prompt (Task 시작 알림)
-    messages.push({
-      role: 'user',
-      content: 'Begin your execution. Use tools if necessary, or provide the final text output if you can achieve the goal directly.'
-    });
+    // 3. 이전 실패에 대한 Feedback Injection (Phase 3 Partial Repair 대응)
+    if (task.state.previousFailures && task.state.previousFailures.length > 0) {
+      const lastFailure = task.state.previousFailures[task.state.previousFailures.length - 1];
+      let feedback = `The previous execution failed verification. You are now in a RETRY/REPAIR attempt.\n`;
+      feedback += `Failure Reason: ${lastFailure.message}\n`;
+      
+      if (lastFailure.defectSignatures && lastFailure.defectSignatures.length > 0) {
+        feedback += `Defects to fix:\n${lastFailure.defectSignatures.map(d => `- ${d}`).join('\n')}\n`;
+        feedback += `\nCRITICAL RULE: DO NOT regenerate the entire artifact if only a SECTION or FIELD is defective. Only repair the defective parts mentioned. Use tools to append or edit if possible, rather than overwriting the entire artifact.`;
+      }
+      
+      messages.push({
+        role: 'user',
+        content: feedback
+      });
+    } else {
+      // 4. User Prompt (Task 시작 알림) - 첫 실행일 경우
+      messages.push({
+        role: 'user',
+        content: 'Begin your execution. Use tools if necessary, or provide the final text output if you can achieve the goal directly.'
+      });
+    }
 
     return messages;
   }
