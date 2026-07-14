@@ -214,11 +214,11 @@ export class TaskDispatcher {
             previousModelIds: task.state.previousFailures?.map(f => f.modelId || '') || [],
             routingBudgetRemaining: 5,
             retryScope: lastFailure?.retryScope,
-            sourceModelId: routingResult?.selectedModelId,
+            sourceModelId: routingAffinity?.selectedModelId,
             previousDefectSignatures: lastFailure?.defectSignatures || []
           };
 
-          routingResult = await ModelRouter.route(profile, routingConfig);
+          const routingResult = await ModelRouter.route(profile, routingConfig);
           
           if (routingResult.status === 'SUCCESS') {
             // Preserve other metadata from routingAffinity if it existed
@@ -275,6 +275,7 @@ export class TaskDispatcher {
             );
           } catch (e: unknown) {
             const err = e as Error;
+            if (err.message && err.message.includes('Privacy Gate Violation')) {
               // Privacy 차단 흐름
               const newAffinity = {
                 ...routingAffinity!,
@@ -351,7 +352,7 @@ export class TaskDispatcher {
                 codeExecutionRequired: task.definition.requiredCapabilities?.includes('CODE_GENERATION') || false,
                 latencyPreference: 'balance',
                 qualityPreference: 'high',
-                previousModelIds: [...(task.state.previousFailures?.map(f => f.modelId || '') || []), routingResult.selectedModelId],
+                previousModelIds: [...(task.state.previousFailures?.map(f => f.modelId || '') || []), routingAffinity.selectedModelId],
                 routingBudgetRemaining: 5,
                 sourceModelId: undefined,
                 previousDefectSignatures: []
@@ -359,8 +360,8 @@ export class TaskDispatcher {
 
               // Force local only
               const localConfig = { ...routingConfig, localFirst: true, allowRemoteForInternal: false, allowRemoteForPublic: false };
-              const { ModelRouter } = await import('../routing/router/ModelRouter');
-              const newRoutingResult = await ModelRouter.route(profile, localConfig);
+              const localProfile = { ...profile, privacyLevel: 'RESTRICTED' as const };
+              const newRoutingResult = await ModelRouter.route(localProfile, localConfig);
               
               this.store.updateTaskMetadata(
                 {
@@ -373,13 +374,16 @@ export class TaskDispatcher {
                   timestamp: Date.now()
                 } as unknown as import('../domain/types').TransitionCommand,
                 {
-                  routingDecision: {
+                  routingAffinity: {
                     ...newRoutingResult,
-                    affinityStatus: 'ACTIVE'
-                  },
-                  metadata: {
-                    ...task.state.metadata,
-                    privacyLocalRerouteCount: currentRerouteCount + 1
+                    routingDecisionId: newRoutingResult.routingDecisionId,
+                    selectedModelId: newRoutingResult.selectedModelId,
+                    selectedRole: newRoutingResult.selectedRole,
+                    selectedAt: newRoutingResult.decidedAt,
+                    affinityStatus: 'ACTIVE',
+                    previousModelIds: [...newAffinity.previousModelIds],
+                    failedCombinationDigests: [...newAffinity.failedCombinationDigests],
+                    privacyLocalRerouteCount: newAffinity.privacyLocalRerouteCount + 1
                   },
                   routingBudget: budgetManager.getState()
                 }
@@ -433,7 +437,7 @@ export class TaskDispatcher {
                   return;
               }
             } else {
-              console.warn(`[TaskDispatcher] Adapter load failed for ${routingResult.selectedModelId}, falling back`, e);
+              console.warn(`[TaskDispatcher] Adapter load failed for ${routingAffinity.selectedModelId}, falling back`, err);
             }
           }
         }

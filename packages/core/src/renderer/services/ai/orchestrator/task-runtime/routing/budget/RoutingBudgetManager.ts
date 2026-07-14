@@ -97,13 +97,28 @@ export class RoutingBudgetManager {
       timeRatio = 1.0 - ((Date.now() - this.state.routingStartedAt) / this.config.maxRoutingTimeMs);
     }
     
+    let decisionRatio = 1.0;
+    if (this.config.maxRoutingDecisions > 0 && isFinite(this.config.maxRoutingDecisions)) {
+      decisionRatio = 1.0 - (this.state.routingDecisionCount / this.config.maxRoutingDecisions);
+    }
+    
+    let escalationRatio = 1.0;
+    if (this.config.maxModelEscalations > 0 && isFinite(this.config.maxModelEscalations)) {
+      escalationRatio = 1.0 - (this.state.modelEscalationCount / this.config.maxModelEscalations);
+    }
+
+    let switchRatio = 1.0;
+    if (this.config.maxModelSwitches > 0 && isFinite(this.config.maxModelSwitches)) {
+      switchRatio = 1.0 - (this.state.modelSwitchCount / this.config.maxModelSwitches);
+    }
+
     // clamp all ratios to [0, 1]
     const clamp = (val: number) => {
       if (isNaN(val)) return 0;
       return Math.max(0, Math.min(1, val));
     };
 
-    return Math.min(clamp(callRatio), clamp(tokenRatio), clamp(timeRatio));
+    return Math.min(clamp(callRatio), clamp(tokenRatio), clamp(timeRatio), clamp(decisionRatio), clamp(escalationRatio), clamp(switchRatio));
   }
 
   public getState(): RoutingBudgetState {
