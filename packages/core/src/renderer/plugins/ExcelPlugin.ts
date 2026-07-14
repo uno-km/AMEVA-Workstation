@@ -11,15 +11,9 @@ export const ExcelPlugin = {
   id: 'excel-viewer',
   name: 'Excel Viewer & Editor',
   onActivate: () => {
-    useUIStore.getState().addDynamicMenu({
-      id: 'excel-viewer',
-      label: '엑셀 열기',
-      action: () => {
-        useUIStore.getState().setIsExcelModalOpen(true)
-      }
-    })
+    // 엑셀 블록은 BlockNote 스키마에 자동 등록되므로 상단바 글로벌 모달 메뉴는 제거함.
   },
   onDeactivate: () => {
-    useUIStore.getState().removeDynamicMenu('excel-viewer')
+    // Cleanup if needed
   }
 }

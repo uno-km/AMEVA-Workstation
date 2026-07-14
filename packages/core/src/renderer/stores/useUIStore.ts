@@ -96,12 +96,7 @@ export interface UIState {
   setShowPricingModal: (open: boolean) => void
   togglePricingModal: () => void
 
-  /*
-   * [PLUGIN UI STATES]
-   * - isExcelModalOpen: 엑셀 플러그인 모달 표시 여부.
-   */
-  isExcelModalOpen: boolean
-  setIsExcelModalOpen: (open: boolean) => void
+
 
   isInstallPromptOpen: boolean
   setIsInstallPromptOpen: (val: boolean) => void
@@ -251,8 +246,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setShowPricingModal: (open) => set({ showPricingModal: open }),
   togglePricingModal: () => set((state) => ({ showPricingModal: !state.showPricingModal })),
 
-  isExcelModalOpen: false,
-  setIsExcelModalOpen: (open) => set({ isExcelModalOpen: open }),
+
 
   isInstallPromptOpen: false,
   setIsInstallPromptOpen: (val) => set({ isInstallPromptOpen: val }),
