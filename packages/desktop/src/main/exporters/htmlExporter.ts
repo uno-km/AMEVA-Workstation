@@ -191,11 +191,21 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
           return renderBlock(tempBlock, depth);
         }
         const code = escapeHtml(getPlainTextFromNormalized(block))
-        const isJs = lang.toLowerCase() === 'js' || lang.toLowerCase() === 'javascript'
+        const langL = lang.toLowerCase()
+        const isJs = langL === 'js' || langL === 'javascript'
+        const isPy = langL === 'py' || langL === 'python'
+        const isHtml = langL === 'html'
+        const isSql = langL === 'sql'
+        const isRunnable = isJs || isPy || isHtml || isSql
+        let runFn = 'window.runJsCode'
+        if (isPy) runFn = 'window.runPyCode'
+        if (isHtml) runFn = 'window.runHtmlCode'
+        if (isSql) runFn = 'window.runSqlCode'
+
         return `<div class="code-container">
-${isJs ? `  <button class="run-btn" onclick="window.runJsCode(this)">▶ 실행</button>` : ''}
+${isRunnable ? `  <button class="run-btn" onclick="${runFn}(this)">▶ 실행</button>` : ''}
   <pre><span class="lang-badge">${escapeHtml(lang)}</span><code class="language-${lang}">${code}</code></pre>
-${isJs ? `  <div class="output-pane"><div class="output-header">실행 결과</div><div class="output-content"></div></div>` : ''}
+${isRunnable ? `  <div class="output-pane"><div class="output-header">실행 결과</div><div class="output-content"></div></div>` : ''}
 </div>\n`
       }
     /*
@@ -449,6 +459,105 @@ window.runJsCode = function(btn) {
   console.error = oldError;
   
   outputContent.innerHTML = logs.join('<br/>') || '<span style="color: #9ca3af;">(출력 없음)</span>';
+}
+
+window.runPyCode = async function(btn) {
+  const container = btn.closest('.code-container');
+  const code = container.querySelector('code').innerText;
+  const outputPane = container.querySelector('.output-pane');
+  const outputContent = container.querySelector('.output-content');
+  outputPane.classList.add('show');
+  outputContent.innerHTML = '<span style="color:#eab308;">Python 엔진 (Pyodide) 로딩 중... (최초 1회 약 5~10초 소요)</span>';
+  
+  if (!window.pyodide) {
+    if (!document.getElementById('pyodide-script')) {
+      const script = document.createElement('script');
+      script.id = 'pyodide-script';
+      script.src = 'https://cdn.jsdelivr.net/pyodide/v0.25.0/full/pyodide.js';
+      document.head.appendChild(script);
+      await new Promise(r => script.onload = r);
+    }
+    window.pyodide = await loadPyodide();
+  }
+  
+  window.pyodide.setStdout({ batched: (msg) => {
+    outputContent.innerHTML += '<div>' + msg + '</div>';
+  }});
+  
+  outputContent.innerHTML = '';
+  try {
+    const result = await window.pyodide.runPythonAsync(code);
+    if (result !== undefined) {
+      outputContent.innerHTML += '<div style="color: #a3e635;">' + String(result) + '</div>';
+    }
+    if (outputContent.innerHTML === '') {
+      outputContent.innerHTML = '<span style="color: #9ca3af;">(출력 없음)</span>';
+    }
+  } catch (err) {
+    outputContent.innerHTML += '<div style="color: #ef4444;">Error: ' + err.message + '</div>';
+  }
+}
+
+window.runHtmlCode = function(btn) {
+  const container = btn.closest('.code-container');
+  const code = container.querySelector('code').innerText;
+  const outputPane = container.querySelector('.output-pane');
+  const outputContent = container.querySelector('.output-content');
+  outputPane.classList.add('show');
+  outputContent.innerHTML = '<iframe style="width:100%; min-height:200px; border:none; background:#fff; border-radius:4px;" sandbox="allow-scripts allow-same-origin"></iframe>';
+  const iframe = outputContent.querySelector('iframe');
+  iframe.srcdoc = code;
+}
+
+window.runSqlCode = async function(btn) {
+  const container = btn.closest('.code-container');
+  const code = container.querySelector('code').innerText;
+  const outputPane = container.querySelector('.output-pane');
+  const outputContent = container.querySelector('.output-content');
+  outputPane.classList.add('show');
+  outputContent.innerHTML = '<span style="color:#eab308;">SQL 엔진 (sql.js) 로딩 중...</span>';
+  
+  if (!window.initSqlJs) {
+    if (!document.getElementById('sqljs-script')) {
+      const script = document.createElement('script');
+      script.id = 'sqljs-script';
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.9.0/sql-wasm.js';
+      document.head.appendChild(script);
+      await new Promise(r => script.onload = r);
+    }
+    window.SQL = await initSqlJs({ locateFile: file => 'https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.9.0/' + file });
+    window.sqlDb = new window.SQL.Database();
+  }
+  
+  outputContent.innerHTML = '';
+  try {
+    const results = window.sqlDb.exec(code);
+    if (results.length === 0) {
+      outputContent.innerHTML = '<span style="color: #a3e635;">Query executed successfully (no results)</span>';
+      return;
+    }
+    
+    let html = '';
+    for (const res of results) {
+      html += '<table style="width:100%; border-collapse:collapse; margin-bottom:10px; font-size:12px; color:#1f2937;">';
+      html += '<thead><tr style="background:#f1f5f9;">';
+      for (const col of res.columns) {
+        html += '<th style="padding:4px 8px; border:1px solid #cbd5e1;">' + col + '</th>';
+      }
+      html += '</tr></thead><tbody>';
+      for (const row of res.values) {
+        html += '<tr style="background:#fff;">';
+        for (const val of row) {
+          html += '<td style="padding:4px 8px; border:1px solid #cbd5e1;">' + (val !== null ? val : 'NULL') + '</td>';
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+    }
+    outputContent.innerHTML = html;
+  } catch (err) {
+    outputContent.innerHTML = '<span style="color: #ef4444;">Error: ' + err.message + '</span>';
+  }
 }
 </script>
 </body>
