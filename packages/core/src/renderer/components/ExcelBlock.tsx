@@ -5,11 +5,17 @@
  * @role BlockNote Custom Block for Excel Viewer/Editor
  */
 
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect, lazy, Suspense } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
-import { Workbook } from '@fortune-sheet/react'
-import '@fortune-sheet/react/dist/index.css'
 import { Maximize2, X } from 'lucide-react'
+
+const LazyWorkbook = lazy(() =>
+  import('@fortune-sheet/react').then((m) => {
+    // Dynamic import for CSS
+    import('@fortune-sheet/react/dist/index.css' as any)
+    return { default: m.Workbook }
+  })
+)
 
 // 블록 사양 정의
 export const ExcelBlock = createReactBlockSpec(
@@ -26,6 +32,11 @@ export const ExcelBlock = createReactBlockSpec(
     render: (props) => {
       const workbookRef = useRef<any>(null)
       const [isFullScreen, setIsFullScreen] = useState(false)
+      const [isMounted, setIsMounted] = useState(false)
+
+      useEffect(() => {
+        setIsMounted(true)
+      }, [])
 
       let sheetData = []
       try {
@@ -89,7 +100,11 @@ export const ExcelBlock = createReactBlockSpec(
                   </div>
                 </div>
                 <div style={{ flex: 1, position: 'relative' }}>
-                  <Workbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />
+                  {isMounted && (
+                    <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
+                      <LazyWorkbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />
+                    </Suspense>
+                  )}
                 </div>
               </div>
             </div>
@@ -106,7 +121,11 @@ export const ExcelBlock = createReactBlockSpec(
                 </button>
               </div>
               <div style={{ flex: 1, position: 'relative' }}>
-                <Workbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />
+                {isMounted && (
+                  <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
+                    <LazyWorkbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />
+                  </Suspense>
+                )}
               </div>
             </div>
           )}

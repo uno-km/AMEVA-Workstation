@@ -5,10 +5,16 @@
  * @role Global Excel Viewer/Editor Modal
  */
 
-import React, { useRef } from 'react'
-import { Workbook } from '@fortune-sheet/react'
-import '@fortune-sheet/react/dist/index.css'
+import React, { useRef, lazy, Suspense } from 'react'
 import { X } from 'lucide-react'
+
+const LazyWorkbook = lazy(() =>
+  import('@fortune-sheet/react').then((m) => {
+    // Dynamic import for CSS
+    import('@fortune-sheet/react/dist/index.css' as any)
+    return { default: m.Workbook }
+  })
+)
 
 export interface ExcelModalProps {
   isOpen: boolean
@@ -77,11 +83,13 @@ export function ExcelModal({ isOpen, onClose }: ExcelModalProps) {
           </button>
         </div>
         <div style={{ flex: 1, position: 'relative' }}>
-          <Workbook
-            ref={workbookRef}
-            data={[{ name: 'Sheet1', celldata: [], status: 1 }]}
-            lang="en"
-          />
+          <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
+            <LazyWorkbook
+              ref={workbookRef}
+              data={[{ name: 'Sheet1', celldata: [], status: 1 }]}
+              lang="en"
+            />
+          </Suspense>
         </div>
       </div>
     </div>
