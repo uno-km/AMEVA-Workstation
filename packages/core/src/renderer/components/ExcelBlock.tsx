@@ -42,42 +42,52 @@ const ExcelBlockSpec = createReactBlockSpec(
         return () => clearTimeout(timer)
       }, [])
 
-      let sheetData = []
-      try {
-        const parsed = JSON.parse(props.block.props.data)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          sheetData = parsed.map(sheet => ({
-            ...sheet,
-            row: sheet.row || 36,
-            column: sheet.column || 18,
-            defaultRowHeight: sheet.defaultRowHeight || 19,
-            defaultColWidth: sheet.defaultColWidth || 73
-          }))
-        }
-      } catch (e) {}
-
-      if (sheetData.length === 0) {
-        // Fallback default sheet data
-        sheetData = [{ 
-          name: 'Sheet1', 
-          id: 'sheet_01',
-          celldata: [], 
-          status: 1,
-          row: 36,
-          column: 18,
-          defaultRowHeight: 19,
-          defaultColWidth: 73
-        }]
-      }
-
-      const handleSave = () => {
-        if (!workbookRef.current) return
+      const [sheetData] = useState(() => {
+        let initial = []
         try {
-          const allData = workbookRef.current.getAllSheets()
-          props.editor.updateBlock(props.block.id, {
-            type: 'excel',
-            props: { data: JSON.stringify(allData) }
-          })
+          const parsed = JSON.parse(props.block.props.data)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            initial = parsed.map(sheet => ({
+              ...sheet,
+              row: sheet.row || 36,
+              column: sheet.column || 18,
+              defaultRowHeight: sheet.defaultRowHeight || 19,
+              defaultColWidth: sheet.defaultColWidth || 73
+            }))
+          }
+        } catch (e) {}
+
+        if (initial.length === 0) {
+          initial = [{ 
+            name: 'Sheet1', 
+            id: 'sheet_01',
+            celldata: [], 
+            status: 1,
+            row: 36,
+            column: 18,
+            defaultRowHeight: 19,
+            defaultColWidth: 73
+          }]
+        }
+        return initial
+      })
+
+      const handleSave = (latestData?: any) => {
+        try {
+          let allData = latestData
+          if (!allData || !Array.isArray(allData)) {
+            if (!workbookRef.current || typeof workbookRef.current.getAllSheets !== 'function') return
+            allData = workbookRef.current.getAllSheets()
+          }
+          if (!allData) return
+
+          const newDataString = JSON.stringify(allData)
+          if (newDataString !== props.block.props.data) {
+            props.editor.updateBlock(props.block.id, {
+              type: 'excel',
+              props: { data: newDataString }
+            })
+          }
         } catch (e) {
           console.error('Failed to save excel data', e)
         }
