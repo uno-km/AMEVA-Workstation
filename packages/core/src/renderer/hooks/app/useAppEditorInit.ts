@@ -313,14 +313,14 @@ graph TD
 유튜브 동영상을 문서 내에서 직접 재생하거나 플로팅 화면(PIP)으로 띄워놓고 작업할 수 있습니다.
 
 \`\`\`ameva-youtube
-{"url":"https://www.youtube.com/watch?v=jOTfOVzOppg","videoId":"jOTfOVzOppg","title":"Golden","description":"Golden 유튜브 영상입니다.","thumbnail":""}
+{"url":"https://www.youtube.com/watch?v=kpop-demon-hunters-golden-lyric-video","videoId":"kpop-demon-hunters-golden-lyric-video","title":"Golden - HUNTR/X (K-Pop Demon Hunters OST)","description":"넷플릭스 애니메이션 영화 'K-Pop Demon Hunters (케데헌)'의 글로벌 히트곡 'Golden' 공식 리릭 비디오입니다!","thumbnail":""}
 \`\`\`
 
 ### 🔗 링크 미리보기 (Link Preview)
 웹사이트 링크를 깔끔한 카드 형태로 렌더링하여 보여줍니다.
 
 \`\`\`ameva-link
-{"url":"https://github.com/","title":"공식 깃허브 페이지","description":"AMEVA Workstation의 공식 깃허브 페이지입니다.","thumbnail":""}
+{"url":"https://github.com/AMEVA-OS/AMEVA-Workstation","title":"AMEVA Workstation 공식 깃허브","description":"차세대 AI 기반 통합 협업 워크스테이션 AMEVA의 소스코드가 공개된 공식 깃허브 레포지토리입니다.","thumbnail":""}
 \`\`\`
 `
       setCurrentContent(welcomeMD)
