@@ -609,6 +609,7 @@ export function useAppFileOperations(
   const handleSaveFile = useCallback(async () => {
     if (document.activeElement && (document.activeElement as HTMLElement).blur) {
       (document.activeElement as HTMLElement).blur()
+      window.dispatchEvent(new CustomEvent('AMEVA_FORCE_SAVE_BLOCKS'))
       await new Promise(resolve => setTimeout(resolve, 150))
     }
       /*

@@ -94,6 +94,13 @@ const ExcelBlockSpec = createReactBlockSpec(
           }
         }, 100)
       }
+
+      useEffect(() => {
+        const forceSave = () => handleSave()
+        window.addEventListener('AMEVA_FORCE_SAVE_BLOCKS', forceSave as EventListener)
+        return () => window.removeEventListener('AMEVA_FORCE_SAVE_BLOCKS', forceSave as EventListener)
+      }, [handleSave])
+
       const handleExportTable = async () => {
         if (!workbookRef.current) return
         try {

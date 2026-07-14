@@ -113,6 +113,29 @@ export const KanbanBlockSpec = createReactBlockSpec(
         }
       }
 
+      useEffect(() => {
+        const forceSave = () => {
+          if (editingCardId) {
+            const newData = { ...data }
+            let found = false
+            for (const col of newData.columns) {
+              const card = col.cards.find(c => c.id === editingCardId)
+              if (card) {
+                card.title = editingTitle || 'Untitled'
+                found = true
+                break
+              }
+            }
+            if (found) {
+              saveData(newData)
+              setEditingCardId(null)
+            }
+          }
+        }
+        window.addEventListener('AMEVA_FORCE_SAVE_BLOCKS', forceSave as EventListener)
+        return () => window.removeEventListener('AMEVA_FORCE_SAVE_BLOCKS', forceSave as EventListener)
+      }, [data, editingCardId, editingTitle, isEditable])
+
       const addCard = (colId: string) => {
         if (!isEditable) return
         const newData = { ...data }

@@ -84,6 +84,7 @@ export function useAppModeSwitch({
     if (editorMode === 'edit' && (mode === 'preview' || mode === 'raw') && editor) {
       if (document.activeElement && (document.activeElement as HTMLElement).blur) {
         (document.activeElement as HTMLElement).blur()
+        window.dispatchEvent(new CustomEvent('AMEVA_FORCE_SAVE_BLOCKS'))
         await new Promise(resolve => setTimeout(resolve, 150))
       }
       try {
