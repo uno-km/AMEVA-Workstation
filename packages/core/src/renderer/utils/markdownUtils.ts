@@ -157,6 +157,20 @@ export function convertJupyterToCodeBlocks(blocks: any[]): any[] {
       copy.props = {
         language: 'ameva-presentation'
       }
+    } else if (copy.type === 'excel') {
+      copy.type = 'codeBlock'
+      const excelData = copy.props?.data || '[]'
+      copy.content = [{ type: 'text', text: excelData, styles: {} }]
+      copy.props = {
+        language: 'ameva-excel'
+      }
+    } else if (copy.type === 'kanban') {
+      copy.type = 'codeBlock'
+      const kanbanData = copy.props?.data || '{}'
+      copy.content = [{ type: 'text', text: kanbanData, styles: {} }]
+      copy.props = {
+        language: 'ameva-kanban'
+      }
     } else if (copy.children) {
       copy.children = convertJupyterToCodeBlocks(copy.children)
     }
@@ -249,7 +263,7 @@ export function cleanCodeBlocks(blocks: any[]) {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const supportedLangs = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing', 'ameva-map', 'ameva-youtube', 'ameva-link', 'ameva-presentation']
+  const supportedLangs = ['python', 'py', 'javascript', 'js', 'html', 'css', 'c', 'cpp', 'java', 'xml', 'json', 'text', 'txt', 'plaintext', 'mermaid', 'bash', 'sh', 'typescript', 'ts', 'sql', 'ameva-drawing', 'ameva-map', 'ameva-youtube', 'ameva-link', 'ameva-presentation', 'ameva-excel', 'ameva-kanban']
   blocks.forEach(block => {
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -477,6 +491,24 @@ export function cleanCodeBlocks(blocks: any[]) {
         } catch (err) {
           console.error('[cleanCodeBlocks] Failed to parse ameva-presentation json:', err)
           block.props = { pptxPath: '', slides: '', fallback: false, slidesText: '[]' }
+        }
+        block.content = undefined
+        return
+      }
+
+      if (lang === 'ameva-excel') {
+        block.type = 'excel'
+        block.props = {
+          data: finalCode
+        }
+        block.content = undefined
+        return
+      }
+
+      if (lang === 'ameva-kanban') {
+        block.type = 'kanban'
+        block.props = {
+          data: finalCode
         }
         block.content = undefined
         return

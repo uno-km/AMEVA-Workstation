@@ -607,6 +607,10 @@ export function useAppFileOperations(
    *   아니오 시 일반 마크다운/ipynb/오피스 이진 포맷 파일로 안전하게 컴파일 플러싱한다.
    */
   const handleSaveFile = useCallback(async () => {
+    if (document.activeElement && (document.activeElement as HTMLElement).blur) {
+      (document.activeElement as HTMLElement).blur()
+      await new Promise(resolve => setTimeout(resolve, 150))
+    }
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `!editor`
