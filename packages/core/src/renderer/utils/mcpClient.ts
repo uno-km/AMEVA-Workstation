@@ -81,13 +81,15 @@ export class MCPClientManager {
        * - 예시 코드: `const backendPro = ...` 형태로 안전 캐싱 후 가공 기동.
        */
         const backendPro = await ipc.planGetStatus()
-        localStorage.setItem('is-pro-plan', String(backendPro))
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('is-pro-plan', String(backendPro))
+        }
         return backendPro
       } catch (e) {
         return false
       }
     }
-    return localStorage.getItem('is-pro-plan') === 'true'
+    return typeof localStorage !== 'undefined' && localStorage.getItem('is-pro-plan') === 'true'
   }
 
   /** 로컬 설정 로드 */
@@ -99,7 +101,7 @@ export class MCPClientManager {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const isPro = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const isPro = localStorage.getItem('is-pro-plan') === 'true'
+    const isPro = typeof localStorage !== 'undefined' && localStorage.getItem('is-pro-plan') === 'true'
     
     // 기본 로컬 WASM 게이트웨이는 플랜과 무관하게 상시 존재
     const defaultGateway: MCPServerConfig = {
@@ -131,7 +133,7 @@ export class MCPClientManager {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const stored = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      const stored = localStorage.getItem('mcp-servers-config')
+      const stored = typeof localStorage !== 'undefined' ? localStorage.getItem('mcp-servers-config') : null
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `stored`
@@ -159,7 +161,9 @@ export class MCPClientManager {
   /** 설정 저장 */
   static saveConfigs() {
     try {
-      localStorage.setItem('mcp-servers-config', JSON.stringify(this.servers))
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('mcp-servers-config', JSON.stringify(this.servers))
+      }
     } catch (e) {
       console.error('[MCPClientManager] 설정 저장 오류:', e)
     }
@@ -522,8 +526,10 @@ export class MCPClientManager {
       console.error(`[MCPClientManager] Circuit Breaker OPEN. Backoff: ${this.currentBackoffMs}ms`);
       
       // TODO: Runtime CapabilityCatalog와 UI Store 모두에 UNAVAILABLE 반영 (외부 호출 통해 위임)
-      const event = new CustomEvent('mcp_circuit_breaker_open');
-      window.dispatchEvent(event);
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function' && typeof CustomEvent !== 'undefined') {
+        const event = new CustomEvent('mcp_circuit_breaker_open');
+        window.dispatchEvent(event);
+      }
     }
   }
 

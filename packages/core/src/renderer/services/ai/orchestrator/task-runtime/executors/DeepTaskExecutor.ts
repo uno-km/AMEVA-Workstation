@@ -271,6 +271,7 @@ export class DeepTaskExecutor {
               });
               // Store size and hash if supported by markWritten, otherwise the manager has to fetch it.
               // Assuming markWritten can take it, or declareArtifact takes it.
+              await this.artifactManager.markStaged(missionId, aid);
               await this.artifactManager.markWritten(missionId, aid);
               console.log(`[DeepTaskExecutor] Artifact ${aid} marked WRITTEN for mission ${missionId}`);
             }

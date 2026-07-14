@@ -83,6 +83,7 @@ describe('Phase 2.3 - Final Audit Integration', () => {
     } as any);
     
     // Simulate WRITTEN
+    await txManager.markStaged('m1', artifactId);
     await txManager.markWritten('m1', artifactId);
     let manifest = await txManager.getManifest('m1', artifactId);
     expect(manifest!.status).toBe('WRITTEN');
@@ -237,6 +238,7 @@ describe('Phase 2.3 - Final Audit Integration', () => {
       stagedPath: '/staged/fail.txt',
       finalPath: '/final/fail.txt'
     } as any);
+    await txManager.markStaged('m1', artifactId);
     await txManager.markWritten('m1', artifactId);
     await txManager.markValidated('m1', artifactId);
 
@@ -297,6 +299,7 @@ describe('Phase 2.3 - Final Audit Integration', () => {
     manifest!.idempotencyKey = 'idem-key-1';
     await txManager['store'].saveManifest(manifest!);
 
+    await txManager.markStaged('m1', artifactId);
     await txManager.markWritten('m1', artifactId);
     await txManager.markValidated('m1', artifactId);
 
@@ -313,11 +316,10 @@ describe('Phase 2.3 - Final Audit Integration', () => {
 
     // Second commit with same key and hash should succeed idempotently
     await fileAdapter.write('/staged/idem2.txt', 'idempotent content'); // Same content -> same hash
-    await txManager.markWritten('m1', artifactId);
     manifest = await txManager.getManifest('m1', artifactId);
+    manifest!.status = 'VALIDATED';
     manifest!.stagedPath = '/staged/idem2.txt';
     await txManager['store'].saveManifest(manifest!);
-    await txManager.markValidated('m1', artifactId);
 
     await txManager.commitArtifact('m1', artifactId);
     manifest = await txManager.getManifest('m1', artifactId);
@@ -325,11 +327,10 @@ describe('Phase 2.3 - Final Audit Integration', () => {
 
     // Third commit with different hash should mark CORRUPTED
     await fileAdapter.write('/staged/idem3.txt', 'different content');
-    await txManager.markWritten('m1', artifactId);
     manifest = await txManager.getManifest('m1', artifactId);
+    manifest!.status = 'VALIDATED';
     manifest!.stagedPath = '/staged/idem3.txt';
     await txManager['store'].saveManifest(manifest!);
-    await txManager.markValidated('m1', artifactId);
 
     await expect(txManager.commitArtifact('m1', artifactId)).rejects.toThrow('Hash mismatch with already committed artifact');
     manifest = await txManager.getManifest('m1', artifactId);
@@ -341,6 +342,7 @@ describe('Phase 2.3 - Final Audit Integration', () => {
     const artifactId = '/art-seq';
     
     // Spies to record the sequence
+    vi.spyOn(txManager, 'markStaged').mockImplementation(async () => { sequenceLog.push('STAGED'); });
     vi.spyOn(txManager, 'markWritten').mockImplementation(async () => { sequenceLog.push('WRITTEN'); });
     vi.spyOn(txManager, 'markValidated').mockImplementation(async () => { sequenceLog.push('VALIDATED'); });
     const originalCommit = txManager.commitArtifact.bind(txManager);
@@ -400,12 +402,14 @@ describe('Phase 2.3 - Final Audit Integration', () => {
     } as any);
 
     // Trigger the flow
+    await txManager.markStaged('m1', artifactId);
     await txManager.markWritten('m1', artifactId);
     await txManager.markValidated('m1', artifactId);
     await verificationRuntime.processVerifyingTasks('m1');
     await completionRuntime.executeCompletionReview('m1', 1, 'goal');
 
     expect(sequenceLog).toEqual([
+      'STAGED',
       'WRITTEN',
       'VALIDATED',
       'VALIDATED', // Called again by VerificationRuntime before commit

@@ -56,6 +56,7 @@ describe('Phase 3.2: ArtifactTransaction Integration', () => {
       provenance: { missionId, taskId, attemptId, producer: 'apply_patch' }
     });
 
+    await txManager.markStaged(missionId, artifactId);
     await txManager.markWritten(missionId, artifactId);
     let m = await txManager.getManifest(missionId, artifactId);
     assert.equal(m!.status, 'WRITTEN');

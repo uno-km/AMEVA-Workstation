@@ -16,14 +16,18 @@ export class ArtifactTransactionManager {
     private readonly idempotencyStore?: import('./IdempotencyStore').IIdempotencyStore
   ) {}
 
+  public static resolveStagingPath(missionId: string, taskId: string, attemptId: string, artifactId: string, revision: number): string {
+    return `/missions/${missionId}/staging/${taskId}/${attemptId}/${artifactId}_rev${revision}.txt`;
+  }
+
   private validateTransition(current: ArtifactStatus, next: ArtifactStatus, artifactId: string) {
     const validTransitions: Record<ArtifactStatus, ArtifactStatus[]> = {
-      'DECLARED': ['STAGED', 'WRITTEN', 'REJECTED'],
+      'DECLARED': ['STAGED', 'REJECTED'],
       'STAGED': ['WRITTEN', 'REJECTED'],
       'WRITTEN': ['VALIDATED', 'REJECTED'],
       'VALIDATED': ['COMMITTING', 'REJECTED'],
       'COMMITTING': ['COMMITTED', 'CORRUPTED', 'STALE'],
-      'COMMITTED': ['STALE', 'WRITTEN'], // e.g. overwritten by new attempt
+      'COMMITTED': ['STALE'],
       'REJECTED': [],
       'CORRUPTED': [],
       'STALE': []
@@ -65,6 +69,12 @@ export class ArtifactTransactionManager {
     manifest.updatedAt = manifest.createdAt;
     manifest.revision = (existing?.revision ?? 0) + 1;
     await this.store.saveManifest(manifest);
+  }
+
+  public async markStaged(missionId: string, artifactId: string): Promise<void> {
+    const manifest = await this.store.loadManifest(missionId, artifactId);
+    if (!manifest) throw new Error(`Artifact not found: ${artifactId}`);
+    await this.updateStatus(manifest, 'STAGED');
   }
 
   public async markWritten(missionId: string, artifactId: string): Promise<void> {

@@ -59,11 +59,11 @@ describe('Phase 3.1 Partial Repair Integration', () => {
       targetPath: '/test.ts',
       targetSection: 'line2_target',
       replacement: 'line2_fixed'
-    }, { retryScope: 'SECTION', missionId: 'm1', taskId: 't1', attemptId: 'a1', artifactId: 'art1' } as any);
+    }, { retryScope: 'SECTION', missionId: 'm1', taskId: 't1', attemptId: 'a1', artifactId: 'art1', finalPath: '/test.ts', idempotencyKey: 'idem1', currentRevision: 1 } as any);
 
     expect(result.success).toBe(true);
     expect(result.newHash).toBe('old_hash_123'); // mock returns old_hash_123 for all hash calls
-    expect(mockFileAdapter.write).toHaveBeenCalledWith('/missions/m1/staging/t1/a1/art1_rev1.txt', 'line1\nline2_fixed\nline3');
+    expect(mockFileAdapter.write).toHaveBeenCalledWith('/missions/m1/staging/t1/a1/art1_rev2.txt', 'line1\nline2_fixed\nline3');
   });
 
   it('4. Rejects apply_patch if targetSection is not found (AMBIGUOUS_REPAIR_TARGET)', async () => {
@@ -71,7 +71,7 @@ describe('Phase 3.1 Partial Repair Integration', () => {
       targetPath: '/test.ts',
       targetSection: 'line99_target',
       replacement: 'line99_fixed'
-    }, { retryScope: 'SECTION' } as any);
+    }, { retryScope: 'SECTION', missionId: 'm1', taskId: 't1', attemptId: 'a1', artifactId: 'art1', finalPath: '/test.ts', idempotencyKey: 'idem1', currentRevision: 1 } as any);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('AMBIGUOUS_REPAIR_TARGET');
@@ -83,7 +83,7 @@ describe('Phase 3.1 Partial Repair Integration', () => {
       targetPath: '/test.ts',
       targetSection: 'line2_target',
       replacement: 'line2_target' // same content
-    }, { retryScope: 'SECTION' } as any);
+    }, { retryScope: 'SECTION', missionId: 'm1', taskId: 't1', attemptId: 'a1', artifactId: 'art1', finalPath: '/test.ts', idempotencyKey: 'idem1', currentRevision: 1 } as any);
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('NO_CHANGE');

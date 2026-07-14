@@ -25,8 +25,6 @@
  * - ToolCallResult: 도구 실행 결과 구조체.
  */
 import type { ToolDefinition, ToolCallResult } from './types'
-import { DiffUtils } from './task-runtime/artifact/utils/DiffUtils'
-import { ArtifactTransactionManager } from './task-runtime/artifact/ArtifactTransactionManager'
 
 /*
  * [MCP CLIENT IMPORT]
@@ -59,13 +57,12 @@ import * as ipc from '../../ipc/electronApiAdapter'
  * ToolRegistry가 기본 제공하는 내장 도구 명칭 상수.
  * 마법 문자열 방지를 위해 상수로 관리한다.
  */
-export const BUILTIN_TOOL_NAMES = {
+const BUILTIN_TOOL_NAMES = {
   RUN_COMMAND: 'run_command',
   READ_FILE: 'read_file',
   WRITE_FILE: 'write_file',
-  APPLY_PATCH: 'apply_patch',
   LIST_DIR: 'list_dir'
-} as const;
+} as const
 
 /* ============================================================
  * ToolRegistry 클래스
@@ -90,15 +87,10 @@ export class ToolRegistry {
    */
   private readonly tools: Map<string, ToolDefinition> = new Map()
 
-  public fileAdapter?: import('./task-runtime/artifact/IFileSystemAdapter').IFileSystemAdapter;
-  public artifactManager?: any;
+  private readonly fileAdapter?: import('./task-runtime/artifact/IFileSystemAdapter').IFileSystemAdapter
 
-  constructor(
-    fileAdapter?: import('./task-runtime/artifact/IFileSystemAdapter').IFileSystemAdapter,
-    artifactManager?: any
-  ) {
+  constructor(fileAdapter?: import('./task-runtime/artifact/IFileSystemAdapter').IFileSystemAdapter) {
     this.fileAdapter = fileAdapter;
-    this.artifactManager = artifactManager;
   }
 
   /**
@@ -153,15 +145,6 @@ export class ToolRegistry {
       const errorMsg = `알 수 없는 도구: '${name}'. 등록된 도구: [${registeredNames}]`
       console.error(`[ToolRegistry] ${errorMsg}`)
       return { success: false, error: errorMsg, toolName: name, toolArgs: args }
-    }
-
-    if (name === BUILTIN_TOOL_NAMES.WRITE_FILE && (context as any)?.retryScope && ['SECTION', 'FIELD', 'TEST'].includes((context as any).retryScope)) {
-      return {
-        success: false,
-        error: `UNAUTHORIZED_TOOL_USE: 'write_file' is forbidden during partial repair scope (${(context as any).retryScope}). You must use 'apply_patch' tool instead.`,
-        toolName: name,
-        toolArgs: args
-      };
     }
 
     ipc.llmAddLog({ text: `[ToolRegistry] 도구 실행 시작: ${name}`, prefix: 'Orchestrator' })
@@ -383,244 +366,6 @@ export class ToolRegistry {
         }
       }
     })
-
-    this.register({
-      name: BUILTIN_TOOL_NAMES.APPLY_PATCH,
-      description: 'Patch a file with partial repair constraints',
-      parameters: { type: 'object', properties: {}, required: [] },
-      execute: async (args, context?: ToolExecutionContext) => {
-        try {
-          const rawPath = String(args['targetPath'] ?? args['path'] ?? '');
-          const patchContent = String(args['replacement'] ?? args['patch'] ?? '');
-          const targetSection = String(args['targetSection'] ?? args['targetSelector'] ?? '');
-          
-          const missionId = context?.missionId || args['missionId'];
-          const taskId = context?.taskId || args['taskId'];
-          const attemptId = context?.attemptId || args['attemptId'];
-          const artifactId = context?.artifactId || args['artifactId'];
-          const retryScope = context?.retryScope || args['retryScope'] || 'FULL_TASK';
-          const expectedOldHash = args['expectedOldHash'] ? String(args['expectedOldHash']) : undefined;
-          const sourceRevision = args['sourceRevision'] ? Number(args['sourceRevision']) : undefined;
-          const currentRevision = context?.currentRevision;
-          const idempotencyKey = String(args['idempotencyKey'] || context?.idempotencyKey || '');
-          const finalPath = String(context?.finalPath || rawPath);
-          const allowedRanges = args['allowedRanges'] as string[] | undefined;
-          const protectedRanges = args['protectedRanges'] as string[] | undefined;
-
-          // 1. Strict Context Validation
-          if (!missionId || !taskId || !attemptId || !artifactId || !finalPath || !idempotencyKey) {
-            throw new Error('INVALID_ARTIFACT_CONTEXT: Missing required context fields.');
-          }
-
-          if (currentRevision === undefined || currentRevision < 1) {
-            throw new Error('INVALID_ARTIFACT_CONTEXT: Invalid currentRevision.');
-          }
-
-          if (sourceRevision !== undefined && sourceRevision !== currentRevision) {
-            throw new Error('STALE: sourceRevision does not match current artifact revision.');
-          }
-
-          // Manifest Validation
-          if (this.artifactManager) {
-            const manifest = await this.artifactManager.getManifest(String(missionId), String(artifactId));
-            if (!manifest) {
-              throw new Error('CONTEXT_MISMATCH: Manifest not found.');
-            }
-            if (manifest.missionId !== missionId || manifest.taskId !== taskId || manifest.artifactId !== artifactId || manifest.finalPath !== finalPath) {
-              throw new Error('CONTEXT_MISMATCH: Manifest fields mismatch.');
-            }
-            if (sourceRevision !== undefined && sourceRevision !== manifest.revision) {
-              throw new Error('STALE: sourceRevision does not match current artifact revision.');
-            }
-          }
-
-          if (!this.fileAdapter) {
-            throw new Error('fileAdapter not initialized.');
-          }
-
-          let safeFinalPath = PathSanitizer.sanitizePath(finalPath, 'read', String(missionId));
-
-          const currentContent = await this.fileAdapter.read(safeFinalPath);
-          if (currentContent === null) throw new Error('File not found for patching.');
-
-          const currentHash = await this.fileAdapter.hash(safeFinalPath);
-          if (expectedOldHash && currentHash !== expectedOldHash) {
-            throw new Error(`Hash mismatch. Expected: ${expectedOldHash}, Actual: ${currentHash}. Patch rejected.`);
-          }
-
-          let newContent = currentContent;
-          let changedRanges: string[] = [];
-          let preservedRanges: string[] = [];
-
-          // 2. Scope-specific modifications
-          if (retryScope === 'SECTION') {
-            if (!targetSection || !patchContent) throw new Error('AMBIGUOUS_REPAIR_TARGET: Both replacement and targetSection are required for SECTION scope.');
-            
-            // Markdown Heading Matcher
-            const headingRegex = new RegExp('^#+\\s+' + escapeRegex(targetSection.replace(/^#+\s*/, '')).trim() + '\\s*$', 'm');
-            const match = currentContent.match(headingRegex);
-            if (match) {
-              const matchIndex = match.index!;
-              const nextHeadingMatch = currentContent.slice(matchIndex + match[0].length).match(/^#+\s+/m);
-              const endIndex = nextHeadingMatch ? matchIndex + match[0].length + nextHeadingMatch.index! : currentContent.length;
-              newContent = currentContent.slice(0, matchIndex) + patchContent + (currentContent.endsWith('\n') && !patchContent.endsWith('\n') ? '\n' : '') + currentContent.slice(endIndex);
-            } else {
-              const idx = currentContent.indexOf(targetSection);
-              if (idx === -1) throw new Error('AMBIGUOUS_REPAIR_TARGET: Heading not found.');
-              if (currentContent.lastIndexOf(targetSection) !== idx) throw new Error('AMBIGUOUS_REPAIR_TARGET: Multiple instances found.');
-              newContent = currentContent.slice(0, idx) + patchContent + currentContent.slice(idx + targetSection.length);
-            }
-
-          } else if (retryScope === 'FIELD') {
-             try {
-                const parsed = JSON.parse(currentContent);
-                const fieldPath = String(args['targetSelector'] || args['targetSection'] || '');
-                if (!fieldPath) throw new Error('targetSelector (field path) required for FIELD scope.');
-                
-                const keys = fieldPath.split('.');
-                let current = parsed;
-                for (let i = 0; i < keys.length - 1; i++) {
-                    if (keys[i] === '__proto__' || keys[i] === 'prototype' || keys[i] === 'constructor') {
-                       throw new Error('Prototype pollution detected.');
-                    }
-                    if (current[keys[i]] === undefined) throw new Error(`Path ${keys[i]} not found in JSON.`);
-                    current = current[keys[i]];
-                }
-                
-                const finalKey = keys[keys.length - 1];
-                if (finalKey === '__proto__' || finalKey === 'prototype' || finalKey === 'constructor') {
-                    throw new Error('Prototype pollution detected.');
-                }
-
-                let parsedPatch;
-                try { parsedPatch = JSON.parse(patchContent); } catch { parsedPatch = patchContent; }
-                
-                current[finalKey] = parsedPatch;
-                newContent = JSON.stringify(parsed, null, 2);
-             } catch (e: unknown) {
-                if (e instanceof Error && e.message.includes('AMBIGUOUS_REPAIR_TARGET')) throw e;
-                throw new Error(`Invalid JSON format after patch: ${e instanceof Error ? e.message : String(e)}`);
-             }
-          } else if (retryScope === 'FUNCTION') {
-             return { success: false, error: 'WAITING_USER: AST Parser required for safe FUNCTION repair. Not supported in current implementation.', toolName: BUILTIN_TOOL_NAMES.APPLY_PATCH, toolArgs: args };
-          } else if (retryScope === 'TEST') {
-             if (!patchContent) throw new Error('Patch content required for TEST scope.');
-             if (!allowedRanges || allowedRanges.length === 0) {
-               throw new Error('AMBIGUOUS_REPAIR_TARGET: TEST scope requires explicit allowedRanges.');
-             }
-             if (patchContent === newContent) {
-               throw new Error('WAITING_USER: Full file replacement is not allowed for TEST scope without exact targeting.');
-             }
-             newContent = patchContent;
-          } else if (retryScope === 'FILE') {
-             if (args['fullFileReplacementAllowed'] !== true || !args['replacementReason']) {
-                return { success: false, error: 'WAITING_USER: Full file replacement requires explicit fullFileReplacementAllowed and replacementReason.', toolName: BUILTIN_TOOL_NAMES.APPLY_PATCH, toolArgs: args };
-             }
-             if (!patchContent) throw new Error('Patch content required for FILE scope.');
-             newContent = patchContent;
-          } else if (retryScope === 'TOOL_CALL') {
-             newContent = currentContent; // Only run failed tools
-          } else { 
-             if (patchContent) newContent = patchContent;
-          }
-
-          if (newContent === currentContent && retryScope !== 'TOOL_CALL') {
-             throw new Error('NO_CHANGE: Patch applied but content is identical to the original.');
-          }
-
-          // 3. Diff Range Calculation
-          
-          const hunks = DiffUtils.computeLineHunks(currentContent, newContent);
-          
-          changedRanges = hunks.map((h: any) => `L${h.oldStartLine}-L${h.oldEndLine}`);
-          
-          // Verify Allowed/Protected
-          if (allowedRanges && allowedRanges.length > 0) {
-             for (const hunk of hunks) {
-               const start = hunk.oldStartLine;
-               const end = hunk.oldEndLine;
-               // Strict check: if start/end is not within allowedRanges
-               // For simplicity, just checking intersecting is fine here if properly implemented
-               let insideAllowed = false;
-               for (const ar of allowedRanges) {
-                 const match = ar.match(/L(\d+)-L(\d+)/);
-                 if (match) {
-                   const aStart = parseInt(match[1]);
-                   const aEnd = parseInt(match[2]);
-                   if (start >= aStart && end <= aEnd) insideAllowed = true;
-                   if (start === 0 || end === 0) insideAllowed = true; // handle pure insert/delete edge cases properly
-                 }
-               }
-               if (!insideAllowed && (start !== 0 || end !== 0)) {
-                 throw new Error(`Patch rejected: Range L${start}-L${end} is outside allowedRanges.`);
-               }
-             }
-          }
-
-          if (protectedRanges && protectedRanges.length > 0) {
-            for (const hunk of hunks) {
-              const start = hunk.oldStartLine;
-              const end = hunk.oldEndLine;
-              for (const pr of protectedRanges) {
-                 const match = pr.match(/L(\d+)-L(\d+)/);
-                 if (match) {
-                   const pStart = parseInt(match[1]);
-                   const pEnd = parseInt(match[2]);
-                   if (start <= pEnd && end >= pStart && (start !== 0 || end !== 0)) {
-                     throw new Error('Patch rejected: Intersects with protectedRanges.');
-                   }
-                 }
-              }
-            }
-          }
-
-          // preserved segment mapping could be added here if needed
-
-          // 4. Staging
-          const newRevision = Number(currentRevision || 0) + 1;
-          const stagingPath = ArtifactTransactionManager.resolveStagingPath(String(missionId), String(taskId), String(attemptId), String(artifactId), newRevision);
-
-          await this.fileAdapter.write(stagingPath, newContent);
-          const newStat = await this.fileAdapter.stat(stagingPath);
-          const newHash = await this.fileAdapter.hash(stagingPath);
-
-          return {
-            success: true,
-            result: `파일 부분 수정 완료: ${stagingPath}`,
-            toolName: BUILTIN_TOOL_NAMES.APPLY_PATCH,
-            toolArgs: args,
-            artifactId,
-            missionId,
-            taskId,
-            attemptId,
-            expectedPath: safeFinalPath,
-            normalizedStagedPath: stagingPath,
-            retryScope,
-            changedRanges,
-            preservedRanges,
-            size: newStat.size,
-            previousHash: currentHash,
-            newHash: newHash ?? undefined,
-            previousRevision: currentRevision,
-            newRevision,
-            idempotencyKey
-          }
-        } catch (err: unknown) {
-          // Failure Atomicity: Errors are thrown before any write_file to staging.
-          return {
-            success: false,
-            error: err instanceof Error ? err.message : String(err),
-            toolName: BUILTIN_TOOL_NAMES.APPLY_PATCH,
-            toolArgs: args
-          }
-        }
-      }
-    });
-
-    function escapeRegex(string: string) {
-      return string.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
-    }
-
 
     /*
      * [TOOL: list_dir]

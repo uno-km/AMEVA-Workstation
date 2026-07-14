@@ -63,6 +63,34 @@ export interface ToolCallRequest {
   args: Record<string, unknown>
 }
 
+export interface ToolExecutionContext {
+  missionId?: string;
+  taskId?: string;
+  attemptId?: string;
+  artifactId?: string;
+  currentRevision?: number;
+  retryScope?: string;
+  finalPath?: string;
+}
+
+export interface ApplyPatchArgs {
+  targetPath?: string;
+  path?: string;
+  expectedOldHash?: string;
+  replacement?: string;
+  patch?: string;
+  targetSection?: string;
+  targetSelector?: string;
+  sourceRevision?: number;
+  retryScope?: string;
+  allowedRanges?: string[];
+  protectedRanges?: string[];
+  missionId?: string;
+  taskId?: string;
+  attemptId?: string;
+  artifactId?: string;
+}
+
 /**
  * ToolCallResult
  * ToolRegistry.executeTool() 실행 후 반환되는 결과 구조체.

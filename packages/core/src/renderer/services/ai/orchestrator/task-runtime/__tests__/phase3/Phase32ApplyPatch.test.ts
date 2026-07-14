@@ -28,7 +28,7 @@ describe('Phase 3.2: apply_patch validation', () => {
       sourceRevision: 1,
     }, {
       currentRevision: 2,
-      missionId: 'm1', taskId: 't1', attemptId: 'a1'
+      missionId: 'm1', taskId: 't1', attemptId: 'a1', artifactId: 'art1', finalPath: 'test.txt', idempotencyKey: 'idem1'
     });
 
     assert.equal(result.success, false);
@@ -47,7 +47,7 @@ describe('Phase 3.2: apply_patch validation', () => {
       replacement: 'hi'
     }, {
       currentRevision: 1,
-      missionId: 'm1', taskId: 't1', attemptId: 'a1',
+      missionId: 'm1', taskId: 't1', attemptId: 'a1', artifactId: 'art1', finalPath: 'test.txt', idempotencyKey: 'idem1',
       retryScope: 'SECTION'
     });
 

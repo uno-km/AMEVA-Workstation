@@ -55,6 +55,7 @@ describe('Phase 2: Artifact Transaction', () => {
       provenance: { missionId: 'm1', taskId: 't1', attemptId: 'a1' }
     });
 
+    await manager.markStaged('m1', 'art1');
     await manager.markWritten('m1', 'art1');
     const m = await store.loadManifest('m1', 'art1');
     expect(m!.status).toBe('WRITTEN');
@@ -75,6 +76,7 @@ describe('Phase 2: Artifact Transaction', () => {
       provenance: { missionId: 'm1', taskId: 't1', attemptId: 'a1' }
     });
 
+    await manager.markStaged('m1', 'art1');
     await manager.markWritten('m1', 'art1');
     await manager.markValidated('m1', 'art1');
     const m = await store.loadManifest('m1', 'art1');
@@ -108,6 +110,7 @@ describe('Phase 2: Artifact Transaction', () => {
     await store.saveManifest(manifest!);
 
     // 3. Mark WRITTEN and VALIDATED
+    await manager.markStaged('m1', 'art1');
     await manager.markWritten('m1', 'art1');
     await manager.markValidated('m1', 'art1');
 
@@ -151,6 +154,7 @@ describe('Phase 2: Artifact Transaction', () => {
     manifest!.finalPath = finalPath;
     await store.saveManifest(manifest!);
 
+    await manager.markStaged('m1', 'art2');
     await manager.markWritten('m1', 'art2');
     await manager.markValidated('m1', 'art2');
 
