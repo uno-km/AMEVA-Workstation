@@ -50,9 +50,9 @@ export interface SidebarTabFilesProps {
    * - 예시: `SidebarTabFiles(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
    */
 export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
-  const {
-    editorMode, setEditorMode, handleOpenFile, handleSaveFile, handleExport,
-    settings, isProPlan
+  const { 
+    handleOpenFile, handleSaveFile, handleExport,
+    editorMode, handleSwitchMode, settings
   } = useAppContext()
   
   const {
@@ -196,7 +196,7 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
           <button
             className={`btn btn-glass ${editorMode === 'edit' ? 'active' : ''}`}
             style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
-            onClick={() => setEditorMode('edit')}
+            onClick={() => handleSwitchMode('edit')}
             title={`에디터 모드 전환 (${formatHotkey(hkeys.toggleMode)})`}
           >
             <Terminal size={12} /> 편집
@@ -204,26 +204,15 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
           <button
             className={`btn btn-glass ${editorMode === 'preview' ? 'active' : ''}`}
             style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
-            onClick={() => setEditorMode('preview')}
+            onClick={() => handleSwitchMode('preview')}
             title={`미리보기 모드 전환 (${formatHotkey(hkeys.toggleMode)})`}
           >
             <Eye size={12} /> 미리보기
           </button>
           <button
-            className={`btn btn-glass ${editorMode === 'kanban' ? 'active' : ''}`}
-            style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center', opacity: isProPlan ? 1 : 0.5 }}
-            onClick={() => {
-              if (isProPlan) setEditorMode('kanban');
-              else alert('Kanban Board는 Pro 플랜 전용 기능입니다.');
-            }}
-            title={`칸반 보드 뷰 (Pro)`}
-          >
-            <KanbanSquare size={12} /> 보드 뷰
-          </button>
-          <button
             className={`btn btn-glass ${editorMode === 'raw' ? 'active' : ''}`}
             style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
-            onClick={() => setEditorMode('raw')}
+            onClick={() => handleSwitchMode('raw')}
             title={`원문(Markdown) 보기`}
           >
             <FileText size={12} /> 원문보기

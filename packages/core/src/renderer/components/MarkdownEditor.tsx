@@ -691,10 +691,10 @@ export function MarkdownEditor({
               }}
             />
           </BlockNoteView>
-        ) : editorMode === 'kanban' ? (
-          <DynamicRemotePluginLoader pluginId="KanbanBoard" />
         ) : editorMode === 'preview' ? (
-          <MarkdownPreview markdown={currentContent} editor={editor} />
+          <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable={false}>
+            <></>
+          </BlockNoteView>
         ) : (
           /* RAW 마크다운 원문 텍스트 영역 직접 편집 뷰 */
           <div style={{

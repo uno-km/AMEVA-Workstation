@@ -35,6 +35,7 @@ import { useState, useEffect } from 'react'
 import { useProcessStore } from '../../stores/useProcessStore'
 import { useUIStore } from '../../stores/useUIStore'
 import type { AppSettings } from '../../components/SettingsModal'
+import { ExcelPlugin } from '../../plugins/ExcelPlugin'
 
 /** 기본 MCP 서버 목록 (초기값) */
 const DEFAULT_MCP_SERVERS = [
@@ -254,6 +255,38 @@ export function useAppBootstrap(
     const dismissed = localStorage.getItem('ameva_desktop_install_prompt_dismissed') === 'true'
     if (!isElectron && !dismissed) {
       useUIStore.getState().setIsInstallPromptOpen(true)
+    }
+  }, [])
+
+  // 6. SaaS 플러그인 (로컬 기능) 활성화 상태 연동
+  useEffect(() => {
+    const checkSaaSPlugins = () => {
+      const stored = localStorage.getItem('enabled-plugins')
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          
+          // Excel Viewer 플러그인 라이프사이클 처리
+          if (parsed.excelViewer) {
+            ExcelPlugin.onActivate()
+          } else {
+            ExcelPlugin.onDeactivate()
+          }
+
+        } catch (e) {
+          console.error('[useAppBootstrap] SaaS 플러그인 상태 동기화 실패:', e)
+        }
+      }
+    }
+
+    // 마운트 시 초기 연동
+    checkSaaSPlugins()
+
+    // MarketplaceModal 등에서 토글 시 발생하는 커스텀 이벤트 수신
+    window.addEventListener('saas-plugins-changed', checkSaaSPlugins)
+    
+    return () => {
+      window.removeEventListener('saas-plugins-changed', checkSaaSPlugins)
     }
   }, [])
 

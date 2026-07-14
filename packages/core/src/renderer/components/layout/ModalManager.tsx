@@ -28,6 +28,7 @@ import { ExportModal, IDLE_PROGRESS } from '../ExportModal'
 import { QuitConfirmModal } from '../QuitConfirmModal'
 import { InstallDesktopModal } from '../InstallDesktopModal'
 
+
 import { RefreshConfirmModal } from '../RefreshConfirmModal'
 
 import { useAppContext } from '../../contexts/AppContext'
@@ -57,7 +58,8 @@ export function ModalManager({}: ModalManagerProps = {}) {
     setShowModelHub, isAboutOpen, setIsAboutOpen, isGuideOpen, setIsGuideOpen,
     showMarketplaceModal, setShowMarketplaceModal, showPricingModal, setShowPricingModal,
     isQuitConfirmOpen, setIsQuitConfirmOpen, isRefreshConfirmOpen, setIsRefreshConfirmOpen,
-    isInstallPromptOpen, setIsInstallPromptOpen
+    isInstallPromptOpen, setIsInstallPromptOpen,
+    isPricingModalOpen, setIsPricingModalOpen
   } = useUIStore(useShallow((s) => ({
     isDiffOpen: s.isDiffOpen,
     setIsDiffOpen: s.setIsDiffOpen,
@@ -78,7 +80,8 @@ export function ModalManager({}: ModalManagerProps = {}) {
     isRefreshConfirmOpen: s.isRefreshConfirmOpen,
     setIsRefreshConfirmOpen: s.setIsRefreshConfirmOpen,
     isInstallPromptOpen: s.isInstallPromptOpen,
-    setIsInstallPromptOpen: s.setIsInstallPromptOpen
+    setIsInstallPromptOpen: s.setIsInstallPromptOpen,
+
   })))
 
   const { selectedSnapshot, currentContent } = useWorkspaceStore()
@@ -180,6 +183,7 @@ export function ModalManager({}: ModalManagerProps = {}) {
           ipc.openExternalLink(fileUrl)
         }}
       />
+
       <QuitConfirmModal
         isOpen={isQuitConfirmOpen}
         onClose={() => setIsQuitConfirmOpen(false)}

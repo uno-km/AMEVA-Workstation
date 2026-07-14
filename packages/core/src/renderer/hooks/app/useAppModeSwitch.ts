@@ -82,6 +82,11 @@ export function useAppModeSwitch({
        * - 예시: `if (editorMode === 'edit' && (mode === 'preview' || mode === 'raw') && editor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
     if (editorMode === 'edit' && (mode === 'preview' || mode === 'raw') && editor) {
+      if (document.activeElement && (document.activeElement as HTMLElement).blur) {
+        (document.activeElement as HTMLElement).blur()
+        window.dispatchEvent(new CustomEvent('AMEVA_FORCE_SAVE_BLOCKS'))
+        await new Promise(resolve => setTimeout(resolve, 150))
+      }
       try {
       /*
        * [RUN-TIME STATE / INVARIANT]
