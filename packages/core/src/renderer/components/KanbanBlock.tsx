@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
-import { Plus, CheckSquare, Square, ChevronUp, Equal, ChevronDown, User, Bot, Search, GripVertical } from 'lucide-react'
+import { Plus, CheckSquare, Square, ChevronUp, Equal, ChevronDown, User, Bot, Search, GripVertical, Trash2, ArrowLeft, ArrowRight } from 'lucide-react'
 
 // Kanban Data Types
 export type Priority = 'high' | 'medium' | 'low'
@@ -80,9 +80,18 @@ export const KanbanBlockSpec = createReactBlockSpec(
       const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
       const [draggingColId, setDraggingColId] = useState<string | null>(null)
 
+      // Inline Edit State
+      const [editingCardId, setEditingCardId] = useState<string | null>(null)
+      const [editingTitle, setEditingTitle] = useState<string>('')
+
       // Active Agent Dropdown state
       const [activeAgentDropdown, setActiveAgentDropdown] = useState<string | null>(null)
+      const [newAssigneeName, setNewAssigneeName] = useState<string>('')
       const dropdownRef = useRef<HTMLDivElement>(null)
+
+      // Column Edit State
+      const [editingColId, setEditingColId] = useState<string | null>(null)
+      const [editingColTitle, setEditingColTitle] = useState<string>('')
 
       // Handle clicking outside agent dropdown
       useEffect(() => {
@@ -107,21 +116,57 @@ export const KanbanBlockSpec = createReactBlockSpec(
 
       const addCard = (colId: string) => {
         if (!isEditable) return
-        const title = prompt('Enter task description:')
-        if (!title) return
-
         const newData = { ...data }
         const col = newData.columns.find(c => c.id === colId)
         if (col) {
+          const newCardId = `AMV-${newData.nextId++}`
           col.cards.push({
-            id: `AMV-${newData.nextId++}`,
-            title,
+            id: newCardId,
+            title: '',
             completed: false,
             priority: 'medium',
             assignee: null
           })
           saveData(newData)
+          setEditingCardId(newCardId)
+          setEditingTitle('')
         }
+      }
+
+      const addColumn = () => {
+        if (!isEditable) return
+        const newData = { ...data }
+        const newColId = `col-${newData.nextId++}`
+        newData.columns.push({
+          id: newColId,
+          title: 'New Column',
+          cards: []
+        })
+        saveData(newData)
+        setEditingColId(newColId)
+        setEditingColTitle('New Column')
+      }
+
+      const deleteColumn = (colId: string) => {
+        if (!isEditable) return
+        const newData = { ...data }
+        newData.columns = newData.columns.filter(c => c.id !== colId)
+        saveData(newData)
+      }
+
+      const moveColumn = (index: number, direction: 'left' | 'right') => {
+        if (!isEditable) return
+        const newData = { ...data }
+        if (direction === 'left' && index > 0) {
+          const temp = newData.columns[index]
+          newData.columns[index] = newData.columns[index - 1]
+          newData.columns[index - 1] = temp
+        } else if (direction === 'right' && index < newData.columns.length - 1) {
+          const temp = newData.columns[index]
+          newData.columns[index] = newData.columns[index + 1]
+          newData.columns[index + 1] = temp
+        }
+        saveData(newData)
       }
 
       const toggleCardCompleted = (colId: string, cardId: string) => {
@@ -227,7 +272,7 @@ export const KanbanBlockSpec = createReactBlockSpec(
             userSelect: 'none'
           }}
         >
-          {data.columns.map(col => (
+          {data.columns.map((col, i) => (
             <div 
               key={col.id}
               onDragOver={handleDragOver}
@@ -247,18 +292,61 @@ export const KanbanBlockSpec = createReactBlockSpec(
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ 
-                    fontSize: '12px', 
-                    fontWeight: 600, 
-                    backgroundColor: 'rgba(33, 150, 243, 0.2)', 
-                    color: '#2196f3',
-                    padding: '2px 6px',
-                    borderRadius: '4px'
-                  }}>
-                    {col.title}
-                  </span>
+                  {editingColId === col.id ? (
+                    <input 
+                      autoFocus
+                      value={editingColTitle}
+                      onChange={e => setEditingColTitle(e.target.value)}
+                      onBlur={() => {
+                        const newData = { ...data }
+                        const c = newData.columns.find(x => x.id === col.id)
+                        if (c) c.title = editingColTitle || 'Untitled'
+                        saveData(newData)
+                        setEditingColId(null)
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          const newData = { ...data }
+                          const c = newData.columns.find(x => x.id === col.id)
+                          if (c) c.title = editingColTitle || 'Untitled'
+                          saveData(newData)
+                          setEditingColId(null)
+                        } else if (e.key === 'Escape') {
+                          setEditingColId(null)
+                        }
+                      }}
+                      style={{ fontSize: '12px', fontWeight: 600, padding: '2px 6px', borderRadius: '4px', border: '1px solid var(--primary)', backgroundColor: 'var(--bg-main)', color: 'var(--text-main)', outline: 'none', width: '120px' }}
+                    />
+                  ) : (
+                    <span 
+                      onClick={() => {
+                        if (isEditable) {
+                           setEditingColId(col.id)
+                           setEditingColTitle(col.title)
+                        }
+                      }}
+                      style={{ 
+                        fontSize: '12px', 
+                        fontWeight: 600, 
+                        backgroundColor: 'rgba(33, 150, 243, 0.2)', 
+                        color: '#2196f3',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        cursor: isEditable ? 'text' : 'default'
+                      }}>
+                      {col.title}
+                    </span>
+                  )}
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{col.cards.length}</span>
                 </div>
+
+                {isEditable && (
+                  <div style={{ display: 'flex', gap: '2px' }}>
+                    <button onClick={() => moveColumn(i, 'left')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px' }} title="Move Left"><ArrowLeft size={14}/></button>
+                    <button onClick={() => moveColumn(i, 'right')} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '2px' }} title="Move Right"><ArrowRight size={14}/></button>
+                    <button onClick={() => deleteColumn(col.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#f44336', padding: '2px' }} title="Delete Column"><Trash2 size={14}/></button>
+                  </div>
+                )}
               </div>
 
               {col.cards.map(card => (
@@ -282,9 +370,69 @@ export const KanbanBlockSpec = createReactBlockSpec(
                     boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                   }}
                 >
-                  <div style={{ fontSize: '14px', marginBottom: '12px', color: card.completed ? 'var(--text-muted)' : 'var(--text-main)', textDecoration: card.completed ? 'line-through' : 'none' }}>
-                    {card.title}
-                  </div>
+                  {editingCardId === card.id ? (
+                    <div style={{ marginBottom: '12px' }}>
+                      <input
+                        autoFocus
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault()
+                            const newData = { ...data }
+                            const colItem = newData.columns.find(c => c.id === col.id)
+                            if (colItem) {
+                              const cc = colItem.cards.find(c => c.id === card.id)
+                              if (cc) cc.title = editingTitle || 'Untitled'
+                              saveData(newData)
+                            }
+                            setEditingCardId(null)
+                          } else if (e.key === 'Escape') {
+                            setEditingCardId(null)
+                          }
+                        }}
+                        onBlur={() => {
+                          const newData = { ...data }
+                          const colItem = newData.columns.find(c => c.id === col.id)
+                          if (colItem) {
+                            const cc = colItem.cards.find(c => c.id === card.id)
+                            if (cc) cc.title = editingTitle || 'Untitled'
+                            saveData(newData)
+                          }
+                          setEditingCardId(null)
+                        }}
+                        style={{
+                          width: '100%',
+                          backgroundColor: 'var(--bg-main)',
+                          border: '1px solid var(--primary)',
+                          color: 'var(--text-main)',
+                          borderRadius: '4px',
+                          padding: '4px 8px',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={(e) => {
+                        if (isEditable) {
+                          e.stopPropagation()
+                          setEditingCardId(card.id)
+                          setEditingTitle(card.title)
+                        }
+                      }}
+                      style={{ 
+                        fontSize: '14px', 
+                        marginBottom: '12px', 
+                        color: card.completed ? 'var(--text-muted)' : 'var(--text-main)', 
+                        textDecoration: card.completed ? 'line-through' : 'none',
+                        cursor: isEditable ? 'text' : 'grab',
+                        minHeight: '20px'
+                      }}>
+                      {card.title || 'Untitled'}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <div 
@@ -356,6 +504,34 @@ export const KanbanBlockSpec = createReactBlockSpec(
                               <span style={{ fontSize: '13px' }}>{agent.name}</span>
                             </div>
                           ))}
+                          <div style={{ display: 'flex', marginTop: '8px', gap: '4px', borderTop: '1px solid var(--border-muted)', paddingTop: '8px' }}>
+                            <input 
+                              value={newAssigneeName}
+                              onChange={e => setNewAssigneeName(e.target.value)}
+                              placeholder="New Assignee"
+                              style={{ flex: 1, backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-muted)', borderRadius: '4px', color: 'var(--text-main)', fontSize: '12px', padding: '4px', minWidth: 0, outline: 'none' }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && newAssigneeName.trim()) {
+                                   const color = ['#f44336', '#9c27b0', '#3f51b5', '#009688', '#ff9800'][Math.floor(Math.random() * 5)]
+                                   assignAgent(col.id, card.id, { type: 'human', name: newAssigneeName.trim(), avatarColor: color })
+                                   setNewAssigneeName('')
+                                }
+                              }}
+                            />
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (newAssigneeName.trim()) {
+                                   const color = ['#f44336', '#9c27b0', '#3f51b5', '#009688', '#ff9800'][Math.floor(Math.random() * 5)]
+                                   assignAgent(col.id, card.id, { type: 'human', name: newAssigneeName.trim(), avatarColor: color })
+                                   setNewAssigneeName('')
+                                }
+                              }}
+                              style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '0 8px', fontSize: '12px' }}
+                            >
+                              <Plus size={12} />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -381,6 +557,38 @@ export const KanbanBlockSpec = createReactBlockSpec(
               )}
             </div>
           ))}
+
+          {isEditable && (
+            <div
+              onClick={addColumn}
+              style={{
+                minWidth: '280px',
+                width: '280px',
+                backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                border: '1px dashed var(--border-muted)',
+                borderRadius: '8px',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-muted)',
+                fontSize: '14px',
+                height: '42px',
+                marginTop: '0px',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-glass-active)';
+                e.currentTarget.style.color = 'var(--text-main)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.03)';
+                e.currentTarget.style.color = 'var(--text-muted)';
+              }}
+            >
+              <Plus size={16} style={{ marginRight: '8px' }} /> Add Column
+            </div>
+          )}
         </div>
       )
     },
