@@ -313,7 +313,7 @@ graph TD
 유튜브 동영상을 문서 내에서 직접 재생하거나 플로팅 화면(PIP)으로 띄워놓고 작업할 수 있습니다.
 
 \`\`\`ameva-youtube
-{"url":"https://www.youtube.com/watch?v=kpop-demon-hunters-golden-lyric-video","videoId":"kpop-demon-hunters-golden-lyric-video","title":"Golden - HUNTR/X (K-Pop Demon Hunters OST)","description":"넷플릭스 애니메이션 영화 'K-Pop Demon Hunters (케데헌)'의 글로벌 히트곡 'Golden' 공식 리릭 비디오입니다!","thumbnail":""}
+{"url":"https://www.youtube.com/watch?v=UOxkGD8qRB4","videoId":"UOxkGD8qRB4","title":"Golden - HUNTR/X (K-Pop Demon Hunters OST)","description":"넷플릭스 애니메이션 영화 'K-Pop Demon Hunters (케데헌)'의 글로벌 히트곡 'Golden' 공식 리릭 비디오입니다!","thumbnail":""}
 \`\`\`
 
 ### 🔗 링크 미리보기 (Link Preview)
