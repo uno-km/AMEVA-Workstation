@@ -60,6 +60,7 @@ const ExcelBlockSpec = createReactBlockSpec(
         // Fallback default sheet data
         sheetData = [{ 
           name: 'Sheet1', 
+          id: 'sheet_01',
           celldata: [], 
           status: 1,
           row: 36,

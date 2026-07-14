@@ -210,17 +210,6 @@ export function SidebarTabFiles({ sectionLabel }: SidebarTabFilesProps) {
             <Eye size={12} /> 미리보기
           </button>
           <button
-            className={`btn btn-glass ${editorMode === 'kanban' ? 'active' : ''}`}
-            style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center', opacity: isProPlan ? 1 : 0.5 }}
-            onClick={() => {
-              if (isProPlan) setEditorMode('kanban');
-              else alert('Kanban Board는 Pro 플랜 전용 기능입니다.');
-            }}
-            title={`칸반 보드 뷰 (Pro)`}
-          >
-            <KanbanSquare size={12} /> 보드 뷰
-          </button>
-          <button
             className={`btn btn-glass ${editorMode === 'raw' ? 'active' : ''}`}
             style={{ flex: '1 1 0', fontSize: '11px', padding: '7px 6px', minWidth: '70px', justifyContent: 'center' }}
             onClick={() => setEditorMode('raw')}
