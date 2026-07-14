@@ -75,6 +75,22 @@ export function FloatingChat({}: FloatingChatProps = {}) {
        */
   const resizeStartRef = useRef<{ mouseX: number; mouseY: number; width: number; height: number } | null>(null)
 
+  const listenersRef = useRef<{
+    dragMove: ((e: MouseEvent) => void) | null
+    dragUp: (() => void) | null
+    resizeMove: ((e: MouseEvent) => void) | null
+    resizeUp: (() => void) | null
+  }>({ dragMove: null, dragUp: null, resizeMove: null, resizeUp: null })
+
+  useEffect(() => {
+    return () => {
+      if (listenersRef.current.dragMove) document.removeEventListener('mousemove', listenersRef.current.dragMove)
+      if (listenersRef.current.dragUp) document.removeEventListener('mouseup', listenersRef.current.dragUp)
+      if (listenersRef.current.resizeMove) document.removeEventListener('mousemove', listenersRef.current.resizeMove)
+      if (listenersRef.current.resizeUp) document.removeEventListener('mouseup', listenersRef.current.resizeUp)
+    }
+  }, [])
+
   // 안읽은 메시지 청소 (창 활성화/클릭 시)
   useEffect(() => {
       /*
@@ -117,6 +133,8 @@ export function FloatingChat({}: FloatingChatProps = {}) {
       posX: pos.x,
       posY: pos.y,
     }
+    listenersRef.current.dragMove = handleDragMouseMove
+    listenersRef.current.dragUp = handleDragMouseUp
     document.addEventListener('mousemove', handleDragMouseMove)
     document.addEventListener('mouseup', handleDragMouseUp)
   }
@@ -211,8 +229,10 @@ export function FloatingChat({}: FloatingChatProps = {}) {
        * - 예시 코드: `const handleDragMouseUp = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const handleDragMouseUp = () => {
-    document.removeEventListener('mousemove', handleDragMouseMove)
-    document.removeEventListener('mouseup', handleDragMouseUp)
+    if (listenersRef.current.dragMove) document.removeEventListener('mousemove', listenersRef.current.dragMove)
+    if (listenersRef.current.dragUp) document.removeEventListener('mouseup', listenersRef.current.dragUp)
+    listenersRef.current.dragMove = null
+    listenersRef.current.dragUp = null
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `!dragStartRef.current`
@@ -310,6 +330,8 @@ export function FloatingChat({}: FloatingChatProps = {}) {
       width: size.width,
       height: size.height,
     }
+    listenersRef.current.resizeMove = handleResizeMouseMove
+    listenersRef.current.resizeUp = handleResizeMouseUp
     document.addEventListener('mousemove', handleResizeMouseMove)
     document.addEventListener('mouseup', handleResizeMouseUp)
   }
@@ -374,8 +396,10 @@ export function FloatingChat({}: FloatingChatProps = {}) {
        * - 예시 코드: `const handleResizeMouseUp = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const handleResizeMouseUp = () => {
-    document.removeEventListener('mousemove', handleResizeMouseMove)
-    document.removeEventListener('mouseup', handleResizeMouseUp)
+    if (listenersRef.current.resizeMove) document.removeEventListener('mousemove', listenersRef.current.resizeMove)
+    if (listenersRef.current.resizeUp) document.removeEventListener('mouseup', listenersRef.current.resizeUp)
+    listenersRef.current.resizeMove = null
+    listenersRef.current.resizeUp = null
     resizeStartRef.current = null
   }
 

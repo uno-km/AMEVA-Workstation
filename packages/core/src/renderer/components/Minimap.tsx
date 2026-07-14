@@ -135,6 +135,8 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const attachListener = ...` 형태로 안전 캐싱 후 가공 기동.
        */
+    let interval: ReturnType<typeof setInterval> | null = null
+
     const attachListener = () => {
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -180,16 +182,20 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
         observer.observe(container, { childList: true, subtree: true, characterData: true })
 
         handleScroll()
+        if (interval) {
+          clearInterval(interval)
+          interval = null
+        }
       }
     }
 
     attachListener()
 
-    // Ref 마운트 지연 대응을 위해 200ms 마다 폴링 확인
-    const interval = setInterval(attachListener, 200)
+    // Ref 마운트 지연 대응을 위해 200ms 마다 폴링 확인 (연결 시 자동 해제됨)
+    interval = setInterval(attachListener, 200)
 
     return () => {
-      clearInterval(interval)
+      if (interval) clearInterval(interval)
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `container`
@@ -230,6 +236,16 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
        * - 예시 코드: `const viewHeightPercent = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const viewHeightPercent = (clientHeight / scrollHeight) * 100
+
+  const dragListenersRef = useRef<{ move: ((e: MouseEvent) => void) | null, up: (() => void) | null }>({ move: null, up: null })
+
+  const handleDragEnd = () => {
+    isDragging.current = false
+    if (dragListenersRef.current.move) document.removeEventListener('mousemove', dragListenersRef.current.move)
+    if (dragListenersRef.current.up) document.removeEventListener('mouseup', dragListenersRef.current.up)
+    dragListenersRef.current.move = null
+    dragListenersRef.current.up = null
+  }
 
   // 클릭 및 드래그 스크롤 통합 제어
   const handleMapMouseDown = (e: React.MouseEvent) => {
@@ -284,9 +300,18 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
     dragStartY.current = e.clientY
     dragStartScrollTop.current = container.scrollTop
 
+    dragListenersRef.current.move = handleDragMove
+    dragListenersRef.current.up = handleDragEnd
     document.addEventListener('mousemove', handleDragMove)
     document.addEventListener('mouseup', handleDragEnd)
   }
+
+  useEffect(() => {
+    return () => {
+      if (dragListenersRef.current.move) document.removeEventListener('mousemove', dragListenersRef.current.move)
+      if (dragListenersRef.current.up) document.removeEventListener('mouseup', dragListenersRef.current.up)
+    }
+  }, [])
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -309,7 +334,7 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
        * - 변수 명: `container`
        * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const container = ...` 형태로 안전 캐싱 후 가공 기동.
+       * - 예시 코드: `const container = ...` 형태로 안전 캐싱 후 가공 기 기동.
        */
     const container = getScrollContainer()
       /*
@@ -348,19 +373,6 @@ export function Minimap({ editor, editorContainerRef, blocks }: MinimapProps) {
 
     // 마우스가 누르고 있는 위치를 에디터의 중심점으로 부드럽게 흡수
     container.scrollTop = ratio * container.scrollHeight - container.clientHeight / 2
-  }
-
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleDragEnd`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleDragEnd = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const handleDragEnd = () => {
-    isDragging.current = false
-    document.removeEventListener('mousemove', handleDragMove)
-    document.removeEventListener('mouseup', handleDragEnd)
   }
 
   // 에디터의 블록 구조를 긁어 텍스트 라인 리스트로 전환
