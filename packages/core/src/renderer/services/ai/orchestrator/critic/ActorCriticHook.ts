@@ -223,10 +223,10 @@ export class ActorCriticHook implements IActorCriticHook {
      */
     if (this.rejectionCount >= this.config.maxCriticRejections) {
       ipc.llmAddLog({
-        text: `[Critic] 최대 거부 횟수(${this.config.maxCriticRejections}회) 소진. 폴백 PASS 반환.`,
+        text: `[Critic] 최대 거부 횟수(${this.config.maxCriticRejections}회) 소진. 폴백 UNCERTAIN 반환.`,
         prefix: 'ActorCritic'
       })
-      return { verdict: 'PASS', latencyMs: 0 }
+      return { verdict: 'UNCERTAIN', reason: 'Max critic rejections exceeded', latencyMs: 0 }
     }
 
     /*

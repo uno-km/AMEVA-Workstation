@@ -1,13 +1,13 @@
 import type { IArtifactReader } from './IArtifactReader';
-import { executeTerminal } from '../../../../ipc/electronApiAdapter';
-import { PathSanitizer } from '../policy/PathSanitizer';
+import type { IFileSystemAdapter } from './IFileSystemAdapter';
 
 export class DefaultArtifactReader implements IArtifactReader {
+  constructor(private readonly fsAdapter: IFileSystemAdapter) {}
+
   public async read(path: string): Promise<string | null> {
     try {
-      const safePath = PathSanitizer.sanitizePath(path, 'read');
-      const result = await executeTerminal(`Get-Content -Path "${safePath}" -Raw -Encoding UTF8`, undefined);
-      return result.stdout || null;
+      const content = await this.fsAdapter.read(path);
+      return content ?? null;
     } catch (e) {
       console.error(`[DefaultArtifactReader] Error reading file: ${path}`, e);
       return null;
@@ -16,9 +16,8 @@ export class DefaultArtifactReader implements IArtifactReader {
 
   public async exists(path: string): Promise<boolean> {
     try {
-      const safePath = PathSanitizer.sanitizePath(path, 'read');
-      const result = await executeTerminal(`Test-Path -Path "${safePath}"`, undefined);
-      return result.stdout?.trim() === 'True';
+      const stat = await this.fsAdapter.stat(path);
+      return stat !== null;
     } catch (e) {
       console.error(`[DefaultArtifactReader] Error checking existence: ${path}`, e);
       return false;
@@ -27,9 +26,8 @@ export class DefaultArtifactReader implements IArtifactReader {
 
   public async getSize(path: string): Promise<number> {
     try {
-      const safePath = PathSanitizer.sanitizePath(path, 'read');
-      const result = await executeTerminal(`(Get-Item -Path "${safePath}").Length`, undefined);
-      return parseInt(result.stdout?.trim() || '0', 10);
+      const stat = await this.fsAdapter.stat(path);
+      return stat?.size ?? 0;
     } catch (e) {
       console.error(`[DefaultArtifactReader] Error getting size: ${path}`, e);
       return 0;
@@ -38,9 +36,8 @@ export class DefaultArtifactReader implements IArtifactReader {
 
   public async getHash(path: string): Promise<string | null> {
     try {
-      const safePath = PathSanitizer.sanitizePath(path, 'read');
-      const result = await executeTerminal(`(Get-FileHash -Path "${safePath}" -Algorithm SHA256).Hash`, undefined);
-      return result.stdout?.trim() || null;
+      const hash = await this.fsAdapter.hash(path);
+      return hash ?? null;
     } catch (e) {
       console.error(`[DefaultArtifactReader] Error getting hash: ${path}`, e);
       return null;

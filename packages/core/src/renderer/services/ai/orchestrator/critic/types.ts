@@ -81,10 +81,22 @@ export interface CriticRejectVerdict {
 }
 
 /**
+ * CriticUncertainVerdict
+ * Critic 엔진 오류, 파싱 실패 등으로 판정이 불가능할 때 반환하는 구조체.
+ */
+export interface CriticUncertainVerdict {
+  readonly verdict: 'UNCERTAIN'
+  /** 불확실 사유 */
+  readonly reason?: string
+  /** 검수 소요 시간 (ms) */
+  readonly latencyMs: number
+}
+
+/**
  * CriticVerdict
  * ICriticStrategy.evaluate()가 반환하는 유니언 타입.
  */
-export type CriticVerdict = CriticPassVerdict | CriticRejectVerdict
+export type CriticVerdict = CriticPassVerdict | CriticRejectVerdict | CriticUncertainVerdict
 
 /* ============================================================
  * 3. Critic 컨텍스트 (Critic Context)

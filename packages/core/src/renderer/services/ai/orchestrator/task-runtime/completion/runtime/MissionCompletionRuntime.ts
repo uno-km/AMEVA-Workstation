@@ -193,13 +193,13 @@ export class MissionCompletionRuntime {
       this.taskStore.updateMissionState(missionId, { status: outcome });
 
       // [Phase 2] 커밋 확인 (이미 VerificationRuntime에서 커밋을 마쳤어야 함)
-      if (outcome === 'COMPLETED' && this.artifactTxManager) {
+      if (outcome === 'SUCCESS' && this.artifactTxManager) {
         for (const ref of artifactEval.finalArtifactReferences) {
           if (ref.referencePath && ref.referencePath.startsWith('/')) {
             try {
               const manifest = await this.artifactTxManager.getManifest(missionId, ref.referencePath);
               if (!manifest || manifest.status !== 'COMMITTED') {
-                 // 필수 Artifact가 COMMITTED가 아니라면 SUCCESS/COMPLETED 금지
+                 // 필수 Artifact가 COMMITTED가 아니라면 SUCCESS 금지
                  console.error(`[MissionCompletionRuntime] Required artifact is not COMMITTED: ${ref.referencePath}`);
                  decision.outcome = 'FAILED';
                  decision.warnings.push(`Required artifact ${ref.referencePath} is not COMMITTED.`);

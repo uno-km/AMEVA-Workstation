@@ -27,7 +27,45 @@ export type TaskVerdict =
   | 'RETRY'
   | 'BLOCKED'
   | 'NEEDS_USER'
+  | 'WAITING_USER'
+  | 'NOT_APPLICABLE'
   | 'FAIL';
+
+export type RetryScope = 'ARTIFACT' | 'SECTION' | 'FIELD' | 'FILE' | 'FUNCTION' | 'TEST' | 'TOOL_CALL' | 'FULL_TASK';
+
+export type DefectType = 
+  | 'ARTIFACT_MISSING' 
+  | 'ARTIFACT_NOT_COMMITTED' 
+  | 'HASH_MISMATCH' 
+  | 'FORMAT_INVALID' 
+  | 'SKELETON_CONTENT' 
+  | 'CONTRACT_MISSING' 
+  | 'REQUIREMENT_UNCOVERED' 
+  | 'SEMANTIC_INCONSISTENCY' 
+  | 'INSUFFICIENT_EVIDENCE' 
+  | 'BUILD_FAILED' 
+  | 'TEST_FAILED' 
+  | 'CRITIC_UNAVAILABLE' 
+  | 'CRITIC_RESPONSE_INVALID' 
+  | 'NO_PROGRESS' 
+  | 'BUDGET_EXHAUSTED';
+
+export interface Defect {
+  defectId: string;
+  signature: string;
+  stage: 'DETERMINISTIC' | 'CONTRACT' | 'SEMANTIC';
+  type: DefectType;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  required: boolean;
+  artifactId?: string;
+  targetSection?: string;
+  targetPath?: string;
+  message: string;
+  repairInstruction?: string;
+  retryScope?: RetryScope;
+  evidence?: any;
+  retryable: boolean;
+}
 
 export interface CriterionResult {
   criterionId: string;
@@ -38,6 +76,7 @@ export interface CriterionResult {
   repairHint?: string;
   score?: number;
   confidence?: number;
+  defect?: Defect;
 }
 
 export interface TaskVerificationResult {
@@ -59,8 +98,14 @@ export interface TaskVerificationResult {
   passedCriteria: string[];
   failedCriteria: string[];
   warnings: string[];
+  defects?: Defect[];
+  retryScope?: RetryScope;
   repairInstructions?: string;
   evidenceReferences?: string[];
+  
+  evaluatedAt?: number;
+  modelId?: string;
+  promptVersion?: string;
   
   verifierTypes: string[];
   verifierVersions: string[];

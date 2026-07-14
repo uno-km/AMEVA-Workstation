@@ -382,12 +382,22 @@ export class ToolRegistry {
         required: []
       },
       execute: async (args) => {
-        const path = args['path'] ? `"${String(args['path'])}"` : '.'
+        const path = args['path'] ? String(args['path']) : '.'
+        
+        if (!this.fileAdapter) {
+          return {
+            success: false,
+            error: `fileAdapter is not initialized. Cannot list directory.`,
+            toolName: BUILTIN_TOOL_NAMES.LIST_DIR,
+            toolArgs: args
+          };
+        }
+
         try {
-          const result = await executeTerminal(`Get-ChildItem ${path} | Select-Object Name, Length, LastWriteTime | Format-Table -AutoSize | Out-String`, undefined)
+          const result = await this.fileAdapter.list(path);
           return {
             success: true,
-            result: result.stdout || '(디렉토리가 비어있습니다)',
+            result: result || '(디렉토리가 비어있습니다)',
             toolName: BUILTIN_TOOL_NAMES.LIST_DIR,
             toolArgs: args
           }

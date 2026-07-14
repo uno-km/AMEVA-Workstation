@@ -8,43 +8,11 @@ import type { MissionCompletionReviewInput } from '../../domain/types';
 import type { DeliverableResult } from '../domain/MissionCompletionTypes';
 import type { IArtifactReader } from '../../artifact/IArtifactReader';
 
-export class DefaultVfsArtifactReader implements IArtifactReader {
-  public async read(path: string): Promise<string | null> {
-    if (typeof localStorage === 'undefined') return null;
-    try {
-      const vfsRaw = localStorage.getItem('ameva_vfs');
-      if (vfsRaw) {
-        const vfsData = JSON.parse(vfsRaw);
-        if (vfsData[path]) {
-          return typeof vfsData[path] === 'object' ? (vfsData[path].content || '') : vfsData[path];
-        }
-      }
-    } catch (e) {
-      console.error('[DefaultVfsArtifactReader] VFS read error:', e);
-    }
-    return null;
-  }
-
-  public async exists(path: string): Promise<boolean> {
-    return (await this.read(path)) !== null;
-  }
-
-  public async getSize(path: string): Promise<number> {
-    const content = await this.read(path);
-    return content ? content.length : 0;
-  }
-
-  public async getHash(path: string): Promise<string | null> {
-    const content = await this.read(path);
-    return content ? 'dummy_hash_' + content.length : null; // Mock hash for legacy
-  }
-}
-
 export class DeliverableCoverageEvaluator {
-  private readonly artifactReader: IArtifactReader;
+  private readonly artifactReader?: IArtifactReader;
 
   constructor(artifactReader?: IArtifactReader) {
-    this.artifactReader = artifactReader ?? new DefaultVfsArtifactReader();
+    this.artifactReader = artifactReader;
   }
 
   /**
@@ -108,15 +76,20 @@ export class DeliverableCoverageEvaluator {
         // 2. Check VFS via ArtifactReader for FILE artifacts
         if (isExpectedFile) {
           isFile = true;
-          try {
-            const vfsContent = await this.artifactReader.read(outName);
-            if (vfsContent !== null) {
-              hasOutput = true;
-              artifactRef = outName;
-              fileContent = vfsContent;
+          if (!this.artifactReader) {
+            console.error('[DeliverableCoverage] ArtifactReader is not injected!');
+            valid = false;
+          } else {
+            try {
+              const vfsContent = await this.artifactReader.read(outName);
+              if (vfsContent !== null) {
+                hasOutput = true;
+                artifactRef = outName;
+                fileContent = vfsContent;
+              }
+            } catch (e) {
+              valid = false;
             }
-          } catch (e) {
-            console.error('[DeliverableCoverage] ArtifactReader error:', e);
           }
         }
 
