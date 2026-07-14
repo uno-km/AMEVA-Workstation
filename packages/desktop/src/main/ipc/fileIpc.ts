@@ -619,9 +619,9 @@ export function registerFileIpc(
        * - 예시 코드: `const normalized = ...` 형태로 안전 캐싱 후 가공 기동.
        */
         const normalized = resolvePath(decoded.replace(/\//g, '\\'))
-        shell.showItemInFolder(normalized)
+        shell.openPath(normalized)
       } catch {
-        console.warn('[Security] Invalid file:// URL for showItemInFolder')
+        console.warn('[Security] Invalid file:// URL for openPath')
       }
       return
     }
@@ -653,7 +653,7 @@ export function registerFileIpc(
   })
 
   ipcMain.on('export:showInFolder', (_event, filePath: string) => {
-    shell.showItemInFolder(filePath)
+    shell.openPath(filePath)
   })
 
   ipcMain.handle('export:convert', async (event, payload: {
