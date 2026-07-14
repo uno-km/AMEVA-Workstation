@@ -251,9 +251,38 @@ export class ToolApprovalPolicy {
   /**
    * Tool 실행 직전에 승인 여부를 엄격히 검증한다.
    * 승인이 필요한 위험도(HIGH/CRITICAL)임에도 APPROVED 상태가 아니라면 예외를 발생시켜 Tool 실행을 0회로 차단한다.
+   * 또한 REJECTED, EXPIRED, CANCELLED 상태는 모든 위험도에 대해 차단한다.
    */
   public static assertApproved(toolName: string, approvalStatus?: ApprovalStatus, riskLevel?: ToolRiskLevel): void {
     const risk = riskLevel ?? ToolApprovalPolicy.evaluateRisk(toolName).riskLevel;
+
+    if (approvalStatus === 'REJECTED') {
+      throw new ToolApprovalViolationError(
+        toolName,
+        risk,
+        approvalStatus,
+        `Tool '${toolName}' execution blocked: Approval request was explicitly REJECTED.`
+      );
+    }
+
+    if (approvalStatus === 'EXPIRED') {
+      throw new ToolApprovalViolationError(
+        toolName,
+        risk,
+        approvalStatus,
+        `Tool '${toolName}' execution blocked: Approval request has EXPIRED.`
+      );
+    }
+
+    if (approvalStatus === 'CANCELLED') {
+      throw new ToolApprovalViolationError(
+        toolName,
+        risk,
+        approvalStatus,
+        `Tool '${toolName}' execution blocked: Approval request was CANCELLED.`
+      );
+    }
+
     const isRequired = risk === 'HIGH' || risk === 'CRITICAL';
 
     if (isRequired && approvalStatus !== 'APPROVED') {
@@ -266,12 +295,50 @@ export class ToolApprovalPolicy {
     }
   }
 
+  private static executedToolKeys: Set<string> = new Set();
+
+  /**
+   * 특정 idempotencyKey를 가진 도구가 이미 실행되었는지 확인한다.
+   */
+  public static isToolExecuted(idempotencyKey?: string): boolean {
+    if (!idempotencyKey) return false;
+    return ToolApprovalPolicy.executedToolKeys.has(idempotencyKey);
+  }
+
+  /**
+   * 특정 idempotencyKey를 가진 도구가 실행되었음을 기록한다.
+   */
+  public static markToolExecuted(idempotencyKey?: string): void {
+    if (!idempotencyKey) return;
+    ToolApprovalPolicy.executedToolKeys.add(idempotencyKey);
+  }
+
+  /**
+   * 복원된 승인 요청 및 실행 키를 정책 런타임에 복원한다.
+   */
+  public static restoreApprovals(approvals: ApprovalRequest[], executedKeys?: string[]): void {
+    for (const req of approvals) {
+      if (req && req.approvalId) {
+        ToolApprovalPolicy.approvals.set(req.approvalId, req);
+        if (req.idempotencyKey && req.status !== 'PENDING') {
+          ToolApprovalPolicy.processedIdempotencyKeys.add(req.idempotencyKey);
+        }
+      }
+    }
+    if (executedKeys && Array.isArray(executedKeys)) {
+      for (const key of executedKeys) {
+        ToolApprovalPolicy.executedToolKeys.add(key);
+      }
+    }
+  }
+
   /**
    * (테스트용) 저장소 초기화
    */
   public static clear(): void {
     ToolApprovalPolicy.approvals.clear();
     ToolApprovalPolicy.processedIdempotencyKeys.clear();
+    ToolApprovalPolicy.executedToolKeys.clear();
     ToolApprovalPolicy.testRiskClassifier = undefined;
   }
 }

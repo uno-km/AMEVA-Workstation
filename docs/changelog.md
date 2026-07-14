@@ -1,5 +1,24 @@
 # AMEVA OS Changelog
 
+## 2026-07-14 (Phase 4.2 — Execution Trace Tool Lifecycle 마감, Secret Redaction 고도화, 런타임 복원 시 INTERRUPTED 미결 Span 마감, UI ViewModel 가시성 제어 및 전체 회귀 100% 통과 완수)
+
+### 🚀 Phase 4.2 Execution Trace Lifecycle 및 보안/복원 아키텍처 완성
+- **Tool Lifecycle 및 단일 Terminal Event 보장 (`ExecutionTraceManager.ts`)**:
+  - 도구 실행 프로세스(`tool_selected -> approval_check -> tool_approval_granted/requested -> tool_execution_started -> terminal event`)를 완벽히 연계.
+  - 모든 도구 실행 Span(`spanId`)에 대해 `tool_execution_completed`, `failed`, `timed_out`, `cancelled` 중 단 1개의 Terminal Event만 기록되도록 `isTerminalEventRecorded` 중복 차단 방어막 구축.
+- **Secret Redactor 민감 데이터 완벽 마스킹 및 불변 복사 (`SecretRedactor.ts`)**:
+  - 도구 인자(`arguments`)나 이벤트 객체의 원본 데이터를 절대 훼손하지 않고 불변 사본(`copy`)을 생성하여 Redaction 적용.
+  - 객체 경로 탐지(`SENSITIVE_KEY_PATTERN`) 및 문자열 탐지(`CONNECTION_STRING_REGEX`, `BEARER_TOKEN_REGEX` 등)를 고도화하여 `connectionString`, `apiKey`, `Authorization` 헤더, `dbUrl`의 민감 정보를 완벽 마스킹 처리.
+- **Trace Store 런타임 복원(`restore`) 및 미결 Span INTERRUPTED 자동 정리 (`ExecutionTraceStore.ts`)**:
+  - `ExecutionTraceStore.restore(missionId, preloadedEvents?)` 호출 시, 종료되지 않고 `RUNNING`/`STARTED` 상태로 남아있는 도구 Span을 자동 탐지하여 `INTERRUPTED`(`tool_execution_failed`) 터미널 이벤트로 마감(`{ success: true, interruptedSpans }` 리턴 구조화).
+  - 복원 이후에도 Sequence Number 단조 증가(`nextSequenceNumber`)가 보장되며, `ToolApprovalPolicy` 및 실행 멱등성(`idempotencyKey`) 상태를 완벽 복원하고 `runtime_restored` 감사 이벤트를 발행.
+- **UI 렌더링을 위한 ExecutionTraceViewModel 가시성 필터 및 완료 조작 방지 (`ExecutionTraceViewModel.ts`)**:
+  - `filterByVisibility`를 통해 `INTERNAL` 원시 CoT(Chain-of-Thought) 토큰이 UI에 절대 노출되지 않도록 차단.
+  - `getArtifactCards`에서 `status === 'COMMITTED' && commitStatus === 'COMMITTED'`인 경우에만 `isFinalCommitted: true`로 마킹하여 미완료/임시 파일을 완료로 표시하는 Fake Completion UI 차단.
+- **전체 회귀 테스트(`packages/core`) 100% 완수**:
+  - 38개 Test Files, 202개 Tests 전량 통과 (Exit Code 0).
+  - Phase 1(9개 파일), Phase 2(6개 파일), Phase 3(14개 파일), Phase 4(9개 파일, 총 40개 테스트) 무기한 회귀 안전성 검증 완료.
+
 ## 2026-07-13 (3대 분류 11대 업무 실증 미션 실시간 연동 테스트 및 고도화 백로그 수립, 재부팅 안전 지연 수행 보장, TypeScript 컴파일 에러 해결, 메인 UI 딥리즈닝 똑딱이 토글 및 console.error 런타임 크래시 방어, 데스크톱 마켓플레이스 서버 경로 탐색 결함 해결, VFS 실시간 동기화 브릿지 crash 방어, 태스크 실행기 내 미션 목표(Goal) 유실 수정)
 
 ### 🚀 실시간 연동 테스트 및 검증 분석 (3대 지시성 분류 기준)

@@ -66,7 +66,14 @@ AMEVA OS is a serverless local AI & WASM hybrid operating system that executes c
 - **`useAppEditorSync.ts`**: Manages editor change listeners, heading markdown auto-formatting, URL link preview conversion, and auto-snapshot timers.
 - **`useAppModeSwitch.ts`**: Manages transitions between editor modes (`edit`, `preview`, `raw`), welcome screen bootstrap, and document rollback.
 
-### 2.9 CSS Design System & Architecture
+### 2.9 Task Runtime & Execution Trace Layer (Phase 4)
+- **`ExecutionTraceManager.ts`**: Central Gateway recording `mission_*`, `task_*`, `tool_*`, and `artifact_*` events. Enforces exact 1 terminal event per tool execution span via idempotency check (`isTerminalEventRecorded`).
+- **`ExecutionTraceStore.ts`**: In-memory and persistent trace storage (`__trace_store__`). Implements `restore(missionId)` to automatically reconcile open (`RUNNING`/`STARTED`) spans into `INTERRUPTED` (`tool_execution_failed`) events upon runtime restart or recovery.
+- **`SecretRedactor.ts`**: Implements immutable data copying (`redactArguments`, `redactEvent`) while masking passwords, API keys, Bearer tokens, and connection strings (`SENSITIVE_KEY_PATTERN`, `CONNECTION_STRING_REGEX`).
+- **`ExecutionTraceViewModel.ts`**: UI Presentation Adapter applying visibility filtering (`filterByVisibility` blocking `INTERNAL` raw CoT) and preventing fake completion UI by marking uncommitted artifacts with `isFinalCommitted: false`.
+- **`ToolApprovalPolicy.ts`**: Manages high-risk tool execution approvals, idempotency resolution (`idemp-appr-*`), and execution state restoration.
+
+### 2.10 CSS Design System & Architecture
 - **`src/renderer/styles/main.css`**: Central CSS entrypoint aggregating design tokens, base styles, layout grids, editor overrides, and modular component styles.
 - **`variables.css`**: Defines global HSL/RGB design tokens, themes (`dark`, `light`, `white`), and z-index layers.
 - **`base.css`**: Global resets, typography rules, scrollbars, and utility animations.

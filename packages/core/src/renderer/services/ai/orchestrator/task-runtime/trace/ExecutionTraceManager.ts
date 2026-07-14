@@ -288,6 +288,75 @@ export class ExecutionTraceManager {
   }
 
   /**
+   * Tool 승인 허가 이벤트 기록
+   */
+  public recordApprovalGranted(
+    missionId: string,
+    taskId: string,
+    attemptId: string,
+    toolCallId: string,
+    toolName: string,
+    approval: any
+  ): TraceEvent {
+    const seq = this.store.nextSequenceNumber(missionId);
+    const ev: TraceEvent = {
+      eventId: `${missionId}_${seq}_appr_grant_${toolCallId}`,
+      traceId: missionId,
+      spanId: toolCallId,
+      parentSpanId: `span-t-${taskId}-${attemptId}`,
+      missionId,
+      taskId,
+      attemptId,
+      timestamp: Date.now(),
+      eventType: 'tool_approval_granted',
+      status: 'APPROVED',
+      title: `Approval Granted: ${toolName}`,
+      summary: `User approved execution of tool '${toolName}'.`,
+      sequenceNumber: seq,
+      visibility: 'USER',
+      schemaVersion: '4.0.0',
+      approval
+    };
+    this.store.appendEvent(ev);
+    return ev;
+  }
+
+  /**
+   * Tool 승인 거절 이벤트 기록
+   */
+  public recordApprovalRejected(
+    missionId: string,
+    taskId: string,
+    attemptId: string,
+    toolCallId: string,
+    toolName: string,
+    approval: any,
+    reason?: string
+  ): TraceEvent {
+    const seq = this.store.nextSequenceNumber(missionId);
+    const ev: TraceEvent = {
+      eventId: `${missionId}_${seq}_appr_rej_${toolCallId}`,
+      traceId: missionId,
+      spanId: toolCallId,
+      parentSpanId: `span-t-${taskId}-${attemptId}`,
+      missionId,
+      taskId,
+      attemptId,
+      timestamp: Date.now(),
+      eventType: 'tool_approval_rejected',
+      status: 'REJECTED',
+      title: `Approval Rejected: ${toolName}`,
+      summary: reason || `User rejected execution of tool '${toolName}'.`,
+      sequenceNumber: seq,
+      visibility: 'USER',
+      schemaVersion: '4.0.0',
+      approval
+    };
+    this.store.appendEvent(ev);
+    return ev;
+  }
+
+  /**
    * Tool 실행 시작 이벤트 기록
    */
   public recordToolExecutionStarted(
@@ -334,8 +403,17 @@ export class ExecutionTraceManager {
     summary: string,
     opts?: { exitCode?: number; stdoutSummary?: string; stderrSummary?: string; errorCode?: string; affectedPaths?: string[] }
   ): TraceEvent {
+    if (this.store.isTerminalEventRecorded(toolTrace.toolCallId)) {
+      console.warn(`[ExecutionTraceManager] Terminal event already recorded for span ${toolTrace.toolCallId}. Skipping duplicate terminal event.`);
+      const existing = this.store.getSpan(toolTrace.toolCallId);
+      return existing || {} as any;
+    }
+
     const seq = this.store.nextSequenceNumber(missionId);
     const now = Date.now();
+    if (!toolTrace.startedAt) {
+      toolTrace.startedAt = now;
+    }
     toolTrace.resultStatus = status;
     toolTrace.completedAt = now;
     toolTrace.durationMs = now - toolTrace.startedAt;
@@ -349,6 +427,7 @@ export class ExecutionTraceManager {
     let eventType: TraceEventType = 'tool_execution_completed';
     if (status === 'FAILED') eventType = 'tool_execution_failed';
     if (status === 'TIMED_OUT') eventType = 'tool_execution_timed_out';
+    if (status === 'CANCELLED') eventType = 'tool_execution_failed';
 
     const ev: TraceEvent = {
       eventId: `${missionId}_${seq}_term_${toolTrace.toolCallId}`,

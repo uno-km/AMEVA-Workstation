@@ -20,6 +20,7 @@
 import type { TraceEvent, TraceEventType } from './ExecutionTraceTypes';
 import { SecretRedactor } from './SecretRedactor';
 import type { IRuntimePersistenceAdapter } from '../persistence/RuntimePersistenceAdapter';
+import { ToolApprovalPolicy } from '../policy/ToolApprovalPolicy';
 
 /**
  * [도메인 종속 지역 상수]
@@ -205,6 +206,31 @@ export class ExecutionTraceStore {
   }
 
   /**
+   * 특정 Span ID에 대해 이미 Terminal Event(완료/실패/타임아웃/취소)가 기록되었는지 확인한다.
+   */
+  public isTerminalEventRecorded(spanId: string): boolean {
+    for (const list of this.traces.values()) {
+      for (const ev of list) {
+        if (ev.spanId === spanId) {
+          if (
+            ev.eventType === 'tool_execution_completed' ||
+            ev.eventType === 'tool_execution_failed' ||
+            ev.eventType === 'tool_execution_timed_out' ||
+            (ev.eventType === 'tool_execution_cancelled' as any) ||
+            ev.status === 'CANCELLED' ||
+            ev.status === 'TIMED_OUT' ||
+            ev.status === 'SUCCEEDED' ||
+            ev.status === 'FAILED'
+          ) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * 지정한 Sequence Number 이후의 이벤트를 반환한다.
    */
   public getEventsAfter(sequenceNumber: number, missionId?: string): ReadonlyArray<TraceEvent> {
@@ -271,23 +297,87 @@ export class ExecutionTraceStore {
     // Markdown Summary 형식
     let md = `# Execution Trace Summary (Mission: ${missionId})\n\n`;
     md += `- **Exported At**: ${new Date().toISOString()}\n`;
+    md += `- **Schema Version**: 4.0.0\n`;
     md += `- **Total Events**: ${sanitizedList.length}\n\n`;
-    md += `## Timeline\n\n`;
 
-    for (const ev of sanitizedList) {
-      if (ev.visibility === 'INTERNAL') continue; // INTERNAL은 Markdown 요약에서 생략
-      md += `### [Seq ${ev.sequenceNumber}] ${ev.eventType} - ${ev.title ?? ev.status ?? 'Event'}\n`;
-      md += `- **Timestamp**: ${new Date(ev.timestamp).toISOString()}\n`;
-      if (ev.taskId) md += `- **Task**: ${ev.taskId}\n`;
-      if (ev.summary) md += `- **Summary**: ${ev.summary}\n`;
-      if (ev.toolExecution) {
-        md += `- **Tool**: \`${ev.toolExecution.toolName}\` (${ev.toolExecution.resultStatus})\n`;
-        md += `- **Reason**: ${ev.toolExecution.selectionReason}\n`;
-      }
-      if (ev.verification) {
-        md += `- **Verification (${ev.verification.stage})**: Verdict = **${ev.verification.verdict}** (Defects: ${ev.verification.defectCount})\n`;
-      }
+    md += `## 1. Mission Summary\n`;
+    const missionEvents = sanitizedList.filter(e => e.eventType.startsWith('mission_') && e.visibility !== 'INTERNAL');
+    if (missionEvents.length === 0) md += `*(No mission status events)*\n\n`;
+    for (const ev of missionEvents) {
+      md += `- [Seq ${ev.sequenceNumber}] **${ev.eventType}** (${new Date(ev.timestamp).toISOString()}): ${ev.summary ?? ev.title ?? ''}\n`;
+    }
+    md += `\n## 2. Task Timeline\n`;
+    const taskEvents = sanitizedList.filter(e => e.eventType.startsWith('task_') && e.visibility !== 'INTERNAL');
+    if (taskEvents.length === 0) md += `*(No task timeline events)*\n\n`;
+    for (const ev of taskEvents) {
+      md += `- [Seq ${ev.sequenceNumber}] **Task ${ev.taskId || 'unknown'} (${ev.eventType})**: ${ev.summary ?? ev.title ?? ''}\n`;
+    }
+    md += `\n## 3. Decision Summary\n`;
+    const decEvents = sanitizedList.filter(e => e.decision && e.visibility !== 'INTERNAL');
+    if (decEvents.length === 0) md += `*(No decision summaries)*\n\n`;
+    for (const ev of decEvents) {
+      const d = ev.decision!;
+      md += `### [Seq ${ev.sequenceNumber}] Selected: \`${d.selectedTool}\` (${d.riskLevel})\n`;
+      md += `- **Objective**: ${d.objective}\n`;
+      md += `- **Selection Reason**: ${d.selectionReason}\n`;
+      md += `- **Expected Outcome**: ${d.expectedOutcome}\n\n`;
+    }
+    md += `## 4. Tool Calls\n`;
+    const toolEvents = sanitizedList.filter(e => e.toolExecution && e.visibility !== 'INTERNAL');
+    if (toolEvents.length === 0) md += `*(No tool calls)*\n\n`;
+    for (const ev of toolEvents) {
+      const t = ev.toolExecution!;
+      md += `### [Seq ${ev.sequenceNumber}] \`${t.toolName}\` - ${t.resultStatus}\n`;
+      md += `- **CallId**: \`${t.toolCallId}\`\n`;
+      md += `- **Risk**: ${t.riskLevel}\n`;
+      if (t.durationMs !== undefined) md += `- **Duration**: ${t.durationMs}ms\n`;
+      if (t.exitCode !== undefined) md += `- **ExitCode**: ${t.exitCode}\n`;
+      if (t.resultSummary) md += `- **Summary**: ${t.resultSummary}\n`;
       md += `\n`;
+    }
+    md += `## 5. Approval History\n`;
+    const apprEvents = sanitizedList.filter(e => e.approval && e.visibility !== 'INTERNAL');
+    if (apprEvents.length === 0) md += `*(No approval history)*\n\n`;
+    for (const ev of apprEvents) {
+      const a = ev.approval!;
+      md += `- [Seq ${ev.sequenceNumber}] **\`${a.toolName}\` (${a.riskLevel})**: Status = **${a.status}** (Reason: ${a.reason})\n`;
+    }
+    md += `\n## 6. Observations\n`;
+    const obsEvents = sanitizedList.filter(e => e.observation && e.visibility !== 'INTERNAL');
+    if (obsEvents.length === 0) md += `*(No tool observations)*\n\n`;
+    for (const ev of obsEvents) {
+      const o = ev.observation!;
+      md += `- [Seq ${ev.sequenceNumber}] **\`${o.toolName || 'unknown'}\` (${o.status})**: ${o.summary || ''}\n`;
+    }
+    md += `\n## 7. Artifact Revisions\n`;
+    const artEvents = sanitizedList.filter(e => e.artifactChanges && e.visibility !== 'INTERNAL');
+    if (artEvents.length === 0) md += `*(No artifact revisions)*\n\n`;
+    for (const ev of artEvents) {
+      for (const c of ev.artifactChanges || []) {
+        md += `- [Seq ${ev.sequenceNumber}] **Artifact \`${c.artifactId}\` (${c.status})**: Rev ${c.previousRevision ?? 0} -> ${c.newRevision ?? 1}\n`;
+      }
+    }
+    md += `\n## 8. Verification Results\n`;
+    const verEvents = sanitizedList.filter(e => e.verification && e.visibility !== 'INTERNAL');
+    if (verEvents.length === 0) md += `*(No verification results)*\n\n`;
+    for (const ev of verEvents) {
+      const v = ev.verification!;
+      md += `- [Seq ${ev.sequenceNumber}] **Stage \`${v.stage}\`**: Verdict = **${v.verdict}** (Defects: ${v.defectCount})\n`;
+    }
+    md += `\n## 9. Retry History\n`;
+    const retryEvents = sanitizedList.filter(e => e.retry && e.visibility !== 'INTERNAL');
+    if (retryEvents.length === 0) md += `*(No retry history)*\n\n`;
+    for (const ev of retryEvents) {
+      const r = ev.retry!;
+      md += `- [Seq ${ev.sequenceNumber}] **Retry #${r.retryNumber} (${r.retryReason})**: Strategy = \`${r.strategyId}\` (Next: ${r.nextAction})\n`;
+    }
+    md += `\n## 10. Final Outcome\n`;
+    const finalEvents = sanitizedList.filter(e => (e.eventType === 'mission_completed' || e.eventType === 'mission_failed') && e.visibility !== 'INTERNAL');
+    if (finalEvents.length > 0) {
+      const f = finalEvents[finalEvents.length - 1];
+      md += `- **Outcome**: **${f.eventType === 'mission_completed' ? 'SUCCEEDED' : 'FAILED'}** (${f.summary ?? f.title ?? ''})\n`;
+    } else {
+      md += `- **Outcome**: In Progress / Not Completed Yet\n`;
     }
 
     return md;
@@ -316,15 +406,37 @@ export class ExecutionTraceStore {
    * 열려 있는 Tool Span(RUNNING/STARTED 상태로 종료 이벤트가 없는 Span)은 INTERRUPTED로 정리하여
    * 터미널 이벤트 없이 열린 Span이 남지 않게 한다.
    */
-  public async restore(missionId: string): Promise<boolean> {
-    if (!this.persistence) return false;
+  /**
+   * 영속화 저장소 또는 인메모리 이벤트로부터 Mission Trace를 복원한다.
+   * 열려 있는 Tool Span(RUNNING/STARTED 상태로 종료 이벤트가 없는 Span)은 INTERRUPTED로 정리하여
+   * 터미널 이벤트 없이 열린 Span이 남지 않게 한다.
+   */
+  public async restore(missionId: string, preloadedEvents?: TraceEvent[]): Promise<{ success: boolean; interruptedSpans: string[] }> {
+    const interruptedSpans: string[] = [];
 
     try {
-      const data: any = await this.persistence.loadCheckpointData(missionId, '__trace_store__');
-      if (!data || !Array.isArray(data.events)) return false;
+      let events: TraceEvent[] | undefined = preloadedEvents;
 
-      const events: TraceEvent[] = data.events;
+      if (!events && this.persistence) {
+        const data: any = await this.persistence.loadCheckpointData(missionId, '__trace_store__');
+        if (data && Array.isArray(data.events)) {
+          events = data.events;
+          if (typeof data.sequenceNumber === 'number') {
+            this.nextSeqByMission.set(missionId, data.sequenceNumber);
+          }
+        }
+      }
+
+      if (!events && this.traces.has(missionId)) {
+        events = [...(this.traces.get(missionId) ?? [])];
+      }
+
+      if (!events || !Array.isArray(events)) {
+        return { success: false, interruptedSpans: [] };
+      }
+
       this.traces.set(missionId, events);
+      this.spanState.clear();
       for (const ev of events) {
         this.eventIds.add(ev.eventId);
         if (ev.spanId) {
@@ -339,7 +451,7 @@ export class ExecutionTraceStore {
         }
       }
 
-      const seq = typeof data.sequenceNumber === 'number' ? data.sequenceNumber : events.reduce((max, e) => Math.max(max, e.sequenceNumber || 0), 0);
+      const seq = this.nextSeqByMission.get(missionId) ?? events.reduce((max, e) => Math.max(max, e.sequenceNumber || 0), 0);
       this.nextSeqByMission.set(missionId, seq);
 
       /*
@@ -349,6 +461,7 @@ export class ExecutionTraceStore {
       const now = Date.now();
       for (const [spanId, state] of this.spanState.entries()) {
         if (state.eventType === 'tool_execution_started' || state.eventType === 'tool_execution_progress') {
+          interruptedSpans.push(spanId);
           const seqNum = this.nextSequenceNumber(missionId);
           const interruptedEvent: TraceEvent = {
             eventId: `${missionId}_${seqNum}_interrupted`,
@@ -400,6 +513,23 @@ export class ExecutionTraceStore {
         }
       }
 
+      // 승인 상태 및 실행 키 복원
+      const restoredApprovals: any[] = [];
+      const restoredExecutedKeys: string[] = [];
+      for (const ev of events) {
+        if (ev.approval) {
+          restoredApprovals.push(ev.approval);
+          if (ev.approval.idempotencyKey && ev.approval.status !== 'PENDING') {
+            restoredExecutedKeys.push(ev.approval.idempotencyKey);
+          }
+        }
+        if (ev.toolExecution && (ev.toolExecution.resultStatus === 'SUCCEEDED' || ev.toolExecution.completedAt)) {
+          const idempKey = `idemp-appr-${ev.traceId || missionId}-${ev.toolExecution.toolCallId}`;
+          restoredExecutedKeys.push(idempKey);
+        }
+      }
+      ToolApprovalPolicy.restoreApprovals(restoredApprovals, restoredExecutedKeys);
+
       // 복원 완료 이벤트 기록
       const restoreSeq = this.nextSequenceNumber(missionId);
       const restoreEv: TraceEvent = {
@@ -419,10 +549,10 @@ export class ExecutionTraceStore {
       this.traces.get(missionId)?.push(restoreEv);
       this.eventIds.add(restoreEv.eventId);
 
-      return true;
+      return { success: true, interruptedSpans };
     } catch (err) {
       console.error(`[ExecutionTraceStore] Trace 복원 실패 (${missionId}):`, err);
-      return false;
+      return { success: false, interruptedSpans: [] };
     }
   }
 

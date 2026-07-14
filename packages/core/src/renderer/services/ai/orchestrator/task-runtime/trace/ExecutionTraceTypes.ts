@@ -305,6 +305,7 @@ export interface TraceEvent {
   verification?: VerificationTrace;
   retry?: RetryTrace;
   approval?: ApprovalRequest;
+  observation?: Record<string, any>;
   nextAction?: { actionType: string; description: string; targetId?: string };
   error?: { errorCode: string; message: string; stack?: string; defectSignature?: string };
   health?: { type: TraceHealthType; state: TraceHealthState; message?: string };

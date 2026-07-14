@@ -27,6 +27,9 @@ const AUTH_HEADER_REGEX = /(Authorization|X-API-Key|Proxy-Authorization)\s*:\s*(
 const ENV_SECRET_REGEX = /\b(API_KEY|SECRET|PASSWORD|TOKEN|ACCESS_KEY|PRIVATE_KEY)\s*=\s*['"]?([^\r\n'"\s]+)['"]?/gi;
 const LONG_BASE64_REGEX = /\b(?![A-Za-z0-9+/]{0,59}$)[A-Za-z0-9+/]{60,}={0,2}\b/g;
 
+const CONNECTION_STRING_REGEX = /(postgres|postgresql|mysql|mongodb|redis|sqlite|mssql|amqp|sftp):\/\/[^\s"'`<>]+/gi;
+const PASSWORD_KEY_REGEX = /\b(password|passwd|pwd|secret|api[-_]?key|access[-_]?token)\s*[:=]\s*['"]?([^\s"'`<>]+)['"]?/gi;
+
 export class SecretRedactor {
   /**
    * Tool 또는 Command의 인자 객체를 검사하여 민감 정보를 Redaction한 복사본을 반환한다.
@@ -125,6 +128,8 @@ export class SecretRedactor {
       result = result.replace(BEARER_TOKEN_REGEX, 'Bearer [REDACTED_TOKEN]');
       result = result.replace(COOKIE_HEADER_REGEX, '$1: [REDACTED_COOKIE]');
       result = result.replace(ENV_SECRET_REGEX, (match, key) => `${key}=[REDACTED_SECRET]`);
+      result = result.replace(CONNECTION_STRING_REGEX, '$1://[REDACTED_CONNECTION_STRING]');
+      result = result.replace(PASSWORD_KEY_REGEX, (match, key) => `${key}=[REDACTED_SECRET]`);
 
       if (LONG_BASE64_REGEX.test(result)) {
         result = result.replace(LONG_BASE64_REGEX, (match) => {
@@ -194,6 +199,16 @@ export class SecretRedactor {
         if (copy.observation.output) copy.observation.output = SecretRedactor.redactText(copy.observation.output);
         if (copy.observation.stdoutPreview) copy.observation.stdoutPreview = SecretRedactor.redactText(copy.observation.stdoutPreview);
         if (copy.observation.stderrPreview) copy.observation.stderrPreview = SecretRedactor.redactText(copy.observation.stderrPreview);
+      }
+
+      if (copy.error) {
+        if (copy.error.message) copy.error.message = SecretRedactor.redactText(copy.error.message);
+        if (copy.error.stack) copy.error.stack = SecretRedactor.redactText(copy.error.stack);
+      }
+
+      if (copy.metadata) {
+        const { redactedArguments } = SecretRedactor.redactArguments(copy.metadata);
+        copy.metadata = redactedArguments;
       }
 
       if (copy.summary) {
