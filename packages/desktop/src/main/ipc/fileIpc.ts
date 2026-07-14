@@ -721,37 +721,97 @@ export function registerFileIpc(
     try {
       let outputBuffer: Buffer | string
 
-      // Mermaid 다이어그램 이미지 렌더링 치환 로직
-      const processBlocksForMermaid = async (blocks: any[]) => {
+      // 특수 블록 내보내기 전처리 로직 (Mermaid 렌더링 및 ameva-* 가상 블록 복원)
+      const preprocessBlocksForExport = async (blocks: any[]) => {
         for (const block of blocks) {
-          if (block.type === 'codeBlock' && block.props?.language === 'mermaid') {
-            try {
-              let code = ''
-              if (Array.isArray(block.content)) {
-                code = block.content.map((c: any) => c.text || '').join('')
-              } else if (typeof block.content === 'string') {
-                code = block.content
-              }
-              if (code.trim()) {
-                const buffer = await renderMermaidToBuffer(code.trim())
-                block.type = 'image'
-                block.props = {
-                  url: `data:image/png;base64,${buffer.toString('base64')}`,
-                  caption: 'Mermaid Diagram'
+          if (block.type === 'codeBlock') {
+            const lang = block.props?.language;
+            if (lang === 'mermaid') {
+              try {
+                let code = ''
+                if (Array.isArray(block.content)) {
+                  code = block.content.map((c: any) => c.text || '').join('')
+                } else if (typeof block.content === 'string') {
+                  code = block.content
                 }
-                block.content = [] 
+                if (code.trim()) {
+                  const buffer = await renderMermaidToBuffer(code.trim())
+                  block.type = 'image'
+                  block.props = {
+                    url: `data:image/png;base64,${buffer.toString('base64')}`,
+                    caption: 'Mermaid Diagram'
+                  }
+                  block.content = [] 
+                }
+              } catch (err) {
+                console.error('[export:convert] Failed to render mermaid', err)
               }
-            } catch (err) {
-              console.error('[export:convert] Failed to render mermaid', err)
+            } else if (lang === 'ameva-map') {
+              if (payload.format === 'html') {
+                // htmlExporter에서 가상 코드블록을 자체 파싱하므로 유지
+              } else if (payload.format === 'xml') {
+                block.type = 'map';
+                try { block.props = JSON.parse(Array.isArray(block.content) ? block.content.map((c: any) => c.text || '').join('') : block.content); } catch(e) {}
+                block.content = [];
+              } else {
+                try {
+                  const data = JSON.parse(Array.isArray(block.content) ? block.content.map((c: any) => c.text || '').join('') : block.content);
+                  block.type = 'paragraph';
+                  block.props = {};
+                  block.content = [{ type: 'text', text: `[📍 지도: ${data.locationName || '위치 지정됨'} (위도: ${data.lat}, 경도: ${data.lng})]` }];
+                } catch(e) {}
+              }
+            } else if (lang === 'ameva-youtube') {
+              if (payload.format === 'html') {
+                // 유지
+              } else if (payload.format === 'xml') {
+                block.type = 'youtube';
+                try { block.props = JSON.parse(Array.isArray(block.content) ? block.content.map((c: any) => c.text || '').join('') : block.content); } catch(e) {}
+                block.content = [];
+              } else {
+                try {
+                  const data = JSON.parse(Array.isArray(block.content) ? block.content.map((c: any) => c.text || '').join('') : block.content);
+                  block.type = 'paragraph';
+                  block.props = {};
+                  block.content = [{ type: 'text', text: `[📺 YouTube 영상: ${data.title} - ${data.url}]` }];
+                } catch(e) {}
+              }
+            } else if (lang === 'ameva-link') {
+              if (payload.format === 'html') {
+                // 유지
+              } else if (payload.format === 'xml') {
+                block.type = 'linkPreview';
+                try { block.props = JSON.parse(Array.isArray(block.content) ? block.content.map((c: any) => c.text || '').join('') : block.content); } catch(e) {}
+                block.content = [];
+              } else {
+                try {
+                  const data = JSON.parse(Array.isArray(block.content) ? block.content.map((c: any) => c.text || '').join('') : block.content);
+                  block.type = 'paragraph';
+                  block.props = {};
+                  block.content = [{ type: 'text', text: `[🔗 링크: ${data.title} - ${data.url}]` }];
+                } catch(e) {}
+              }
+            } else if (lang === 'ameva-presentation') {
+              if (payload.format === 'html') {
+                // 유지
+              } else if (payload.format === 'xml') {
+                block.type = 'presentation';
+                try { block.props = JSON.parse(Array.isArray(block.content) ? block.content.map((c: any) => c.text || '').join('') : block.content); } catch(e) {}
+                block.content = [];
+              } else {
+                block.type = 'paragraph';
+                block.props = {};
+                block.content = [{ type: 'text', text: `[📊 프레젠테이션 자료 첨부됨]` }];
+              }
             }
           }
           if (block.children && Array.isArray(block.children)) {
-            await processBlocksForMermaid(block.children)
+            await preprocessBlocksForExport(block.children)
           }
         }
       }
       
-      await processBlocksForMermaid(payload.blocks)
+      await preprocessBlocksForExport(payload.blocks)
 
       /*
        * [SWITCH ROUTING CASE]
