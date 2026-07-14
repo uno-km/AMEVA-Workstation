@@ -227,13 +227,8 @@ function LinkPreviewComponent({ block }: { block: any }) {
           backgroundColor: '#ffffff',
           position: 'relative'
         }}>
-          <iframe
+          <webview
             src={url}
-            /*
-             * [FIX-LINK-SANDBOX-001] allow-scripts 및 allow-same-origin 설정으로 샌드박스 렌더링.
-             * - X-Frame-Options 차단 극복을 위해 Electron 메인 프록시가 작동하고 있지만, 보안 방벽 유지를 위해 sandboxed iframe을 탑재합니다.
-             */
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
             style={{ width: '100%', height: '100%', border: 'none' }}
             title={`Preview: ${title}`}
           />

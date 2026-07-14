@@ -152,7 +152,7 @@ export const MapBlockSpec = createReactBlockSpec(
             backgroundColor: '#000',
             overflow: 'hidden'
           }}>
-            <iframe
+            <webview
               src={(() => {
                 const latNum = parseFloat(lat)
                 const lngNum = parseFloat(lng)
@@ -176,9 +176,6 @@ export const MapBlockSpec = createReactBlockSpec(
                   return `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${latNum},${lngNum}`;
                 }
               })()}
-              width="100%"
-              height="100%"
-              frameBorder="0"
               style={{
                 position: 'absolute',
                 top: '-50px',
@@ -188,8 +185,6 @@ export const MapBlockSpec = createReactBlockSpec(
                 border: 0,
                 filter: 'invert(0.9) hue-rotate(180deg)'
               }}
-              allowFullScreen
-              loading="lazy"
               title={`지도: ${locationName}`}
             />
           </div>
