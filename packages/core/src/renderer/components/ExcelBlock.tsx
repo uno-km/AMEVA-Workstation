@@ -42,13 +42,27 @@ const ExcelBlockSpec = createReactBlockSpec(
       try {
         const parsed = JSON.parse(props.block.props.data)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          sheetData = parsed
+          sheetData = parsed.map(sheet => ({
+            ...sheet,
+            row: sheet.row || 36,
+            column: sheet.column || 18,
+            defaultRowHeight: sheet.defaultRowHeight || 19,
+            defaultColWidth: sheet.defaultColWidth || 73
+          }))
         }
       } catch (e) {}
 
       if (sheetData.length === 0) {
         // Fallback default sheet data
-        sheetData = [{ name: 'Sheet1', celldata: [], status: 1 }]
+        sheetData = [{ 
+          name: 'Sheet1', 
+          celldata: [], 
+          status: 1,
+          row: 36,
+          column: 18,
+          defaultRowHeight: 19,
+          defaultColWidth: 73
+        }]
       }
 
       const handleSave = () => {
@@ -189,6 +203,14 @@ const ExcelBlockSpec = createReactBlockSpec(
               </div>
             </div>
           )}
+        </div>
+      )
+    },
+    toExternalHTML: ({ block }) => {
+      // 마크다운 원문보기(HTML 추출) 시 빈 태그가 아닌 안내 문구 렌더링
+      return (
+        <div data-content-type="excel">
+          <p>[AMEVA Excel Spreadsheet Data: {block.props.data.length} bytes]</p>
         </div>
       )
     }
