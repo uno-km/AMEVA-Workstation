@@ -45,6 +45,13 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
     code { font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #7c3aed; }
     pre code { background: transparent; padding: 0; color: #a3e635; font-size: 13px; white-space: pre; line-height: 1.65; }
     .lang-badge { font-family: 'Fira Code', monospace; font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 10px; }
+    .code-container { position: relative; margin: 1.2rem 0; }
+    .code-container pre { margin: 0; }
+    .run-btn { position: absolute; top: 16px; right: 20px; background: #8b5cf6; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .run-btn:hover { background: #7c3aed; }
+    .output-pane { background: #1e293b; border-radius: 0 0 10px 10px; padding: 16px 24px; font-family: 'Fira Code', monospace; font-size: 13px; color: #f8fafc; display: none; margin-top: -10px; border: 1px solid #0f172a; border-top: 1px solid #334155; }
+    .output-pane.show { display: block; }
+    .output-header { font-size: 11px; color: #94a3b8; margin-bottom: 8px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
     table { border-collapse: collapse; width: 100%; margin: 1.2rem 0; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; }
     th { background: #f8fafc; font-weight: 700; padding: 11px 16px; text-align: left; font-size: 13px; border-bottom: 2px solid #e5e7eb; }
     td { padding: 10px 16px; font-size: 14px; border-bottom: 1px solid #f1f5f9; }
@@ -167,23 +174,14 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
      * - 예시: `case 'codeBlock': {` 만족 시 해당 포맷 바이너리 빌더 호출.
      */
       case 'codeBlock': {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `lang`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const lang = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         const lang = block.props?.language || ''
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `code`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const code = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         const code = escapeHtml(getPlainTextFromNormalized(block))
-        return `<pre><span class="lang-badge">${escapeHtml(lang)}</span><code class="language-${lang}">${code}</code></pre>\n`
+        const isJs = lang.toLowerCase() === 'js' || lang.toLowerCase() === 'javascript'
+        return `<div class="code-container">
+${isJs ? `  <button class="run-btn" onclick="window.runJsCode(this)">▶ 실행</button>` : ''}
+  <pre><span class="lang-badge">${escapeHtml(lang)}</span><code class="language-${lang}">${code}</code></pre>
+${isJs ? `  <div class="output-pane"><div class="output-header">실행 결과</div><div class="output-content"></div></div>` : ''}
+</div>\n`
       }
     /*
      * [CASE ROUTING DECISION BINDING]
@@ -396,6 +394,48 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
 <div class="doc-container">
 ${body}
 </div>
+<script>
+window.runJsCode = function(btn) {
+  const container = btn.closest('.code-container');
+  const codeEl = container.querySelector('code');
+  const outputPane = container.querySelector('.output-pane');
+  const outputContent = container.querySelector('.output-content');
+  const code = codeEl.innerText;
+  
+  outputPane.classList.add('show');
+  outputContent.innerHTML = '';
+  
+  const oldLog = console.log;
+  const oldError = console.error;
+  let logs = [];
+  
+  const formatArg = (a) => typeof a === 'object' ? JSON.stringify(a) : String(a);
+  
+  console.log = function(...args) {
+    logs.push(args.map(formatArg).join(' '));
+    oldLog.apply(console, args);
+  };
+  console.error = function(...args) {
+    logs.push('<span style="color: #ef4444;">' + args.map(formatArg).join(' ') + '</span>');
+    oldError.apply(console, args);
+  };
+  
+  try {
+    const fn = new Function(code);
+    const result = fn();
+    if (result !== undefined) {
+      logs.push('<span style="color: #a3e635;">' + String(result) + '</span>');
+    }
+  } catch (err) {
+    logs.push('<span style="color: #ef4444;">Error: ' + err.message + '</span>');
+  }
+  
+  console.log = oldLog;
+  console.error = oldError;
+  
+  outputContent.innerHTML = logs.join('<br/>') || '<span style="color: #9ca3af;">(출력 없음)</span>';
+}
+</script>
 </body>
 </html>`
 }
