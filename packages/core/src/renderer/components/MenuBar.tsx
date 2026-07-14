@@ -61,7 +61,8 @@ export function MenuBar({}: MenuBarProps = {}) {
     showAIPanel, toggleAIPanel,
     showFindReplace, toggleFindReplace,
     setIsSettingsOpen, setIsAboutOpen, setIsGuideOpen,
-    setShowMarketplaceModal, setShowPricingModal
+    setShowMarketplaceModal, setShowPricingModal,
+    dynamicMenus
   } = useUIStore()
 
   const filePath = useWorkspaceStore((state) => state.filePath)
@@ -585,6 +586,18 @@ export function MenuBar({}: MenuBarProps = {}) {
               </div>
             )}
           </div>
+
+          {/* 1.7 Dynamic Plugin Menus */}
+          {dynamicMenus.map((menu) => (
+            <div key={menu.id} style={{ position: 'relative' }}>
+              <button
+                style={{ ...menuStyle, color: 'var(--primary)' }}
+                onClick={() => triggerAction(menu.action)}
+              >
+                {menu.label}
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 

@@ -93,8 +93,15 @@ export interface UIState {
    * - togglePricingModal: 결제창 토글 액션.
    */
   showPricingModal: boolean
-  setShowPricingModal: (val: boolean) => void
+  setShowPricingModal: (open: boolean) => void
   togglePricingModal: () => void
+
+  /*
+   * [PLUGIN UI STATES]
+   * - isExcelModalOpen: 엑셀 플러그인 모달 표시 여부.
+   */
+  isExcelModalOpen: boolean
+  setIsExcelModalOpen: (open: boolean) => void
 
   isInstallPromptOpen: boolean
   setIsInstallPromptOpen: (val: boolean) => void
@@ -204,6 +211,14 @@ export interface UIState {
    */
   baseZIndex: number
   bringToFront: () => number
+
+  /*
+   * [DYNAMIC PLUGIN MENUS]
+   * - dynamicMenus: 플러그인이 동적으로 상단 메뉴바에 꽂는 메뉴 리스트.
+   */
+  dynamicMenus: { id: string; label: string; action: () => void }[]
+  addDynamicMenu: (menu: { id: string; label: string; action: () => void }) => void
+  removeDynamicMenu: (id: string) => void
 }
 
 /**
@@ -229,12 +244,15 @@ export const useUIStore = create<UIState>((set, get) => ({
   toggleDiff: () => set((state) => ({ isDiffOpen: !state.isDiffOpen })),
 
   showMarketplaceModal: false,
-  setShowMarketplaceModal: (val) => set({ showMarketplaceModal: val }),
+  setShowMarketplaceModal: (open) => set({ showMarketplaceModal: open }),
   toggleMarketplaceModal: () => set((state) => ({ showMarketplaceModal: !state.showMarketplaceModal })),
 
   showPricingModal: false,
-  setShowPricingModal: (val) => set({ showPricingModal: val }),
+  setShowPricingModal: (open) => set({ showPricingModal: open }),
   togglePricingModal: () => set((state) => ({ showPricingModal: !state.showPricingModal })),
+
+  isExcelModalOpen: false,
+  setIsExcelModalOpen: (open) => set({ isExcelModalOpen: open }),
 
   isInstallPromptOpen: false,
   setIsInstallPromptOpen: (val) => set({ isInstallPromptOpen: val }),
@@ -279,7 +297,7 @@ export const useUIStore = create<UIState>((set, get) => ({
   setIsQuitConfirmOpen: (val) => set({ isQuitConfirmOpen: val }),
 
   isRefreshConfirmOpen: false,
-  setIsRefreshConfirmOpen: (val) => set({ isRefreshConfirmOpen: val }),
+  setIsRefreshConfirmOpen: (open) => set({ isRefreshConfirmOpen: open }),
 
   /**
    * [CONTRACT - Right Panel Tab Toggle Action]
@@ -321,6 +339,15 @@ export const useUIStore = create<UIState>((set, get) => ({
       return { baseZIndex: newZ };
     })
     return newZ
-  }
+  },
+
+  dynamicMenus: [],
+  addDynamicMenu: (menu) => set((state) => {
+    if (state.dynamicMenus.some(m => m.id === menu.id)) return state;
+    return { dynamicMenus: [...state.dynamicMenus, menu] };
+  }),
+  removeDynamicMenu: (id) => set((state) => ({
+    dynamicMenus: state.dynamicMenus.filter(m => m.id !== id)
+  }))
 }))
 

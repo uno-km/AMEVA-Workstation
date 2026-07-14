@@ -263,6 +263,43 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
     subtext: '구글 지도 임베드 블록 삽입 (/map)',
   }
 
-  return [...filtered, ...codeItems, ...drawingItems, mapItem]
+  // 엑셀 시트 구독(활성화) 여부 확인
+  let isExcelSubscribed = installedPlugins.includes('excel-viewer')
+  try {
+    const storedSaaS = localStorage.getItem('enabled-plugins')
+    if (storedSaaS) {
+      const parsed = JSON.parse(storedSaaS)
+      if (parsed.excelViewer) isExcelSubscribed = true
+    }
+  } catch (e) {}
+
+  const insertExcelBlock = () => {
+    try {
+      const pos = editorInstance.getTextCursorPosition()
+      if (!pos) return
+      
+      editorInstance.updateBlock(pos.block.id, {
+        type: 'excel',
+        props: {
+          data: JSON.stringify([{ name: 'Sheet1', celldata: [], status: 1 }])
+        }
+      } as any)
+      editorInstance.setTextCursorPosition(pos.block.id, 'end')
+      editorInstance.focus()
+    } catch {}
+  }
+
+  const excelItems = isExcelSubscribed ? [
+    {
+      title: 'Excel Sheet',
+      onItemClick: insertExcelBlock,
+      aliases: ['excel', 'sheet', 'spreadsheet', '엑셀', '시트', 'ce'],
+      group: 'Office',
+      icon: <FileImage size={16} color="#10b981" />,
+      subtext: '엑셀 스프레드시트 편집기 삽입 (/excel)',
+    }
+  ] : []
+
+  return [...filtered, ...codeItems, ...drawingItems, mapItem, ...excelItems]
 }
 

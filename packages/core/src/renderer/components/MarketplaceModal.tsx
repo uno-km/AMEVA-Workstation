@@ -51,6 +51,7 @@ export function MarketplaceModal({
     webSearch: false,
     pythonConsole: false,
     requestQueue: false,
+    excelViewer: false,
   })
 
   // 검색 및 카테고리 탭 상태
@@ -99,7 +100,7 @@ export function MarketplaceModal({
        * - 예시: `if (!isProPlan)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
           if (!isProPlan) {
-            setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false })
+            setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false, excelViewer: false })
           } else {
             setEnabledPlugins(parsed)
           }
@@ -112,9 +113,9 @@ export function MarketplaceModal({
        * - 예시: `if (isProPlan)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
           if (isProPlan) {
-            setEnabledPlugins({ webSearch: true, pythonConsole: true, requestQueue: false })
+            setEnabledPlugins({ webSearch: true, pythonConsole: true, requestQueue: false, excelViewer: false })
           } else {
-            setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false })
+            setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false, excelViewer: false })
           }
         }
       } catch (e) {}
@@ -153,6 +154,7 @@ export function MarketplaceModal({
     }
     setEnabledPlugins(updated)
     localStorage.setItem('enabled-plugins', JSON.stringify(updated))
+    window.dispatchEvent(new Event('saas-plugins-changed'))
   }
 
   // 마켓플레이스 서버 플러그인 로드
@@ -423,6 +425,13 @@ export function MarketplaceModal({
               description: '질문을 연달아 우다다닥 보낼 때 취소되지 않고 안전하게 백그라운드 큐 버퍼에 쌓여 차례로 실행해 주는 순차 처리기입니다.',
               type: 'feature' as const,
               version: '1.0.1'
+            },
+            {
+              id: 'excelViewer',
+              name: 'Excel Viewer & Editor (Pro)',
+              description: '로컬 마크다운 문서 내에 엑셀 스프레드시트를 삽입하고 편집할 수 있는 확장 기능입니다.',
+              type: 'feature' as const,
+              version: '1.0.0'
             }
           ]
 
