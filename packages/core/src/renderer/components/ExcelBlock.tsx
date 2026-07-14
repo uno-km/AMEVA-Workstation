@@ -150,7 +150,7 @@ const ExcelBlockSpec = createReactBlockSpec(
                     <button onClick={() => setIsFullScreen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
                   </div>
                 </div>
-                <div style={{ flex: 1, position: 'relative' }}>
+                <div style={{ flex: 1, position: 'relative', color: '#000' }}>
                   {isMounted && (
                     <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
                       <LazyWorkbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />
@@ -180,7 +180,7 @@ const ExcelBlockSpec = createReactBlockSpec(
                   </button>
                 </div>
               </div>
-              <div style={{ flex: 1, position: 'relative' }}>
+              <div style={{ flex: 1, position: 'relative', color: '#000' }}>
                 {isMounted && (
                   <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
                     <LazyWorkbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />

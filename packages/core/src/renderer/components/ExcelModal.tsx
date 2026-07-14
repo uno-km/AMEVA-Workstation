@@ -82,13 +82,15 @@ export function ExcelModal({ isOpen, onClose }: ExcelModalProps) {
             <X size={20} />
           </button>
         </div>
-        <div style={{ flex: 1, position: 'relative' }}>
+        <div style={{ flex: 1, position: 'relative', color: '#000' }}>
           <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
-            <LazyWorkbook
-              ref={workbookRef}
-              data={[{ name: 'Sheet1', celldata: [], status: 1 }]}
-              lang="en"
-            />
+            {isMounted && (
+              <LazyWorkbook
+                ref={workbookRef}
+                data={[{ name: 'Sheet1', celldata: [], status: 1 }]}
+                lang="en"
+              />
+            )}
           </Suspense>
         </div>
       </div>
