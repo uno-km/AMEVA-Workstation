@@ -17,7 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-export type EditorMode = 'edit' | 'preview' | 'raw' | 'welcome'
+export type EditorMode = 'edit' | 'preview' | 'raw' | 'welcome' | 'kanban'
 
 export type ExportFormat = 'md' | 'pdf' | 'docx' | 'xlsx' | 'pptx' | 'hwpx' | 'html' | 'xml'
 

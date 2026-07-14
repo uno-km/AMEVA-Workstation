@@ -17,7 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import { Sparkles, List, Calculator, TrendingUp, Play, Globe, Search, Calendar, HardDrive, Map } from 'lucide-react';
+import { Sparkles, List, Calculator, TrendingUp, Play, Globe, Search, Calendar, HardDrive, Map, FileText, Database, Network, MonitorPlay, Timer, Mic, Server, LayoutTemplate } from 'lucide-react';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 import { useUIStore } from '../stores/useUIStore';
@@ -341,6 +341,15 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     ...(isCalendarSubscribed ? [{ id: 'calendar', icon: Calendar, label: '스케줄 캘린더', badge: false }] : []),
     ...(isGoogleDriveSubscribed ? [{ id: 'google-drive', icon: HardDrive, label: '구글 드라이브', badge: false }] : []),
     ...(isGoogleMapsSubscribed ? [{ id: 'google-maps', icon: Map, label: '구글 지도', badge: false }] : []),
+    { id: 'pdf-rag', icon: FileText, label: 'PDF 문서 대화 (RAG)', badge: false },
+    { id: 'web-browser', icon: Globe, label: '웹 브라우저 & RPA', badge: false },
+    { id: 'db-explorer', icon: Database, label: '데이터베이스 탐색기', badge: false },
+    { id: 'mind-map', icon: Network, label: '마인드맵 생성기', badge: false },
+    { id: 'presentation', icon: MonitorPlay, label: '프레젠테이션 모드', badge: false },
+    { id: 'pomodoro', icon: Timer, label: '집중력 & 뽀모도로', badge: false },
+    { id: 'voice-dictation', icon: Mic, label: '음성 회의록 작성', badge: false },
+    { id: 'rest-client', icon: Server, label: 'REST API 클라이언트', badge: false },
+    { id: 'wireframe', icon: LayoutTemplate, label: 'UI 와이어프레임', badge: false },
   ] : [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
   ];
