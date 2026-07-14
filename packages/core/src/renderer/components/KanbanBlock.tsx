@@ -51,7 +51,7 @@ const PriorityIcon = ({ priority }: { priority: Priority }) => {
   return <ChevronDown size={14} color="#2196f3" />
 }
 
-export const KanbanBlockSpec = () => createReactBlockSpec(
+export const KanbanBlockSpec = createReactBlockSpec(
   {
     type: 'kanban',
     propSchema: {
