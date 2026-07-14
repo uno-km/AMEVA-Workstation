@@ -65,7 +65,16 @@ const ExcelBlockSpec = createReactBlockSpec(
       }
 
       return (
-        <div style={{ position: 'relative', margin: '8px 0', width: '100%' }}>
+        <div 
+          contentEditable={false}
+          style={{ position: 'relative', margin: '8px 0', width: '100%' }}
+          onKeyDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onFocus={(e) => e.stopPropagation()}
+          onBlur={(e) => e.stopPropagation()}
+        >
           {isFullScreen ? (
             <div
               style={{
