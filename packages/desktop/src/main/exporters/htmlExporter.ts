@@ -59,7 +59,7 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
     blockquote { border-left: 4px solid #8b5cf6; padding: 12px 20px; background: #faf5ff; border-radius: 0 8px 8px 0; margin: 1rem 0; }
     img { max-width: 100%; border-radius: 8px; margin: 1rem 0; }
     hr { border: none; border-top: 1px solid #e5e7eb; margin: 2rem 0; }
-    @media print { body { font-size: 12pt; } .doc-container { padding: 0; } }
+    @media print { body { font-size: 12pt; } .doc-container { padding: 0; } .run-btn { display: none !important; } }
   `
 
       /*
