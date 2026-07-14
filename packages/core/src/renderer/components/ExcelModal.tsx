@@ -5,7 +5,7 @@
  * @role Global Excel Viewer/Editor Modal
  */
 
-import React, { useRef, lazy, Suspense } from 'react'
+import React, { useRef, useState, useEffect, lazy, Suspense } from 'react'
 import { X } from 'lucide-react'
 
 const LazyWorkbook = lazy(() =>
@@ -23,6 +23,11 @@ export interface ExcelModalProps {
 
 export function ExcelModal({ isOpen, onClose }: ExcelModalProps) {
   const workbookRef = useRef<any>(null)
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   if (!isOpen) return null
 
