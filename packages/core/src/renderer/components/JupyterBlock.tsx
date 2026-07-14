@@ -729,13 +729,11 @@ const JupyterBlockSpec = createReactBlockSpec(
       }
     },
     toExternalHTML: ({ block }) => {
-      const pre = document.createElement('pre')
-      pre.setAttribute('data-content-type', 'jupyter')
-      pre.setAttribute('data-language', block.props.language)
-      const code = document.createElement('code')
-      code.textContent = block.props.code
-      pre.appendChild(code)
-      return pre
+      return (
+        <pre data-content-type="jupyter" data-language={block.props.language}>
+          <code>{block.props.code}</code>
+        </pre>
+      )
     }
   }
 )

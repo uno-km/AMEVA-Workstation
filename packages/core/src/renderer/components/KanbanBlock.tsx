@@ -389,35 +389,27 @@ export const KanbanBlockSpec = createReactBlockSpec(
       try {
         data = JSON.parse(block.props.data)
       } catch (e) {
-        const p = document.createElement('p')
-        p.textContent = 'Invalid Kanban Data'
-        return p
+        return <p>Invalid Kanban Data</p>
       }
 
-      const div = document.createElement('div')
-      div.setAttribute('data-content-type', 'kanban')
-      
-      const h3 = document.createElement('h3')
-      h3.textContent = 'Kanban Board'
-      div.appendChild(h3)
-
-      data.columns.forEach(col => {
-        const colDiv = document.createElement('div')
-        const h4 = document.createElement('h4')
-        h4.textContent = `${col.title} (${col.cards.length})`
-        colDiv.appendChild(h4)
-
-        const ul = document.createElement('ul')
-        col.cards.forEach(card => {
-          const li = document.createElement('li')
-          li.textContent = `[${card.completed ? 'x' : ' '}] ${card.id}: ${card.title} (Priority: ${card.priority})` + (card.assignee ? ` - Assigned to: ${card.assignee.name}` : '')
-          ul.appendChild(li)
-        })
-        colDiv.appendChild(ul)
-        div.appendChild(colDiv)
-      })
-
-      return div
+      return (
+        <div data-content-type="kanban">
+          <h3>Kanban Board</h3>
+          {data.columns.map(col => (
+            <div key={col.id}>
+              <h4>{col.title} ({col.cards.length})</h4>
+              <ul>
+                {col.cards.map(card => (
+                  <li key={card.id}>
+                    [{card.completed ? 'x' : ' '}] {card.id}: {card.title} (Priority: {card.priority})
+                    {card.assignee ? ` - Assigned to: ${card.assignee.name}` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )
     }
   }
 )
