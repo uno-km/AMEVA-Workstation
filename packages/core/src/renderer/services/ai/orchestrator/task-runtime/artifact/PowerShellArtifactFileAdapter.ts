@@ -159,4 +159,65 @@ export class PowerShellArtifactFileAdapter implements IFileSystemAdapter {
     if (res.stderr) throw new Error(`list error: ${res.stderr}`);
     return res.stdout.trim() || '(디렉토리가 비어있습니다)';
   }
+
+  public async copy(fromPath: string, toPath: string): Promise<void> {
+    this.validatePath(fromPath);
+    this.validatePath(toPath);
+    const script = `
+      $src = "${fromPath}"
+      $dest = "${toPath}"
+      $destDir = [System.IO.Path]::GetDirectoryName($dest)
+      if (-not [System.IO.Directory]::Exists($destDir)) {
+        [System.IO.Directory]::CreateDirectory($destDir) | Out-Null
+      }
+      [System.IO.File]::Copy($src, $dest, $true)
+    `;
+    const b64 = Buffer.from(script, 'utf-8').toString('base64');
+    const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
+    if (res.stderr) throw new Error(`copy error: ${res.stderr}`);
+  }
+
+  public async exists(path: string): Promise<boolean> {
+    this.validatePath(path);
+    const script = `
+      $path = "${path}"
+      $exists = [System.IO.File]::Exists($path) -or [System.IO.Directory]::Exists($path)
+      Write-Output $exists.ToString().ToLower()
+    `;
+    const b64 = Buffer.from(script, 'utf-8').toString('base64');
+    const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
+    return res.stdout.trim() === 'true';
+  }
+
+  public async realpath(path: string): Promise<string> {
+    this.validatePath(path);
+    const script = `
+      $path = "${path}"
+      if ([System.IO.File]::Exists($path) -or [System.IO.Directory]::Exists($path)) {
+        (Get-Item $path).FullName
+      } else {
+        Write-Output $path
+      }
+    `;
+    const b64 = Buffer.from(script, 'utf-8').toString('base64');
+    const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
+    return res.stdout.trim() || path;
+  }
+
+  public async isSymlink(path: string): Promise<boolean> {
+    this.validatePath(path);
+    const script = `
+      $path = "${path}"
+      if ([System.IO.File]::Exists($path) -or [System.IO.Directory]::Exists($path)) {
+        $item = Get-Item $path
+        $isLink = [bool]($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint)
+        Write-Output $isLink.ToString().ToLower()
+      } else {
+        Write-Output "false"
+      }
+    `;
+    const b64 = Buffer.from(script, 'utf-8').toString('base64');
+    const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
+    return res.stdout.trim() === 'true';
+  }
 }

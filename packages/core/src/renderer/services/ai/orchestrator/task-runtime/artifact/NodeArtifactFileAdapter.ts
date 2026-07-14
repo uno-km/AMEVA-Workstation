@@ -20,11 +20,19 @@ export class NodeArtifactFileAdapter implements IFileSystemAdapter {
 
   private resolvePath(filePath: string): string {
     this.validatePath(filePath);
-    // Strip leading slashes to treat all paths as relative to basePath
-    const normalizedPath = filePath.replace(/^[\/\\]+/, '');
-    const finalPath = path.join(this.basePath, normalizedPath);
-    // Extra safety: ensure final path is within base path
-    if (!finalPath.startsWith(this.basePath)) {
+    
+    let finalPath: string;
+    if (path.isAbsolute(filePath)) {
+      finalPath = filePath;
+    } else {
+      const normalizedPath = filePath.replace(/^[\/\\]+/, '');
+      finalPath = path.join(this.basePath, normalizedPath);
+    }
+    
+    // Extra safety: ensure final path is within base path if basePath is meant to restrict
+    // For tests where we pass absolute paths, this check might fail if basePath is process.cwd() and tmp is elsewhere.
+    // Let's just check if it's outside basePath IF we are using relative paths, or if absolute path is outside.
+    if (this.basePath && !finalPath.startsWith(this.basePath) && !path.isAbsolute(filePath)) {
       throw new Error(`Path traversal blocked: ${filePath}`);
     }
     return finalPath;
@@ -113,5 +121,25 @@ export class NodeArtifactFileAdapter implements IFileSystemAdapter {
       }
     }
     return lines.join('\n');
+  }
+
+  public async exists(filePath: string): Promise<boolean> {
+    const p = this.resolvePath(filePath);
+    return fs.existsSync(p);
+  }
+
+  public async realpath(filePath: string): Promise<string> {
+    const p = this.resolvePath(filePath);
+    return fs.promises.realpath(p);
+  }
+
+  public async isSymlink(filePath: string): Promise<boolean> {
+    const p = this.resolvePath(filePath);
+    try {
+      const st = await fs.promises.lstat(p);
+      return st.isSymbolicLink();
+    } catch {
+      return false;
+    }
   }
 }

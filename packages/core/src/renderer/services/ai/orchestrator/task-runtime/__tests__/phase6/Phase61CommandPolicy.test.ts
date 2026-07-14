@@ -1,10 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { WorkbenchCommandExecutor } from '../../workbench/execution/WorkbenchCommandExecutor';
 import { CommandPlan } from '../../workbench/domain/WorkbenchTypes';
+import { NodeCommandExecutorAdapter } from '../../workbench/adapter/NodeCommandExecutorAdapter';
 import * as os from 'os';
 
 describe('Phase6.1 CommandPolicy', () => {
   const isWindows = os.platform() === 'win32';
+  const adapter = new NodeCommandExecutorAdapter();
+  const executor = new WorkbenchCommandExecutor(adapter);
   
   const createPlan = (overrides: Partial<CommandPlan> = {}): CommandPlan => ({
     commandId: 'cmd1',
@@ -25,7 +28,7 @@ describe('Phase6.1 CommandPolicy', () => {
 
   it('should execute command and return exitCode 0', async () => {
     const plan = createPlan();
-    const result = await WorkbenchCommandExecutor.execute(plan, 'DENY', 1024);
+    const result = await executor.execute(plan, 'DENY', 1024);
 
     expect(result.status).toBe('COMPLETED');
     expect(result.exitCode).toBe(0);
@@ -40,7 +43,7 @@ describe('Phase6.1 CommandPolicy', () => {
       timeoutMs: 100
     });
 
-    const result = await WorkbenchCommandExecutor.execute(plan, 'DENY', 1024 * 1024);
+    const result = await executor.execute(plan, 'DENY', 1024 * 1024);
     
     expect(result.status).toBe('TIMED_OUT');
     expect(result.interrupted).toBe(true);
@@ -54,7 +57,7 @@ describe('Phase6.1 CommandPolicy', () => {
       networkRequired: true
     });
 
-    const result = await WorkbenchCommandExecutor.execute(plan, 'DENY', 1024);
+    const result = await executor.execute(plan, 'DENY', 1024);
     
     expect(result.status).toBe('BLOCKED_BY_POLICY');
     expect(result.stderr).toContain('DENY');
@@ -68,9 +71,10 @@ describe('Phase6.1 CommandPolicy', () => {
       approvalRequired: false // simulating missing approval
     });
 
-    const result = await WorkbenchCommandExecutor.execute(plan, 'APPROVAL_REQUIRED', 1024);
+    const result = await executor.execute(plan, 'APPROVAL_REQUIRED', 1024);
     
     expect(result.status).toBe('BLOCKED_BY_POLICY');
     expect(result.stderr).toContain('approval');
   });
 });
+

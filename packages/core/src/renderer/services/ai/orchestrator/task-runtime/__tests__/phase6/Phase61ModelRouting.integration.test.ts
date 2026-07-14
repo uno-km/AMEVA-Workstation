@@ -18,7 +18,7 @@ describe('Phase6.1 ModelRouting', () => {
   it('should use RULE_ENGINE bypass for simple format checks', () => {
     const profile = WorkbenchRouterProfileFactory.createProfile('MIXED', 1000, true);
     // isSimpleFormatCheck = true limits the context and removes tool/code requirements, setting reasoning to very low
-    expect(profile.taskType).toBe('SUMMARIZATION');
+    expect(profile.taskType).toBe('FORMAT_CHECK');
     expect(profile.reasoningComplexity).toBe(0.1);
     expect(profile.toolRequired).toBe(false);
   });

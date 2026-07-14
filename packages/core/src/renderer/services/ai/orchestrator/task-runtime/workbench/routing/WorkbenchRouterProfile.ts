@@ -10,16 +10,17 @@ export class WorkbenchRouterProfileFactory {
   ): TaskRoutingProfile {
     
     // Rule: 단순 파일 검사와 형식 검사는 RULE_ENGINE을 우선 사용한다.
+    // FORMAT_CHECK를 SUMMARIZATION으로 매핑하지 마라.
     if (isSimpleFormatCheck) {
       return {
-        taskType: 'SUMMARIZATION', // Hack for RULE_ENGINE bypass in Phase 5
+        taskType: 'FORMAT_CHECK', // Explicit task type
         instructionComplexity: 0.1,
         reasoningComplexity: 0.1,
         toolRequired: false,
         codeExecutionRequired: false,
-        contextSize: Math.min(contextSize, 500), // Enforce RULE_ENGINE size constraints
+        contextSize: Math.min(contextSize, 500),
         expectedOutputTokens: 10,
-        privacyLevel: 'PUBLIC', // Doesn't matter for local rule engine
+        privacyLevel: 'PUBLIC',
         latencyPreference: 'speed',
         qualityPreference: 'standard',
         previousModelIds: [],

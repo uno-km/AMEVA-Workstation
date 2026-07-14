@@ -1,8 +1,5 @@
 import { WorkbenchSession, WorkbenchSessionStatus, WorkContract, WorkbenchDiff, DiffFileInfo } from '../domain/WorkbenchTypes';
-import { WorkspaceIsolator } from '../workspace/WorkspaceIsolator';
-import * as fs from 'fs';
-import * as path from 'path';
-import crypto from 'crypto';
+import { IWorkbenchHostAdapter } from '../adapter/IWorkbenchHostAdapter';
 
 export class WorkbenchSessionManager {
   
@@ -22,22 +19,22 @@ export class WorkbenchSessionManager {
       attemptId,
       workbenchType: contract.workbenchType,
       sourceWorkspace,
-      isolatedWorkspace: path.resolve(sourceWorkspace, '../../workbench', attemptId, 'working'),
+      isolatedWorkspace: `${sourceWorkspace}/.workbench/${attemptId}/working`,
       baseRevision: '1',
       currentRevision: '1',
       allowedPaths: contract.allowedFiles,
       protectedPaths: contract.protectedFiles,
       allowedCommands: contract.allowedTools,
-      networkPolicy: 'DENY', // Default
+      networkPolicy: 'DENY',
       resourceLimits: {
-        timeoutMs: 300000, // 5 min
+        timeoutMs: 300000,
         maxMemoryMb: 1024,
         maxCpuPercent: 100,
-        maxSingleFileBytes: 10 * 1024 * 1024, // 10MB
+        maxSingleFileBytes: 10 * 1024 * 1024,
         maxWorkspaceBytes: 500 * 1024 * 1024,
         maxFileCount: 10000,
         maxArtifactBytes: 50 * 1024 * 1024,
-        maxCommandOutputBytes: 1024 * 1024, // 1MB
+        maxCommandOutputBytes: 1024 * 1024,
         largeFilePolicy: 'EXCLUDE'
       },
       requiredChecks: contract.requiredChecks,
@@ -68,41 +65,49 @@ export class WorkbenchSessionManager {
     }
   }
 
-  public static async prepare(session: WorkbenchSession): Promise<void> {
+  public static async prepare(session: WorkbenchSession, hostAdapter: IWorkbenchHostAdapter): Promise<void> {
     this.assertState(session, 'DECLARED', 'PREPARING');
     session.status = 'PREPARING';
     session.updatedAt = Date.now();
 
     try {
-      await WorkspaceIsolator.createIsolatedWorkspace(
+      await hostAdapter.createSnapshot(
         session.sourceWorkspace,
         session.isolatedWorkspace,
         session.allowedPaths,
-        session.resourceLimits
+        session.resourceLimits,
+        // @ts-ignore - contract needs requiredInputs mapped or extracted, using default empty array if not in session
+        []
       );
       session.status = 'READY';
     } catch (error: any) {
-      session.status = 'FAILED';
+      if (error.message.includes('WAITING_USER')) {
+        session.status = 'WAITING_USER';
+      } else {
+        session.status = 'FAILED';
+      }
       throw new Error(`Failed to prepare workspace: ${error.message}`);
     }
     session.updatedAt = Date.now();
   }
 
   public static start(session: WorkbenchSession): void {
+    if (session.status === 'FAILED' || session.status === 'WAITING_USER') {
+      throw new Error('Cannot transition to RUNNING from ' + session.status);
+    }
     this.assertState(session, 'READY', 'RUNNING');
     session.status = 'RUNNING';
     session.updatedAt = Date.now();
   }
 
-  public static async verify(session: WorkbenchSession): Promise<WorkbenchDiff> {
+  public static async verify(session: WorkbenchSession, hostAdapter: IWorkbenchHostAdapter): Promise<WorkbenchDiff> {
     this.assertState(session, 'RUNNING', 'VERIFYING');
     session.status = 'VERIFYING';
     session.updatedAt = Date.now();
 
-    const diff = await this.computeDiff(session.sourceWorkspace, session.isolatedWorkspace);
+    const diff = await this.computeDiff(session.sourceWorkspace, session.isolatedWorkspace, hostAdapter);
 
-    // Check protected files modification
-    for (const mod of [...diff.modifiedFiles, ...diff.deletedFiles, ...diff.renamedFiles]) {
+    for (const mod of [...diff.modifiedFiles, ...diff.deletedFiles]) {
       if (session.protectedPaths.includes(mod.logicalPath)) {
         session.status = 'FAILED';
         throw new Error(`Verification failed: Protected file modified or deleted (${mod.logicalPath})`);
@@ -112,29 +117,43 @@ export class WorkbenchSessionManager {
     return diff;
   }
 
-  public static async commit(session: WorkbenchSession, diff: WorkbenchDiff, checkResults: Record<string, boolean>): Promise<void> {
+  public static async commit(
+    session: WorkbenchSession, 
+    diff: WorkbenchDiff, 
+    checkResults: Record<string, boolean>,
+    hasMissingArtifacts: boolean,
+    hasWaitingApprovals: boolean
+  ): Promise<void> {
     this.assertState(session, 'VERIFYING', 'COMMITTING');
 
-    // Rule 6: 필수 Check가 하나라도 실패·누락·실행 불가하면 COMPLETED를 금지하라.
     for (const check of session.requiredChecks) {
+      if (checkResults[check] === undefined) {
+        session.status = 'FAILED';
+        throw new Error(`Verification check NOT_RUN: ${check}`);
+      }
       if (!checkResults[check]) {
         session.status = 'FAILED';
-        throw new Error(`Verification check failed or missing: ${check}`);
+        throw new Error(`Verification check failed: ${check}`);
       }
+    }
+
+    if (hasMissingArtifacts) {
+      session.status = 'FAILED';
+      throw new Error('Verification failed: required artifacts are not committed');
+    }
+
+    if (hasWaitingApprovals) {
+       session.status = 'WAITING_USER';
+       throw new Error('Waiting for user approval');
     }
 
     session.status = 'COMMITTING';
     session.updatedAt = Date.now();
 
-    // In a real commit, ArtifactTransactionManager is used. We simulate atomic commit or failure here.
-    try {
-      // Commit logic goes here: copy isolated files back to source (if permitted) or push via artifact manager.
-      // But rule says sourceWorkspace is read-only implicitly until final Artifact Transaction.
-      session.status = 'COMPLETED';
-    } catch (e: any) {
-      session.status = 'ROLLED_BACK';
-      throw new Error(`Commit failed: ${e.message}`);
-    }
+    // Source Apply is NOT_IMPLEMENTED in Phase 6.1
+    // We only commit artifacts, we do not modify the source workspace here.
+    
+    session.status = 'COMPLETED';
     session.updatedAt = Date.now();
   }
 
@@ -144,7 +163,7 @@ export class WorkbenchSessionManager {
     }
   }
 
-  public static async computeDiff(baseDir: string, workingDir: string): Promise<WorkbenchDiff> {
+  public static async computeDiff(baseDir: string, workingDir: string, hostAdapter: IWorkbenchHostAdapter): Promise<WorkbenchDiff> {
     const diff: WorkbenchDiff = {
       addedFiles: [],
       modifiedFiles: [],
@@ -158,23 +177,35 @@ export class WorkbenchSessionManager {
       summary: ''
     };
 
-    const scanDir = async (dir: string, base: string, isWorking: boolean, map: Map<string, any>) => {
-      if (!fs.existsSync(dir)) return;
-      const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        // Skip .workbench itself
-        if (entry.name === '.workbench') continue;
+    const scanDir = async (dir: string, base: string, map: Map<string, any>) => {
+      let listOutput = '';
+      try {
+        listOutput = await hostAdapter.fileSystem.list(dir);
+      } catch {
+        return;
+      }
+      
+      const lines = listOutput.split('\n');
+      if (lines.length < 2 || lines[0].startsWith('(디렉토리가')) return;
 
-        const fullPath = path.join(dir, entry.name);
-        const relPath = path.relative(base, fullPath).replace(/\\/g, '/');
+      for (let i = 2; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+        
+        const parts = line.split('\t');
+        const name = parts[0];
+        const isDir = parts[1] === '<DIR>';
+        const fullPath = `${dir}/${name}`;
+        const relPath = fullPath.replace(`${base}/`, '');
 
-        if (entry.isDirectory()) {
-          await scanDir(fullPath, base, isWorking, map);
+        if (name === '.workbench') continue;
+
+        if (isDir) {
+          await scanDir(fullPath, base, map);
         } else {
-          const stat = await fs.promises.stat(fullPath);
-          const hash = crypto.createHash('sha256').update(await fs.promises.readFile(fullPath)).digest('hex');
-          
-          const isBinary = this.isBinaryFile(fullPath);
+          const stat = await hostAdapter.fileSystem.stat(fullPath);
+          const hash = await hostAdapter.fileSystem.hash(fullPath);
+          const isBinary = this.isBinaryFile(name);
           map.set(relPath, { path: fullPath, hash, size: stat.size, isBinary });
         }
       }
@@ -183,8 +214,12 @@ export class WorkbenchSessionManager {
     const baseFiles = new Map<string, any>();
     const workingFiles = new Map<string, any>();
 
-    await scanDir(baseDir, baseDir, false, baseFiles);
-    await scanDir(workingDir, workingDir, true, workingFiles);
+    await scanDir(baseDir, baseDir, baseFiles);
+    await scanDir(workingDir, workingDir, workingFiles);
+
+    // Track for rename detection (ADDED + DELETED with same hash)
+    const addedCandidates: any[] = [];
+    const deletedCandidates: any[] = [];
 
     for (const [relPath, workingInfo] of workingFiles.entries()) {
       const baseInfo = baseFiles.get(relPath);
@@ -197,11 +232,11 @@ export class WorkbenchSessionManager {
         newSize: workingInfo.size,
         changedRanges: [],
         isBinary: workingInfo.isBinary,
-        isProtected: false // to be mapped with protected files later
+        isProtected: false
       };
 
       if (!baseInfo) {
-        diff.addedFiles.push(fileInfo);
+        addedCandidates.push(fileInfo);
       } else {
         if (baseInfo.hash !== workingInfo.hash) {
           diff.modifiedFiles.push(fileInfo);
@@ -213,7 +248,7 @@ export class WorkbenchSessionManager {
 
     for (const [relPath, baseInfo] of baseFiles.entries()) {
       if (!workingFiles.has(relPath)) {
-        diff.deletedFiles.push({
+        deletedCandidates.push({
           logicalPath: relPath,
           previousHash: baseInfo.hash,
           newHash: '',
@@ -226,12 +261,29 @@ export class WorkbenchSessionManager {
       }
     }
 
+    // Rename detection (RENAMED_CANDIDATE)
+    for (let i = addedCandidates.length - 1; i >= 0; i--) {
+      const added = addedCandidates[i];
+      const delIdx = deletedCandidates.findIndex(d => d.previousHash === added.newHash && added.newHash !== null);
+      if (delIdx !== -1) {
+        const deleted = deletedCandidates.splice(delIdx, 1)[0];
+        // Only mark as candidate since we don't have explicit move events
+        diff.addedFiles.push(added);
+        diff.deletedFiles.push(deleted);
+        diff.summary += `RENAMED_CANDIDATE: ${deleted.logicalPath} -> ${added.logicalPath}\n`;
+        addedCandidates.splice(i, 1);
+      }
+    }
+
+    diff.addedFiles.push(...addedCandidates);
+    diff.deletedFiles.push(...deletedCandidates);
+
     return diff;
   }
 
-  private static isBinaryFile(filePath: string): boolean {
-    const ext = path.extname(filePath).toLowerCase();
-    const binaryExts = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.exe', '.dll', '.so', '.dylib', '.zip', '.tar', '.gz'];
-    return binaryExts.includes(ext);
+  private static isBinaryFile(fileName: string): boolean {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    const binaryExts = ['png', 'jpg', 'jpeg', 'gif', 'pdf', 'exe', 'dll', 'so', 'dylib', 'zip', 'tar', 'gz'];
+    return ext ? binaryExts.includes(ext) : false;
   }
 }

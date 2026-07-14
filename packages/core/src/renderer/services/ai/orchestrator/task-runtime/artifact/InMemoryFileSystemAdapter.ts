@@ -72,4 +72,22 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
   public setFile(path: string, content: string) {
     this.files.set(path, content);
   }
+
+  public async copy(sourcePath: string, destPath: string): Promise<void> {
+    const content = this.files.get(sourcePath);
+    if (content === undefined) throw new Error(`File not found: ${sourcePath}`);
+    this.files.set(destPath, content);
+  }
+
+  public async exists(path: string): Promise<boolean> {
+    return (await this.stat(path)).exists;
+  }
+
+  public async realpath(path: string): Promise<string> {
+    return path;
+  }
+
+  public async isSymlink(path: string): Promise<boolean> {
+    return false;
+  }
 }

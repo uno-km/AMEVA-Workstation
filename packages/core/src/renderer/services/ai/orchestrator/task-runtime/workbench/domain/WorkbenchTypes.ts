@@ -106,3 +106,27 @@ export interface WorkbenchSession {
   createdAt: number;
   updatedAt: number;
 }
+
+export interface SnapshotManifestItem {
+  path: string;
+  reason: string;
+}
+
+export interface SnapshotManifest {
+  totalFiles: number;
+  totalBytes: number;
+  copiedFiles: SnapshotManifestItem[];
+  excludedFiles: SnapshotManifestItem[];
+  referenceOnlyFiles: SnapshotManifestItem[];
+  approvalRequiredFiles: SnapshotManifestItem[];
+  failedFiles: SnapshotManifestItem[];
+}
+
+export interface CommandExecutionResult {
+  status: 'COMPLETED' | 'FAILED' | 'TIMED_OUT' | 'BLOCKED_BY_POLICY';
+  exitCode: number;
+  stdout: string;
+  stderr: string;
+  interrupted: boolean;
+  capabilitiesUsed: Record<string, string>;
+}

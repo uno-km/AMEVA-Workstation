@@ -1,15 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import crypto from 'crypto';
-import { ResourceLimits, LargeFilePolicy } from '../domain/WorkbenchTypes';
-
-export interface WorkspaceSnapshotInfo {
-  totalFiles: number;
-  totalBytes: number;
-  excludedFiles: string[];
-  referenceOnlyFiles: string[];
-  failedFiles: string[];
-}
+import { ResourceLimits, SnapshotManifest, SnapshotManifestItem } from '../domain/WorkbenchTypes';
+import { IFileSystemAdapter } from '../../artifact/IFileSystemAdapter';
 
 export class WorkspaceIsolator {
   private static readonly DEFAULT_EXCLUDES = [
@@ -22,118 +12,135 @@ export class WorkspaceIsolator {
     'temp'
   ];
 
-  public static async createIsolatedWorkspace(
+  constructor(private readonly fsAdapter: IFileSystemAdapter) {}
+
+  public async createIsolatedWorkspace(
     sourcePath: string,
     destPath: string,
     allowedFiles: string[] | null,
+    requiredInputs: string[],
     limits: ResourceLimits
-  ): Promise<WorkspaceSnapshotInfo> {
-    const info: WorkspaceSnapshotInfo = {
+  ): Promise<SnapshotManifest> {
+    const info: SnapshotManifest = {
       totalFiles: 0,
       totalBytes: 0,
+      copiedFiles: [],
       excludedFiles: [],
       referenceOnlyFiles: [],
+      approvalRequiredFiles: [],
       failedFiles: []
     };
 
-    if (sourcePath === destPath || destPath.startsWith(sourcePath) || sourcePath.startsWith(destPath)) {
+    const realSource = await this.fsAdapter.realpath(sourcePath);
+    const realDest = await this.fsAdapter.realpath(destPath).catch(() => destPath);
+
+    if (realSource === realDest || realDest.startsWith(realSource + '/') || realSource.startsWith(realDest + '/')) {
       throw new Error(`Source and destination paths cannot be identical or nested.`);
     }
 
-    await fs.promises.mkdir(destPath, { recursive: true });
-
-    // Ensure we don't blindly follow symlinks
-    const visitedInodes = new Set<string>();
-
-    await this.processDirectory(
-      sourcePath,
-      destPath,
-      sourcePath,
-      allowedFiles,
-      limits,
-      info,
-      visitedInodes,
-      0
-    );
+    try {
+      await this.processDirectory(
+        sourcePath,
+        destPath,
+        sourcePath,
+        allowedFiles,
+        requiredInputs,
+        limits,
+        info,
+        new Set<string>(),
+        0
+      );
+    } catch (e: any) {
+      if (e.message.includes('WAITING_USER') || e.message.includes('RESOURCE_LIMIT_EXCEEDED')) {
+        throw e;
+      }
+      info.failedFiles.push({ path: sourcePath, reason: e.message });
+      throw e;
+    }
 
     return info;
   }
 
-  private static async processDirectory(
+  private async processDirectory(
     sourceDir: string,
     destDir: string,
     baseSourceDir: string,
     allowedFiles: string[] | null,
+    requiredInputs: string[],
     limits: ResourceLimits,
-    info: WorkspaceSnapshotInfo,
-    visitedInodes: Set<string>,
+    info: SnapshotManifest,
+    visitedPaths: Set<string>,
     depth: number
   ) {
     if (depth > 50) {
       throw new Error('Max directory depth exceeded');
     }
 
-    const entries = await fs.promises.readdir(sourceDir, { withFileTypes: true });
+    let listOutput: string;
+    try {
+      listOutput = await this.fsAdapter.list(sourceDir);
+    } catch {
+      return;
+    }
 
-    for (const entry of entries) {
-      if (this.DEFAULT_EXCLUDES.includes(entry.name)) {
-        info.excludedFiles.push(path.join(sourceDir, entry.name));
+    const lines = listOutput.split('\n');
+    if (lines.length < 2 || lines[0].startsWith('(디렉토리가')) {
+      return;
+    }
+
+    for (let i = 2; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (!line) continue;
+
+      const parts = line.split('\t');
+      const name = parts[0];
+      const isDir = parts[1] === '<DIR>';
+
+      const sourceFilePath = `${sourceDir}/${name}`;
+      const destFilePath = `${destDir}/${name}`;
+      const relativePath = sourceFilePath.replace(`${baseSourceDir}/`, '');
+      const isRequired = requiredInputs.includes(relativePath);
+
+      if (WorkspaceIsolator.DEFAULT_EXCLUDES.includes(name)) {
+        info.excludedFiles.push({ path: sourceFilePath, reason: 'DEFAULT_EXCLUDE' });
         continue;
       }
-
-      const sourceFilePath = path.join(sourceDir, entry.name);
-      const destFilePath = path.join(destDir, entry.name);
-      const relativePath = path.relative(baseSourceDir, sourceFilePath).replace(/\\/g, '/');
 
       if (sourceFilePath.includes('\0')) {
         throw new Error('Null bytes not allowed in path');
       }
 
-      let stat: fs.Stats;
-      try {
-        stat = await fs.promises.lstat(sourceFilePath);
-      } catch {
-        continue;
+      const isLink = await this.fsAdapter.isSymlink(sourceFilePath);
+      if (isLink) {
+        info.failedFiles.push({ path: sourceFilePath, reason: 'Symlinks are blocked by policy' });
+        throw new Error(`Symlinks are blocked by policy: ${sourceFilePath}`);
       }
 
-      if (stat.isSymbolicLink()) {
-        try {
-          const target = await fs.promises.readlink(sourceFilePath);
-          const absoluteTarget = path.resolve(sourceDir, target);
-          if (!absoluteTarget.startsWith(path.resolve(baseSourceDir))) {
-            // Path traversal or pointing outside workspace
-            throw new Error(`Symlink points outside workspace: ${sourceFilePath} -> ${absoluteTarget}`);
-          }
-          // Do not follow symlinks, we can just copy the link if needed, but the rule says 
-          // "Symlink과 경로 탈출 방어: 무조건 따라가지 마라... 반드시 차단 또는 정책 처리".
-          // We will just recreate the symlink to the relative path or skip.
-          // To be safe, skip symlinks and warn or fail. 
-          throw new Error(`Symlinks are blocked by policy: ${sourceFilePath}`);
-        } catch (err: any) {
-          info.failedFiles.push(sourceFilePath);
-          continue; // Skip invalid symlinks or block
-        }
+      const realPath = await this.fsAdapter.realpath(sourceFilePath);
+      if (!realPath.startsWith(await this.fsAdapter.realpath(baseSourceDir))) {
+        throw new Error(`Path traversal detected: ${sourceFilePath}`);
       }
 
-      const inodeKey = `${stat.dev}:${stat.ino}`;
-      if (visitedInodes.has(inodeKey)) {
-        throw new Error(`Symlink cycle or hardlink loop detected at: ${sourceFilePath}`);
+      if (visitedPaths.has(realPath)) {
+        throw new Error(`Loop detected at: ${sourceFilePath}`);
       }
-      if (!stat.isDirectory()) {
-        visitedInodes.add(inodeKey);
-      }
+      visitedPaths.add(realPath);
 
-      if (stat.isDirectory()) {
-        await fs.promises.mkdir(destFilePath, { recursive: true });
-        await this.processDirectory(sourceFilePath, destFilePath, baseSourceDir, allowedFiles, limits, info, visitedInodes, depth + 1);
+      if (isDir) {
+        await this.processDirectory(sourceFilePath, destFilePath, baseSourceDir, allowedFiles, requiredInputs, limits, info, visitedPaths, depth + 1);
         continue;
       }
 
       // File handling
       if (allowedFiles && allowedFiles.length > 0 && !allowedFiles.includes(relativePath) && !allowedFiles.includes('*')) {
-        info.excludedFiles.push(sourceFilePath);
+        if (isRequired) {
+          throw new Error(`WAITING_USER: Required input file ${relativePath} is not in allowed files`);
+        }
+        info.excludedFiles.push({ path: sourceFilePath, reason: 'NOT_IN_ALLOWED_FILES' });
         continue;
       }
+
+      const stat = await this.fsAdapter.stat(sourceFilePath);
 
       if (info.totalFiles >= limits.maxFileCount) {
         throw new Error('RESOURCE_LIMIT_EXCEEDED: maxFileCount');
@@ -147,43 +154,31 @@ export class WorkspaceIsolator {
         if (limits.largeFilePolicy === 'FAIL') {
           throw new Error(`RESOURCE_LIMIT_EXCEEDED: File ${relativePath} size ${stat.size} exceeds maxSingleFileBytes`);
         } else if (limits.largeFilePolicy === 'EXCLUDE') {
-          info.excludedFiles.push(sourceFilePath);
+          if (isRequired) {
+             throw new Error(`RESOURCE_LIMIT_EXCEEDED: Required input ${relativePath} is too large and cannot be EXCLUDED quietly.`);
+          }
+          info.excludedFiles.push({ path: sourceFilePath, reason: 'EXCEEDS_SINGLE_FILE_LIMIT' });
           continue;
         } else if (limits.largeFilePolicy === 'REFERENCE_ONLY') {
-          info.referenceOnlyFiles.push(sourceFilePath);
-          // Don't copy, just record
+          if (isRequired) {
+             throw new Error(`WAITING_USER: Required input ${relativePath} is too large and REFERENCE_ONLY is not sufficient for execution.`);
+          }
+          info.referenceOnlyFiles.push({ path: sourceFilePath, reason: 'EXCEEDS_SINGLE_FILE_LIMIT' });
           continue;
         } else if (limits.largeFilePolicy === 'REQUIRE_APPROVAL') {
+          info.approvalRequiredFiles.push({ path: sourceFilePath, reason: 'EXCEEDS_SINGLE_FILE_LIMIT' });
           throw new Error('WAITING_USER: Large file requires approval');
         }
       }
 
-      // Try copy-on-write (reflink) first
       try {
-        await fs.promises.copyFile(sourceFilePath, destFilePath, fs.constants.COPYFILE_FICLONE);
+        await this.fsAdapter.copy(sourceFilePath, destFilePath);
+        info.copiedFiles.push({ path: sourceFilePath, reason: 'SUCCESS' });
         info.totalFiles++;
         info.totalBytes += stat.size;
-      } catch {
-        // Fallback to streaming copy
-        try {
-          await this.streamCopy(sourceFilePath, destFilePath);
-          info.totalFiles++;
-          info.totalBytes += stat.size;
-        } catch {
-          info.failedFiles.push(sourceFilePath);
-        }
+      } catch (err: any) {
+        info.failedFiles.push({ path: sourceFilePath, reason: err.message });
       }
     }
-  }
-
-  private static streamCopy(source: string, dest: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const readStream = fs.createReadStream(source);
-      const writeStream = fs.createWriteStream(dest);
-      readStream.on('error', reject);
-      writeStream.on('error', reject);
-      writeStream.on('finish', resolve);
-      readStream.pipe(writeStream);
-    });
   }
 }

@@ -3,11 +3,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { WorkspaceIsolator } from '../../workbench/workspace/WorkspaceIsolator';
 import { ResourceLimits } from '../../workbench/domain/WorkbenchTypes';
+import { NodeArtifactFileAdapter } from '../../artifact/NodeArtifactFileAdapter';
 
 describe('Phase6.1 WorkspaceIsolation', () => {
   const tmpBase = path.join(process.cwd(), 'tmp-phase6-isolation');
   const sourceDir = path.join(tmpBase, 'source');
   const destDir = path.join(tmpBase, 'dest');
+  const fsAdapter = new NodeArtifactFileAdapter();
+  const isolator = new WorkspaceIsolator(fsAdapter);
 
   beforeEach(() => {
     if (fs.existsSync(tmpBase)) {
@@ -39,7 +42,7 @@ describe('Phase6.1 WorkspaceIsolation', () => {
     fs.writeFileSync(path.join(sourceDir, 'node_modules', 'test.js'), 'code');
     fs.writeFileSync(path.join(sourceDir, 'valid.txt'), 'text');
 
-    const info = await WorkspaceIsolator.createIsolatedWorkspace(sourceDir, destDir, null, defaultLimits);
+    const info = await isolator.createIsolatedWorkspace(sourceDir, destDir, null, [], defaultLimits);
 
     expect(info.totalFiles).toBe(1);
     expect(fs.existsSync(path.join(destDir, 'node_modules'))).toBe(false);
@@ -48,7 +51,7 @@ describe('Phase6.1 WorkspaceIsolation', () => {
 
   it('should prevent source modification by isolating', async () => {
     fs.writeFileSync(path.join(sourceDir, 'original.txt'), 'data');
-    await WorkspaceIsolator.createIsolatedWorkspace(sourceDir, destDir, null, defaultLimits);
+    await isolator.createIsolatedWorkspace(sourceDir, destDir, null, [], defaultLimits);
 
     fs.writeFileSync(path.join(destDir, 'original.txt'), 'changed');
     const sourceContent = fs.readFileSync(path.join(sourceDir, 'original.txt'), 'utf-8');
@@ -60,7 +63,7 @@ describe('Phase6.1 WorkspaceIsolation', () => {
     const limits = { ...defaultLimits, maxSingleFileBytes: 5, largeFilePolicy: 'FAIL' as const };
     fs.writeFileSync(path.join(sourceDir, 'large.txt'), '123456'); // 6 bytes
 
-    await expect(WorkspaceIsolator.createIsolatedWorkspace(sourceDir, destDir, null, limits))
+    await expect(isolator.createIsolatedWorkspace(sourceDir, destDir, null, [], limits))
       .rejects.toThrow(/RESOURCE_LIMIT_EXCEEDED/);
   });
 
@@ -68,7 +71,7 @@ describe('Phase6.1 WorkspaceIsolation', () => {
     const limits = { ...defaultLimits, maxSingleFileBytes: 5, largeFilePolicy: 'EXCLUDE' as const };
     fs.writeFileSync(path.join(sourceDir, 'large.txt'), '123456'); // 6 bytes
 
-    const info = await WorkspaceIsolator.createIsolatedWorkspace(sourceDir, destDir, null, limits);
+    const info = await isolator.createIsolatedWorkspace(sourceDir, destDir, null, [], limits);
     expect(info.totalFiles).toBe(0);
     expect(info.excludedFiles.length).toBe(1);
     expect(fs.existsSync(path.join(destDir, 'large.txt'))).toBe(false);
@@ -78,7 +81,7 @@ describe('Phase6.1 WorkspaceIsolation', () => {
     const limits = { ...defaultLimits, maxSingleFileBytes: 5, largeFilePolicy: 'REFERENCE_ONLY' as const };
     fs.writeFileSync(path.join(sourceDir, 'large.txt'), '123456');
 
-    const info = await WorkspaceIsolator.createIsolatedWorkspace(sourceDir, destDir, null, limits);
+    const info = await isolator.createIsolatedWorkspace(sourceDir, destDir, null, [], limits);
     expect(info.referenceOnlyFiles.length).toBe(1);
     expect(fs.existsSync(path.join(destDir, 'large.txt'))).toBe(false);
   });
@@ -87,7 +90,7 @@ describe('Phase6.1 WorkspaceIsolation', () => {
     const limits = { ...defaultLimits, maxSingleFileBytes: 5, largeFilePolicy: 'REQUIRE_APPROVAL' as const };
     fs.writeFileSync(path.join(sourceDir, 'large.txt'), '123456');
 
-    await expect(WorkspaceIsolator.createIsolatedWorkspace(sourceDir, destDir, null, limits))
+    await expect(isolator.createIsolatedWorkspace(sourceDir, destDir, null, [], limits))
       .rejects.toThrow(/WAITING_USER/);
   });
 
@@ -104,7 +107,8 @@ describe('Phase6.1 WorkspaceIsolation', () => {
       return;
     }
 
-    await expect(WorkspaceIsolator.createIsolatedWorkspace(sourceDir, destDir, null, defaultLimits))
+    await expect(isolator.createIsolatedWorkspace(sourceDir, destDir, null, [], defaultLimits))
       .rejects.toThrow(/Symlink/);
   });
 });
+

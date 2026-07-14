@@ -1,145 +1,83 @@
-import { spawn } from 'child_process';
-import { CommandPlan, CapabilityStatus, NetworkPolicy } from '../domain/WorkbenchTypes';
-import { ToolApprovalPolicy } from '../../policy/ToolApprovalPolicy';
-
-export interface CommandExecutionResult {
-  commandId: string;
-  exitCode: number | null;
-  stdout: string;
-  stderr: string;
-  durationMs: number;
-  status: 'COMPLETED' | 'FAILED' | 'TIMED_OUT' | 'INTERRUPTED' | 'BLOCKED_BY_POLICY';
-  capabilitiesUsed: {
-    timeout: CapabilityStatus;
-    memoryLimit: CapabilityStatus;
-    cpuLimit: CapabilityStatus;
-    networkPolicy: CapabilityStatus;
-  };
-  interrupted: boolean;
-}
+import { CommandPlan, CapabilityStatus, NetworkPolicy, CommandExecutionResult } from '../domain/WorkbenchTypes';
+import { ICommandExecutorAdapter } from '../adapter/ICommandExecutorAdapter';
 
 export class WorkbenchCommandExecutor {
-  public static async execute(plan: CommandPlan, networkPolicy: NetworkPolicy, maxOutputBytes: number): Promise<CommandExecutionResult> {
+  constructor(private readonly executorAdapter: ICommandExecutorAdapter) {}
+
+  public async execute(plan: CommandPlan, networkPolicy: NetworkPolicy, maxOutputBytes: number): Promise<CommandExecutionResult> {
     const startTime = Date.now();
-    let status: CommandExecutionResult['status'] = 'COMPLETED';
-    let interrupted = false;
 
     // 1. Check Approval
     if (plan.approvalRequired) {
-       // Ideally integrated with Phase 4 Approval Policy, mock for this level if approval wasn't obtained beforehand
-       // In Workbench execution, approval must be requested before reaching here.
-       // We assume approval is granted if it reaches execution, or we block if we have a strict mock state.
+       // Mock for now, assuming approval was required but maybe not granted if we are strict.
+       // The actual orchestrator handles approval gathering before reaching here.
     }
 
     // 2. Network Policy Validation
-    const networkCommands = ['npm', 'yarn', 'pnpm', 'pip', 'wget', 'curl', 'git', 'apt-get', 'brew'];
-    const isNetworkCommand = networkCommands.includes(plan.executable) || plan.networkRequired;
+    const isNetworkCommand = this.isNetworkCommand(plan);
 
     if (isNetworkCommand) {
       if (networkPolicy === 'DENY') {
          return this.createBlockedResult(plan, 'Network access is DENY but command requires network.', startTime);
       } else if (networkPolicy === 'APPROVAL_REQUIRED' && !plan.approvalRequired) {
          return this.createBlockedResult(plan, 'Command requires network but lacks approval.', startTime);
+      } else if (plan.riskLevel === 'MEDIUM' || plan.riskLevel === 'HIGH') {
+         // UNENFORCED environment safety catch: medium/high network commands must be approved
+         if (!plan.approvalRequired) {
+             return this.createBlockedResult(plan, `Network command with risk ${plan.riskLevel} requires approval in UNENFORCED network isolation.`, startTime);
+         }
       }
     }
 
-    // 3. Execution using argv array to prevent shell interpolation
-    // We enforce timeout natively. Memory/CPU are unsupported natively in standard spawn without OS specific wrappers.
-    return new Promise((resolve) => {
-      let stdout = '';
-      let stderr = '';
-      let exitCode: number | null = null;
-      let outputBytes = 0;
-
-      const child = spawn(plan.executable, plan.arguments, {
-        cwd: plan.workingDirectory,
-        env: { ...process.env, ...plan.environmentKeys },
-        shell: false // Enforce argv execution, no shell strings
-      });
-
-      const timer = setTimeout(() => {
-        status = 'TIMED_OUT';
-        interrupted = true;
-        child.kill('SIGKILL');
-      }, plan.timeoutMs);
-
-      child.stdout.on('data', (chunk) => {
-        outputBytes += chunk.length;
-        if (outputBytes > maxOutputBytes) {
-          status = 'FAILED';
-          interrupted = true;
-          stderr += `\n[Workbench] Error: Max command output bytes exceeded (${maxOutputBytes})`;
-          child.kill('SIGKILL');
-        } else {
-          stdout += chunk.toString();
-        }
-      });
-
-      child.stderr.on('data', (chunk) => {
-        stderr += chunk.toString();
-      });
-
-      child.on('close', (code) => {
-        clearTimeout(timer);
-        exitCode = code;
-        if (status === 'COMPLETED' && code !== 0 && !plan.expectedExitCodes.includes(code || 0)) {
-           status = 'FAILED';
-        }
-
-        resolve({
-          commandId: plan.commandId,
-          exitCode,
-          stdout,
-          stderr,
-          durationMs: Date.now() - startTime,
-          status,
-          interrupted,
-          capabilitiesUsed: {
-            timeout: 'ENFORCED',
-            memoryLimit: 'UNSUPPORTED',
-            cpuLimit: 'UNSUPPORTED',
-            networkPolicy: 'ENFORCED' // For exact matching we block npm/git etc
-          }
-        });
-      });
-
-      child.on('error', (err) => {
-        clearTimeout(timer);
-        stderr += `\n[Workbench] Execution Error: ${err.message}`;
-        status = 'FAILED';
-        resolve({
-          commandId: plan.commandId,
-          exitCode: null,
-          stdout,
-          stderr,
-          durationMs: Date.now() - startTime,
-          status,
-          interrupted: false,
-          capabilitiesUsed: {
-            timeout: 'ENFORCED',
-            memoryLimit: 'UNSUPPORTED',
-            cpuLimit: 'UNSUPPORTED',
-            networkPolicy: 'ENFORCED'
-          }
-        });
-      });
-    });
+    // 3. Delegate Execution to Adapter
+    return await this.executorAdapter.execute(plan, networkPolicy, maxOutputBytes);
   }
 
-  private static createBlockedResult(plan: CommandPlan, reason: string, startTime: number): CommandExecutionResult {
+  private isNetworkCommand(plan: CommandPlan): boolean {
+    if (plan.networkRequired) return true;
+
+    const exe = plan.executable.toLowerCase();
+    const args = plan.arguments.join(' ').toLowerCase();
+
+    // Direct network tools
+    const networkTools = ['npm', 'yarn', 'pnpm', 'pip', 'wget', 'curl', 'git', 'apt-get', 'brew'];
+    if (networkTools.includes(exe)) {
+      if (exe === 'git' && !args.includes('fetch') && !args.includes('pull') && !args.includes('clone') && !args.includes('push')) {
+        return false;
+      }
+      return true;
+    }
+
+    // Script runners that can easily do network
+    if (exe === 'node' || exe === 'python' || exe === 'powershell' || exe === 'pwsh') {
+      return true;
+    }
+
+    // Custom executables in local dir (assumed potentially unsafe network)
+    if (exe.startsWith('./') || exe.startsWith('.\\')) {
+      return true;
+    }
+
+    // URL or registry arguments
+    if (args.includes('http://') || args.includes('https://') || args.includes('registry')) {
+      return true;
+    }
+
+    return false;
+  }
+
+  private createBlockedResult(plan: CommandPlan, reason: string, startTime: number): CommandExecutionResult {
     return {
-      commandId: plan.commandId,
-      exitCode: null,
+      status: 'BLOCKED_BY_POLICY',
+      exitCode: -1,
       stdout: '',
       stderr: `[Workbench] Blocked by Policy: ${reason}`,
-      durationMs: Date.now() - startTime,
-      status: 'BLOCKED_BY_POLICY',
       interrupted: true,
       capabilitiesUsed: {
         timeout: 'ENFORCED',
         memoryLimit: 'UNSUPPORTED',
         cpuLimit: 'UNSUPPORTED',
-        networkPolicy: 'ENFORCED'
+        networkPolicy: 'UNENFORCED'
       }
     };
   }

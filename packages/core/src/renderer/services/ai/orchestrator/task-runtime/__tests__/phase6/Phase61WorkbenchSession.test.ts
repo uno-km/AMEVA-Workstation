@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { WorkbenchSessionManager } from '../../workbench/session/WorkbenchSessionManager';
 import { WorkContract } from '../../workbench/domain/WorkbenchTypes';
+import { TestWorkbenchHostAdapter } from '../../workbench/adapter/TestWorkbenchHostAdapter';
+import { InMemoryFileSystemAdapter } from '../../artifact/InMemoryFileSystemAdapter';
+import { NodeCommandExecutorAdapter } from '../../workbench/adapter/NodeCommandExecutorAdapter';
 
 describe('Phase6.1 WorkbenchSession', () => {
   const baseContract: WorkContract = {
@@ -17,6 +20,10 @@ describe('Phase6.1 WorkbenchSession', () => {
     executionPolicy: 'strict',
     completionPolicy: 'all_passed'
   };
+
+  const fsAdapter = new InMemoryFileSystemAdapter();
+  const execAdapter = new NodeCommandExecutorAdapter();
+  const hostAdapter = new TestWorkbenchHostAdapter(fsAdapter, execAdapter);
 
   it('should prevent DECLARED -> RUNNING transition directly', () => {
     const session = WorkbenchSessionManager.createSession('m1', 't1', 'a1', baseContract, '/tmp/src');
@@ -44,3 +51,4 @@ describe('Phase6.1 WorkbenchSession', () => {
       .toThrow(/Conflict between allowed and protected files/);
   });
 });
+

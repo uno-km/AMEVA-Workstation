@@ -3,10 +3,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { WorkbenchSessionManager } from '../../workbench/session/WorkbenchSessionManager';
 import { WorkContract } from '../../workbench/domain/WorkbenchTypes';
+import { TestWorkbenchHostAdapter } from '../../workbench/adapter/TestWorkbenchHostAdapter';
+import { NodeArtifactFileAdapter } from '../../artifact/NodeArtifactFileAdapter';
+import { NodeCommandExecutorAdapter } from '../../workbench/adapter/NodeCommandExecutorAdapter';
 
 describe('Phase6.1 SnapshotRollback', () => {
   const tmpBase = path.join(process.cwd(), 'tmp-phase6-rollback');
   const sourceDir = path.join(tmpBase, 'source');
+
+  const fsAdapter = new NodeArtifactFileAdapter();
+  const execAdapter = new NodeCommandExecutorAdapter();
+  const hostAdapter = new TestWorkbenchHostAdapter(fsAdapter, execAdapter);
 
   beforeEach(() => {
     if (fs.existsSync(tmpBase)) {
@@ -40,7 +47,7 @@ describe('Phase6.1 SnapshotRollback', () => {
 
   it('should compute diff correctly and catch protected file changes', async () => {
     const session = WorkbenchSessionManager.createSession('m1', 't1', 'a1', baseContract, sourceDir);
-    await WorkbenchSessionManager.prepare(session);
+    await WorkbenchSessionManager.prepare(session, hostAdapter);
     WorkbenchSessionManager.start(session);
 
     // Modify working directory
@@ -48,7 +55,7 @@ describe('Phase6.1 SnapshotRollback', () => {
     fs.writeFileSync(path.join(isolatedDir, 'main.ts'), 'console.log("changed");');
     fs.writeFileSync(path.join(isolatedDir, 'new_file.ts'), 'new');
 
-    const diff = await WorkbenchSessionManager.computeDiff(sourceDir, isolatedDir);
+    const diff = await WorkbenchSessionManager.computeDiff(sourceDir, isolatedDir, hostAdapter);
     
     expect(diff.modifiedFiles.length).toBe(1);
     expect(diff.modifiedFiles[0].logicalPath).toBe('main.ts');
@@ -58,28 +65,29 @@ describe('Phase6.1 SnapshotRollback', () => {
 
   it('should block verification if protected file is modified', async () => {
     const session = WorkbenchSessionManager.createSession('m1', 't1', 'a2', baseContract, sourceDir);
-    await WorkbenchSessionManager.prepare(session);
+    await WorkbenchSessionManager.prepare(session, hostAdapter);
     WorkbenchSessionManager.start(session);
 
     // Modify protected file
     const isolatedDir = session.isolatedWorkspace;
     fs.writeFileSync(path.join(isolatedDir, 'protected.ts'), 'hacked');
 
-    await expect(WorkbenchSessionManager.verify(session)).rejects.toThrow(/Protected file modified/);
+    await expect(WorkbenchSessionManager.verify(session, hostAdapter)).rejects.toThrow(/Protected file modified/);
     expect(session.status).toBe('FAILED');
   });
 
   it('should prevent COMMITTING if required check fails', async () => {
     const session = WorkbenchSessionManager.createSession('m1', 't1', 'a3', baseContract, sourceDir);
-    await WorkbenchSessionManager.prepare(session);
+    await WorkbenchSessionManager.prepare(session, hostAdapter);
     WorkbenchSessionManager.start(session);
 
-    const diff = await WorkbenchSessionManager.verify(session);
+    const diff = await WorkbenchSessionManager.verify(session, hostAdapter);
     
     // Simulate failed check
     const checkResults = { 'TEST': false };
     
-    await expect(WorkbenchSessionManager.commit(session, diff, checkResults)).rejects.toThrow(/Verification check failed/);
+    await expect(WorkbenchSessionManager.commit(session, diff, checkResults, false, false)).rejects.toThrow(/Verification check failed/);
     expect(session.status).toBe('FAILED');
   });
 });
+
