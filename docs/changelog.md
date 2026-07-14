@@ -1,3 +1,22 @@
+
+## 2026-07-14 (Phase 6.1 Workbench Foundation)
+
+### 🛠️ Major Architectural Changes
+- **IWorkbenchHostAdapter Architecture**: Introduced a Composition-based adapter to decouple Renderer from direct Node.js API (fs, child_process) calls.
+- **Atomic Workspace Isolation**: Implemented WorkspaceIsolator with atomic snapshot creation, strictly enforcing ResourceLimits (maxSingleFileBytes policies, maxWorkspaceBytes).
+- **Network Isolation & Policy Enforcement**: Expanded WorkbenchCommandExecutor to strictly evaluate NetworkPolicy (DENY, APPROVAL_REQUIRED) and Command Types.
+- **Rename & Diff Logic**: Improved WorkbenchSessionManager to detect RENAMED_CANDIDATE and manage atomic commits.
+
+### 📄 Files Modified / Added
+- [NEW] IWorkbenchHostAdapter.ts, ICommandExecutorAdapter.ts, NodeCommandExecutorAdapter.ts, TestWorkbenchHostAdapter.ts
+- [MODIFY] WorkspaceIsolator.ts - Refactored to use IFileSystemAdapter, removed Node s.
+- [MODIFY] WorkbenchSessionManager.ts - Removed Node path, s imports; delegates to IWorkbenchHostAdapter.
+- [MODIFY] WorkbenchCommandExecutor.ts - Migrated process execution to ICommandExecutorAdapter.
+
+### 💡 Reasoning & Impact
+- **Problem**: Renderer runtime code had direct dependencies on native Node modules, which violated the electron boundary and lacked strict resource confinement.
+- **Solution**: Composition-based IWorkbenchHostAdapter creates a strict isolation layer. LLM workloads are now run in safely partitioned workspace snapshots.
+- **Impact**: Full architectural compliance. 27/27 Integration tests passed.
 # AMEVA OS Changelog
 
 ## 2026-07-14 (Phase 4.2 — Execution Trace Tool Lifecycle 마감, Secret Redaction 고도화, 런타임 복원 시 INTERRUPTED 미결 Span 마감, UI ViewModel 가시성 제어 및 전체 회귀 100% 통과 완수)

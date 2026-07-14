@@ -89,6 +89,13 @@ AMEVA OS is a serverless local AI & WASM hybrid operating system that executes c
 - **`SupervisorAgent.ts`**: 토큰 방출 빈도를 측정하여 진행 단계를 추정하고 10초 주기 Watchdog 타이머로 오작동을 진단하는 감시자.
 - **`RecoveryEngine.ts`**: Stalled/Dead 상태 진입 시 5단계 복구 사다리(Reconnection, Parser Reset, Stream Rebuild, Checkpoint Resume, User Assist) 프로토콜을 수행하는 회복 제어기.
 
+
+### 2.11 Workbench Foundation Layer (Phase 6.1)
+- **IWorkbenchHostAdapter**: Composition root for delegating OS-level operations (fileSystem, commandExecutor) out of Renderer.
+- **WorkspaceIsolator**: Enforces large file policies, resolves atomic copy constraints, and blocks path traversal.
+- **WorkbenchSessionManager**: Coordinates snapshot preparation, runs diff analysis, and evaluates verification rules before atomic commit.
+- **WorkbenchCommandExecutor**: Interprets network isolation policy and evaluates command execution requests against allowed rules.
+
 ## 3. Mermaid Architecture Diagram
 
 ```mermaid
