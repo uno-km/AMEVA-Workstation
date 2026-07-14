@@ -346,6 +346,15 @@ export function blocksToHTML(rawBlocks: any): string {
               for (const card of cards) {
                 html += `<li style="background: #ffffff; padding: 12px; margin-bottom: 10px; border-radius: 6px; border: 1px solid #cbd5e1; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">`
                 html += `<strong style="font-size: 14px; color: #1e293b; display: block; margin-bottom: 4px;">${escapeHtml(card.title || '')}</strong>`
+                
+                if (card.labels && card.labels.length > 0) {
+                  html += `<div style="display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px;">`
+                  for (const label of card.labels) {
+                    html += `<span style="background: ${label.color}; color: #fff; font-size: 10px; padding: 2px 6px; border-radius: 10px;">${escapeHtml(label.text)}</span>`
+                  }
+                  html += `</div>`
+                }
+                
                 if (card.description) {
                   html += `<span style="font-size: 12px; color: #64748b; display: block; white-space: pre-wrap;">${escapeHtml(card.description)}</span>`
                 }

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { createReactBlockSpec } from '@blocknote/react'
-import { Plus, CheckSquare, Square, ChevronUp, Equal, ChevronDown, User, Bot, Search, GripVertical, Trash2, ArrowLeft, ArrowRight } from 'lucide-react'
+import { Plus, CheckSquare, Square, ChevronUp, Equal, ChevronDown, User, Search, GripVertical, Trash2, ArrowLeft, ArrowRight } from 'lucide-react'
+import { KanbanModal } from './KanbanModal'
 
 // Kanban Data Types
 export type Priority = 'high' | 'medium' | 'low'
@@ -16,6 +18,8 @@ export interface KanbanCard {
   completed: boolean
   priority: Priority
   assignee: Assignee | null
+  description?: string
+  labels?: { text: string, color: string }[]
 }
 export interface KanbanColumn {
   id: string
@@ -27,14 +31,7 @@ export interface KanbanData {
   nextId: number
 }
 
-// Mock AI Agents for the UI
-const AVAILABLE_AGENTS = [
-  { name: 'Claude Agent', type: 'agent', avatarColor: '#d97757' },
-  { name: 'Figma Agent', type: 'agent', avatarColor: '#ff7262' },
-  { name: 'Cursor Agent', type: 'agent', avatarColor: '#000000' },
-  { name: 'Marketing', type: 'human', avatarColor: '#4caf50' },
-  { name: 'Design', type: 'human', avatarColor: '#9c27b0' }
-]
+// (Moved to KanbanModal)
 
 const DEFAULT_DATA: KanbanData = {
   columns: [
@@ -75,6 +72,9 @@ export const KanbanBlockSpec = createReactBlockSpec(
       const [isMounted, setIsMounted] = useState(false)
       useEffect(() => setIsMounted(true), [])
 
+      // Modal state
+      const [activeModalCardId, setActiveModalCardId] = useState<string | null>(null)
+
       // Drag and drop state
       const [draggingCardId, setDraggingCardId] = useState<string | null>(null)
       const [draggingColId, setDraggingColId] = useState<string | null>(null)
@@ -102,6 +102,18 @@ export const KanbanBlockSpec = createReactBlockSpec(
         document.addEventListener('mousedown', handleClickOutside)
         return () => document.removeEventListener('mousedown', handleClickOutside)
       }, [])
+
+      // Find active card for modal
+      const getActiveCardData = () => {
+        if (!activeModalCardId) return null
+        for (const col of data.columns) {
+          const card = col.cards.find(c => c.id === activeModalCardId)
+          if (card) return { card, colId: col.id }
+        }
+        return null
+      }
+
+      const activeCardData = getActiveCardData()
 
       const saveData = (newData: KanbanData) => {
         setData(newData)
@@ -283,6 +295,7 @@ export const KanbanBlockSpec = createReactBlockSpec(
       if (!isMounted) return null
 
       return (
+        <>
         <div 
           contentEditable={false}
           style={{ 
@@ -384,178 +397,79 @@ export const KanbanBlockSpec = createReactBlockSpec(
                     handleDrop(e, col.id, card.id)
                   }}
                   style={{
-                    backgroundColor: 'var(--bg-card)',
-                    border: '1px solid var(--border-muted)',
-                    borderRadius: '6px',
+                    backgroundColor: 'var(--bg-main)',
+                    borderRadius: '8px',
                     padding: '12px',
-                    cursor: isEditable ? 'grab' : 'default',
+                    marginBottom: '8px',
+                    boxShadow: draggingCardId === card.id ? '0 10px 15px -3px rgba(0, 0, 0, 0.1)' : '0 1px 3px rgba(0,0,0,0.1)',
+                    border: '1px solid var(--border-muted)',
+                    cursor: isEditable ? 'grab' : 'pointer',
                     opacity: draggingCardId === card.id ? 0.5 : 1,
-                    transition: 'all 0.2s',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                    position: 'relative'
+                  }}
+                  onClick={() => {
+                    if (isEditable) setActiveModalCardId(card.id)
                   }}
                 >
-                  {editingCardId === card.id ? (
-                    <div style={{ marginBottom: '12px' }}>
-                      <input
-                        autoFocus
-                        value={editingTitle}
-                        onChange={(e) => setEditingTitle(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault()
-                            const newData = { ...data }
-                            const colItem = newData.columns.find(c => c.id === col.id)
-                            if (colItem) {
-                              const cc = colItem.cards.find(c => c.id === card.id)
-                              if (cc) cc.title = editingTitle || 'Untitled'
-                              saveData(newData)
-                            }
-                            setEditingCardId(null)
-                          } else if (e.key === 'Escape') {
-                            setEditingCardId(null)
-                          }
-                        }}
-                        onBlur={() => {
-                          const newData = { ...data }
-                          const colItem = newData.columns.find(c => c.id === col.id)
-                          if (colItem) {
-                            const cc = colItem.cards.find(c => c.id === card.id)
-                            if (cc) cc.title = editingTitle || 'Untitled'
-                            saveData(newData)
-                          }
-                          setEditingCardId(null)
-                        }}
-                        style={{
-                          width: '100%',
-                          backgroundColor: 'var(--bg-main)',
-                          border: '1px solid var(--primary)',
-                          color: 'var(--text-main)',
-                          borderRadius: '4px',
-                          padding: '4px 8px',
-                          fontSize: '14px',
-                          outline: 'none'
-                        }}
-                      />
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', flex: 1 }}>
+                      <div 
+                        onClick={(e) => { e.stopPropagation(); toggleCardCompleted(col.id, card.id) }} 
+                        style={{ color: card.completed ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer', marginTop: '2px' }}
+                      >
+                        {card.completed ? <CheckSquare size={16} /> : <Square size={16} />}
+                      </div>
+                      <div style={{ flex: 1, fontSize: '14px', color: card.completed ? 'var(--text-muted)' : 'var(--text-main)', textDecoration: card.completed ? 'line-through' : 'none' }}>
+                        {card.title || 'Untitled'}
+                      </div>
                     </div>
-                  ) : (
-                    <div 
-                      onClick={(e) => {
-                        if (isEditable) {
-                          e.stopPropagation()
-                          setEditingCardId(card.id)
-                          setEditingTitle(card.title)
-                        }
-                      }}
-                      style={{ 
-                        fontSize: '14px', 
-                        marginBottom: '12px', 
-                        color: card.completed ? 'var(--text-muted)' : 'var(--text-main)', 
-                        textDecoration: card.completed ? 'line-through' : 'none',
-                        cursor: isEditable ? 'text' : 'grab',
-                        minHeight: '20px'
-                      }}>
-                      {card.title || 'Untitled'}
+                  </div>
+                  {card.description && (
+                    <div style={{
+                      fontSize: '12px', color: 'var(--text-muted)',
+                      marginTop: '2px', marginBottom: '8px',
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden', textOverflow: 'ellipsis',
+                      whiteSpace: 'pre-wrap', opacity: 0.8
+                    }}>
+                      {card.description}
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <div 
-                        onClick={() => toggleCardCompleted(col.id, card.id)}
-                        style={{ cursor: isEditable ? 'pointer' : 'default', display: 'flex', alignItems: 'center' }}
-                      >
-                        {card.completed ? <CheckSquare size={16} color="#4caf50" /> : <Square size={16} color="var(--text-muted)" />}
-                      </div>
-                      <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{card.id}</span>
-                      <div 
-                        onClick={() => togglePriority(col.id, card.id)}
-                        style={{ cursor: isEditable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', marginLeft: '4px' }}
-                      >
+
+                  {card.labels && card.labels.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', margin: '8px 0' }}>
+                      {card.labels.map((label, idx) => (
+                        <div key={idx} style={{ background: label.color, color: '#fff', fontSize: '10px', padding: '2px 6px', borderRadius: '10px' }}>
+                          {label.text}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      <span>{card.id}</span>
+                      <span style={{ cursor: isEditable ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: '2px' }}>
                         <PriorityIcon priority={card.priority} />
-                      </div>
+                      </span>
                     </div>
                     
-                    <div style={{ position: 'relative' }}>
-                      <div 
-                        onClick={() => isEditable && setActiveAgentDropdown(card.id)}
-                        style={{
-                          width: '24px', height: '24px', borderRadius: '12px',
-                          backgroundColor: card.assignee ? card.assignee.avatarColor : 'var(--bg-glass-active)',
-                          display: 'flex', justifyContent: 'center', alignItems: 'center',
-                          cursor: isEditable ? 'pointer' : 'default',
-                          border: '1px solid var(--border-muted)'
-                        }}
-                      >
-                        {card.assignee ? (
-                          card.assignee.type === 'agent' ? <Bot size={14} color="#fff" /> : <User size={14} color="#fff" />
-                        ) : (
-                          <User size={14} color="var(--text-muted)" />
-                        )}
-                      </div>
-                      
-                      {/* Agent Dropdown */}
-                      {activeAgentDropdown === card.id && (
-                        <div 
-                          ref={dropdownRef}
-                          style={{
-                            position: 'absolute', top: '28px', right: '0',
-                            width: '200px', backgroundColor: 'var(--bg-card)',
-                            border: '1px solid var(--border-muted)', borderRadius: '8px',
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 100,
-                            padding: '8px'
-                          }}
-                        >
-                          <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <Search size={12} /> Select an agent
-                          </div>
-                          {AVAILABLE_AGENTS.map((agent, i) => (
-                            <div 
-                              key={i}
-                              onClick={() => assignAgent(col.id, card.id, agent)}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: '8px',
-                                padding: '6px 8px', borderRadius: '4px',
-                                cursor: 'pointer',
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-glass-active)'}
-                              onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                            >
-                              <div style={{
-                                width: '20px', height: '20px', borderRadius: '10px',
-                                backgroundColor: agent.avatarColor, display: 'flex', justifyContent: 'center', alignItems: 'center'
-                              }}>
-                                {agent.type === 'agent' ? <Bot size={12} color="#fff"/> : <User size={12} color="#fff"/>}
-                              </div>
-                              <span style={{ fontSize: '13px' }}>{agent.name}</span>
-                            </div>
-                          ))}
-                          <div style={{ display: 'flex', marginTop: '8px', gap: '4px', borderTop: '1px solid var(--border-muted)', paddingTop: '8px' }}>
-                            <input 
-                              value={newAssigneeName}
-                              onChange={e => setNewAssigneeName(e.target.value)}
-                              placeholder="New Assignee"
-                              style={{ flex: 1, backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-muted)', borderRadius: '4px', color: 'var(--text-main)', fontSize: '12px', padding: '4px', minWidth: 0, outline: 'none' }}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && newAssigneeName.trim()) {
-                                   const color = ['#f44336', '#9c27b0', '#3f51b5', '#009688', '#ff9800'][Math.floor(Math.random() * 5)]
-                                   assignAgent(col.id, card.id, { type: 'human', name: newAssigneeName.trim(), avatarColor: color })
-                                   setNewAssigneeName('')
-                                }
-                              }}
-                            />
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (newAssigneeName.trim()) {
-                                   const color = ['#f44336', '#9c27b0', '#3f51b5', '#009688', '#ff9800'][Math.floor(Math.random() * 5)]
-                                   assignAgent(col.id, card.id, { type: 'human', name: newAssigneeName.trim(), avatarColor: color })
-                                   setNewAssigneeName('')
-                                }
-                              }}
-                              style={{ background: 'var(--primary)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', padding: '0 8px', fontSize: '12px' }}
-                            >
-                              <Plus size={12} />
-                            </button>
-                          </div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      {card.assignee ? (
+                        <div style={{
+                          width: '24px', height: '24px', borderRadius: '50%',
+                          backgroundColor: card.assignee.avatarColor, display: 'flex',
+                          alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '12px'
+                        }}>
+                          {card.assignee.name.charAt(0).toUpperCase()}
+                        </div>
+                      ) : (
+                        <div style={{
+                          width: '24px', height: '24px', borderRadius: '50%',
+                          backgroundColor: 'var(--bg-glass-active)', display: 'flex',
+                          alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)'
+                        }}>
+                          <User size={14} />
                         </div>
                       )}
                     </div>
@@ -615,6 +529,35 @@ export const KanbanBlockSpec = createReactBlockSpec(
             </div>
           )}
         </div>
+        
+        {activeModalCardId && activeCardData && createPortal(
+          <KanbanModal 
+            card={activeCardData.card}
+            currentColId={activeCardData.colId}
+            columns={data.columns}
+            onClose={() => setActiveModalCardId(null)}
+            onSave={(updatedCard, newColId) => {
+              const oldColId = activeCardData.colId
+              const newData = { ...data }
+              const oldCol = newData.columns.find(c => c.id === oldColId)
+              const newCol = newData.columns.find(c => c.id === newColId)
+              
+              if (oldCol && newCol) {
+                if (oldColId === newColId) {
+                  const idx = oldCol.cards.findIndex(c => c.id === updatedCard.id)
+                  if (idx !== -1) oldCol.cards[idx] = updatedCard
+                } else {
+                  oldCol.cards = oldCol.cards.filter(c => c.id !== updatedCard.id)
+                  newCol.cards.push(updatedCard)
+                }
+                saveData(newData)
+              }
+              setActiveModalCardId(null)
+            }}
+          />,
+          document.body
+        )}
+        </>
       )
     },
     parse: (el) => {
