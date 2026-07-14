@@ -18,7 +18,7 @@ const LazyWorkbook = lazy(() =>
 )
 
 // 블록 사양 정의
-export const ExcelBlock = createReactBlockSpec(
+const ExcelBlockSpec = createReactBlockSpec(
   {
     type: 'excel',
     propSchema: {
@@ -134,3 +134,5 @@ export const ExcelBlock = createReactBlockSpec(
     }
   }
 )
+
+export const ExcelBlock = ExcelBlockSpec()
