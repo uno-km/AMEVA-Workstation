@@ -127,16 +127,20 @@ export function AgentTaskChecklist() {
   const resolvePlanApproval = useAIState((s) => s.resolvePlanApproval)
   const agentTaskPlanCollapsed = useAIState((s) => s.agentTaskPlanCollapsed)
   const setAgentTaskPlanCollapsed = useAIState((s) => s.setAgentTaskPlanCollapsed)
+  
+  // Phase 4: ExecutionTraceEvents
+  const executionTraceEvents = useAIState((s) => s.executionTraceEvents) || []
+  const hasPhase4Trace = executionTraceEvents.length > 0
 
-  // Plan이 없으면 렌더링하지 않음
-  if (!agentTaskPlan || agentTaskPlan.steps.length === 0) return null
+  // Plan이나 Phase 4 Trace가 없으면 렌더링하지 않음
+  if ((!agentTaskPlan || agentTaskPlan.steps.length === 0) && !hasPhase4Trace) return null
 
-  /*
-   * [RUN-TIME STATE / INVARIANT]
-   * - 변수 명: `steps`
-   * - Rationale: 미사용 goal 변수 경고를 제거하기 위해 steps만 단독 비구조화 할당하여 사용한다.
-   */
-  const { steps } = agentTaskPlan
+  // Phase 4 Timeline 변환
+  const timelineCards = hasPhase4Trace 
+    ? require('../../services/ai/orchestrator/task-runtime/trace/ExecutionTraceViewModel').ExecutionTraceViewModel.toTimelineEvents(executionTraceEvents, 'USER') 
+    : []
+
+  const steps = agentTaskPlan?.steps || []
   const completedCount = steps.filter((s) => s.status === 'done').length
   const progressPercent = taskProgress // 신규 Task Runtime의 실질 진행률로 대체
 

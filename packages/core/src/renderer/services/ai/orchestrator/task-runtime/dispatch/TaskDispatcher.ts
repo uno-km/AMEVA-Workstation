@@ -22,6 +22,11 @@ import { MissionBudgetLedger } from '../budget/MissionBudgetLedger';
 import { CheckpointRuntime } from '../checkpoint/CheckpointRuntime';
 import type { ILLMEngineAdapter } from '../../types';
 import type { ExecutionHandle } from '../domain/ExecutionTypes';
+import { ModelRouter } from '../routing/router/ModelRouter';
+import { RoutingBudgetManager } from '../routing/budget/RoutingBudgetManager';
+import { ModelAdapterProvider } from '../routing/adapter/ModelAdapterProvider';
+import { RoutingConfigManager } from '../routing/domain/RoutingConfigManager';
+import type { TaskRoutingProfile } from '../routing/domain/types';
 
 export class TaskDispatcher {
   private store: TaskRuntimeStore;
@@ -146,6 +151,144 @@ export class TaskDispatcher {
     abortSignal: AbortSignal
   ): Promise<void> {
     try {
+      let taskAdapter = this.adapter;
+      const task = this.store.getTask(missionId, taskId);
+      const routingConfig = RoutingConfigManager.getInstance().getConfig();
+
+      // [Item 2] ModelRouter.route() -> ModelAdapterProvider
+      if (routingConfig.routingEnabled) {
+        let routingResult = task.state.routingDecision as import('../routing/domain/RoutingDecisionResult').RoutingDecisionResult | undefined;
+
+        // Affinity Status Check or UNAVAILABLE check
+        let needsRouting = !routingResult || routingResult.affinityStatus !== 'ACTIVE';
+        
+        if (!needsRouting && routingResult?.selectedModelId) {
+           const adapterProvider = ModelAdapterProvider.getInstance();
+           try {
+             // Just check if we can get it, if it throws UNAVAILABLE it will be caught
+             await adapterProvider.getAdapterForModel(routingResult.selectedModelId, task.definition.privacyLevel as import('../domain/types').PrivacyLevel);
+           } catch(e: unknown) {
+             const error = e as Error;
+             if (error.message && error.message.includes('UNAVAILABLE')) {
+               needsRouting = true;
+             }
+           }
+        }
+
+        if (needsRouting) {
+          const budgetManager = new RoutingBudgetManager(routingConfig, task.state.routingBudget);
+          
+          if (!budgetManager.recordDecision()) {
+            this.store.dispatchTransition(
+              {
+                commandId: `cmd-fail-${crypto.randomUUID()}`,
+                missionId,
+                taskId,
+                expectedCurrentStatus: 'DISPATCHED',
+                expectedStateVersion: task.state.stateVersion,
+                reason: 'Routing budget exhausted',
+                actor: 'TaskDispatcher',
+                timestamp: Date.now()
+              },
+              'FAILED',
+              { taskResult: { status: 'FAILED', result: {}, error: 'Routing budget exhausted' } }
+            );
+            return;
+          }
+
+          const isRepair = task.state.previousFailures && task.state.previousFailures.length > 0 && task.state.previousFailures[task.state.previousFailures.length - 1].errorType === 'VerificationFailed';
+          const lastFailure = isRepair ? task.state.previousFailures![task.state.previousFailures!.length - 1] : null;
+
+          const profile: TaskRoutingProfile = {
+            taskType: isRepair ? 'PARTIAL_REPAIR' : 'EXECUTION',
+            requiredCapabilities: isRepair ? ['CODE_REPAIR', 'STRUCTURED_OUTPUT'] : (task.definition.requiredCapabilities || []),
+            contextSize: 2000, // Roughly estimated, ideally should be dynamic
+            expectedOutputTokens: task.definition.expectedOutputTokens || 1000,
+            privacyLevel: task.definition.privacyLevel || 'INTERNAL',
+            instructionComplexity: 0.8,
+            reasoningComplexity: 0.7,
+            toolRequired: true,
+            codeExecutionRequired: task.definition.requiredCapabilities?.includes('CODE_GENERATION') || false,
+            latencyPreference: 'balance',
+            qualityPreference: 'high',
+            previousModelIds: task.state.previousFailures?.map(f => f.modelId || '') || [],
+            routingBudgetRemaining: 5,
+            retryScope: lastFailure?.retryScope,
+            sourceModelId: routingResult?.selectedModelId,
+            previousDefectSignatures: lastFailure?.defectSignatures || []
+          };
+
+          routingResult = await ModelRouter.route(profile, routingConfig);
+          
+          if (routingResult.status === 'SUCCESS') {
+            // Save Affinity
+            this.store.updateTaskMetadata(
+              {
+                commandId: `cmd-affinity-${crypto.randomUUID()}`,
+                missionId,
+                taskId,
+                expectedStateVersion: task.state.stateVersion,
+                reason: 'Save Model Routing Affinity',
+                actor: 'TaskDispatcher',
+                timestamp: Date.now()
+              } as unknown as import('../domain/types').TransitionCommand,
+              {
+                routingDecision: {
+                  ...routingResult,
+                  routingDecisionId: routingResult.routingDecisionId,
+                  selectedModelId: routingResult.selectedModelId,
+                  selectedRole: routingResult.selectedRole,
+                  selectedAt: routingResult.decidedAt,
+                  affinityStatus: 'ACTIVE'
+                },
+                routingBudget: budgetManager.getState()
+              }
+            );
+            // Update routingResult to include affinityStatus so it's used below
+            routingResult.affinityStatus = 'ACTIVE';
+          }
+          
+          this.store.getTraceManager().recordRoutingDecision(
+            missionId,
+            taskId,
+            attemptId,
+            routingResult
+          );
+        }
+
+        if (routingResult && (routingResult.status === 'SUCCESS' || routingResult.selectedModelId)) {
+          try {
+            taskAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, task.definition.privacyLevel as import('../domain/types').PrivacyLevel);
+          } catch (e: unknown) {
+            console.warn(`[TaskDispatcher] Adapter load failed for ${routingResult.selectedModelId}, falling back`, e);
+          }
+        }
+      } else {
+        // Legacy 경로 사용 시 Trace 기록
+        this.store.getTraceManager().getStore().appendEvent({
+          eventId: crypto.randomUUID(),
+          traceId: missionId,
+          spanId: `span-t-${taskId}-${attemptId}`,
+          parentSpanId: `span-m-${missionId}`,
+          missionId,
+          taskId,
+          attemptId,
+          timestamp: Date.now(),
+          eventType: 'legacy_routing_fallback',
+          status: 'SUCCESS',
+          title: `Legacy Routing Fallback`,
+          summary: `Routing disabled, using default adapter`,
+          sequenceNumber: 0,
+          visibility: 'INTERNAL',
+          severity: 'INFO',
+          schemaVersion: '4.0.0',
+          metadata: { 
+            fallbackReason: 'routingEnabled is false',
+            routingEnabled: false
+          }
+        });
+      }
+
       /*
        * [CheckpointRuntime 주입]
        * MissionExecutionRuntime이 공유하는 인스턴스를 DeepTaskExecutor에 전달.
@@ -155,7 +298,7 @@ export class TaskDispatcher {
         this.store,
         this.leaseManager,
         this.ledger,
-        this.adapter,
+        taskAdapter,
         this.toolRegistry,
         this.checkpointRuntime,
         this.artifactManager

@@ -144,6 +144,16 @@ export interface TaskDefinition {
   plannerMetadata?: Record<string, any>; // 플래너가 남긴 추가 메타데이터
 }
 
+export interface RoutingDecisionRecord {
+  routingDecisionId: string;
+  selectedModelId: string;
+  selectedRole: string;
+  selectedPromptProfile?: string;
+  selectedAt: number;
+  routingReason: string;
+  adapterInstanceId?: string;
+}
+
 /**
  * 2. TaskRuntimeState
  * - 실행 중 지속적으로 변하는 상태 및 결과 데이터
@@ -168,6 +178,14 @@ export interface TaskRuntimeState {
   executionRetryCount: number;
   maxSemanticCriticCalls: number;
   semanticCriticCallCount: number;
+  routingBudget?: {
+    routingDecisionCount: number;
+    modelEscalationCount: number;
+    modelSwitchCount: number;
+    totalModelCallCount: number;
+    estimatedTokensUsed: number;
+    routingStartedAt: number;
+  };
   maxRepairAttempts: number;
   repairAttemptCount: number;
   maxSameDefectRepeats: number;
@@ -187,6 +205,12 @@ export interface TaskRuntimeState {
    * RecoveryCoordinator가 RETRY_WAIT 전이 시 이 값을 설정해야 함.
    */
   retryAfter?: number;
+
+  /**
+   * [Phase 5.1 — Model Routing Affinity]
+   * Task 실행 시 결정된 라우팅 정보. 재시도 시 불필요한 라우팅을 막고 Affinity를 유지.
+   */
+  routingDecision?: RoutingDecisionRecord;
 }
 
 /**

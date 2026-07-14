@@ -14,6 +14,10 @@ import { RecoveryRequestStore } from '../recovery/RecoveryRequestStore';
 import { MissionBudgetLedger } from '../../budget/MissionBudgetLedger';
 import type { ILLMEngineAdapter } from '../../../types';
 import type { ArtifactTransactionManager } from '../../artifact/ArtifactTransactionManager';
+import { ModelRouter } from '../../routing/router/ModelRouter';
+import { ModelAdapterProvider } from '../../routing/adapter/ModelAdapterProvider';
+import { RoutingConfigManager } from '../../routing/domain/RoutingConfigManager';
+import type { TaskRoutingProfile } from '../../routing/domain/types';
 
 export class VerificationRuntime {
   private inputBuilder: VerificationInputBuilder;
@@ -48,6 +52,94 @@ export class VerificationRuntime {
       try {
         const jobId = `vjob-${crypto.randomUUID()}`;
         const input = this.inputBuilder.build(missionId, task.definition.id, task.state.activeAttemptId);
+        
+        // [Item 5] Semantic Verifier Routing
+        const routingConfig = RoutingConfigManager.getInstance().getConfig();
+        if (routingConfig.routingEnabled) {
+          const profile: TaskRoutingProfile = {
+            taskType: 'SEMANTIC_VERIFIER',
+            requiredCapabilities: ['SEMANTIC_VERIFICATION', 'STRUCTURED_OUTPUT'],
+            contextSize: 2000,
+            expectedOutputTokens: 500,
+            privacyLevel: task.definition.privacyLevel || 'INTERNAL',
+            instructionComplexity: 0.8,
+            reasoningComplexity: 0.9,
+            toolRequired: false,
+            codeExecutionRequired: false,
+            latencyPreference: 'speed',
+            qualityPreference: 'high',
+            previousModelIds: [],
+            routingBudgetRemaining: 5
+          };
+
+          const routingResult = await ModelRouter.route(profile, routingConfig);
+          
+          this.store.getTraceManager().getStore().appendEvent({
+            eventId: crypto.randomUUID(),
+            traceId: missionId,
+            spanId: `span-v-${task.definition.id}-${task.state.activeAttemptId}`,
+            parentSpanId: `span-m-${missionId}`,
+            missionId,
+            taskId: task.definition.id,
+            attemptId: task.state.activeAttemptId,
+            timestamp: Date.now(),
+            eventType: 'model_routing_started',
+            status: 'SUCCESS',
+            title: `Task Verification Routing`,
+            summary: `Routed to ${routingResult.selectedModelId}`,
+            sequenceNumber: 0,
+            visibility: 'INTERNAL',
+            severity: 'INFO',
+            schemaVersion: '4.0.0',
+            metadata: { routingResult }
+          });
+
+          if (routingResult.status === 'SUCCESS' && routingResult.selectedModelId) {
+            try {
+              const verifierAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, task.definition.privacyLevel as import('../../domain/types').PrivacyLevel);
+              
+              // Privacy Gate
+              if (verifierAdapter.isRemote) {
+                if (task.definition.privacyLevel === 'RESTRICTED') {
+                  throw new Error('PrivacyViolation: RESTRICTED tasks cannot use Remote models for verification.');
+                }
+                if (task.definition.privacyLevel === 'CONFIDENTIAL' && !task.state.metadata?.['remoteApproval']) {
+                  throw new Error('PrivacyViolation: CONFIDENTIAL tasks require user approval to use Remote models for verification.');
+                }
+              }
+
+              this.coordinator.setSemanticAdapter(verifierAdapter);
+              
+              if (task.state.routingDecision?.selectedModelId === routingResult.selectedModelId) {
+                this.store.getTraceManager().getStore().appendEvent({
+                  eventId: crypto.randomUUID(),
+                  traceId: missionId,
+                  spanId: `span-v-${task.definition.id}-${task.state.activeAttemptId}`,
+                  parentSpanId: `span-m-${missionId}`,
+                  missionId,
+                  taskId: task.definition.id,
+                  attemptId: task.state.activeAttemptId,
+                  timestamp: Date.now(),
+                  eventType: 'self_bias_risk_detected' as import('../../trace/types').TraceEventType,
+                  status: 'WARNING',
+                  title: `Self-Bias Risk`,
+                  summary: `Verifier model is the same as Executor model: ${routingResult.selectedModelId}`,
+                  sequenceNumber: 0,
+                  visibility: 'INTERNAL',
+                  severity: 'MEDIUM',
+                  schemaVersion: '4.0.0'
+                });
+                this.coordinator.setStrictBiasMode(true);
+              } else {
+                this.coordinator.setStrictBiasMode(false);
+              }
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : String(e);
+              console.warn(`[VerificationRuntime] Semantic adapter load failed for ${routingResult.selectedModelId}, falling back`, msg);
+            }
+          }
+        }
+        
         const criterionResults = await this.coordinator.runVerificationPipeline(input);
         
         // Update Budget
@@ -68,7 +160,7 @@ export class VerificationRuntime {
               reason: 'Increment semanticCriticCallCount',
               actor: 'VerificationRuntime',
               timestamp: Date.now()
-            } as any,
+            } as unknown as import('../../domain/types').TransitionCommand,
             { semanticCriticCallCount: newCount }
           );
           // Pass the updated count to the policy
@@ -140,14 +232,15 @@ export class VerificationRuntime {
                 timestamp: Date.now()
               },
               'COMPLETED',
-              { verification: finalResult as any }
+              { verification: finalResult }
             );
           }
         } else {
           this.recoveryCoordinator.handleVerificationFailure(finalResult);
         }
-      } catch (e: any) {
-        console.error(`[VerificationRuntime] Failed to process verification for task ${task.definition.id}:`, e);
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.error(`[VerificationRuntime] Failed to process verification for task ${task.definition.id}:`, msg);
       }
     }
     return results;

@@ -111,10 +111,19 @@ export class SemanticVerifier implements TaskVerifier {
    * 생성자에서 주입. 미주입 시 null로 폴백 처리.
    * VerificationRuntime이 DeepTaskExecutor의 adapter를 전달해야 함.
    */
-  private readonly adapter: ILLMEngineAdapter | null;
+  private adapter: ILLMEngineAdapter | null;
+  private strictBiasMode: boolean = false;
 
   constructor(adapter?: ILLMEngineAdapter) {
     this.adapter = adapter ?? null;
+  }
+
+  public setAdapter(adapter: ILLMEngineAdapter): void {
+    this.adapter = adapter;
+  }
+
+  public setStrictBiasMode(enabled: boolean): void {
+    this.strictBiasMode = enabled;
   }
 
   public async verify(input: VerificationInput): Promise<CriterionResult[]> {
@@ -184,8 +193,14 @@ export class SemanticVerifier implements TaskVerifier {
           'Does the task result satisfy this criterion?'
         ].join('\n\n');
 
-        const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
-          { role: 'system', content: SEMANTIC_JUDGE_SYSTEM_PROMPT },
+        const basePrompt = SEMANTIC_JUDGE_SYSTEM_PROMPT;
+        const strictPrompt = this.strictBiasMode 
+          ? `\nCRITICAL INSTRUCTION: You are evaluating your own output or an output from the same model family. You MUST apply extreme skepticism and independent verification. Do not blindly PASS. If there is ANY ambiguity, respond UNCERTAIN or FAIL.`
+          : '';
+        const finalPrompt = basePrompt + strictPrompt;
+        
+        const messages = [
+          { role: 'system' as const, content: finalPrompt },
           { role: 'user', content: userPrompt }
         ];
 

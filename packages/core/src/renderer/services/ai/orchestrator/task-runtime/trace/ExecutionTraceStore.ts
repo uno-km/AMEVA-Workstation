@@ -72,6 +72,12 @@ export class ExecutionTraceStore {
   private nextSeqByMission: Map<string, number> = new Map();
   /** Span별 마지막 상태 (Open Span 감지용: spanId -> eventType) */
   private spanState: Map<string, { eventId: string; eventType: TraceEventType; missionId: string; taskId?: string; toolName?: string; timestamp: number }> = new Map();
+  /** Progress 이벤트 Throttle용 Span별 마지막 기록 시간 */
+  private lastProgressTimeBySpan: Map<string, number> = new Map();
+  /** 반복 상태 Deduplication용 Span별 마지막 이벤트 정보 */
+  private lastEventBySpan: Map<string, { type: string; status?: string; summary?: string }> = new Map();
+  /** Batch Append 처리 중 알림 지연을 위한 플래그 */
+  private isBatching: boolean = false;
 
   private persistence?: IRuntimePersistenceAdapter;
 
@@ -84,6 +90,30 @@ export class ExecutionTraceStore {
    */
   public setPersistence(persistence?: IRuntimePersistenceAdapter): void {
     this.persistence = persistence;
+  }
+
+  /**
+   * UI 및 구독자에게 Trace 변경 사항을 동기화한다.
+   */
+  private notifySubscribers(missionId: string): void {
+    const list = this.getMissionTrace(missionId);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('ameva:execution-trace-updated', {
+          detail: { missionId, events: list }
+        })
+      );
+    }
+    try {
+      if (typeof window !== 'undefined' || process?.env?.NODE_ENV !== 'production') {
+        const storeMod = require('../../../../stores/useAIState');
+        if (storeMod?.useAIState?.getState) {
+          storeMod.useAIState.getState().setExecutionTraceEvents(list as TraceEvent[]);
+        }
+      }
+    } catch (e) {
+      // UI 환경이 아니거나 모듈 로드 불가 시 침묵
+    }
   }
 
   /**
@@ -113,10 +143,33 @@ export class ExecutionTraceStore {
   public appendEvent(event: TraceEvent): void {
     if (!event || !event.eventId || !event.missionId) return;
 
+    // Token 단위 Trace Event 생성 금지 (Backpressure 및 노이즈 차단)
+    if (event.eventType.startsWith('token_') || event.eventType.includes('raw_cot_token') || event.metadata?.isTokenLevel) {
+      return;
+    }
+
     // 중복 eventId 차단
     if (this.eventIds.has(event.eventId)) {
       console.warn(`[ExecutionTraceStore] Duplicate eventId ignored: ${event.eventId}`);
       return;
+    }
+
+    // Progress Event Throttle (동일 Span에서 200ms 이내 반복 발송 금지)
+    if (event.eventType === 'tool_execution_progress' && event.spanId) {
+      const lastTime = this.lastProgressTimeBySpan.get(event.spanId) ?? 0;
+      if (Date.now() - lastTime < 200) {
+        return;
+      }
+      this.lastProgressTimeBySpan.set(event.spanId, Date.now());
+    }
+
+    // 반복 상태 Event Deduplication (task_status_changed, tool_execution_progress 등)
+    if (event.spanId && (event.eventType === 'task_status_changed' || event.eventType === 'tool_execution_progress')) {
+      const prev = this.lastEventBySpan.get(event.spanId);
+      if (prev && prev.type === event.eventType && prev.status === event.status && prev.summary === event.summary) {
+        return;
+      }
+      this.lastEventBySpan.set(event.spanId, { type: event.eventType, status: event.status, summary: event.summary });
     }
 
     try {
@@ -151,6 +204,11 @@ export class ExecutionTraceStore {
         this.compactTrace(frozen.missionId);
       }
 
+      // UI/구독자 실시간 알림 (Batch 중첩 시 지연 처리)
+      if (!this.isBatching) {
+        this.notifySubscribers(frozen.missionId);
+      }
+
       // 비동기 영속화 시도 (실패해도 예외를 전파하여 Task를 중단시키지 않음)
       this.persistAsync(frozen.missionId).catch(() => {});
     } catch (err) {
@@ -162,9 +220,19 @@ export class ExecutionTraceStore {
    * 여러 TraceEvent를 일괄 추가한다.
    */
   public appendBatch(events: TraceEvent[]): void {
-    if (!Array.isArray(events)) return;
-    for (const ev of events) {
-      this.appendEvent(ev);
+    if (!Array.isArray(events) || events.length === 0) return;
+    this.isBatching = true;
+    const missions = new Set<string>();
+    try {
+      for (const ev of events) {
+        if (ev && ev.missionId) missions.add(ev.missionId);
+        this.appendEvent(ev);
+      }
+    } finally {
+      this.isBatching = false;
+      for (const mId of missions) {
+        this.notifySubscribers(mId);
+      }
     }
   }
 
@@ -558,21 +626,19 @@ export class ExecutionTraceStore {
 
   /**
    * Redaction이 적용된 Mission Trace Export를 수행한다.
+   * INTERNAL 이벤트와 Raw Chain-of-Thought는 포함하지 않는다.
    */
-  public exportTrace(missionId: string): {
-    schemaVersion: string;
-    missionSummary?: any;
-    taskTimeline: any[];
-    decisionSummaries: any[];
-    toolCalls: any[];
-    approvalHistory: any[];
-    observations: any[];
-    artifactRevisions: any[];
-    verificationResults: any[];
-    retryHistory: any[];
-    finalOutcome?: any;
-  } {
-    const events = (this.traces.get(missionId) ?? []).map(ev => SecretRedactor.redactEvent(ev));
+  public exportTrace(missionId: string): any {
+    const rawEvents = this.traces.get(missionId) ?? [];
+    
+    // 1. SecretRedactor 재적용 및 INTERNAL/CoT 제거
+    const events: TraceEvent[] = [];
+    for (const ev of rawEvents) {
+      if (ev.visibility === 'INTERNAL' || ev.eventType.startsWith('token_') || ev.eventType.includes('raw_cot')) {
+        continue;
+      }
+      events.push(SecretRedactor.redactEvent(ev));
+    }
 
     const taskTimeline: any[] = [];
     const decisionSummaries: any[] = [];
@@ -609,11 +675,14 @@ export class ExecutionTraceStore {
       }
     }
 
+    // JSON Export 규격
     return {
       schemaVersion: '4.0.0',
       missionSummary,
       taskTimeline,
+      decisionSummary: decisionSummaries,
       decisionSummaries,
+      toolLifecycle: toolCalls,
       toolCalls,
       approvalHistory,
       observations,
@@ -655,5 +724,7 @@ export class ExecutionTraceStore {
     this.eventIds.clear();
     this.nextSeqByMission.clear();
     this.spanState.clear();
+    this.lastProgressTimeBySpan.clear();
+    this.lastEventBySpan.clear();
   }
 }

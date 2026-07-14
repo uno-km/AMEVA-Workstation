@@ -22,6 +22,7 @@ import type { AISettings } from '../types/aiTypes';
 import type { AgentPhase, TaskPlan } from '../services/ai/orchestrator/types';
 import { AI_TERMINAL_CONSTANTS } from '../features/ai-terminal/constants';
 import type { RecoveryState, RecoveryReason, InferencePhase } from '../services/ai/orchestrator/recovery/types';
+import type { TraceEvent } from '../services/ai/orchestrator/task-runtime/trace/ExecutionTraceTypes';
 
 export interface AIState {
   // 1. 전역 생성 상태
@@ -80,6 +81,10 @@ export interface AIState {
   /** 신규 Task Runtime 실시간 진행률 (%) */
   taskProgress: number;
   setTaskProgress: (progress: number) => void;
+
+  /** Phase 4 Execution Trace 실시간 이벤트 배열 */
+  executionTraceEvents: TraceEvent[];
+  setExecutionTraceEvents: (events: TraceEvent[]) => void;
 
   /** 에이전트 Task Plan UI의 접힘(Collapsed) 상태 */
   agentTaskPlanCollapsed: boolean;
@@ -248,6 +253,9 @@ export const useAIState = create<AIState>((set) => ({
 
   taskProgress: 0,
   setTaskProgress: (progress) => set({ taskProgress: progress }),
+
+  executionTraceEvents: [],
+  setExecutionTraceEvents: (events) => set({ executionTraceEvents: events }),
 
   agentTaskPlanCollapsed: false,
   setAgentTaskPlanCollapsed: (collapsed) => set({ agentTaskPlanCollapsed: collapsed }),

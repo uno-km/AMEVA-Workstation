@@ -34,7 +34,7 @@ export interface RestoredMissionInfo {
   recommendedAction: 'RESUME_FROM_CHECKPOINT' | 'RESTART' | 'CANCEL';
   createdAt: number;
   updatedAt: number;
-  taskBudgets?: Record<string, any>;
+  taskBudgets?: Record<string, unknown>;
 }
 
 /**
@@ -158,11 +158,12 @@ export class RuntimeRestoreCoordinator {
     goalId: string,
     status: string,
     taskIds: string[],
-    taskBudgets?: Record<string, any>
+    taskBudgets?: Record<string, unknown>,
+    taskRoutingDecisions?: Record<string, unknown>
   ): Promise<void> {
     const { createHash } = await import('crypto');
 
-    const canonical = JSON.stringify({ missionId, goalId, status, taskIds, taskBudgets });
+    const canonical = JSON.stringify({ missionId, goalId, status, taskIds, taskBudgets, taskRoutingDecisions });
     const integrityDigest = createHash('sha256').update(canonical).digest('hex');
 
     const snapshot: MissionSnapshot = {
@@ -171,6 +172,7 @@ export class RuntimeRestoreCoordinator {
       status,
       taskIds,
       taskBudgets,
+      taskRoutingDecisions,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       schemaVersion: 1,

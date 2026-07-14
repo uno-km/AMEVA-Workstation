@@ -65,7 +65,33 @@ Final Answer: [완료된 보고서 요약 및 작성 결과물 설명]
           if (result.outputs && result.outputs.length > 0) {
             depContext += `Outputs:\n`;
             for (const out of result.outputs) {
-              depContext += `- Type: ${out.type}, Content: ${typeof out.content === 'object' ? JSON.stringify(out.content) : out.content}\n`;
+              // [Item 7] 최소 필드만 포함: Artifact/File은 Summary/Reference만
+              if (out.type === 'file' || out.type === 'reference') {
+                const contentStr = typeof out.content === 'object' ? JSON.stringify(out.content) : out.content;
+                // 축약 로직 (100자 이내)
+                const truncated = contentStr.length > 100 ? contentStr.substring(0, 100) + '...' : contentStr;
+                depContext += `- Type: ${out.type}, Content: ${truncated}\n`;
+              } else {
+                const contentStr = typeof out.content === 'object' ? JSON.stringify(out.content) : out.content;
+                const truncated = contentStr.length > 300 ? contentStr.substring(0, 300) + '... (truncated)' : contentStr;
+                depContext += `- Type: ${out.type}, Content: ${truncated}\n`;
+              }
+            }
+          }
+          
+          // Evidence 축소 로직 (최근 3개만)
+          if (result.evidence && result.evidence.length > 0) {
+            const filteredEvidence = result.evidence
+              .filter(e => e.source !== 'observation') // System observation 삭제
+              .slice(-3); // 최근 3개만
+              
+            if (filteredEvidence.length > 0) {
+               depContext += `Evidences (Recent ${filteredEvidence.length}):\n`;
+               for (const ev of filteredEvidence) {
+                 const evData = typeof ev.data === 'object' ? JSON.stringify(ev.data) : ev.data;
+                 const evTruncated = evData.length > 200 ? evData.substring(0, 200) + '...' : evData;
+                 depContext += `- Source: ${ev.source}, Data: ${evTruncated}\n`;
+               }
             }
           }
         }

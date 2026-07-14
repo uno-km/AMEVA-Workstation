@@ -132,8 +132,8 @@ export class MissionExecutionRuntime {
     this.userAssistRuntime = new UserAssistRuntime(store);
     
     // Create Artifact Manager and Tool Registry if file system adapter is provided
-    let artifactTxManager: any = undefined;
-    let toolRegistry: any = undefined;
+    let artifactTxManager: unknown = undefined;
+    let toolRegistry: unknown = undefined;
     
     if (fileSystemAdapter) {
        const persistenceAdapterForStore = persistence ?? new InMemoryRuntimePersistenceAdapter();
@@ -539,13 +539,17 @@ export class MissionExecutionRuntime {
   private persistMissionState(status: string): void {
     const allTasks = this.store.getAllTasks(this.missionId);
     const taskIds = allTasks.map(t => t.definition.id);
-    const taskBudgets: Record<string, any> = {};
+    const taskBudgets: Record<string, unknown> = {};
+    const taskRoutingDecisions: Record<string, unknown> = {};
     for (const t of allTasks) {
       if (t.state.budget) {
         taskBudgets[t.definition.id] = t.state.budget;
       }
+      if (t.state.routingDecision) {
+        taskRoutingDecisions[t.definition.id] = t.state.routingDecision;
+      }
     }
-    this.restoreCoordinator.saveMissionState(this.missionId, this.missionId, status, taskIds, taskBudgets)
+    this.restoreCoordinator.saveMissionState(this.missionId, this.missionId, status, taskIds, taskBudgets, taskRoutingDecisions)
     .catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn(`[MissionExecutionRuntime] Mission 상태 영속화 실패 (${this.missionId}):`, msg);

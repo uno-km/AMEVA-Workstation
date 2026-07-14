@@ -268,6 +268,8 @@ export interface OrchestratorConfig {
  * 오케스트레이터는 이 인터페이스만을 통해 엔진과 통신한다.
  */
 export interface ILLMEngineAdapter {
+  modelId?: string;
+  isRemote?: boolean;
   /**
    * 지정된 모델을 메모리(VRAM/RAM)에 적재한다.
    * - 이미 동일 모델이 적재된 경우: 즉시 반환 (재로딩 불필요).

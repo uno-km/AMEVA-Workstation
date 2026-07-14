@@ -188,9 +188,9 @@ export class ExecutionTraceManager {
     toolName: string,
     toolCategory: string,
     selectionReason: string,
-    args: Record<string, any>,
-    definition?: any
-  ): { traceEvent: TraceEvent; toolTrace: ToolExecutionTrace } {
+    args: Record<string, unknown>,
+    definition?: unknown
+  ): { traceEvent: import('../../trace/types').TraceEvent; toolTrace: import('../../trace/types').ToolExecutionTrace } {
     const seq = this.store.nextSequenceNumber(missionId);
     const spanId = toolCallId;
     const parentSpanId = `span-t-${taskId}-${attemptId}`;
@@ -247,7 +247,7 @@ export class ExecutionTraceManager {
     toolCallId: string,
     toolName: string,
     riskLevel: ToolRiskLevel,
-    args: Record<string, any>,
+    args: Record<string, unknown>,
     affectedResources: string[],
     reason: string
   ): ApprovalRequest {
@@ -296,8 +296,8 @@ export class ExecutionTraceManager {
     attemptId: string,
     toolCallId: string,
     toolName: string,
-    approval: any
-  ): TraceEvent {
+    approval: unknown
+  ): import('../../trace/types').TraceEvent {
     const seq = this.store.nextSequenceNumber(missionId);
     const ev: TraceEvent = {
       eventId: `${missionId}_${seq}_appr_grant_${toolCallId}`,
@@ -330,7 +330,7 @@ export class ExecutionTraceManager {
     attemptId: string,
     toolCallId: string,
     toolName: string,
-    approval: any,
+    approval: unknown,
     reason?: string
   ): TraceEvent {
     const seq = this.store.nextSequenceNumber(missionId);
@@ -406,7 +406,7 @@ export class ExecutionTraceManager {
     if (this.store.isTerminalEventRecorded(toolTrace.toolCallId)) {
       console.warn(`[ExecutionTraceManager] Terminal event already recorded for span ${toolTrace.toolCallId}. Skipping duplicate terminal event.`);
       const existing = this.store.getSpan(toolTrace.toolCallId);
-      return existing || {} as any;
+      return existing || ({} as import('../../trace/types').TraceEvent);
     }
 
     const seq = this.store.nextSequenceNumber(missionId);
@@ -534,8 +534,8 @@ export class ExecutionTraceManager {
     missionId: string,
     taskId: string,
     attemptId: string,
-    observation: any
-  ): TraceEvent {
+    observation: Record<string, unknown>
+  ): import('../../trace/types').TraceEvent {
     const seq = this.store.nextSequenceNumber(missionId);
     const ev: TraceEvent = {
       eventId: `${missionId}_${seq}_obs_${observation.toolCallId || seq}`,
@@ -546,15 +546,15 @@ export class ExecutionTraceManager {
       taskId,
       attemptId,
       timestamp: observation.createdAt || Date.now(),
-      eventType: 'tool_observation_created' as any,
+      eventType: 'tool_observation_created' as import('../../trace/types').TraceEventType,
       status: observation.status === 'SUCCESS' ? 'OBSERVED' : 'FAILED',
       title: `Tool Observation: ${observation.toolName || 'unknown'}`,
-      summary: observation.summary || 'Observation created',
+      summary: (observation.summary as string) || 'Observation created',
       sequenceNumber: seq,
       visibility: 'USER',
       schemaVersion: '4.0.0',
       observation
-    } as any;
+    } as import('../../trace/types').TraceEvent;
     this.store.appendEvent(ev);
     return ev;
   }
@@ -633,6 +633,71 @@ export class ExecutionTraceManager {
       severity: retry.stopReason ? 'HIGH' : 'MEDIUM',
       schemaVersion: '4.0.0',
       retry
+    };
+    this.store.appendEvent(ev);
+    return ev;
+  }
+
+  /**
+   * 라우팅 결정 이벤트 기록
+   */
+  public recordRoutingDecision(
+    missionId: string,
+    taskId: string,
+    attemptId: string,
+    decision: Record<string, unknown>
+  ): import('../../trace/types').TraceEvent {
+    const seq = this.store.nextSequenceNumber(missionId);
+    const ev: TraceEvent = {
+      eventId: `${missionId}_${seq}_route`,
+      traceId: missionId,
+      spanId: `span-t-${taskId}-${attemptId}`,
+      parentSpanId: `span-t-${taskId}-${attemptId}`,
+      missionId,
+      taskId,
+      attemptId,
+      timestamp: Date.now(),
+      eventType: 'routing_decision_created',
+      status: decision.status || 'SUCCESS',
+      title: `Routing Decision: ${decision.selectedModelId}`,
+      summary: decision.selectionReasons?.[0] || 'Model routed.',
+      sequenceNumber: seq,
+      visibility: 'OPERATOR',
+      schemaVersion: '4.0.0',
+      routingDecision: decision
+    };
+    this.store.appendEvent(ev);
+    return ev;
+  }
+
+  /**
+   * 에스컬레이션 이벤트 기록
+   */
+  public recordEscalation(
+    missionId: string,
+    taskId: string,
+    attemptId: string,
+    escalationPkg: Record<string, unknown>
+  ): import('../../trace/types').TraceEvent {
+    const seq = this.store.nextSequenceNumber(missionId);
+    const ev: TraceEvent = {
+      eventId: `${missionId}_${seq}_escalate`,
+      traceId: missionId,
+      spanId: `span-t-${taskId}-${attemptId}`,
+      parentSpanId: `span-t-${taskId}-${attemptId}`,
+      missionId,
+      taskId,
+      attemptId,
+      timestamp: Date.now(),
+      eventType: 'model_escalated',
+      status: 'ESCALATED',
+      title: `Model Escalation: ${escalationPkg.newModelId}`,
+      summary: `Escalated from ${escalationPkg.previousModelId} to ${escalationPkg.newModelId} for role ${escalationPkg.newRole}`,
+      sequenceNumber: seq,
+      visibility: 'USER',
+      severity: 'MEDIUM',
+      schemaVersion: '4.0.0',
+      escalation: escalationPkg
     };
     this.store.appendEvent(ev);
     return ev;

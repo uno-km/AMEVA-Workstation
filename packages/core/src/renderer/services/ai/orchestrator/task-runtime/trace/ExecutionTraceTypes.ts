@@ -70,7 +70,9 @@ export type TraceEventType =
   | 'retry_budget_exhausted'
   | 'checkpoint_created'
   | 'runtime_restored'
-  | 'runtime_restore_failed';
+  | 'runtime_restore_failed'
+  | 'routing_decision_created'
+  | 'model_escalated';
 
 /**
  * Trace 가시성 수준
@@ -309,4 +311,6 @@ export interface TraceEvent {
   nextAction?: { actionType: string; description: string; targetId?: string };
   error?: { errorCode: string; message: string; stack?: string; defectSignature?: string };
   health?: { type: TraceHealthType; state: TraceHealthState; message?: string };
+  routingDecision?: any;
+  escalation?: any;
 }

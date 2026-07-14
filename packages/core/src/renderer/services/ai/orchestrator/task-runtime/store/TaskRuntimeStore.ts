@@ -306,7 +306,8 @@ export class TaskRuntimeStore {
         });
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       // 거부된 전이 이벤트 기록
       this.eventLog.appendEvent({
         eventId: crypto.randomUUID(),
@@ -316,7 +317,7 @@ export class TaskRuntimeStore {
         type: 'TASK_STATE_TRANSITION_REJECTED',
         fromStatus,
         toStatus: targetStatus,
-        reason: `Rejection: ${error.message}`,
+        reason: `Rejection: ${msg}`,
         actor: command.actor,
         timestamp: command.timestamp,
         stateVersion: task.state.stateVersion,

@@ -63,6 +63,12 @@ import { PlanValidator } from './task-runtime/planning/validation/PlanValidator'
 import { PlanActivationService } from './task-runtime/planning/activation/PlanActivationService'
 import type { TaskPlan as V2TaskPlan } from './task-runtime/planning/domain/PlanningTypes'
 
+// PHASE 5 Routing Imports
+import { ModelRouter } from './task-runtime/routing/router/ModelRouter'
+import { ModelAdapterProvider } from './task-runtime/routing/adapter/ModelAdapterProvider'
+import { RoutingConfigManager } from './task-runtime/routing/domain/RoutingConfigManager'
+import type { TaskRoutingProfile } from './task-runtime/routing/domain/types'
+
 // PHASE 3 신규 Execution 런타임 임포트
 import { MissionExecutionRuntime } from './task-runtime/mission/MissionExecutionRuntime'
 
@@ -233,7 +239,10 @@ export class AgentOrchestratorSession {
     this.config = config
     this.onEvent = onEvent
 
-    // 팩토리를 통해 엔진 어댑터 인스턴스 생성
+    // ModelAdapterProvider 초기화
+    ModelAdapterProvider.getInstance().setBaseConfig(config)
+
+    // 팩토리를 통해 초기 엔진 어댑터 인스턴스 생성 (Legacy용 폴백 또는 디폴트)
     this.adapter = LLMEngineAdapterFactory.create(config)
 
     // ThoughtParser 콜백 바인딩
@@ -1151,8 +1160,79 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
    * V2 플랜을 활성화할 수 있습니다.
    */
   public async planAndActivateV2(missionId: string, rawRequest: string): Promise<V2TaskPlan> {
-    const interpreter = new GoalInterpreter(this.adapter);
-    const planner = new V2TaskPlanner(this.adapter);
+    const routingConfig = RoutingConfigManager.getInstance().getConfig();
+    let plannerAdapter = this.adapter;
+
+    // 1. Router 연동 (PLANNING Profile)
+    if (routingConfig.routingEnabled) {
+      const profile: TaskRoutingProfile = {
+        taskType: 'PLANNING',
+        requiredCapabilities: ['PLANNING', 'STRUCTURED_OUTPUT'],
+        contextSize: Math.ceil(rawRequest.length / 3),
+        expectedOutputTokens: 1500,
+        privacyLevel: 'CONFIDENTIAL',
+        instructionComplexity: 0.8,
+        reasoningComplexity: 0.9,
+        toolRequired: false,
+        codeExecutionRequired: false,
+        latencyPreference: 'balance',
+        qualityPreference: 'high',
+        previousModelIds: [],
+        routingBudgetRemaining: 5
+      };
+
+      const routingResult = await ModelRouter.route(profile, routingConfig);
+      
+      this.eventLog.recordEvent({
+        eventId: crypto.randomUUID(),
+        missionId,
+        taskId: 'planning',
+        type: 'ROUTING',
+        stage: 'ROUTING',
+        status: routingResult.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
+        timestamp: Date.now(),
+        message: `V2 Planning Routing: ${routingResult.selectedModelId || 'FAILED'}`,
+        metadata: { routingResult }
+      });
+
+      if (routingResult.status === 'SUCCESS' && routingResult.selectedModelId) {
+        try {
+          plannerAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, profile.privacyLevel as import('./task-runtime/domain/types').PrivacyLevel);
+          ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning: Routed to ${routingResult.selectedModelId}`, prefix: 'Orchestrator' });
+        } catch (e: unknown) {
+          const errorMessage = e instanceof Error ? e.message : String(e);
+          ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning Adapter Load Failed: ${errorMessage}`, prefix: 'Orchestrator' });
+          // Fallback to default
+        }
+      } else {
+        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning Routing Failed: ${routingResult.status}`, prefix: 'Orchestrator' });
+        // DO NOT silently fall back to V1 if V2 routing fails. Throw an explicit error.
+        throw new Error(`V2 Planning Routing Failed: Capability or model missing (Code: ${routingResult.status})`);
+      }
+    } else {
+       // Legacy 경로 사용 시 Trace 기록
+       this.eventLog.recordEvent({
+         eventId: crypto.randomUUID(),
+         missionId,
+         taskId: 'planning',
+         type: 'ROUTING',
+         stage: 'ROUTING',
+         status: 'SUCCESS',
+         timestamp: Date.now(),
+         message: `Legacy Routing Fallback`,
+         metadata: { 
+           traceType: 'legacy_routing_fallback', 
+           fallbackReason: 'Explicit Legacy Mode selected or Feature Flag disabled',
+           v2FailureCode: 'V2_DISABLED_OR_EXPLICIT_FALLBACK',
+           routingEnabled: false,
+           selectedLegacyModelId: this.config.modelId,
+           userVisibleWarning: 'Using legacy planning system due to explicit fallback policy'
+         }
+       });
+    }
+
+    const interpreter = new GoalInterpreter(plannerAdapter);
+    const planner = new V2TaskPlanner(plannerAdapter);
     const validator = new PlanValidator();
     const activationService = new PlanActivationService(this.taskStore);
 
@@ -1165,7 +1245,7 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
     // 3. Validation
     const valResult = validator.validate(draftPlan, spec);
     if (!valResult.valid) {
-      this.emitEvent({ type: 'error', message: `Plan validation failed: ${valResult.errors.map(e => e.message).join(', ')}` } as any);
+      this.emitEvent({ type: 'error', message: `Plan validation failed: ${valResult.errors.map(e => e.message).join(', ')}` } as unknown as OrchestratorEvent);
       throw new Error('Plan validation failed');
     }
 

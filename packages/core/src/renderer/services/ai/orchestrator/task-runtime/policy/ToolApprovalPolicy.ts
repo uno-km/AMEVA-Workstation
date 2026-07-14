@@ -249,6 +249,38 @@ export class ToolApprovalPolicy {
   }
 
   /**
+   * PENDING 상태의 승인 요청이 처리될 때까지 대기한다. (Timeout 기본 10분)
+   */
+  public static async waitForApproval(approvalId: string, timeoutMs: number = 600000): Promise<ApprovalRequest> {
+    const req = this.approvals.get(approvalId);
+    if (!req) throw new Error(`ApprovalRequest not found: ${approvalId}`);
+    
+    if (req.status !== 'PENDING') return req;
+
+    return new Promise((resolve, reject) => {
+      const start = Date.now();
+      const interval = setInterval(() => {
+        const currentReq = this.approvals.get(approvalId);
+        if (!currentReq) {
+          clearInterval(interval);
+          reject(new Error(`ApprovalRequest removed: ${approvalId}`));
+          return;
+        }
+        if (currentReq.status !== 'PENDING') {
+          clearInterval(interval);
+          resolve(currentReq);
+          return;
+        }
+        if (Date.now() - start > timeoutMs) {
+          clearInterval(interval);
+          currentReq.status = 'CANCELLED';
+          resolve(currentReq);
+        }
+      }, 500);
+    });
+  }
+
+  /**
    * Tool 실행 직전에 승인 여부를 엄격히 검증한다.
    * 승인이 필요한 위험도(HIGH/CRITICAL)임에도 APPROVED 상태가 아니라면 예외를 발생시켜 Tool 실행을 0회로 차단한다.
    * 또한 REJECTED, EXPIRED, CANCELLED 상태는 모든 위험도에 대해 차단한다.

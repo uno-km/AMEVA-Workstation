@@ -21,6 +21,7 @@ import React from 'react'
 import { Brain, ChevronUp, ChevronDown } from 'lucide-react'
 import { ThoughtTreeView } from './ThoughtProcess'
 import { useAIState } from '../../../stores/useAIState'
+import { ExecutionTraceTimeline } from '../../ai/ExecutionTraceTimeline'
 
 interface ReasoningTraceViewerProps {
   isStreaming: boolean
@@ -225,6 +226,9 @@ export function ReasoningTraceViewer({
           )}
         </div>
       )}
+      
+      {/* ── Phase 4 Execution Trace (Mission Trace가 있다면 렌더링) ── */}
+      {isExpanded && <ExecutionTraceTimeline />}
     </div>
   )
 }

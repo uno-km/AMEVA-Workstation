@@ -47,6 +47,8 @@ import { ToolPolicyChecker, ToolPolicyViolationError } from '../policy/ToolPolic
 import { ToolApprovalPolicy, ToolApprovalViolationError } from '../policy/ToolApprovalPolicy';
 import type { TaskEvidence } from '../domain/types';
 import { ToolRegistry } from '../../ToolRegistry';
+import { EscalationManager } from '../routing/escalation/EscalationManager';
+import { RoutingConfigManager } from '../routing/domain/RoutingConfigManager';
 
 
 /**
@@ -68,7 +70,8 @@ export class DeepTaskExecutor {
   private ledger: MissionBudgetLedger;
   private adapter: ILLMEngineAdapter;
   private toolRegistry?: ToolRegistry;
-  private artifactManager?: any; // any for now to avoid circular deps if they exist, or import type later
+  private artifactManager?: unknown; // unknown for now to avoid circular deps if they exist, or import type later
+  private escalationManager: EscalationManager;
 
   constructor(
     store: TaskRuntimeStore,
@@ -77,7 +80,7 @@ export class DeepTaskExecutor {
     adapter: ILLMEngineAdapter,
     toolRegistry?: ToolRegistry,
     checkpointRuntimeInjected?: CheckpointRuntime,
-    artifactManager?: any
+    artifactManager?: unknown
   ) {
     this.store = store;
     this.leaseManager = leaseManager;
@@ -90,6 +93,7 @@ export class DeepTaskExecutor {
     this.toolCallParser = new ToolCallParser();
     this.observationBuilder = new ToolObservationBuilder();
     this.checkpointRuntime = checkpointRuntimeInjected ?? new CheckpointRuntime();
+    this.escalationManager = new EscalationManager();
   }
 
   /**
@@ -160,12 +164,63 @@ export class DeepTaskExecutor {
 
         currentTurn++;
 
-        // ─── LLM 호출 ────────────────────────────────────────────────────
-        const responseText = await this.adapter.generateStream(messages, (_token) => {
-          if (abortSignal?.aborted) {
-            /* AbortSignal은 generateStream 완료 후 상위에서 처리 */
+        // ─── LLM 호출 직전 검증 (Privacy Gate & Trace) ──────────────────────
+        const routingDecision = task.state.routingDecision;
+        const selectedModelId = routingDecision?.selectedModelId;
+        const actualModelId = this.adapter.modelId;
+        
+        if (selectedModelId && actualModelId && selectedModelId !== actualModelId) {
+          throw new Error(`MODEL_ADAPTER_MISMATCH: Router selected ${selectedModelId} but adapter is for ${actualModelId}`);
+        }
+
+        const traceManager = this.store.getTraceManager();
+        
+        if (routingDecision && this.adapter.isRemote) {
+          const privacyLevel = task.definition.privacyLevel;
+          if (privacyLevel === 'RESTRICTED') {
+            traceManager.getStore().appendEvent({
+              eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
+              eventType: 'privacy_policy_applied', status: 'FAILED', title: `Privacy Blocked`, summary: `RESTRICTED task cannot use Remote model`, sequenceNumber: 0, visibility: 'INTERNAL', schemaVersion: '4.0.0'
+            });
+            throw new Error('PrivacyViolation: RESTRICTED tasks cannot use Remote models.');
           }
+          if (privacyLevel === 'CONFIDENTIAL') {
+            // Check for explicit user approval, assuming false if not explicitly set
+            const hasApproval = task.state.metadata?.['remoteApproval'] === true;
+            if (!hasApproval) {
+              traceManager.getStore().appendEvent({
+                eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
+                eventType: 'privacy_policy_applied', status: 'FAILED', title: `Privacy Blocked`, summary: `CONFIDENTIAL task requires user approval for Remote model`, sequenceNumber: 0, visibility: 'INTERNAL', schemaVersion: '4.0.0'
+              });
+              throw new Error('PrivacyViolation: CONFIDENTIAL tasks require user approval to use Remote models.');
+            }
+          }
+        }
+
+        traceManager.getStore().appendEvent({
+          eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
+          eventType: 'model_call_started', status: 'SUCCESS', title: `Model Call Started`, summary: `Calling ${actualModelId || selectedModelId}`, sequenceNumber: 0, visibility: 'INTERNAL', schemaVersion: '4.0.0',
+          metadata: { selectedModelId, actualModelId }
         });
+
+        let responseText = '';
+        try {
+          responseText = await this.adapter.generateStream(messages, (_token) => {
+            if (abortSignal?.aborted) {
+              /* AbortSignal은 generateStream 완료 후 상위에서 처리 */
+            }
+          });
+          traceManager.getStore().appendEvent({
+            eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
+            eventType: 'model_call_completed', status: 'SUCCESS', title: `Model Call Completed`, summary: `Completed`, sequenceNumber: 0, visibility: 'INTERNAL', schemaVersion: '4.0.0'
+          });
+        } catch (generateErr: any) {
+          traceManager.getStore().appendEvent({
+            eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
+            eventType: 'model_call_failed', status: 'FAILED', title: `Model Call Failed`, summary: generateErr.message, sequenceNumber: 0, visibility: 'INTERNAL', schemaVersion: '4.0.0'
+          });
+          throw generateErr;
+        }
 
         finalText += responseText;
         // assistant 메시지를 컨텍스트에 추가
@@ -218,14 +273,42 @@ export class DeepTaskExecutor {
             // Phase 4 위험도 및 승인 정책 검사
             if (toolTrace.approvalRequired) {
               const idempotencyKey = `idemp-appr-${missionId}-${candidate.toolCallId}`;
-              const existingAppr = ToolApprovalPolicy.getApprovalRequest(`appr-${idempotencyKey}`);
-              const status = existingAppr?.status ?? 'PENDING';
+              let existingAppr = ToolApprovalPolicy.getApprovalRequest(`appr-${idempotencyKey}`);
+              
+              if (!existingAppr) {
+                existingAppr = ToolApprovalPolicy.createApprovalRequest(
+                  missionId, missionId, taskId, candidate.toolCallId, candidate.toolName,
+                  toolTrace.riskLevel, candidate.arguments, [], `Tool '${candidate.toolName}' requires user approval.`
+                );
+                // Override the approvalId to match the expected format
+                existingAppr.approvalId = `appr-${idempotencyKey}`;
+                (ToolApprovalPolicy as any).approvals.set(existingAppr.approvalId, existingAppr);
+              }
+              
+              const approvalId = existingAppr.approvalId;
+              let status = existingAppr.status;
+              
               if (status !== 'APPROVED') {
                 traceManager.recordApprovalRequested(
                   missionId, taskId, String(attemptId),
                   candidate.toolCallId, candidate.toolName, toolTrace.riskLevel,
                   candidate.arguments, [], `Tool '${candidate.toolName}' requires user approval (${toolTrace.riskLevel} risk).`
                 );
+                
+                // 대기 (Timeout 10분, 사용자가 거절하거나 타임아웃 발생 시 throw)
+                const finalAppr = await ToolApprovalPolicy.waitForApproval(approvalId);
+                status = finalAppr.status;
+                if (status === 'APPROVED') {
+                  traceManager.recordApprovalGranted(
+                    missionId, taskId, String(attemptId),
+                    candidate.toolCallId, `User approved tool ${candidate.toolName}`, 'USER'
+                  );
+                } else {
+                  traceManager.recordApprovalRejected(
+                    missionId, taskId, String(attemptId),
+                    candidate.toolCallId, `User ${status.toLowerCase()} tool ${candidate.toolName}`, 'USER'
+                  );
+                }
               }
               ToolApprovalPolicy.assertApproved(candidate.toolName, status, toolTrace.riskLevel);
             }
@@ -497,6 +580,103 @@ export class DeepTaskExecutor {
 
       try {
         const currentTask = this.store.getTask(missionId, taskId);
+        
+        // [Item 8] 조건부 Escalation 처리
+        const routingConfig = RoutingConfigManager.getInstance().getConfig();
+        const isModelError = errorMsg.includes('timed out') || errorMsg.includes('CAPABILITY') || errorMsg.includes('rate limit') || errorMsg.includes('PrivacyViolation');
+        const availableRetries = (currentTask.state.maxExecutionRetries || 3) - (currentTask.state.executionRetryCount || 0);
+
+        if (routingConfig.routingEnabled && isModelError && availableRetries > 0) {
+          const prevDecision = currentTask.state.routingDecision;
+          if (prevDecision) {
+             const escalationPkg = {
+               missionId,
+               taskId,
+               previousModelId: prevDecision.selectedModelId,
+               previousRole: prevDecision.selectedRole,
+               retryScope: 'FULL_TASK',
+               defectSignatures: [errorMsg],
+               reason: `Model execution failed: ${errorMsg}`,
+               timestamp: Date.now(),
+               validationResult: null,
+               toolObservationSummary: '',
+               failedOutputReference: '',
+               newModelRole: prevDecision.selectedRole, // will be updated
+               protectedRanges: [],
+               doNotRepeat: true,
+               escalationReason: errorMsg
+             };
+             
+             const remainingBudget = routingConfig.maxModelEscalations - (currentTask.state.modelEscalationCount || 0);
+             const escalationResult = this.escalationManager.processEscalation(escalationPkg, prevDecision, remainingBudget);
+
+             if (escalationResult.targetRole === null) {
+               // Signal termination
+               this.store.dispatchTransition(
+                 {
+                   commandId: `cmd-fail-${crypto.randomUUID()}`,
+                   missionId,
+                   taskId,
+                   attemptId,
+                   expectedCurrentStatus: 'RUNNING',
+                   expectedStateVersion: currentTask.state.stateVersion,
+                   reason: escalationResult.escalationReason,
+                   actor: 'DeepTaskExecutor',
+                   timestamp: Date.now()
+                 },
+                 'FAILED',
+                 { taskResult: { status: 'FAILED', result: {}, error: escalationResult.escalationReason } }
+               );
+               return;
+             }
+
+             const nextRole = escalationResult.targetRole;
+
+             // [Item 12] Escalation Trace 기록
+             this.store.getTraceManager().recordEscalation(
+               missionId,
+               taskId,
+               attemptId,
+               {
+                 ...escalationPkg,
+                 newRole: nextRole,
+                 newModelId: 'Pending Router Decision'
+               }
+             );
+             
+             // Escalate to RETRY_WAIT to try again with a better model
+             const newFailure = { errorType: 'ExecutionEscalation', message: errorMsg, timestamp: Date.now(), retryScope: 'FULL_TASK', defectSignatures: [errorMsg] };
+             const previousFailures = currentTask.state.previousFailures || [];
+             this.store.dispatchTransition(
+               {
+                 commandId: `cmd-escalate-${crypto.randomUUID()}`,
+                 missionId,
+                 taskId,
+                 attemptId,
+                 expectedCurrentStatus: 'RUNNING',
+                 expectedStateVersion: currentTask.state.stateVersion,
+                 reason: `Execution failed due to model capability, escalating to ${nextRole}`,
+                 actor: 'DeepTaskExecutor',
+                 timestamp: Date.now()
+               },
+               'RETRY_WAIT',
+               { 
+                 executionRetryCount: (currentTask.state.executionRetryCount || 0) + 1,
+                 modelEscalationCount: (currentTask.state.modelEscalationCount || 0) + 1,
+                 previousFailures: [...previousFailures, newFailure],
+                 retryAfter: Date.now() + 5000,
+                 routingDecision: {
+                   ...currentTask.state.routingDecision,
+                   affinityStatus: 'ESCALATION_REQUIRED',
+                   invalidationReason: errorMsg,
+                   selectedRole: nextRole
+                 } as any
+               } as any
+             );
+             return; // Skip FAILED transition
+          }
+        }
+
         this.store.dispatchTransition(
           {
             commandId: `cmd-fail-${crypto.randomUUID()}`,

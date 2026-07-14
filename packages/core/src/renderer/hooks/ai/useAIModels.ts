@@ -46,6 +46,8 @@ const isSameList = (a: any[], b: any[]): boolean => {
  * - ipc: 로컬 모델 목록 파일 쿼리(`llmListModels`)를 메인에 요청하기 위한 채널 어댑터.
  */
 import * as ipc from '../../services/ipc/electronApiAdapter'
+import { ModelDiscoveryAdapter } from '../../services/ai/orchestrator/task-runtime/routing/registry/ModelDiscoveryAdapter'
+import { ModelRegistry } from '../../services/ai/orchestrator/task-runtime/routing/registry/ModelRegistry'
 
 /* 
  * [TYPES]
@@ -81,32 +83,18 @@ export function useAIModels(
     // 데스크톱 앱 런타임 외에는 검색이 불가능하므로 동작 취소
     if (!ipc.isElectronEnv()) return
     try {
-      // 1. 챗 모델 스캔
       const type = settings.apiType === 'ollama' ? 'ollama' : 'llm'
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `list`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const list = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const list = await ipc.llmListModels(type)
+      // [Item 10] ModelDiscoveryAdapter를 통해 IPC 검색 및 Registry 동기화 수행
+      const descriptors = await ModelDiscoveryAdapter.discoverAndSync(type)
       
-      // UI 노출을 위한 가공 처리
-      const mappedList = list.map(m => ({
-        path: m.path,
-        filename: m.filename,
-        name: m.name || m.filename,
-        size: m.size || 0
+      // UI 노출을 위한 가공 처리 (챗 모델)
+      const mappedList = descriptors.filter(d => !d.codeCapability).map(m => ({
+        path: m.modelId,
+        filename: m.displayName,
+        name: m.displayName,
+        size: m.estimatedMemoryMb * 1024 * 1024
       }))
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!isSameList(mappedList, useAIState.getState().models)`
-       * - 만족 시: 스캔된 모델 리스트가 기존과 다른 경우에만 상태를 갱신하여 무한 렌더 루프를 차단함.
-       * - 불만족 시: 상태 변경 없이 통과.
-       * - 예시: `if (!isSameList(...))` 만족 시 setModels 호출.
-       */
       if (!isSameList(mappedList, useAIState.getState().models)) {
         setModels(mappedList)
       }
@@ -114,24 +102,9 @@ export function useAIModels(
       // 모델이 스캔되었고 현재 modelPath가 비었거나 존재하지 않는 경로일 경우 디폴트 선택
       if (mappedList.length > 0) {
         setSettings((prev) => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `exists`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const exists = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
           const exists = mappedList.some((m) => m.path === prev.modelPath)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `exists`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (exists)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
           if (exists) return prev
           
-          // Ollama는 첫 모델, Llama.cpp 로컬은 파일명에 '3b'가 들어간 가볍고 빠른 경량 모델을 선호
           const preferred =
             type === 'ollama'
               ? mappedList[0]
@@ -140,29 +113,14 @@ export function useAIModels(
         })
       }
 
-      // 2. FIM(코드 생성) 모델 스캔
-      const codeList = await ipc.llmListModels('code')
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `mappedCodeList`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const mappedCodeList = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const mappedCodeList = codeList.map(m => ({
-        path: m.path,
-        filename: m.filename,
-        name: m.name || m.filename,
-        size: m.size || 0
+      // 2. FIM(코드 생성) 모델 분리 처리
+      const mappedCodeList = descriptors.filter(d => d.codeCapability).map(m => ({
+        path: m.modelId,
+        filename: m.displayName,
+        name: m.displayName,
+        size: m.estimatedMemoryMb * 1024 * 1024
       }))
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!isSameList(mappedCodeList, useAIState.getState().codeModels)`
-       * - 만족 시: 스캔된 코드 모델 리스트가 기존과 다른 경우에만 상태를 갱신하여 무한 렌더 루프를 차단함.
-       * - 불만족 시: 상태 변경 없이 통과.
-       * - 예시: `if (!isSameList(...))` 만족 시 setCodeModels 호출.
-       */
       if (!isSameList(mappedCodeList, useAIState.getState().codeModels)) {
         setCodeModels(mappedCodeList)
       }

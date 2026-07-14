@@ -34,6 +34,22 @@ export class TaskVerifierCoordinator {
     this.semanticVerifiers.push(new SemanticVerifier(adapter));
   }
 
+  public setSemanticAdapter(adapter: ILLMEngineAdapter): void {
+    for (const verifier of this.semanticVerifiers) {
+      if (verifier instanceof SemanticVerifier) {
+        verifier.setAdapter(adapter);
+      }
+    }
+  }
+
+  public setStrictBiasMode(enabled: boolean): void {
+    for (const verifier of this.semanticVerifiers) {
+      if (verifier instanceof SemanticVerifier) {
+        verifier.setStrictBiasMode(enabled);
+      }
+    }
+  }
+
   public async runVerificationPipeline(input: VerificationInput): Promise<CriterionResult[]> {
     const allResults: CriterionResult[] = [];
 

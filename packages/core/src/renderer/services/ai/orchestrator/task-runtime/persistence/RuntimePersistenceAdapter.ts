@@ -43,6 +43,7 @@ export interface MissionSnapshot {
   status: string;
   taskIds: string[];
   taskBudgets?: Record<string, TaskBudgetSnapshot>; // Phase 3.1
+  taskRoutingDecisions?: Record<string, unknown>; // Phase 5.1
   createdAt: number;
   updatedAt: number;
   schemaVersion: number;
@@ -62,12 +63,12 @@ export interface IRuntimePersistenceAdapter {
   deleteMission(missionId: string): Promise<void>;
   
   // Artifact Manifests
-  saveArtifactManifest(manifest: any): Promise<void>; // using any here to avoid circular dep or we can import ArtifactManifest
+  saveArtifactManifest(manifest: unknown): Promise<void>; // using unknown here to avoid circular dep or we can import ArtifactManifest
   loadArtifactManifest(missionId: string, artifactId: string): Promise<any | null>;
   listArtifactManifests(missionId: string): Promise<any[]>;
 
   // Idempotency
-  saveIdempotencyRecord(record: any): Promise<void>;
+  saveIdempotencyRecord(record: unknown): Promise<void>;
   loadIdempotencyRecord(key: string): Promise<any | null>;
   deleteIdempotencyRecord(key: string): Promise<void>;
 }
@@ -288,7 +289,7 @@ export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAd
   }
 
   // Artifact Manifests
-  public async saveArtifactManifest(manifest: any): Promise<void> {
+  public async saveArtifactManifest(manifest: unknown): Promise<void> {
     try {
       const db = await openRuntimeDB();
       await new Promise<void>((resolve, reject) => {
@@ -331,7 +332,7 @@ export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAd
         const tx = db.transaction(STORE_ARTIFACT_MANIFESTS, 'readonly');
         const req = tx.objectStore(STORE_ARTIFACT_MANIFESTS).getAll();
         req.onsuccess = () => {
-          const all = (req.result as any[]) ?? [];
+          const all = (req.result as unknown[]) ?? [];
           resolve(all.filter(m => m.missionId === missionId));
         };
         req.onerror = () => reject(req.error);
@@ -346,7 +347,7 @@ export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAd
   }
 
   // Idempotency
-  public async saveIdempotencyRecord(record: any): Promise<void> {
+  public async saveIdempotencyRecord(record: unknown): Promise<void> {
     try {
       const db = await openRuntimeDB();
       await new Promise<void>((resolve, reject) => {
@@ -442,7 +443,7 @@ export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAda
   }
 
   // Artifact Manifests
-  public async saveArtifactManifest(manifest: any): Promise<void> {
+  public async saveArtifactManifest(manifest: unknown): Promise<void> {
     this.manifests.set(`${manifest.missionId}:${manifest.artifactId}`, manifest);
   }
 
@@ -451,7 +452,7 @@ export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAda
   }
 
   public async listArtifactManifests(missionId: string): Promise<any[]> {
-    const results: any[] = [];
+    const results: unknown[] = [];
     for (const [key, val] of this.manifests.entries()) {
       if (key.startsWith(`${missionId}:`)) {
         results.push(val);
@@ -463,7 +464,7 @@ export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAda
   // Idempotency
   private readonly idempotencyRecords = new Map<string, any>();
 
-  public async saveIdempotencyRecord(record: any): Promise<void> {
+  public async saveIdempotencyRecord(record: unknown): Promise<void> {
     this.idempotencyRecords.set(record.idempotencyKey, record);
   }
 

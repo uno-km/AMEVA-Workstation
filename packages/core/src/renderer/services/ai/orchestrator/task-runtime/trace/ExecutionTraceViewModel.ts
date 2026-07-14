@@ -27,14 +27,14 @@ import { SecretRedactor } from './SecretRedactor';
 
 export interface TimelineCard {
   id: string;
-  type: 'MISSION' | 'TASK' | 'TOOL' | 'ARTIFACT' | 'VERIFICATION' | 'RETRY' | 'APPROVAL' | 'DECISION';
+  type: 'MISSION' | 'TASK' | 'TOOL' | 'ARTIFACT' | 'VERIFICATION' | 'RETRY' | 'APPROVAL' | 'DECISION' | 'OBSERVATION' | 'DECIDED';
   timestamp: number;
   sequenceNumber: number;
   title: string;
   summary: string;
   status?: string;
   severity?: string;
-  data: any;
+  data: unknown;
 }
 
 export class ExecutionTraceViewModel {
@@ -79,12 +79,12 @@ export class ExecutionTraceViewModel {
       let cardType: TimelineCard['type'] = 'TASK';
       if (ev.eventType.startsWith('mission_')) cardType = 'MISSION';
       else if (ev.eventType.startsWith('tool_approval_')) cardType = 'APPROVAL';
-      else if (ev.eventType === 'tool_observation_created') cardType = 'OBSERVATION' as any;
+      else if (ev.eventType === 'tool_observation_created') cardType = 'OBSERVATION';
       else if (ev.eventType.startsWith('tool_')) cardType = 'TOOL';
       else if (ev.eventType.startsWith('artifact_')) cardType = 'ARTIFACT';
       else if (ev.eventType.startsWith('verification_')) cardType = 'VERIFICATION';
       else if (ev.eventType.startsWith('retry_') || ev.eventType.startsWith('repair_')) cardType = 'RETRY';
-      else if (ev.eventType === 'decision_summary_created' || ev.eventType === 'decision_summary_fallback_used') cardType = 'DECIDED' as any;
+      else if (ev.eventType === 'decision_summary_created' || ev.eventType === 'decision_summary_fallback_used') cardType = 'DECIDED';
 
       cards.push({
         id: ev.eventId,
@@ -95,7 +95,7 @@ export class ExecutionTraceViewModel {
         summary: ev.summary ?? '',
         status: ev.status,
         severity: ev.severity,
-        data: ev.toolExecution ?? ev.artifactChanges ?? ev.verification ?? ev.retry ?? ev.approval ?? ev.decision ?? (ev as any).observation ?? {}
+        data: ev.toolExecution ?? ev.artifactChanges ?? ev.verification ?? ev.retry ?? ev.approval ?? ev.decision ?? ('observation' in ev ? (ev as Record<string, unknown>).observation : {})
       });
     }
 
@@ -105,8 +105,8 @@ export class ExecutionTraceViewModel {
   /**
    * Decision Summary 카드 목록을 추출한다.
    */
-  public static getDecisionSummaries(events: ReadonlyArray<TraceEvent>): any[] {
-    const cards: any[] = [];
+  public static getDecisionSummaries(events: ReadonlyArray<TraceEvent>): unknown[] {
+    const cards: unknown[] = [];
     const filtered = ExecutionTraceViewModel.filterByVisibility(events);
     for (const ev of filtered) {
       if (ev.decision) {
@@ -119,12 +119,12 @@ export class ExecutionTraceViewModel {
   /**
    * Tool Observation 카드 목록을 추출한다.
    */
-  public static getObservations(events: ReadonlyArray<TraceEvent>): any[] {
-    const cards: any[] = [];
+  public static getObservations(events: ReadonlyArray<TraceEvent>): unknown[] {
+    const cards: unknown[] = [];
     const filtered = ExecutionTraceViewModel.filterByVisibility(events);
     for (const ev of filtered) {
-      if ((ev as any).observation) {
-        cards.push((ev as any).observation);
+      if ('observation' in ev && ev.observation) {
+        cards.push((ev as Record<string, unknown>).observation);
       }
     }
     return cards;
