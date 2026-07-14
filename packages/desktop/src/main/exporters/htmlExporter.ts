@@ -227,12 +227,6 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
         const caption = block.props?.caption || ''
         return `<figure style="text-align:center;margin:1.2rem 0"><img src="${url}" alt="${escapeHtml(caption)}" />${caption ? `<figcaption style="font-size:12px;color:#9ca3af;margin-top:6px">${escapeHtml(caption)}</figcaption>` : ''}</figure>\n`
       }
-    /*
-     * [CASE ROUTING DECISION BINDING]
-     * - 분기 타겟: `case 'table': {`
-     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
-     * - 예시: `case 'table': {` 만족 시 해당 포맷 바이너리 빌더 호출.
-     */
       case 'table': {
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -292,28 +286,64 @@ export function blocksToHTML(blocks: ExporterBlock[]): string {
         html += '</tbody>\n</table>\n'
         return html
       }
-    /*
-     * [CASE ROUTING DECISION BINDING]
-     * - 분기 타겟: `case 'quote':`
-     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
-     * - 예시: `case 'quote':` 만족 시 해당 포맷 바이너리 빌더 호출.
-     */
       case 'quote':
         return `<blockquote>${contentHtml}</blockquote>\n`
-    /*
-     * [CASE ROUTING DECISION BINDING]
-     * - 분기 타겟: `case 'divider':`
-     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
-     * - 예시: `case 'divider':` 만족 시 해당 포맷 바이너리 빌더 호출.
-     */
       case 'divider':
         return '<hr />\n'
-    /*
-     * [CASE ROUTING DECISION BINDING]
-     * - 분기 타겟: `default:`
-     * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
-     * - 예시: `default:` 만족 시 해당 포맷 바이너리 빌더 호출.
-     */
+      case 'map': {
+        const p = block.props || {}
+        const lat = parseFloat(p.lat || '37.5665')
+        const lng = parseFloat(p.lng || '126.9780')
+        const zoom = parseInt(p.zoom || '14', 10)
+        let iframeSrc = ''
+        if (p.destLat && p.destLng && !isNaN(parseFloat(p.destLat)) && !isNaN(parseFloat(p.destLng))) {
+          let engine = 'fossgis_osrm_car'
+          if (p.routingEngine === 'osrm') engine = p.routeType === 'car' ? 'fossgis_osrm_car' : p.routeType === 'bicycle' ? 'fossgis_osrm_bike' : 'fossgis_osrm_foot'
+          else if (p.routingEngine === 'graphhopper') engine = p.routeType === 'car' ? 'graphhopper_car' : p.routeType === 'bicycle' ? 'graphhopper_bicycle' : 'graphhopper_foot'
+          else if (p.routingEngine === 'valhalla') engine = p.routeType === 'car' ? 'valhalla_car' : p.routeType === 'bicycle' ? 'valhalla_bicycle' : 'valhalla_foot'
+          iframeSrc = `https://www.openstreetmap.org/directions?engine=${engine}&route=${lat},${lng};${p.destLat},${p.destLng}`
+        } else {
+          const delta = Math.max(0.001, 0.5 / Math.pow(2, zoom - 10))
+          iframeSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - delta},${lat - delta},${lng + delta},${lat + delta}&layer=mapnik&marker=${lat},${lng}`
+        }
+        return `
+          <div style="width:100%;background:#18181c;border:1px solid #3f3f46;border-radius:12px;overflow:hidden;margin:1.2rem 0;font-family:sans-serif;color:#fff;">
+            <div style="padding:10px 14px;background:#121215;border-bottom:1px solid #3f3f46;">
+              <div style="font-size:12px;font-weight:bold;">📍 ${escapeHtml(p.locationName || '')} ${p.destination ? '➔ ' + escapeHtml(p.destination) : ''}</div>
+              <div style="font-size:10px;color:#a1a1aa;">${lat}, ${lng} (Zoom: ${zoom}x)</div>
+            </div>
+            <iframe src="${iframeSrc}" width="100%" height="400" frameborder="0" style="filter:invert(0.9) hue-rotate(180deg);"></iframe>
+            ${p.memo ? `<div style="padding:10px;font-size:12px;background:#18181c;">📝 <b>메모:</b><br/>${escapeHtml(p.memo)}</div>` : ''}
+          </div>\n`
+      }
+      case 'youtube': {
+        const p = block.props || {}
+        if (!p.videoId) return `<div style="color:red;">Invalid YouTube Link</div>\n`
+        return `
+          <div style="width:100%;background:#18181c;border:1px solid #3f3f46;border-radius:12px;overflow:hidden;margin:1.2rem 0;">
+            <div style="padding:8px 12px;background:#121215;color:#fff;font-size:11px;font-weight:bold;">📺 YouTube Player - <a href="${escapeHtml(p.url)}" target="_blank" style="color:#a1a1aa;">${escapeHtml(p.url)}</a></div>
+            <div style="position:relative;width:100%;padding-bottom:56.25%;">
+              <iframe src="https://www.youtube-nocookie.com/embed/${p.videoId}?rel=0" frameborder="0" allowfullscreen style="position:absolute;top:0;left:0;width:100%;height:100%;"></iframe>
+            </div>
+          </div>\n`
+      }
+      case 'linkPreview': {
+        const p = block.props || {}
+        const thumbStyle = p.thumbnail ? `background:url('${p.thumbnail}') center/cover;width:160px;min-width:160px;` : `width:100px;min-width:100px;background:#16161d;display:flex;align-items:center;justify-content:center;color:#71717a;`
+        return `
+          <div style="width:100%;background:#18181b;border:1px solid #3f3f46;border-radius:12px;overflow:hidden;margin:1.2rem 0;display:flex;color:#e4e4e7;text-decoration:none;">
+            <a href="${escapeHtml(p.url)}" target="_blank" style="display:flex;width:100%;text-decoration:none;color:inherit;">
+              <div style="${thumbStyle}">
+                ${!p.thumbnail ? '🌐' : ''}
+              </div>
+              <div style="flex:1;padding:12px 16px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;">
+                <div style="font-size:14px;font-weight:bold;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.title || '')}</div>
+                <div style="font-size:12px;color:#a1a1aa;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">${escapeHtml(p.description || '')}</div>
+                <div style="font-size:10px;color:#8b5cf6;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(p.url || '')}</div>
+              </div>
+            </a>
+          </div>\n`
+      }
       default:
         return contentHtml ? `<p>${contentHtml}</p>\n` : ''
     }
