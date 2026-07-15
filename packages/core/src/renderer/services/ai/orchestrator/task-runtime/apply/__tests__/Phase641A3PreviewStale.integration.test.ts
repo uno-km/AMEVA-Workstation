@@ -4,10 +4,9 @@ import * as fsp from 'fs/promises';
 import * as fs from 'fs';
 import crypto from 'crypto';
 import { SourceApplyDigestService } from '../SourceApplyDigestService';
-import { SourceApplyService } from '../../../../../../../../desktop/src/main/services/SourceApplyService';
-import { ApprovalRepositoryInMemory, ArtifactRepositoryInMemory } from '../persistence/InMemoryRepositories';
-import { InMemoryFileSystemAdapter } from '../persistence/InMemoryFileSystemAdapter';
-import { ExecutionTraceManager } from '../trace/ExecutionTraceManager';
+import { SourceApplyService } from '../../../../../../../../../desktop/src/main/services/SourceApplyService';
+import { ApprovalRepositoryInMemory, ArtifactRepositoryInMemory } from '../../persistence/InMemoryRepositories';
+import { ExecutionTraceManager } from '../../trace/ExecutionTraceManager';
 
 describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
   let service: SourceApplyService;
@@ -49,7 +48,7 @@ describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
 
     // 2. Compute BEFORE digest
     const affectedPaths = ['test-file.txt'];
-    const digestBefore = await SourceApplyDigestService.computeSourceDigest(allowedWorkspaceRoot, affectedPaths);
+    const digestBefore = await SourceApplyDigestService.createSourceDigest(allowedWorkspaceRoot, affectedPaths);
     
     // 3. Setup mock Preview and Approval with the BEFORE digest
     const previewId = 'preview-1';
@@ -69,7 +68,7 @@ describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
 
     const mockPreview = {
       requestId: 'req-1',
-      artifactId: artifactId,
+      repositoryArtifactId: artifactId,
       artifactRevision: 1,
       sourceDigest: digestBefore,
       artifactDigest: 'hash',
@@ -110,7 +109,7 @@ describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
 
     // 4. External file modification (BEFORE authorization attempt)
     await fsp.writeFile(targetFilePath, 'Modified content');
-    const digestAfter = await SourceApplyDigestService.computeSourceDigest(allowedWorkspaceRoot, affectedPaths);
+    const digestAfter = await SourceApplyDigestService.createSourceDigest(allowedWorkspaceRoot, affectedPaths);
 
     console.log(`[Stale Execution Proof] digestBefore: ${digestBefore}`);
     console.log(`[Stale Execution Proof] digestAfter:  ${digestAfter}`);
@@ -133,6 +132,7 @@ describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
     }, { allowedWorkspaceRoot });
 
     // 6. Verify result
+    console.log('[DEBUG RESPONSE]', response);
     expect(response.success).toBe(false);
     expect(response.errorCode).toBe('PREVIEW_STALE');
     

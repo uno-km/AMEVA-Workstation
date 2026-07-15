@@ -18,7 +18,7 @@ import {
 } from '../../../../core/src/shared/ipc/sourceApplyIpcContract.js';
 import { SourceApplyService } from '../services/SourceApplyService.js';
 import { sessionRegistry } from './workbenchIpc.js';
-import { ArtifactRepositoryInMemory, ApprovalRepositoryInMemory } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/approval/InMemoryRepositories.js';
+import { ArtifactRepositoryInMemory, ApprovalRepositoryInMemory } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/persistence/InMemoryRepositories.js';
 import { ExecutionTraceManager } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/trace/ExecutionTraceManager.js';
 
 export let sourceApplyService: SourceApplyService;

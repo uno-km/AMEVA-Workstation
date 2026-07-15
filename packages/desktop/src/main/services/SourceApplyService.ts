@@ -36,14 +36,29 @@ export class SourceApplyService {
     };
 
     try {
-      this.traceManager.emitTrace(request.missionId, 'AUTHORIZATION_REQUESTED', 'SourceApplyService', traceContext);
+      this.traceManager.getStore().appendEvent({
+        eventId: crypto.randomUUID(),
+        traceId: request.missionId,
+        spanId: 'SourceApplyService',
+        missionId: request.missionId,
+        timestamp: Date.now(),
+        eventType: 'system_log' as any,
+        status: 'COMPLETED',
+        sequenceNumber: 0,
+        title: 'Auth Request',
+        visibility: 'DEBUG',
+        schemaVersion: '4.0.0',
+        metadata: { event: 'AUTHORIZATION_REQUESTED', ...traceContext }
+      });
 
       // 1. Re-query Approval Repository
-      const approval = await this.approvalRepo.getApprovalRecord(request.approvalId);
-      if (!approval) {
+      const approvalResult = await this.approvalRepo.getApprovalRecord(request.approvalId);
+      if (!approvalResult.success || !approvalResult.record) {
         this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_NOT_FOUND');
         return { success: false, errorCode: 'APPROVAL_NOT_FOUND', errorMessage: 'Approval record not found.' };
       }
+
+      const approval = approvalResult.record;
 
       if (approval.status === 'INVALIDATED') {
         this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_INVALIDATED');
@@ -65,6 +80,12 @@ export class SourceApplyService {
       }
 
       // 4. Approval-Preview-Artifact Linking Hardening
+      console.log('[DEBUG LINKAGE]', { 
+        appP: approval.previewId, 
+        reqP: request.previewId, 
+        prevA: preview.repositoryArtifactId, 
+        artA: artifact.repositoryArtifactId 
+      });
       if (approval.previewId !== request.previewId || preview.repositoryArtifactId !== artifact.repositoryArtifactId) {
          this.emitAuthFailure(request.missionId, traceContext, 'DIGEST_MISMATCH');
          return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Linkage validation failed.' };
@@ -83,7 +104,7 @@ export class SourceApplyService {
 
       // 6. Full Digest Recomputation (MANDATORY)
       const allowedWorkspaceRoot = session.allowedWorkspaceRoot;
-      const actualSourceDigest = await SourceApplyDigestService.computeSourceDigest(allowedWorkspaceRoot, preview.affectedPaths);
+      const actualSourceDigest = await SourceApplyDigestService.createSourceDigest(allowedWorkspaceRoot, preview.affectedPaths);
       
       if (actualSourceDigest !== approval.sourceDigest) {
          // STALE detection
@@ -98,10 +119,10 @@ export class SourceApplyService {
          return { success: false, errorCode: 'PREVIEW_STALE', errorMessage: 'Preview is stale.' };
       }
 
-      const recomputedPreviewDigest = SourceApplyDigestService.computePreviewDigest(preview);
-      const recomputedOperationDigest = SourceApplyDigestService.computeOperationDigest(preview);
-      const recomputedAffectedPathsDigest = SourceApplyDigestService.computeAffectedPathsDigest(preview.affectedPaths);
-      const recomputedArtifactDigest = SourceApplyDigestService.computeArtifactDigest(artifact.revision, artifact.contentHash);
+      const recomputedPreviewDigest = await SourceApplyDigestService.createPreviewDigest(preview);
+      const recomputedOperationDigest = await SourceApplyDigestService.createOperationDigest(preview);
+      const recomputedAffectedPathsDigest = await SourceApplyDigestService.createAffectedPathsDigest(preview.affectedPaths);
+      const recomputedArtifactDigest = await SourceApplyDigestService.createArtifactDigest(artifact.revision, artifact.contentHash);
 
       if (
         recomputedPreviewDigest !== approval.previewDigest ||
@@ -143,9 +164,23 @@ export class SourceApplyService {
          return { success: false, errorCode: 'APPROVAL_INVALIDATED', errorMessage: 'Atomic reservation failed.' };
       }
 
-      this.traceManager.emitTrace(request.missionId, 'AUTHORIZATION_GRANTED', 'SourceApplyService', {
-        ...traceContext,
-        result: 'SUCCESS'
+      this.traceManager.getStore().appendEvent({
+        eventId: crypto.randomUUID(),
+        traceId: request.missionId,
+        spanId: 'SourceApplyService',
+        missionId: request.missionId,
+        timestamp: Date.now(),
+        eventType: 'system_log' as any,
+        status: 'COMPLETED',
+        sequenceNumber: 0,
+        title: 'Auth Granted',
+        visibility: 'DEBUG',
+        schemaVersion: '4.0.0',
+        metadata: {
+          event: 'AUTHORIZATION_GRANTED',
+          ...traceContext,
+          result: 'SUCCESS'
+        }
       });
 
       return {
@@ -160,10 +195,24 @@ export class SourceApplyService {
   }
 
   private emitAuthFailure(missionId: string, context: any, reasonCode: string) {
-    this.traceManager.emitTrace(missionId, 'AUTHORIZATION_VALIDATION_FAILED', 'SourceApplyService', {
-      ...context,
-      result: 'FAIL',
-      reasonCode
+    this.traceManager.getStore().appendEvent({
+      eventId: crypto.randomUUID(),
+      traceId: missionId,
+      spanId: 'SourceApplyService',
+      missionId: missionId,
+      timestamp: Date.now(),
+      eventType: 'system_log' as any,
+      status: 'COMPLETED',
+      sequenceNumber: 0,
+      title: 'Auth Failure',
+      visibility: 'DEBUG',
+      schemaVersion: '4.0.0',
+      metadata: {
+        event: 'AUTHORIZATION_VALIDATION_FAILED',
+        ...context,
+        result: 'FAIL',
+        reasonCode
+      }
     });
   }
 

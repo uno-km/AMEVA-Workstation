@@ -148,6 +148,53 @@ export class SourceApplyDigestService {
     return this.hashString(serialized);
   }
 
+  public static async createArtifactDigest(revision: number, contentHash: string): Promise<string> {
+    const input = { revision, contentHash };
+    const serialized = this.stableSerialize(input);
+    return this.hashString(serialized);
+  }
+
+  public static async createSourceDigest(workspaceRoot: string, affectedPaths: string[]): Promise<string> {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const digests: Record<string, string> = {};
+
+    for (const logicalPath of affectedPaths) {
+      const normalizedPath = this.normalizeLogicalPath(logicalPath);
+      const fullPath = path.join(workspaceRoot, normalizedPath);
+      
+      try {
+        const stat = await fs.stat(fullPath);
+        if (stat.isFile()) {
+          const content = await fs.readFile(fullPath);
+          // For digest, we hash the content
+          let hex = '';
+          if (typeof crypto !== 'undefined' && crypto.subtle) {
+             const hashBuffer = await crypto.subtle.digest('SHA-256', content);
+             const hashArray = Array.from(new Uint8Array(hashBuffer));
+             hex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          } else {
+             const cryptoModule = await import('crypto');
+             hex = cryptoModule.createHash('sha256').update(content).digest('hex');
+          }
+          digests[normalizedPath] = hex;
+        } else {
+          digests[normalizedPath] = 'DIRECTORY';
+        }
+      } catch (e: any) {
+        if (e.code === 'ENOENT') {
+          digests[normalizedPath] = 'NOT_FOUND';
+        } else {
+          throw e;
+        }
+      }
+    }
+    
+    // stable serialize the mapping and hash it
+    const serialized = this.stableSerialize(digests);
+    return this.hashString(serialized);
+  }
+
   private static async hashString(data: string): Promise<string> {
     if (typeof crypto !== 'undefined' && crypto.subtle) {
       const encoder = new TextEncoder();

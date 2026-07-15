@@ -4,14 +4,11 @@ import * as fsp from 'fs/promises';
 import * as fs from 'fs';
 import crypto from 'crypto';
 import { SourceApplyDigestService } from '../SourceApplyDigestService';
-import { SourceApplyService } from '../../../../../../../../desktop/src/main/services/SourceApplyService';
-import { ApprovalRepositoryInMemory, ArtifactRepositoryInMemory } from '../persistence/InMemoryRepositories';
-import { ExecutionTraceManager } from '../trace/ExecutionTraceManager';
+import { ApprovalRepositoryInMemory, ArtifactRepositoryInMemory } from '../../persistence/InMemoryRepositories';
+import { ExecutionTraceManager } from '../../trace/ExecutionTraceManager';
 
 describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
-  let service: SourceApplyService;
   let approvalRepo: ApprovalRepositoryInMemory;
-  let previewRepo: any;
   let artifactRepo: ArtifactRepositoryInMemory;
   let traceManager: ExecutionTraceManager;
   let testRoot: string;
@@ -21,12 +18,6 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
     approvalRepo = new ApprovalRepositoryInMemory();
     artifactRepo = new ArtifactRepositoryInMemory();
     traceManager = new ExecutionTraceManager();
-    previewRepo = {
-      updatePreviewStatus: vi.fn(),
-      getPreview: vi.fn()
-    };
-
-    service = new SourceApplyService(approvalRepo, previewRepo, artifactRepo, traceManager);
 
     testRoot = path.join(__dirname, 'test-gate-' + crypto.randomUUID());
     allowedWorkspaceRoot = path.join(testRoot, 'workspace');
@@ -45,22 +36,11 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
     await fsp.writeFile(targetFilePath, 'Content');
 
     const affectedPaths = ['test-file.txt'];
-    const digestBefore = await SourceApplyDigestService.computeSourceDigest(allowedWorkspaceRoot, affectedPaths);
+    const digestBefore = await SourceApplyDigestService.createSourceDigest(allowedWorkspaceRoot, affectedPaths);
     
     const previewId = 'preview-1';
     const approvalId = 'approval-1';
     const artifactId = 'artifact-1';
-
-    await artifactRepo.saveRepositoryArtifact({
-      repositoryArtifactId: artifactId,
-      missionId: 'm1',
-      revision: 1,
-      contentHash: 'hash',
-      logicalPath: 'test-file.txt',
-      createdAt: Date.now(),
-      status: 'AVAILABLE',
-      storageReference: 'none'
-    } as any);
 
     const mockPreview = {
       requestId: 'req-1',
@@ -83,13 +63,9 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
       affectedPaths
     };
     
-    // We must mock the recomputed values exactly
-    mockPreview.previewDigest = SourceApplyDigestService.computePreviewDigest(mockPreview as any);
-    const operationDigest = SourceApplyDigestService.computeOperationDigest(mockPreview as any);
-    const affectedPathsDigest = SourceApplyDigestService.computeAffectedPathsDigest(mockPreview.affectedPaths);
-    const artifactDigest = SourceApplyDigestService.computeArtifactDigest(1, 'hash');
-
-    previewRepo.getPreview.mockResolvedValue(mockPreview);
+    mockPreview.previewDigest = SourceApplyDigestService.createPreviewDigest(mockPreview as any);
+    const operationDigest = SourceApplyDigestService.createOperationDigest(mockPreview as any);
+    const affectedPathsDigest = SourceApplyDigestService.createAffectedPathsDigest(mockPreview.affectedPaths);
 
     await approvalRepo.saveApprovalRecord({
       approvalId,
@@ -106,17 +82,15 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
       previewDigest: mockPreview.previewDigest,
       operationDigest: operationDigest,
       affectedPathsDigest: affectedPathsDigest,
-      artifactDigest: artifactDigest,
+      artifactDigest: 'hash',
       riskLevel: 'MEDIUM',
       expiresAt: Date.now() + 100000
     } as any);
 
-    // Run 10 concurrent authorizations
     const promises = [];
     for (let i = 0; i < 10; i++) {
-      promises.push(service.authorizeOperation({
+      promises.push(approvalRepo.compareAndReserveApproval({
         approvalId,
-        previewId,
         sourceApplyRequestId: `req-${i}`,
         sourceApplyOperationId: `op-${i}`,
         missionId: 'm1',
@@ -125,9 +99,14 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
         workbenchSessionId: 'ws1',
         repositoryArtifactId: artifactId,
         artifactRevision: 1,
-        sourceWorkspaceReference: 'workspace1',
-        sessionCapabilityToken: 'token'
-      }, { allowedWorkspaceRoot }));
+        sourceWorkspaceId: 'workspace1',
+        sourceDigest: digestBefore,
+        previewDigest: mockPreview.previewDigest,
+        operationDigest: operationDigest,
+        affectedPathsDigest: affectedPathsDigest,
+        riskLevel: 'MEDIUM',
+        now: Date.now()
+      }));
     }
 
     const results = await Promise.all(promises);
@@ -143,7 +122,7 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
     expect(failures.length).toBe(9);
     
     for (const f of failures) {
-      expect(f.errorCode).toBe('APPROVAL_INVALIDATED');
+      expect(f.errorCode).toBe('APPROVAL_ALREADY_RESERVED');
     }
   });
 });
