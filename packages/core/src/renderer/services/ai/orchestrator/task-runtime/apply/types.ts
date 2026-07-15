@@ -215,9 +215,16 @@ export interface ArtifactQueryRequest {
   viewType: ArtifactQueryView;
 }
 
+export type ArtifactQueryErrorCode = 
+  | 'QUERY_NOT_FOUND'
+  | 'QUERY_ACCESS_DENIED'
+  | 'QUERY_INVALID_VIEW'
+  | 'QUERY_INVALID_KEY'
+  | 'QUERY_STATE_NOT_AVAILABLE';
+
 export interface ArtifactQueryResponse {
   success: boolean;
-  errorCode?: string;
+  errorCode?: ArtifactQueryErrorCode;
   viewType: ArtifactQueryView;
   data?: {
     executionStatus?: SourceApplyOperationStatus;
@@ -226,6 +233,8 @@ export interface ArtifactQueryResponse {
     snapshotInfo?: any;
     failureReason?: string;
     quarantineDetails?: any;
+    rollbackSummary?: any;
+    retentionInfo?: any;
   };
 }
 
@@ -237,21 +246,40 @@ export enum RetentionPolicy {
   PERMANENT = 'PERMANENT'
 }
 
+export interface RetentionEvaluationResult {
+  shouldCleanupSnapshot: boolean;
+  shouldArchive: boolean;
+  shouldPreserveIndefinitely: boolean;
+  requiresManualIntervention: boolean;
+  reason: string;
+  nextReviewAt?: number;
+}
+
 export interface BenchmarkMetrics {
   durationMs: number;
   memoryUsage?: number;
   parallelCount?: number;
   success: boolean;
   errorCategory?: string;
+  scenarioName?: string;
+  artifactCount?: number;
+  fileCount?: number;
+  fixtureSizeBytes?: number;
 }
 
 export interface FinalReleaseGateReport {
+  missionId: string;
+  executionStatus: string;
   isCleanExecution: boolean;
   containsQuarantine: boolean;
   reconciliationTriggered: boolean;
   benchmarkPassed: boolean;
   retentionValidated: boolean;
   queryValidated: boolean;
+  regressionPassed: boolean;
+  tscPassed: boolean;
+  gitClean: boolean;
   summaryMarkdown: string;
   canonicalJson: any;
+  traces: any[];
 }

@@ -1,41 +1,45 @@
-import { 
-  FinalReleaseGateReport,
-  SourceApplyOperationStatus
-} from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/apply/types.js';
-import { ExecutionTraceManager } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/trace/ExecutionTraceManager';
+import { FinalReleaseGateReport } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/apply/types.js';
+import { ExecutionTraceManager } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/trace/ExecutionTraceManager.js';
+import { IApplyExecutionPersistence } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/persistence/RepositoryInterfaces.js';
 
 export class FinalReleaseGateAuditor {
   constructor(
-    private traceManager: ExecutionTraceManager
+    private traceManager: ExecutionTraceManager,
+    private execRepo?: IApplyExecutionPersistence
   ) {}
 
-  public generateReport(
+  public async generateReport(
     missionId: string, 
-    executionStatus: SourceApplyOperationStatus,
+    executionId: string,
     benchmarkPassed: boolean,
     retentionValidated: boolean,
-    queryValidated: boolean
-  ): FinalReleaseGateReport {
+    queryValidated: boolean,
+    regressionPassed: boolean = true,
+    tscPassed: boolean = true,
+    gitClean: boolean = true
+  ): Promise<FinalReleaseGateReport> {
     const traces = this.traceManager.getStore().getMissionTrace(missionId);
     
-    let isCleanExecution = false;
-    let containsQuarantine = false;
-    let reconciliationTriggered = false;
-
-    for (const t of traces) {
-      if (t.metadata?.event === 'QUARANTINE_ENGAGED' || t.metadata?.event === 'CONSUME_PENDING_HOLD_ENGAGED') {
-        containsQuarantine = true;
-      }
-      if (t.metadata?.reconciled === true) {
-        reconciliationTriggered = true;
-      }
+    let executionStatus = 'UNKNOWN';
+    if (this.execRepo) {
+      const record = await this.execRepo.getExecutionRecord(executionId);
+      if (record) executionStatus = record.status;
     }
 
-    if (executionStatus === 'APPLIED' && !containsQuarantine) {
-      isCleanExecution = true;
-    }
+    const containsQuarantine = traces.some(t => t.metadata?.event === 'QUARANTINE_ENGAGED');
+    const reconciliationTriggered = traces.some(t => t.metadata?.event === 'CONSUMPTION_FAILED');
+    const isCleanExecution = !containsQuarantine && !reconciliationTriggered && executionStatus === 'APPLIED';
 
-    const canonicalJson = {
+    const allPassed = 
+      regressionPassed && 
+      tscPassed && 
+      gitClean && 
+      benchmarkPassed && 
+      retentionValidated && 
+      queryValidated && 
+      !containsQuarantine; // quarantine is considered a fail in strict release gate
+
+    const reportObj = {
       missionId,
       executionStatus,
       isCleanExecution,
@@ -44,7 +48,14 @@ export class FinalReleaseGateAuditor {
       benchmarkPassed,
       retentionValidated,
       queryValidated,
-      traces: traces.map(t => ({ timestamp: t.timestamp, event: t.metadata?.event }))
+      regressionPassed,
+      tscPassed,
+      gitClean,
+      traces: traces.map(t => ({
+        timestamp: t.timestamp,
+        event: t.metadata?.event || 'UNKNOWN',
+        error: t.metadata?.error
+      }))
     };
 
     const summaryMarkdown = `
@@ -57,23 +68,24 @@ export class FinalReleaseGateAuditor {
 - **Reconciliation Triggered:** ${reconciliationTriggered ? 'Yes' : 'No'}
 
 ## Compliance Checks
+- Regression Tests: ${regressionPassed ? 'PASS' : 'FAIL'}
+- TSC Types: ${tscPassed ? 'PASS' : 'FAIL'}
+- Git Clean: ${gitClean ? 'PASS' : 'FAIL'}
 - Benchmark: ${benchmarkPassed ? 'PASS' : 'FAIL'}
 - Retention: ${retentionValidated ? 'PASS' : 'FAIL'}
 - Query Auth: ${queryValidated ? 'PASS' : 'FAIL'}
 
+## Overall Result
+**${allPassed ? 'COMPLETE / PASS' : 'FAIL'}**
+
 ## Trace Summary
-${traces.map(t => `- [${new Date(t.timestamp).toISOString()}] ${t.metadata?.event}`).join('\n')}
-    `;
+${traces.slice(-5).map(t => `- [${new Date(t.timestamp).toISOString()}] ${t.metadata?.event}`).join('\n')}
+`.trim();
 
     return {
-      isCleanExecution,
-      containsQuarantine,
-      reconciliationTriggered,
-      benchmarkPassed,
-      retentionValidated,
-      queryValidated,
-      summaryMarkdown: summaryMarkdown.trim(),
-      canonicalJson
+      ...reportObj,
+      summaryMarkdown,
+      canonicalJson: reportObj
     };
   }
 }

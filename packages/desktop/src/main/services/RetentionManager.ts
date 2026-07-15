@@ -1,56 +1,85 @@
 import { 
   SourceApplyOperationStatus,
   WorkspaceBlockFlag,
-  RetentionPolicy
+  RetentionPolicy,
+  RetentionEvaluationResult
 } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/apply/types.js';
-import { IApplyExecutionPersistence } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/persistence/RepositoryInterfaces';
+import { IApplyExecutionPersistence } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/persistence/RepositoryInterfaces.js';
+import { ExecutionTraceManager } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/trace/ExecutionTraceManager.js';
 
 export class RetentionManager {
   constructor(
-    private applyExecRepo: IApplyExecutionPersistence
+    private applyExecRepo: IApplyExecutionPersistence,
+    private traceManager?: ExecutionTraceManager
   ) {}
 
-  public async evaluateRetention(executionId: string): Promise<{
-    shouldCleanupSnapshot: boolean;
-    reason: string;
-  }> {
+  public async evaluateRetention(executionId: string): Promise<RetentionEvaluationResult> {
     const record = await this.applyExecRepo.getExecutionRecord(executionId);
     if (!record) {
-      return { shouldCleanupSnapshot: false, reason: 'NOT_FOUND' };
+      return this.buildResult(false, false, false, false, 'NOT_FOUND');
     }
 
-    // Check workspace block flags
     const isHold = await this.applyExecRepo.hasWorkspaceBlockFlag(record.workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING);
     if (isHold) {
-      return { shouldCleanupSnapshot: false, reason: 'QUARANTINE_CONSUME_PENDING_HOLD' };
+      return this.buildResult(false, false, false, true, 'QUARANTINE_CONSUME_PENDING_HOLD');
     }
 
     switch (record.status) {
       case 'APPLIED':
       case 'ROLLED_BACK':
-        // Safe to cleanup snapshots
-        return { shouldCleanupSnapshot: true, reason: 'COMPLETED_STATE' };
+        return this.buildResult(true, true, false, false, 'COMPLETED_STATE', Date.now() + 7 * 86400000);
       
       case 'ROLLBACK_FAILED':
       case 'QUARANTINED':
       case 'CONSUME_FAILED':
-        // Must preserve snapshot for manual recovery or audit
-        return { shouldCleanupSnapshot: false, reason: 'FAILED_OR_QUARANTINED_STATE' };
+        return this.buildResult(false, false, true, true, 'FAILED_OR_QUARANTINED_STATE');
 
       default:
-        // In-progress states, keep snapshot
-        return { shouldCleanupSnapshot: false, reason: 'IN_PROGRESS' };
+        // In-progress states
+        return this.buildResult(false, false, false, false, 'IN_PROGRESS');
     }
   }
 
+  private buildResult(
+    shouldCleanupSnapshot: boolean,
+    shouldArchive: boolean,
+    shouldPreserveIndefinitely: boolean,
+    requiresManualIntervention: boolean,
+    reason: string,
+    nextReviewAt?: number
+  ): RetentionEvaluationResult {
+    return {
+      shouldCleanupSnapshot,
+      shouldArchive,
+      shouldPreserveIndefinitely,
+      requiresManualIntervention,
+      reason,
+      nextReviewAt
+    };
+  }
+
   public async executeCleanup(executionId: string): Promise<boolean> {
-    const { shouldCleanupSnapshot } = await this.evaluateRetention(executionId);
-    if (!shouldCleanupSnapshot) {
+    const result = await this.evaluateRetention(executionId);
+    if (!result.shouldCleanupSnapshot) {
       return false;
     }
 
-    // Abstract implementation: this is where we'd do fs.rmdir on the snapshot
-    // For now we just return true to signify successful cleanup logic firing
-    return true;
+    try {
+      // Abstract implementation: fs.rmdir on snapshot
+      return true;
+    } catch (e) {
+      if (this.traceManager) {
+        // Trace warning
+        this.traceManager.getStore().appendEvent({
+          missionId: 'system',
+          traceId: 'system',
+          eventId: 'cleanup-' + executionId,
+          eventType: 'SNAPSHOT_CLEANUP_WARNING',
+          timestamp: Date.now(),
+          metadata: { executionId, error: e }
+        } as any);
+      }
+      return false; // Does not revert APPLIED
+    }
   }
 }
