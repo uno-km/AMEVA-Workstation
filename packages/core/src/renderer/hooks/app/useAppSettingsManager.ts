@@ -125,6 +125,21 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
        */
   const handleInstallPlugin = async (id: string, scriptUrl: string) => {
     try {
+      // 프리미엄 플러그인(TSX)은 dynamic remote loader가 컴포넌트 마운트 시 실시간으로 컴파일하여 구동하므로,
+      // 별도의 script 태그 삽입 및 window 객체 폴링 등록 과정 없이 바로 설치 목록에 활성화 처리합니다.
+      if (scriptUrl.endsWith('.tsx')) {
+        setSettings(prev => {
+          const current = prev.installedPlugins || []
+          if (!current.includes(id)) {
+            const next = { ...prev, installedPlugins: [...current, id] }
+            localStorage.setItem('app-settings', JSON.stringify(next))
+            return next
+          }
+          return prev
+        })
+        return
+      }
+
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `existingScript`

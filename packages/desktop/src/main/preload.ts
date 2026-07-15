@@ -186,7 +186,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 8080 추론 엔진 헬스 상태 검정
   llmCheckHealth: () => ipcRenderer.invoke('llm:check-health'),
   // 추론 엔진 프로세스 완전 재시작
-  llmRestart: () => ipcRenderer.invoke('llm:restart'),
+  llmRestart: (modelPath?: string) => ipcRenderer.invoke('llm:restart', { modelPath }),
 
   // 로컬 기기에 다운로드 되어 적재된 gguf 목록 리스트업
   llmListModels: (type?: 'llm' | 'code' | 'ollama') => ipcRenderer.invoke('llm:listModels', type),

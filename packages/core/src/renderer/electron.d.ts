@@ -95,7 +95,7 @@ export interface IElectronAPI {
   llmAddLog: (payload: { text: string; prefix?: string }) => void
   llmGetLogs: () => Promise<string>
   llmCheckHealth: () => Promise<{ status: 'ok' | 'offline' | 'loading model'; running: boolean; error?: string }>
-  llmRestart: () => Promise<{ success: boolean; error?: string }>
+  llmRestart: (modelPath?: string) => Promise<{ success: boolean; error?: string }>
 
   llmListModels: (type?: 'llm' | 'code' | 'ollama') => Promise<LLMModel[]>
   selectLocalFile: (filters?: { name: string; extensions: string[] }[]) => Promise<{ filePath: string; base64: string } | null>

@@ -28,6 +28,63 @@ interface PluginCardProps {
   onPreview: (plugin: PluginMetadata) => void
 }
 
+function parseDescription(html: string) {
+  if (!html) return null;
+  if (!html.includes('<span') && !html.includes('<br')) {
+    return html;
+  }
+
+  const regex = /<span\s+class=['"]([^'"]+)['"]>(.*?)<\/span>|<br\s*\/?>/g;
+  const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+
+  while ((match = regex.exec(html)) !== null) {
+    if (match.index > lastIndex) {
+      elements.push(html.substring(lastIndex, match.index));
+    }
+
+    if (match[0].startsWith('<br')) {
+      elements.push(<br key={key++} />);
+    } else {
+      const className = match[1];
+      const content = match[2];
+
+      const bRegex = /<b>(.*?)<\/b>/g;
+      const spanChildren: React.ReactNode[] = [];
+      let bLastIndex = 0;
+      let bMatch;
+      let bKey = 0;
+
+      while ((bMatch = bRegex.exec(content)) !== null) {
+        if (bMatch.index > bLastIndex) {
+          spanChildren.push(content.substring(bLastIndex, bMatch.index));
+        }
+        spanChildren.push(<b key={bKey++}>{bMatch[1]}</b>);
+        bLastIndex = bRegex.lastIndex;
+      }
+      if (bLastIndex < content.length) {
+        spanChildren.push(content.substring(bLastIndex));
+      }
+
+      elements.push(
+        <span key={key++} className={className}>
+          {spanChildren.length > 0 ? spanChildren : content}
+        </span>
+      );
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < html.length) {
+    elements.push(html.substring(lastIndex));
+  }
+
+  return elements;
+}
+
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `PluginCard`
@@ -86,7 +143,7 @@ export function PluginCard({
           </span>
         </div>
         <div style={{ fontSize: '11px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-          {p.description}
+          {parseDescription(p.description)}
         </div>
       </div>
 

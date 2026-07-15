@@ -405,7 +405,7 @@ export function SettingsModal({
         if (name) setGpuName(name)
       }).catch(() => {})
     }
-  }, [isOpen])
+  }, [isOpen, activeTab])
 
       /*
        * [RUN-TIME STATE / INVARIANT]

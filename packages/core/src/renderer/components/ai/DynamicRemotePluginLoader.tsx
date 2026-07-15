@@ -12,11 +12,17 @@ export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
 
   useEffect(() => {
     let isMounted = true;
+    setComponent(null);
+    setError(null);
+
     async function fetchAndLoad() {
       try {
         // 실제 운영 환경에서는 /api/plugins/download/:id 엔드포인트에 Auth 토큰을 실어 요청해야 함
         // 지금은 보안 아키텍처 증명을 위해 서버의 프리미엄 디렉토리에서 바로 로드
-        const res = await fetch(`https://uno-km.github.io/AMEVA-Workstation-Market-Place/plugins/premium/${pluginId}.tsx`);
+        const baseUrl = window.location.hostname === 'localhost'
+          ? 'http://localhost:3010'
+          : 'https://uno-km.github.io/AMEVA-Workstation-Market-Place';
+        const res = await fetch(`${baseUrl}/plugins/premium/${pluginId}.tsx`);
         if (!res.ok) throw new Error("플러그인 다운로드에 실패했습니다. 유효한 라이센스인지 확인하세요.");
         let code = await res.text();
 
@@ -54,8 +60,13 @@ export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
         }).code;
 
         // 4. 컴포넌트 이름 추론 및 실행
-        const match = code.match(/function\s+([A-Z]\w+)/);
-        const compName = match ? match[1] : null;
+        let compName = null;
+        if (code.includes(`function ${pluginId}`)) {
+          compName = pluginId;
+        } else {
+          const match = code.match(/function\s+([A-Z]\w+)/);
+          compName = match ? match[1] : null;
+        }
 
         if (compName) {
            const executor = new Function(`

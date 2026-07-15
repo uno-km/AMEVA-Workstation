@@ -182,93 +182,112 @@ export class LLMProcessManager {
      * - 시나리오: 파라미터 미지정 시 기본 7B 모델 경로로 폴백
      */
     const defaultModel = this.DEFAULT_MODEL_PATH;
+
+    const getFallbackModel = () => {
+      try {
+        if (existsSync(this.LLM_MODELS_DIR)) {
+          const list = readdirSync(this.LLM_MODELS_DIR).filter(f => f.toLowerCase().endsWith('.gguf'));
+          if (list.length > 0) {
+            return join(this.LLM_MODELS_DIR, list[0]);
+          }
+        }
+      } catch {}
+      return null;
+    };
+
+    let targetPath = '';
+
     if (!modelInput || typeof modelInput !== 'string') {
-      return defaultModel;
-    }
-
-    /*
-     * [RUN-TIME STATE / INVARIANT]
-     * - 변수 명: `trimmed`
-     * - 자료형 / 예상 값: `string`
-     * - 시나리오: 공백이 제거된 모델 입력 파라미터 보존
-     */
-    const trimmed = modelInput.trim();
-    if (existsSync(trimmed)) {
-      return trimmed;
-    }
-
-    /*
-     * [ALGORITHM BRANCH / DECISION]
-     * - 조건 식: `!existsSync(this.LLM_MODELS_DIR)`
-     * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-     * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-     * - 예시: `if (!existsSync(this.LLM_MODELS_DIR))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-     */
-    if (!existsSync(this.LLM_MODELS_DIR)) {
-      return trimmed || defaultModel;
-    }
-
-    try {
+      targetPath = defaultModel;
+    } else {
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `files`
-       * - 자료형 / 예상 값: `string[]` (`Qwen2.5-14B-Instruct-Q4_K_M.gguf` 등 파일 목록)
-       * - 시나리오: 디렉터리 내 `.gguf` 파일 목록 필터링
-       */
-      const files = readdirSync(this.LLM_MODELS_DIR).filter(f => f.endsWith('.gguf'));
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `cleanParam`
+       * - 변수 명: `trimmed`
        * - 자료형 / 예상 값: `string`
-       * - 시나리오: 단축 접두어 `:` 제거 및 소문자 변환
+       * - 시나리오: 공백이 제거된 모델 입력 파라미터 보존
        */
-      const cleanParam = trimmed.startsWith(':') ? trimmed.slice(1).toLowerCase() : trimmed.toLowerCase();
-      
-      if (cleanParam.includes('14b')) {
-        const found14B = files.find(f => f.toLowerCase().includes('14b'));
-        if (found14B) return join(this.LLM_MODELS_DIR, found14B);
-      }
-      if (cleanParam.includes('7b')) {
-        const found7B = files.find(f => f.toLowerCase().includes('7b') && !f.toLowerCase().includes('coder'));
-        if (found7B) return join(this.LLM_MODELS_DIR, found7B);
-      }
-      if (cleanParam.includes('coder')) {
-        const foundCoder = files.find(f => f.toLowerCase().includes('coder'));
-        if (foundCoder) return join(this.LLM_MODELS_DIR, foundCoder);
-      }
-      if (cleanParam.includes('8b')) {
-        const found8B = files.find(f => f.toLowerCase().includes('8b'));
-        if (found8B) return join(this.LLM_MODELS_DIR, found8B);
-      }
-      if (cleanParam.includes('3b')) {
-        const found3B = files.find(f => f.toLowerCase().includes('3b') && !f.toLowerCase().includes('coder'));
-        if (found3B) return join(this.LLM_MODELS_DIR, found3B);
-      }
-      if (cleanParam.includes('1.5b')) {
-        const found15B = files.find(f => f.toLowerCase().includes('1.5b') && !f.toLowerCase().includes('coder'));
-        if (found15B) return join(this.LLM_MODELS_DIR, found15B);
-      }
-      if (cleanParam.includes('0.5b')) {
-        const found05B = files.find(f => f.toLowerCase().includes('0.5b') && !f.toLowerCase().includes('coder'));
-        if (found05B) return join(this.LLM_MODELS_DIR, found05B);
-      }
+      const trimmed = modelInput.trim();
+      if (existsSync(trimmed)) {
+        targetPath = trimmed;
+      } else if (existsSync(join(this.LLM_MODELS_DIR, trimmed))) {
+        targetPath = join(this.LLM_MODELS_DIR, trimmed);
+      } else if (!existsSync(this.LLM_MODELS_DIR)) {
+        targetPath = trimmed || defaultModel;
+      } else {
+        try {
+          /*
+           * [RUN-TIME STATE / INVARIANT]
+           * - 변수 명: `files`
+           * - 자료형 / 예상 값: `string[]` (`Qwen2.5-14B-Instruct-Q4_K_M.gguf` 등 파일 목록)
+           * - 시나리오: 디렉터리 내 `.gguf` 파일 목록 필터링
+           */
+          const files = readdirSync(this.LLM_MODELS_DIR).filter(f => f.toLowerCase().endsWith('.gguf'));
+          /*
+           * [RUN-TIME STATE / INVARIANT]
+           * - 변수 명: `cleanParam`
+           * - 자료형 / 예상 값: `string`
+           * - 시나리오: 단축 접두어 `:` 제거 및 소문자 변환
+           */
+          const cleanParam = trimmed.startsWith(':') ? trimmed.slice(1).toLowerCase() : trimmed.toLowerCase();
+          
+          let foundPath = '';
+          if (cleanParam.includes('14b')) {
+            const found14B = files.find(f => f.toLowerCase().includes('14b'));
+            if (found14B) foundPath = join(this.LLM_MODELS_DIR, found14B);
+          }
+          if (!foundPath && cleanParam.includes('7b')) {
+            const found7B = files.find(f => f.toLowerCase().includes('7b') && !f.toLowerCase().includes('coder'));
+            if (found7B) foundPath = join(this.LLM_MODELS_DIR, found7B);
+          }
+          if (!foundPath && cleanParam.includes('coder')) {
+            const foundCoder = files.find(f => f.toLowerCase().includes('coder'));
+            if (foundCoder) foundPath = join(this.LLM_MODELS_DIR, foundCoder);
+          }
+          if (!foundPath && cleanParam.includes('8b')) {
+            const found8B = files.find(f => f.toLowerCase().includes('8b'));
+            if (found8B) foundPath = join(this.LLM_MODELS_DIR, found8B);
+          }
+          if (!foundPath && cleanParam.includes('3b')) {
+            const found3B = files.find(f => f.toLowerCase().includes('3b') && !f.toLowerCase().includes('coder'));
+            if (found3B) foundPath = join(this.LLM_MODELS_DIR, found3B);
+          }
+          if (!foundPath && cleanParam.includes('1.5b')) {
+            const found15B = files.find(f => f.toLowerCase().includes('1.5b') && !f.toLowerCase().includes('coder'));
+            if (found15B) foundPath = join(this.LLM_MODELS_DIR, found15B);
+          }
+          if (!foundPath && cleanParam.includes('0.5b')) {
+            const found05B = files.find(f => f.toLowerCase().includes('0.5b') && !f.toLowerCase().includes('coder'));
+            if (found05B) foundPath = join(this.LLM_MODELS_DIR, found05B);
+          }
+          
+          if (!foundPath) {
+            /*
+             * [RUN-TIME STATE / INVARIANT]
+             * - 변수 명: `foundPartial`
+             * - 자료형 / 예상 값: `string | undefined`
+             * - 시나리오: cleanParam 부분 문자열 포함 파일 찾기
+             */
+            const foundPartial = files.find(f => f.toLowerCase().includes(cleanParam));
+            if (foundPartial) foundPath = join(this.LLM_MODELS_DIR, foundPartial);
+          }
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `foundPartial`
-       * - 자료형 / 예상 값: `string | undefined`
-       * - 시나리오: cleanParam 부분 문자열 포함 파일 찾기
-       */
-      const foundPartial = files.find(f => f.toLowerCase().includes(cleanParam));
-      if (foundPartial) {
-        return join(this.LLM_MODELS_DIR, foundPartial);
+          targetPath = foundPath || defaultModel;
+        } catch (e) {
+          console.error('[LLMProcessManager] resolveModelPath 중 오류:', e);
+          targetPath = defaultModel;
+        }
       }
-
-      return defaultModel;
-    } catch (e) {
-      console.error('[LLMProcessManager] resolveModelPath 중 오류:', e);
-      return defaultModel;
     }
+
+    // 만약 결정된 targetPath가 존재하지 않는다면, 첫 번째 가용한 모델 파일로 최종 폴백을 시도합니다.
+    if (!existsSync(targetPath)) {
+      const fallback = getFallbackModel();
+      if (fallback) {
+        return fallback;
+      }
+    }
+
+    return targetPath;
   }
 
   /**

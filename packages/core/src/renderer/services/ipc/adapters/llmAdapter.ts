@@ -247,7 +247,7 @@ export function onLLMDownloadProgress(callback: (data: ModelDownloadProgressEven
   return window.electronAPI.onLLMDownloadProgress(callback)
 }
 
-export async function llmRestart(): Promise<{ success: boolean; error?: string }> {
+export async function llmRestart(modelPath?: string): Promise<{ success: boolean; error?: string }> {
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `!window.electronAPI?.llmRestart`
@@ -258,7 +258,7 @@ export async function llmRestart(): Promise<{ success: boolean; error?: string }
   if (!window.electronAPI?.llmRestart) {
     return { success: false, error: 'API not available' }
   }
-  return window.electronAPI.llmRestart()
+  return window.electronAPI.llmRestart(modelPath)
 }
 
 export async function llmStart(modelPath: string): Promise<{ success: boolean; error?: string }> {

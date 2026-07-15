@@ -204,7 +204,7 @@ export function AIStatusIndicator({
                       return
                     }
                     ipc.llmAddLog({ text: '[System] 재구동 요청을 메인 프로세스로 전송합니다...', prefix: 'System' })
-                    ipc.llmRestart().then((res: any) => {
+                    ipc.llmRestart(aiSettings?.modelPath).then((res: any) => {
                       ipc.llmAddLog({ 
                         text: res.success ? '[System] 수동 재구동(웜업) 완료.' : `[Error] 재구동 실패: ${res.error}`,
                         prefix: 'System'

@@ -107,7 +107,7 @@ declare global {
       
       // 6. GPU 메타 조회 및 리스타트
       llmGetGpuName?: () => Promise<string>
-      llmRestart?: () => Promise<{ success: boolean; error?: string }>
+      llmRestart?: (modelPath?: string) => Promise<{ success: boolean; error?: string }>
       
       // 7. GGUF 모델 원격 백그라운드 다운로드
       llmDownloadModel?: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>

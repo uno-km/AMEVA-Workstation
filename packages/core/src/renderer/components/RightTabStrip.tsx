@@ -330,7 +330,16 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const isGoogleMapsSubscribed = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const isGoogleMapsSubscribed = installedPlugins.includes('google-maps');
+  const isGoogleMapsSubscribed = installedPlugins.includes('google-maps') || installedPlugins.includes('GoogleMapsView');
+  const isWebBrowserSubscribed = installedPlugins.includes('web-browser') || installedPlugins.includes('AmevaBrowserView');
+  const isPdfRagSubscribed = installedPlugins.includes('pdf-rag') || installedPlugins.includes('PdfRagPlugin');
+  const isDbExplorerSubscribed = installedPlugins.includes('db-explorer') || installedPlugins.includes('DatabaseExplorerPlugin');
+  const isMindMapSubscribed = installedPlugins.includes('mind-map') || installedPlugins.includes('MindMapPlugin');
+  const isPresentationSubscribed = installedPlugins.includes('presentation') || installedPlugins.includes('PresentationPlugin');
+  const isPomodoroSubscribed = installedPlugins.includes('pomodoro') || installedPlugins.includes('PomodoroPlugin');
+  const isVoiceDictationSubscribed = installedPlugins.includes('voice-dictation') || installedPlugins.includes('VoiceDictationPlugin');
+  const isRestClientSubscribed = installedPlugins.includes('rest-client') || installedPlugins.includes('RestClientPlugin');
+  const isWireframeSubscribed = installedPlugins.includes('wireframe') || installedPlugins.includes('WireframePlugin');
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -350,15 +359,15 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     ...(isCalendarSubscribed ? [{ id: 'calendar', icon: Calendar, label: '스케줄 캘린더', badge: false }] : []),
     ...(isGoogleDriveSubscribed ? [{ id: 'google-drive', icon: HardDrive, label: '구글 드라이브', badge: false }] : []),
     ...(isGoogleMapsSubscribed ? [{ id: 'google-maps', icon: Map, label: '구글 지도', badge: false }] : []),
-    { id: 'pdf-rag', icon: FileText, label: 'PDF 문서 대화 (RAG)', badge: false },
-    { id: 'web-browser', icon: Globe, label: '웹 브라우저 & RPA', badge: false },
-    { id: 'db-explorer', icon: Database, label: '데이터베이스 탐색기', badge: false },
-    { id: 'mind-map', icon: Network, label: '마인드맵 생성기', badge: false },
-    { id: 'presentation', icon: MonitorPlay, label: '프레젠테이션 모드', badge: false },
-    { id: 'pomodoro', icon: Timer, label: '집중력 & 뽀모도로', badge: false },
-    { id: 'voice-dictation', icon: Mic, label: '음성 회의록 작성', badge: false },
-    { id: 'rest-client', icon: Server, label: 'REST API 클라이언트', badge: false },
-    { id: 'wireframe', icon: LayoutTemplate, label: 'UI 와이어프레임', badge: false },
+    ...(isPdfRagSubscribed ? [{ id: 'pdf-rag', icon: FileText, label: 'PDF 문서 대화 (RAG)', badge: false }] : []),
+    ...(isWebBrowserSubscribed ? [{ id: 'web-browser', icon: Globe, label: '웹 브라우저 & RPA', badge: false }] : []),
+    ...(isDbExplorerSubscribed ? [{ id: 'db-explorer', icon: Database, label: '데이터베이스 탐색기', badge: false }] : []),
+    ...(isMindMapSubscribed ? [{ id: 'mind-map', icon: Network, label: '마인드맵 생성기', badge: false }] : []),
+    ...(isPresentationSubscribed ? [{ id: 'presentation', icon: MonitorPlay, label: '프레젠테이션 모드', badge: false }] : []),
+    ...(isPomodoroSubscribed ? [{ id: 'pomodoro', icon: Timer, label: '집중력 & 뽀모도로', badge: false }] : []),
+    ...(isVoiceDictationSubscribed ? [{ id: 'voice-dictation', icon: Mic, label: '음성 회의록 작성', badge: false }] : []),
+    ...(isRestClientSubscribed ? [{ id: 'rest-client', icon: Server, label: 'REST API 클라이언트', badge: false }] : []),
+    ...(isWireframeSubscribed ? [{ id: 'wireframe', icon: LayoutTemplate, label: 'UI 와이어프레임', badge: false }] : []),
   ] : [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
   ];
