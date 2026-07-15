@@ -200,3 +200,58 @@ export interface ApplyVerificationResult {
   failureReason?: string;
   verifiedAt: number;
 }
+
+// --- Phase 6.4.3 Artifact Query & Retention ---
+
+export type ArtifactQueryView = 'REDACTED' | 'INTERNAL';
+
+export interface ArtifactQueryRequest {
+  executionId?: string;
+  approvalId?: string;
+  authorizationTicketId?: string;
+  missionId?: string;
+  workspaceRoot?: string;
+  artifactRevision?: number;
+  viewType: ArtifactQueryView;
+}
+
+export interface ArtifactQueryResponse {
+  success: boolean;
+  errorCode?: string;
+  viewType: ArtifactQueryView;
+  data?: {
+    executionStatus?: SourceApplyOperationStatus;
+    artifactMetadata?: any;
+    traceReport?: any;
+    snapshotInfo?: any;
+    failureReason?: string;
+    quarantineDetails?: any;
+  };
+}
+
+export enum RetentionPolicy {
+  IMMEDIATE = 'IMMEDIATE',
+  SEVEN_DAYS = 'SEVEN_DAYS',
+  NINETY_DAYS = 'NINETY_DAYS',
+  INDEFINITE = 'INDEFINITE',
+  PERMANENT = 'PERMANENT'
+}
+
+export interface BenchmarkMetrics {
+  durationMs: number;
+  memoryUsage?: number;
+  parallelCount?: number;
+  success: boolean;
+  errorCategory?: string;
+}
+
+export interface FinalReleaseGateReport {
+  isCleanExecution: boolean;
+  containsQuarantine: boolean;
+  reconciliationTriggered: boolean;
+  benchmarkPassed: boolean;
+  retentionValidated: boolean;
+  queryValidated: boolean;
+  summaryMarkdown: string;
+  canonicalJson: any;
+}
