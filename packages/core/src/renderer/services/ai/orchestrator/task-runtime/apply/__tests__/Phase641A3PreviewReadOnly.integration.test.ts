@@ -41,7 +41,7 @@ describe('Phase 6.4.1A-3: Preview Read-Only Enforcement', () => {
     vi.clearAllMocks();
   });
 
-  it('MUST NOT perform any write operations during Preview construction or validation', async () => {
+  const generatePreviewAndDigest = async () => {
     const affectedPaths = ['test.txt'];
     const preview = {
       previewId: 'prev-1',
@@ -67,35 +67,46 @@ describe('Phase 6.4.1A-3: Preview Read-Only Enforcement', () => {
       riskLevel: 'LOW' as any,
     };
 
-    // Run preview digest generations that touch fs
     await SourceApplyDigestService.createSourceDigest(__dirname, affectedPaths);
     await SourceApplyDigestService.createPreviewDigest(preview);
+  };
 
-    const writeFileSyncCount = (globalThis as any).writeFileSyncCount;
-    const renameSyncCount = (globalThis as any).renameSyncCount;
-    const rmSyncCount = (globalThis as any).rmSyncCount;
-    const unlinkSyncCount = (globalThis as any).unlinkSyncCount;
-
+  it('MUST NOT perform writeFileSync operations during Preview construction or validation', async () => {
+    await generatePreviewAndDigest();
     const proof = {
-      writeFile: writeFileCount,
-      writeFileSync: writeFileSyncCount,
-      rename: renameCount,
-      renameSync: renameSyncCount,
-      unlink: unlinkCount,
-      unlinkSync: unlinkSyncCount,
-      rm: rmCount,
-      rmSync: rmSyncCount
+      writeFile: (globalThis as any).writeFileCount,
+      writeFileSync: (globalThis as any).writeFileSyncCount,
+      rename: (globalThis as any).renameCount,
+      renameSync: (globalThis as any).renameSyncCount,
+      unlink: (globalThis as any).unlinkCount,
+      unlinkSync: (globalThis as any).unlinkSyncCount,
+      rm: (globalThis as any).rmCount,
+      rmSync: (globalThis as any).rmSyncCount
     };
-
     console.log('[Read-Only Proof JSON]\n' + JSON.stringify(proof, null, 2));
+    expect((globalThis as any).writeFileSyncCount).toBe(0);
+  });
 
-    expect(writeFileSyncCount).toBe(0);
-    expect(renameSyncCount).toBe(0);
-    expect(rmSyncCount).toBe(0);
-    expect(unlinkSyncCount).toBe(0);
-    expect(writeFileCount).toBe(0);
-    expect(renameCount).toBe(0);
-    expect(rmCount).toBe(0);
-    expect(unlinkCount).toBe(0);
+  it('MUST NOT perform renameSync operations during Preview construction or validation', async () => {
+    await generatePreviewAndDigest();
+    expect((globalThis as any).renameSyncCount).toBe(0);
+  });
+
+  it('MUST NOT perform rmSync operations during Preview construction or validation', async () => {
+    await generatePreviewAndDigest();
+    expect((globalThis as any).rmSyncCount).toBe(0);
+  });
+
+  it('MUST NOT perform unlinkSync operations during Preview construction or validation', async () => {
+    await generatePreviewAndDigest();
+    expect((globalThis as any).unlinkSyncCount).toBe(0);
+  });
+
+  it('MUST NOT perform async write/rename/rm/unlink operations during Preview construction or validation', async () => {
+    await generatePreviewAndDigest();
+    expect((globalThis as any).writeFileCount).toBe(0);
+    expect((globalThis as any).renameCount).toBe(0);
+    expect((globalThis as any).rmCount).toBe(0);
+    expect((globalThis as any).unlinkCount).toBe(0);
   });
 });
