@@ -252,6 +252,35 @@ INSERT INTO developers (name, role, level) VALUES
 SELECT * FROM developers;
 \`\`\`
 
+---
+
+### 📝 다채로운 서식 도구들 (Basic Blocks)
+AMEVA 에디터는 단순한 텍스트 편집을 넘어 다양한 서식을 제공합니다. 슬래시(\`/\`) 키를 눌러 메뉴를 열어보세요.
+
+> **인용구 (Quote)**: 중요한 문구나 강조하고 싶은 텍스트를 인용구 블록으로 표시할 수 있습니다. 👑 Pro (유료전용) 기능과 조합하면 더욱 강력합니다.
+
+- [x] 할 일 관리 (Check List) 1단계 완료
+- [ ] 다음 목표: 프리미엄 플러그인 구독 활성화
+- [ ] Kanban & Excel 연동 확인하기
+
+---
+
+### 📈 칸반 보드 (Kanban Board) 👑 Pro (유료전용)
+지라(Jira) 스타일의 AI 협업 칸반 보드를 삽입하여 팀의 워크플로우를 시각화하고 업무를 관리할 수 있습니다.
+
+\`\`\`ameva-kanban
+{"columns":[{"id":"col-1","title":"To Do","cards":[{"id":"card-1","title":"기획안 작성"},{"id":"card-2","title":"디자인 시안 검토"}]},{"id":"col-2","title":"In Progress","cards":[{"id":"card-3","title":"프론트엔드 개발"}]},{"id":"col-3","title":"Done","cards":[{"id":"card-4","title":"서버 인프라 구축"}]}]}
+\`\`\`
+
+### 📊 엑셀 시트 (Excel Spreadsheet) 👑 Pro (유료전용)
+강력한 스프레드시트 편집기를 문서 내에 삽입하여 재무 관리, 데이터 분석, 표 작업을 수행할 수 있습니다.
+
+\`\`\`ameva-excel
+[{"name":"Sheet1","celldata":[{"r":0,"c":0,"v":{"v":"종목명","m":"종목명"}},{"r":0,"c":1,"v":{"v":"현재가","m":"현재가"}},{"r":0,"c":2,"v":{"v":"등락률","m":"등락률"}},{"r":1,"c":0,"v":{"v":"AMEVA","m":"AMEVA"}},{"r":1,"c":1,"v":{"v":"150000","m":"150000"}},{"r":1,"c":2,"v":{"v":"+5.2%","m":"+5.2%"}}],"status":1}]
+\`\`\`
+
+---
+
 ### 🎨 Live HTML 샌드박스 렌더러 예시
 HTML/CSS/JS로 만든 화려한 웹 컴포넌트 프리뷰를 격리된 샌드박스 안에서 즉시 실시간 렌더링하여 확인합니다.
 
@@ -317,7 +346,7 @@ graph TD
 \`\`\`
 
 ### 🔗 링크 미리보기 (Link Preview)
-웹사이트 링크를 깔끔한 카드 형태로 렌더링하여 보여줍니다.
+웹사이트 링크를 깔끔한 카드 형태로 렌더링하여 보여줍니다. (프레젠테이션 모드에서는 팝업 iframe 창으로 사이트를 함께 띄워줍니다!)
 
 \`\`\`ameva-link
 {"url":"https://uno-km.github.io/AMEVA-Workstation/","title":"AMEVA Workstation 공식 사이트","description":"차세대 AI 기반 통합 협업 워크스테이션 AMEVA의 공식 소개 페이지입니다.","thumbnail":""}

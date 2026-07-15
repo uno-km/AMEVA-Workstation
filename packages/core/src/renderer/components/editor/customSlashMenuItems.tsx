@@ -213,9 +213,9 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
        */
   const drawingItems = drawingSubscribed ? [
     {
-      title: 'Drawing Board',
+      title: 'Drawing Board (유료전용) 👑 Pro',
       onItemClick: insertDrawingBlock,
-      aliases: ['drawing', 'draw', 'sketch', 'paint', 'canvas'],
+      aliases: ['drawing', 'draw', 'sketch', 'paint', 'canvas', 'pro', 'premium'],
       group: 'Drawing',
       icon: <Pencil size={16} color="#a855f7" />,
       subtext: 'Excalidraw 기반 화이트보드 드로잉 블록 삽입 (/draw)',
@@ -288,9 +288,9 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
 
   const kanbanItems = isKanbanEnabled ? [
     {
-      title: 'Kanban Board',
+      title: 'Kanban Board (유료전용) 👑 Pro',
       onItemClick: insertKanbanBlock,
-      aliases: ['kanban', 'board', 'jira', '칸반', '보드'],
+      aliases: ['kanban', 'board', 'jira', '칸반', '보드', 'pro', 'premium'],
       group: 'Workflow',
       icon: <Layout size={16} color="#3b82f6" />,
       subtext: '지라 스타일의 AI 협업 칸반 보드 삽입 (/kanban)',
@@ -325,9 +325,9 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
 
   const excelItems = isExcelSubscribed ? [
     {
-      title: 'Excel Sheet',
+      title: 'Excel Sheet (유료전용) 👑 Pro',
       onItemClick: insertExcelBlock,
-      aliases: ['excel', 'sheet', 'spreadsheet', '엑셀', '시트', 'ce'],
+      aliases: ['excel', 'sheet', 'spreadsheet', '엑셀', '시트', 'ce', 'pro', 'premium'],
       group: 'Office',
       icon: <File size={16} color="#10b981" />,
       subtext: '엑셀 스프레드시트 편집기 삽입 (/excel)',
