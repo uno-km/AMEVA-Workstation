@@ -123,6 +123,12 @@ export class SourceApplyService {
       const recomputedOperationDigest = await SourceApplyDigestService.createOperationDigest(preview);
       const recomputedAffectedPathsDigest = await SourceApplyDigestService.createAffectedPathsDigest(preview.affectedPaths);
       const recomputedArtifactDigest = await SourceApplyDigestService.createArtifactDigest(artifact.revision, artifact.contentHash);
+      
+      console.log(`[Digest Recomputation Proof] sourceDigest - stored: ${approval.sourceDigest}, recomputed: ${actualSourceDigest}`);
+      console.log(`[Digest Recomputation Proof] previewDigest - stored: ${approval.previewDigest}, recomputed: ${recomputedPreviewDigest}`);
+      console.log(`[Digest Recomputation Proof] operationDigest - stored: ${approval.operationDigest}, recomputed: ${recomputedOperationDigest}`);
+      console.log(`[Digest Recomputation Proof] affectedPathsDigest - stored: ${approval.affectedPathsDigest}, recomputed: ${recomputedAffectedPathsDigest}`);
+      console.log(`[Digest Recomputation Proof] artifactDigest - stored: ${approval.artifactDigest}, recomputed: ${recomputedArtifactDigest}`);
 
       if (
         recomputedPreviewDigest !== approval.previewDigest ||
