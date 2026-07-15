@@ -308,5 +308,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     closeSession: (request: any) => ipcRenderer.invoke('workbench:closeSession', request),
     generateDocumentArtifact: (request: any) => ipcRenderer.invoke('workbench:generateDocumentArtifact', request),
     extractDocumentArtifact: (request: any) => ipcRenderer.invoke('workbench:extractDocumentArtifact', request),
+  },
+
+  // ── Source Apply IPC (Phase 6.4) ──
+  sourceApply: {
+    createPreview: (request: any) => ipcRenderer.invoke('sourceApply:createPreview', request),
+    executeApply: (request: any) => ipcRenderer.invoke('sourceApply:executeApply', request),
+    rollbackApply: (request: any) => ipcRenderer.invoke('sourceApply:rollbackApply', request),
   }
 })

@@ -17,7 +17,7 @@ import {
 import { WorkbenchSessionRegistry, WorkbenchPathValidator, WorkbenchApprovalResolver } from './WorkbenchSecurity.js';
 
 const activeCommands = new Map<string, any>();
-const sessionRegistry = new WorkbenchSessionRegistry();
+export const sessionRegistry = new WorkbenchSessionRegistry();
 
 function verifySender(event: Electron.IpcMainInvokeEvent): void {
   // Security: Check origin / frame

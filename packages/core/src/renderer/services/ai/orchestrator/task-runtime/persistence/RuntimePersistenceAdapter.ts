@@ -71,16 +71,21 @@ export interface IRuntimePersistenceAdapter {
   saveIdempotencyRecord(record: unknown): Promise<void>;
   loadIdempotencyRecord(key: string): Promise<any | null>;
   deleteIdempotencyRecord(key: string): Promise<void>;
+
+  // Domain-specific Repositories (Phase 6.4)
+  readonly artifacts: import('./RepositoryInterfaces').IArtifactRepositoryPersistence;
+  readonly approvals: import('./RepositoryInterfaces').IApprovalRepositoryPersistence;
+  readonly sourceApply: import('./RepositoryInterfaces').ISourceApplyRepositoryPersistence;
 }
 
 /*
  * [도메인 종속 지역 상수]
  */
 const DB_NAME = 'ameva_task_runtime_v2';
-const DB_VERSION = 2; // [Item 4] V2로 버전 업 (V1→V2 Schema Migration 포함)
+const DB_VERSION = 3; // [Item 4] V3로 버전 업 (Phase 6.4 Domain Repositories 추가)
 const STORE_MISSIONS = 'missions';
 const STORE_CHECKPOINTS = 'task_checkpoints';
-const PERSISTENCE_SCHEMA_VERSION = 2;
+const PERSISTENCE_SCHEMA_VERSION = 3;
 
 import { SchemaMigrationEngine } from './SchemaMigration';
 
@@ -90,7 +95,7 @@ const STORE_ARTIFACT_MANIFESTS = 'artifact_manifests';
  * IndexedDB 연결 헬퍼.
  * [Item 4] onupgradeneeded에서 SchemaMigrationEngine을 호출한다.
  */
-function openRuntimeDB(): Promise<IDBDatabase> {
+export function openRuntimeDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -114,6 +119,32 @@ function openRuntimeDB(): Promise<IDBDatabase> {
         db.createObjectStore('idempotency_records', { keyPath: 'idempotencyKey' });
       }
 
+      // Phase 6.4 Domain Repositories Object Stores
+      if (!db.objectStoreNames.contains('artifact_repository')) {
+        db.createObjectStore('artifact_repository', { keyPath: 'repositoryArtifactId' });
+      }
+      if (!db.objectStoreNames.contains('artifact_retention_metadata')) {
+        db.createObjectStore('artifact_retention_metadata', { keyPath: 'repositoryArtifactId' });
+      }
+      if (!db.objectStoreNames.contains('approval_records')) {
+        db.createObjectStore('approval_records', { keyPath: 'approvalId' });
+      }
+      if (!db.objectStoreNames.contains('source_apply_requests')) {
+        db.createObjectStore('source_apply_requests', { keyPath: 'sourceApplyRequestId' });
+      }
+      if (!db.objectStoreNames.contains('source_apply_previews')) {
+        db.createObjectStore('source_apply_previews', { keyPath: 'requestId' });
+      }
+      if (!db.objectStoreNames.contains('source_apply_operations')) {
+        db.createObjectStore('source_apply_operations', { keyPath: 'operationId' });
+      }
+      if (!db.objectStoreNames.contains('rollback_snapshots')) {
+        db.createObjectStore('rollback_snapshots', { keyPath: 'rollbackSnapshotId' });
+      }
+      if (!db.objectStoreNames.contains('apply_verifications')) {
+        db.createObjectStore('apply_verifications', { keyPath: 'verificationId' });
+      }
+
       // [Item 4] Schema Migration 실행
       SchemaMigrationEngine.runMigrations(db, transaction, oldVersion, newVersion)
         .catch((migErr: unknown) => {
@@ -131,11 +162,16 @@ function openRuntimeDB(): Promise<IDBDatabase> {
   });
 }
 
+import { ArtifactRepositoryIndexedDB, ApprovalRepositoryIndexedDB, SourceApplyRepositoryIndexedDB } from './IndexedDBRepositories';
+
 /**
  * IndexedDB 기반 RuntimePersistenceAdapter.
  * 기존 ameva_agent_recovery와 독립적인 ameva_task_runtime_v2 DB 사용.
  */
 export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAdapter {
+  public readonly artifacts = new ArtifactRepositoryIndexedDB(openRuntimeDB);
+  public readonly approvals = new ApprovalRepositoryIndexedDB(openRuntimeDB);
+  public readonly sourceApply = new SourceApplyRepositoryIndexedDB(openRuntimeDB);
 
   /**
    * Mission 스냅샷을 저장한다.
@@ -399,10 +435,15 @@ export class IndexedDBRuntimePersistenceAdapter implements IRuntimePersistenceAd
   }
 }
 
+import { ArtifactRepositoryInMemory, ApprovalRepositoryInMemory, SourceApplyRepositoryInMemory } from './InMemoryRepositories';
+
 /**
  * 인메모리 Persistence (테스트 및 IndexedDB 미지원 환경 폴백).
  */
 export class InMemoryRuntimePersistenceAdapter implements IRuntimePersistenceAdapter {
+  public readonly artifacts = new ArtifactRepositoryInMemory();
+  public readonly approvals = new ApprovalRepositoryInMemory();
+  public readonly sourceApply = new SourceApplyRepositoryInMemory();
   private readonly missions: Map<string, MissionSnapshot> = new Map();
   private readonly checkpoints: Map<string, object> = new Map();
   private readonly manifests: Map<string, any> = new Map();

@@ -79,8 +79,18 @@ const MIGRATORS: SchemaMigrator[] = [
       console.log('[SchemaMigration] V1→V2: goalId 필드 마이그레이션 완료.');
     }
   },
-  // 추후 버전 마이그레이터 여기에 추가:
-  // { fromVersion: 2, toVersion: 3, migrate: async () => { ... } }
+  {
+    fromVersion: 2,
+    toVersion: 3,
+    /**
+     * V2 → V3 마이그레이션
+     * 변경사항: Phase 6.4 도메인 리포지토리 스토어 추가.
+     * 데이터 마이그레이션 불필요 (신규 생성).
+     */
+    migrate: async (db: IDBDatabase, transaction: IDBTransaction): Promise<void> => {
+      console.log('[SchemaMigration] V2→V3: Phase 6.4 Repositories 스토어 추가 완료.');
+    }
+  }
 ];
 
 /**
