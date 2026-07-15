@@ -351,7 +351,7 @@ export class SourceApplyRepositoryInMemory implements ISourceApplyRepositoryPers
   }
 
   public async saveSourceApplyPreview(preview: SourceApplyPreview): Promise<void> {
-    this.previews.set(preview.requestId, { ...preview });
+    this.previews.set(preview.sourceApplyRequestId, { ...preview });
   }
 
   public async getSourceApplyPreview(requestId: string): Promise<SourceApplyPreview | null> {
@@ -495,5 +495,14 @@ export class ApplyExecutionPersistenceInMemory implements IApplyExecutionPersist
     const executionJournal = this.journals.get(executionId);
     if (!executionJournal) return [];
     return Array.from(executionJournal.values()).sort((a, b) => a.sequence - b.sequence).map(e => ({...e}));
+  }
+
+  public async hasPendingApply(workspaceRoot: string): Promise<boolean> {
+    for (const exec of this.executions.values()) {
+      if (exec.workspaceRoot === workspaceRoot && exec.status === 'APPLY_WRITTEN_PENDING_VERIFICATION') {
+        return true;
+      }
+    }
+    return false;
   }
 }

@@ -252,7 +252,13 @@ export class SourceApplyService {
       return { success: false, errorCode: 'WORKSPACE_QUARANTINED' };
     }
 
-    // 3. Acquire Lease
+    // 3. Check for any pending apply on the workspace (APPLY_WRITTEN_PENDING_VERIFICATION block)
+    const hasPending = await this.applyExecRepo.hasPendingApply(workspaceRoot);
+    if (hasPending) {
+      return { success: false, errorCode: 'WORKSPACE_LOCKED' };
+    }
+
+    // 4. Acquire Lease
     const leaseAcquired = await this.applyExecRepo.acquireLease(workspaceRoot, executionId, session.workbenchSessionId, Date.now() + 60000);
     if (!leaseAcquired) {
       return { success: false, errorCode: 'WORKSPACE_LOCKED' };

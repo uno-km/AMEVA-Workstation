@@ -75,6 +75,7 @@ export interface IApplyExecutionPersistence {
   saveExecutionRecord(record: import('../apply/types').SourceApplyExecutionRecord): Promise<void>;
   getExecutionRecord(executionId: string): Promise<import('../apply/types').SourceApplyExecutionRecord | null>;
   updateExecutionStatus(executionId: string, status: import('../apply/types').SourceApplyOperationStatus, error?: string): Promise<void>;
+  hasPendingApply(workspaceRoot: string): Promise<boolean>;
 
   // Journaling
   appendJournalEntry(entry: import('../apply/types').ApplyJournalEntry): Promise<void>;
