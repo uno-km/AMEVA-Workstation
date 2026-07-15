@@ -71,6 +71,9 @@ export class WorkbenchSessionManager {
     session.updatedAt = Date.now();
 
     try {
+      if (hostAdapter.bindSession) {
+        await hostAdapter.bindSession(session);
+      }
       await hostAdapter.createSnapshot(
         session.sourceWorkspace,
         session.isolatedWorkspace,

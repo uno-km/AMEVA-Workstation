@@ -296,5 +296,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   googleAuthLogout: () => ipcRenderer.invoke('google-auth:logout'),
   googleAuthGetStatus: () => ipcRenderer.invoke('google-auth:get-status'),
   setBypassNativeContextMenu: (bypass: boolean) => ipcRenderer.send('set-bypass-native-context-menu', bypass),
-})
 
+  // ── Workbench IPC (AMEVA OS OS/Native Adapter) ──
+  workbench: {
+    registerSession: (request: any) => ipcRenderer.invoke('workbench:registerSession', request),
+    executeCommand: (request: any) => ipcRenderer.invoke('workbench:executeCommand', request),
+    cancelCommand: (commandId: string) => ipcRenderer.invoke('workbench:cancelCommand', commandId),
+    createSnapshot: (request: any) => ipcRenderer.invoke('workbench:createSnapshot', request),
+    cleanupWorkspace: (request: any) => ipcRenderer.invoke('workbench:cleanupWorkspace', request),
+    inspectWorkspace: (request: any) => ipcRenderer.invoke('workbench:inspectWorkspace', request),
+    closeSession: (request: any) => ipcRenderer.invoke('workbench:closeSession', request),
+  }
+})

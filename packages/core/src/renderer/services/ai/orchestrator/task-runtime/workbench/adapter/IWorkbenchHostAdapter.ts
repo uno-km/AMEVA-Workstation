@@ -20,6 +20,8 @@ export interface IWorkbenchHostAdapter {
   commandExecutor: ICommandExecutorAdapter;
   capabilities: WorkbenchHostCapabilities;
 
+  bindSession?(session: any): void;
+
   createSnapshot(
     sourceDir: string,
     destDir: string,

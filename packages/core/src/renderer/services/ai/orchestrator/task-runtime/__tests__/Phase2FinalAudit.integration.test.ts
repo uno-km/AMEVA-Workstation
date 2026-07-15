@@ -142,10 +142,11 @@ describe('Phase 2.3 - Final Audit Integration', () => {
 
     // Create the mock file so deliverable eval passes and reaches the commit check
     const validDummy = Array(100).fill('This is a valid long string to bypass skeleton check.').join('\n');
-    await fileAdapter.write('output.txt', validDummy);
+    await fileAdapter.write('/output.txt', validDummy);
 
     // Try completion - should fail because artifact is not COMMITTED
     const result = await completionRuntime.executeCompletionReview('m1', 1, 'goal-1');
+    console.log('Test 2 warnings:', result.warnings);
     expect(result.outcome).toBe('FAILED');
     expect(result.warnings.some(w => w.includes('is not COMMITTED'))).toBe(true);
   });

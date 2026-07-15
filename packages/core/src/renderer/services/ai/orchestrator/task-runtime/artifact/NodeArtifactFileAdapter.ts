@@ -22,7 +22,10 @@ export class NodeArtifactFileAdapter implements IFileSystemAdapter {
     this.validatePath(filePath);
     
     let finalPath: string;
-    if (path.isAbsolute(filePath)) {
+    // On Windows, path.isAbsolute('/foo') is true, but we want it to be relative to basePath in VFS context.
+    // Real absolute host paths on Windows will have a drive letter or UNC.
+    const isWindowsHostPath = /^[a-zA-Z]:[\\\/]|^\\\\[a-zA-Z]/.test(filePath);
+    if (path.isAbsolute(filePath) && isWindowsHostPath) {
       finalPath = filePath;
     } else {
       const normalizedPath = filePath.replace(/^[\/\\]+/, '');

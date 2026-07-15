@@ -87,6 +87,7 @@ export interface WorkbenchDiff {
 
 export interface WorkbenchSession {
   workbenchSessionId: string;
+  sessionCapabilityToken?: string;
   missionId: string;
   taskId: string;
   attemptId: string;
