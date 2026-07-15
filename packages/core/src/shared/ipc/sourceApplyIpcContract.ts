@@ -68,6 +68,17 @@ export interface IpcAuthorizeSourceApplyResponse {
   errorMessage?: string;
 }
 
+export interface IpcVerifyApplyRequest {
+  executionId: string;
+  authorizationTicketId: string;
+}
+
+export interface IpcVerifyApplyResponse {
+  success: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+}
+
 export interface IpcGetAuthorizationStatusRequest {
   authorizationTicketId: string;
 }

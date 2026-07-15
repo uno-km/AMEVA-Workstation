@@ -26,8 +26,12 @@ import type {
   SourceApplyPreview, 
   SourceApplyOperation, 
   RollbackSnapshotReference, 
-  ApplyVerificationResult 
+  ApplyVerificationResult,
+  ApplyJournalEntry,
+  WorkspaceExecutionLease,
+  SourceApplyExecutionRecord
 } from '../apply/types';
+import { WorkspaceBlockFlag } from '../apply/types';
 
 import { randomUUID } from 'crypto';
 
@@ -387,12 +391,6 @@ export class SourceApplyRepositoryInMemory implements ISourceApplyRepositoryPers
   }
 }
 import type { IApplyExecutionPersistence } from './RepositoryInterfaces';
-import type { 
-  SourceApplyExecutionRecord, 
-  ApplyJournalEntry, 
-  WorkspaceExecutionLease,
-  SourceApplyOperationStatus
-} from '../apply/types';
 
 export class ApplyExecutionPersistenceInMemory implements IApplyExecutionPersistence {
   private readonly leases = new Map<string, WorkspaceExecutionLease>();
@@ -435,10 +433,30 @@ export class ApplyExecutionPersistenceInMemory implements IApplyExecutionPersist
 
   public async quarantineWorkspace(workspaceRoot: string, reason: string): Promise<void> {
     this.quarantines.add(workspaceRoot);
+    await this.setWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINED, reason);
   }
 
   public async isWorkspaceQuarantined(workspaceRoot: string): Promise<boolean> {
-    return this.quarantines.has(workspaceRoot);
+    return this.hasWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINED);
+  }
+
+  private readonly blockFlags = new Map<string, Map<WorkspaceBlockFlag, string>>();
+
+  public async setWorkspaceBlockFlag(workspaceRoot: string, flag: WorkspaceBlockFlag, reason?: string): Promise<void> {
+    if (!this.blockFlags.has(workspaceRoot)) {
+      this.blockFlags.set(workspaceRoot, new Map());
+    }
+    this.blockFlags.get(workspaceRoot)!.set(flag, reason || '');
+  }
+
+  public async clearWorkspaceBlockFlag(workspaceRoot: string, flag: WorkspaceBlockFlag): Promise<void> {
+    if (this.blockFlags.has(workspaceRoot)) {
+      this.blockFlags.get(workspaceRoot)!.delete(flag);
+    }
+  }
+
+  public async hasWorkspaceBlockFlag(workspaceRoot: string, flag: WorkspaceBlockFlag): Promise<boolean> {
+    return this.blockFlags.get(workspaceRoot)?.has(flag) || false;
   }
 
     public async getExecutionByTicketId(ticketId: string): Promise<SourceApplyExecutionRecord | null> {

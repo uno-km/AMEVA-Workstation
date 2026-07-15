@@ -69,6 +69,9 @@ export interface IApplyExecutionPersistence {
   getLease(workspaceRoot: string): Promise<import('../apply/types').WorkspaceExecutionLease | null>;
   quarantineWorkspace(workspaceRoot: string, reason: string): Promise<void>;
   isWorkspaceQuarantined(workspaceRoot: string): Promise<boolean>;
+  setWorkspaceBlockFlag(workspaceRoot: string, flag: import('../apply/types').WorkspaceBlockFlag, reason?: string): Promise<void>;
+  clearWorkspaceBlockFlag(workspaceRoot: string, flag: import('../apply/types').WorkspaceBlockFlag): Promise<void>;
+  hasWorkspaceBlockFlag(workspaceRoot: string, flag: import('../apply/types').WorkspaceBlockFlag): Promise<boolean>;
 
   // Execution Record Management
     getExecutionByTicketId(ticketId: string): Promise<import('../apply/types').SourceApplyExecutionRecord | null>;

@@ -35,7 +35,10 @@ export type SourceApplyOperationStatus =
   | 'APPLYING'
   | 'APPLY_WRITTEN_PENDING_VERIFICATION'
   | 'VERIFYING'
-  | 'COMMITTING'
+  | 'VERIFIED_PENDING_CONSUME'
+  | 'VERIFY_FAILED'
+  | 'CONSUMING_APPROVAL'
+  | 'CONSUME_FAILED'
   | 'APPLIED'
   | 'ROLLING_BACK'
   | 'ROLLED_BACK'
@@ -70,6 +73,11 @@ export interface WorkspaceExecutionLease {
   leaseOwner: string;
   acquiredAt: number;
   expiresAt: number;
+}
+
+export enum WorkspaceBlockFlag {
+  QUARANTINED = 'QUARANTINED',
+  QUARANTINE_CONSUME_PENDING = 'QUARANTINE_CONSUME_PENDING'
 }
 
 export interface SourceApplyExecutionRecord {

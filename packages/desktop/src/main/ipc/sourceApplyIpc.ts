@@ -87,4 +87,14 @@ export function registerSourceApplyIpc() {
       return handleSafeError(e);
     }
   });
+
+  ipcMain.handle('sourceApply:verifyApply', async (event, request: import('../../../../core/src/shared/ipc/sourceApplyIpcContract.js').IpcVerifyApplyRequest): Promise<IpcResponse<import('../../../../core/src/shared/ipc/sourceApplyIpcContract.js').IpcVerifyApplyResponse>> => {
+    try {
+      verifySender(event);
+      const response = await sourceApplyService.verifyApply(request);
+      return { success: true, result: response };
+    } catch (e: any) {
+      return handleSafeError(e);
+    }
+  });
 }
