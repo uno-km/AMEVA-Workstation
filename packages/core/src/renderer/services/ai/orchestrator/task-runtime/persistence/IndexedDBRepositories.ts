@@ -19,6 +19,13 @@ import type {
   RollbackSnapshotReference, 
   ApplyVerificationResult 
 } from '../apply/types';
+import type {
+  ApprovalPersistenceResult,
+  ApprovalReservationInput,
+  ApprovalConsumptionInput,
+  ApprovalReservationReleaseInput,
+  ApprovalInvalidationInput
+} from '../approval/types';
 
 /**
  * 헬퍼 함수 타입 (IndexedDB 연결 헬퍼 주입용)
@@ -103,92 +110,98 @@ export class ArtifactRepositoryIndexedDB implements IArtifactRepositoryPersisten
 export class ApprovalRepositoryIndexedDB implements IApprovalRepositoryPersistence {
   constructor(private readonly getDB: IDBProvider) {}
 
-  public async saveApprovalRecord(record: ApprovalRecord): Promise<void> {
+  public async saveApprovalRecord(record: ApprovalRecord): Promise<ApprovalPersistenceResult> {
     const db = await this.getDB();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('approval_records', 'readwrite');
-      const req = tx.objectStore('approval_records').put(record);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-      tx.onerror = () => reject(tx.error);
-    });
-    db.close();
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction('approval_records', 'readwrite');
+        const req = tx.objectStore('approval_records').put(record);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+        tx.onerror = () => reject(tx.error);
+      });
+      return { success: true, record: { ...record } };
+    } finally {
+      db.close();
+    }
   }
 
-  public async getApprovalRecord(approvalId: string): Promise<ApprovalRecord | null> {
+  public async getApprovalRecord(approvalId: string): Promise<ApprovalPersistenceResult> {
     const db = await this.getDB();
-    const result = await new Promise<ApprovalRecord | null>((resolve, reject) => {
-      const tx = db.transaction('approval_records', 'readonly');
-      const req = tx.objectStore('approval_records').get(approvalId);
-      req.onsuccess = () => resolve(req.result ?? null);
-      req.onerror = () => reject(req.error);
-    });
-    db.close();
-    return result;
+    try {
+      const result = await new Promise<ApprovalRecord | null>((resolve, reject) => {
+        const tx = db.transaction('approval_records', 'readonly');
+        const req = tx.objectStore('approval_records').get(approvalId);
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      });
+      if (!result) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      return { success: true, record: result };
+    } finally {
+      db.close();
+    }
   }
 
-  public async updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<void> {
-    const record = await this.getApprovalRecord(approvalId);
-    if (!record) throw new Error(`Approval ${approvalId} not found`);
+  public async updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<ApprovalPersistenceResult> {
+    const res = await this.getApprovalRecord(approvalId);
+    if (!res.success || !res.record) return res;
+    
+    const record = res.record;
     record.status = status;
+    record.updatedAt = Date.now();
     if (status === 'APPROVED' || status === 'REJECTED') {
-      record.approvedAt = Date.now();
+      record.approvedAt = record.updatedAt;
     }
     if (status === 'CONSUMED') {
-      record.consumedAt = Date.now();
+      record.consumedAt = record.updatedAt;
     }
-    await this.saveApprovalRecord(record);
+    return this.saveApprovalRecord(record);
   }
 
-  public async listPendingApprovals(missionId: string): Promise<ApprovalRecord[]> {
+  public async compareAndReserveApproval(input: ApprovalReservationInput): Promise<ApprovalPersistenceResult> {
+    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+  }
+
+  public async compareAndConsumeApproval(input: ApprovalConsumptionInput): Promise<ApprovalPersistenceResult> {
+    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+  }
+
+  public async releaseApprovalReservation(input: ApprovalReservationReleaseInput): Promise<ApprovalPersistenceResult> {
+    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+  }
+
+  public async invalidateApproval(input: ApprovalInvalidationInput): Promise<ApprovalPersistenceResult> {
+    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+  }
+
+  public async revokeApproval(approvalId: string, reason?: string): Promise<ApprovalPersistenceResult> {
+    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+  }
+
+  public async listPendingApprovals(filter?: { missionId?: string; workbenchSessionId?: string }): Promise<ApprovalPersistenceResult<ApprovalRecord[]>> {
     const db = await this.getDB();
-    const results = await new Promise<ApprovalRecord[]>((resolve, reject) => {
-      const tx = db.transaction('approval_records', 'readonly');
-      const req = tx.objectStore('approval_records').getAll();
-      req.onsuccess = () => {
-        const all = (req.result as ApprovalRecord[]) ?? [];
-        resolve(all.filter(a => a.missionId === missionId && a.status === 'REQUESTED'));
-      };
-      req.onerror = () => reject(req.error);
-    });
-    db.close();
-    return results;
+    try {
+      const results = await new Promise<ApprovalRecord[]>((resolve, reject) => {
+        const tx = db.transaction('approval_records', 'readonly');
+        const req = tx.objectStore('approval_records').getAll();
+        req.onsuccess = () => {
+          const all = (req.result as ApprovalRecord[]) ?? [];
+          resolve(all.filter(a => 
+            a.status === 'REQUESTED' && 
+            (!filter?.missionId || a.missionId === filter.missionId) &&
+            (!filter?.workbenchSessionId || a.workbenchSessionId === filter.workbenchSessionId)
+          ));
+        };
+        req.onerror = () => reject(req.error);
+      });
+      return { success: true, data: results };
+    } finally {
+      db.close();
+    }
   }
 
-  public async compareAndConsumeApproval(approvalId: string, expectedOperationDigest: string, expectedPreviewDigest: string): Promise<boolean> {
-    const record = await this.getApprovalRecord(approvalId);
-    if (!record || record.status !== 'APPROVED') return false;
-    
-    if (record.operationDigest !== expectedOperationDigest || record.previewDigest !== expectedPreviewDigest) {
-      return false; // Digest mismatch
-    }
-
-    if (record.singleUse) {
-      await this.updateApprovalStatus(approvalId, 'CONSUMED');
-    }
-    return true;
-  }
-
-  public async expireApprovals(beforeTime: number): Promise<number> {
-    const db = await this.getDB();
-    let count = 0;
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('approval_records', 'readwrite');
-      const req = tx.objectStore('approval_records').getAll();
-      req.onsuccess = () => {
-        const all = (req.result as ApprovalRecord[]) ?? [];
-        const toExpire = all.filter(a => a.status === 'REQUESTED' && a.expiresAt < beforeTime);
-        for (const record of toExpire) {
-          record.status = 'EXPIRED';
-          tx.objectStore('approval_records').put(record);
-          count++;
-        }
-      };
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-    db.close();
-    return count;
+  public async expireApprovals(now: number): Promise<ApprovalPersistenceResult<number>> {
+    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
   }
 }
 

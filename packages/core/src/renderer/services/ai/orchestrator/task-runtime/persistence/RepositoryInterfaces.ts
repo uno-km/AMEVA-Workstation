@@ -5,7 +5,15 @@
  */
 
 import type { RepositoryArtifact, ArtifactRetentionMetadata, ArtifactStatus } from '../artifact/repository/types';
-import type { ApprovalRecord, ApprovalRecordStatus } from '../approval/types';
+import type { 
+  ApprovalRecord, 
+  ApprovalRecordStatus,
+  ApprovalPersistenceResult,
+  ApprovalReservationInput,
+  ApprovalConsumptionInput,
+  ApprovalReservationReleaseInput,
+  ApprovalInvalidationInput
+} from '../approval/types';
 import type { 
   SourceApplyRequest, 
   SourceApplyPreview, 
@@ -24,12 +32,16 @@ export interface IArtifactRepositoryPersistence {
 }
 
 export interface IApprovalRepositoryPersistence {
-  saveApprovalRecord(record: ApprovalRecord): Promise<void>;
-  getApprovalRecord(approvalId: string): Promise<ApprovalRecord | null>;
-  updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<void>;
-  listPendingApprovals(missionId: string): Promise<ApprovalRecord[]>;
-  compareAndConsumeApproval(approvalId: string, expectedOperationDigest: string, expectedPreviewDigest: string): Promise<boolean>;
-  expireApprovals(beforeTime: number): Promise<number>;
+  saveApprovalRecord(record: ApprovalRecord): Promise<ApprovalPersistenceResult>;
+  getApprovalRecord(approvalId: string): Promise<ApprovalPersistenceResult>;
+  updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<ApprovalPersistenceResult>;
+  compareAndReserveApproval(input: ApprovalReservationInput): Promise<ApprovalPersistenceResult>;
+  compareAndConsumeApproval(input: ApprovalConsumptionInput): Promise<ApprovalPersistenceResult>;
+  releaseApprovalReservation(input: ApprovalReservationReleaseInput): Promise<ApprovalPersistenceResult>;
+  invalidateApproval(input: ApprovalInvalidationInput): Promise<ApprovalPersistenceResult>;
+  expireApprovals(now: number): Promise<ApprovalPersistenceResult<number>>;
+  revokeApproval(approvalId: string, reason?: string): Promise<ApprovalPersistenceResult>;
+  listPendingApprovals(filter?: { missionId?: string; workbenchSessionId?: string }): Promise<ApprovalPersistenceResult<ApprovalRecord[]>>;
 }
 
 export interface ISourceApplyRepositoryPersistence {

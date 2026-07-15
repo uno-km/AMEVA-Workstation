@@ -11,7 +11,16 @@ import type {
 } from './RepositoryInterfaces';
 
 import type { RepositoryArtifact, ArtifactRetentionMetadata, ArtifactStatus } from '../artifact/repository/types';
-import type { ApprovalRecord, ApprovalRecordStatus } from '../approval/types';
+import type { 
+  ApprovalRecord, 
+  ApprovalRecordStatus,
+  ApprovalPersistenceResult,
+  ApprovalReservationInput,
+  ApprovalConsumptionInput,
+  ApprovalReservationReleaseInput,
+  ApprovalInvalidationInput,
+  ApprovalAuthorizationTicket
+} from '../approval/types';
 import type { 
   SourceApplyRequest, 
   SourceApplyPreview, 
@@ -19,6 +28,8 @@ import type {
   RollbackSnapshotReference, 
   ApplyVerificationResult 
 } from '../apply/types';
+
+import { randomUUID } from 'crypto';
 
 export class ArtifactRepositoryInMemory implements IArtifactRepositoryPersistence {
   private readonly artifacts = new Map<string, RepositoryArtifact>();
@@ -58,58 +69,263 @@ export class ArtifactRepositoryInMemory implements IArtifactRepositoryPersistenc
 
 export class ApprovalRepositoryInMemory implements IApprovalRepositoryPersistence {
   private readonly records = new Map<string, ApprovalRecord>();
+  private readonly tickets = new Map<string, ApprovalAuthorizationTicket>();
+  
+  // Per-approval Mutex to ensure atomicity
+  private readonly mutexes = new Map<string, Promise<void>>();
 
-  public async saveApprovalRecord(record: ApprovalRecord): Promise<void> {
-    this.records.set(record.approvalId, { ...record });
+  private async acquireLock(approvalId: string): Promise<() => void> {
+    let unlock: () => void = () => {};
+    const lockPromise = new Promise<void>(resolve => {
+      unlock = resolve;
+    });
+
+    const previousLock = this.mutexes.get(approvalId) ?? Promise.resolve();
+    this.mutexes.set(approvalId, previousLock.then(() => lockPromise));
+
+    await previousLock;
+
+    return () => {
+      unlock();
+      if (this.mutexes.get(approvalId) === lockPromise) {
+        this.mutexes.delete(approvalId);
+      }
+    };
   }
 
-  public async getApprovalRecord(approvalId: string): Promise<ApprovalRecord | null> {
-    const record = this.records.get(approvalId);
-    return record ? { ...record } : null;
+  private withLock<T>(approvalId: string, fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.acquireLock(approvalId).then(unlock => {
+        fn()
+          .then(resolve)
+          .catch(reject)
+          .finally(unlock);
+      });
+    });
   }
 
-  public async updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<void> {
-    const record = this.records.get(approvalId);
-    if (!record) throw new Error(`Approval ${approvalId} not found`);
-    record.status = status;
-    if (status === 'APPROVED' || status === 'REJECTED') {
-      record.approvedAt = Date.now();
-    }
-    if (status === 'CONSUMED') {
-      record.consumedAt = Date.now();
-    }
+  public async saveApprovalRecord(record: ApprovalRecord): Promise<ApprovalPersistenceResult> {
+    return this.withLock(record.approvalId, async () => {
+      this.records.set(record.approvalId, { ...record });
+      return { success: true, record: { ...record } };
+    });
   }
 
-  public async listPendingApprovals(missionId: string): Promise<ApprovalRecord[]> {
-    return Array.from(this.records.values())
-      .filter(r => r.missionId === missionId && r.status === 'REQUESTED')
-      .map(r => ({ ...r }));
+  public async getApprovalRecord(approvalId: string): Promise<ApprovalPersistenceResult> {
+    return this.withLock(approvalId, async () => {
+      const record = this.records.get(approvalId);
+      if (!record) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      return { success: true, record: { ...record } };
+    });
   }
 
-  public async compareAndConsumeApproval(approvalId: string, expectedOperationDigest: string, expectedPreviewDigest: string): Promise<boolean> {
-    const record = this.records.get(approvalId);
-    if (!record || record.status !== 'APPROVED') return false;
+  public async updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<ApprovalPersistenceResult> {
+    return this.withLock(approvalId, async () => {
+      const record = this.records.get(approvalId);
+      if (!record) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      
+      record.status = status;
+      record.updatedAt = Date.now();
+      
+      if (status === 'APPROVED' || status === 'REJECTED') {
+        record.approvedAt = Date.now();
+      }
+      
+      return { success: true, record: { ...record } };
+    });
+  }
 
-    if (record.operationDigest !== expectedOperationDigest || record.previewDigest !== expectedPreviewDigest) {
-      return false;
-    }
+  public async compareAndReserveApproval(input: ApprovalReservationInput): Promise<ApprovalPersistenceResult> {
+    return this.withLock(input.approvalId, async () => {
+      const record = this.records.get(input.approvalId);
+      if (!record) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      
+      if (record.status === 'RESERVED') return { success: false, errorCode: 'APPROVAL_ALREADY_RESERVED', retryable: false };
+      if (record.status === 'CONSUMED') return { success: false, errorCode: 'APPROVAL_ALREADY_CONSUMED', retryable: false };
+      if (record.status !== 'APPROVED') return { success: false, errorCode: 'APPROVAL_STATE_TRANSITION_INVALID', retryable: false };
+      
+      if (record.expiresAt <= input.now) return { success: false, errorCode: 'APPROVAL_EXPIRED', retryable: false };
 
-    if (record.singleUse) {
+      if (record.missionId !== input.missionId ||
+          record.taskId !== input.taskId ||
+          record.attemptId !== input.attemptId ||
+          record.workbenchSessionId !== input.workbenchSessionId ||
+          record.repositoryArtifactId !== input.repositoryArtifactId ||
+          record.artifactRevision !== input.artifactRevision ||
+          record.sourceWorkspaceId !== input.sourceWorkspaceId ||
+          record.sourceDigest !== input.sourceDigest ||
+          record.previewDigest !== input.previewDigest ||
+          record.operationDigest !== input.operationDigest ||
+          record.affectedPathsDigest !== input.affectedPathsDigest ||
+          record.riskLevel !== input.riskLevel) {
+        return { success: false, errorCode: 'APPROVAL_CONTEXT_MISMATCH', retryable: false };
+      }
+
+      const ticketId = `ticket_${randomUUID()}`;
+      record.status = 'RESERVED';
+      record.reservedAt = input.now;
+      record.reservedByOperationId = input.sourceApplyOperationId;
+      record.updatedAt = input.now;
+
+      const ticket: ApprovalAuthorizationTicket = {
+        authorizationTicketId: ticketId,
+        approvalId: record.approvalId,
+        sourceApplyRequestId: input.sourceApplyRequestId,
+        sourceApplyOperationId: input.sourceApplyOperationId,
+        missionId: record.missionId,
+        taskId: record.taskId,
+        attemptId: record.attemptId,
+        workbenchSessionId: record.workbenchSessionId,
+        repositoryArtifactId: record.repositoryArtifactId,
+        artifactRevision: record.artifactRevision,
+        sourceWorkspaceId: record.sourceWorkspaceId,
+        sourceDigest: record.sourceDigest,
+        previewDigest: record.previewDigest,
+        operationDigest: record.operationDigest,
+        affectedPathsDigest: record.affectedPathsDigest,
+        riskLevel: record.riskLevel,
+        reservedAt: input.now,
+        expiresAt: record.expiresAt,
+        status: 'RESERVED',
+        schemaVersion: record.schemaVersion
+      };
+
+      this.tickets.set(ticketId, { ...ticket });
+      return { success: true, record: { ...record }, ticket: { ...ticket } };
+    });
+  }
+
+  public async compareAndConsumeApproval(input: ApprovalConsumptionInput): Promise<ApprovalPersistenceResult> {
+    return this.withLock(input.approvalId, async () => {
+      const record = this.records.get(input.approvalId);
+      if (!record) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      
+      if (record.status === 'CONSUMED') return { success: false, errorCode: 'APPROVAL_ALREADY_CONSUMED', retryable: false };
+      if (record.status !== 'RESERVED') return { success: false, errorCode: 'APPROVAL_STATE_TRANSITION_INVALID', retryable: false };
+      
+      if (record.reservedByOperationId !== input.expectedReservedByOperationId || record.reservedByOperationId !== input.sourceApplyOperationId) {
+        return { success: false, errorCode: 'APPROVAL_RESERVATION_OWNER_MISMATCH', retryable: false };
+      }
+
+      if (record.sourceDigest !== input.sourceDigest ||
+          record.previewDigest !== input.previewDigest ||
+          record.operationDigest !== input.operationDigest ||
+          record.affectedPathsDigest !== input.affectedPathsDigest) {
+        return { success: false, errorCode: 'APPROVAL_CONTEXT_MISMATCH', retryable: false };
+      }
+
+      if (record.expiresAt <= input.now) return { success: false, errorCode: 'APPROVAL_EXPIRED', retryable: false };
+
+      const ticket = this.tickets.get(input.authorizationTicketId);
+      if (!ticket) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      if (ticket.status !== 'RESERVED') return { success: false, errorCode: 'APPROVAL_STATE_TRANSITION_INVALID', retryable: false };
+
       record.status = 'CONSUMED';
-      record.consumedAt = Date.now();
-    }
-    return true;
+      record.consumedAt = input.now;
+      record.updatedAt = input.now;
+      
+      ticket.status = 'CONSUMED';
+
+      return { success: true, record: { ...record }, ticket: { ...ticket } };
+    });
   }
 
-  public async expireApprovals(beforeTime: number): Promise<number> {
+  public async releaseApprovalReservation(input: ApprovalReservationReleaseInput): Promise<ApprovalPersistenceResult> {
+    return this.withLock(input.approvalId, async () => {
+      const record = this.records.get(input.approvalId);
+      if (!record) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      
+      if (record.status !== 'RESERVED') return { success: false, errorCode: 'APPROVAL_STATE_TRANSITION_INVALID', retryable: false };
+      if (record.reservedByOperationId !== input.sourceApplyOperationId) return { success: false, errorCode: 'APPROVAL_RESERVATION_OWNER_MISMATCH', retryable: false };
+
+      const ticket = this.tickets.get(input.authorizationTicketId);
+      if (!ticket) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      
+      record.status = 'RELEASED';
+      record.releasedAt = input.now;
+      record.updatedAt = input.now;
+      
+      ticket.status = 'RELEASED';
+
+      return { success: true, record: { ...record }, ticket: { ...ticket } };
+    });
+  }
+
+  public async invalidateApproval(input: ApprovalInvalidationInput): Promise<ApprovalPersistenceResult> {
+    return this.withLock(input.approvalId, async () => {
+      const record = this.records.get(input.approvalId);
+      if (!record) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      
+      if (record.status === 'CONSUMED' || record.status === 'INVALIDATED') {
+        return { success: false, errorCode: 'APPROVAL_STATE_TRANSITION_INVALID', retryable: false };
+      }
+
+      record.status = 'INVALIDATED';
+      record.invalidatedAt = input.now;
+      record.invalidationReason = input.invalidationReason;
+      record.updatedAt = input.now;
+
+      let ticketResponse: ApprovalAuthorizationTicket | undefined;
+      if (input.authorizationTicketId) {
+        const ticket = this.tickets.get(input.authorizationTicketId);
+        if (ticket) {
+          ticket.status = 'INVALIDATED';
+          ticketResponse = { ...ticket };
+        }
+      }
+
+      return { success: true, record: { ...record }, ticket: ticketResponse };
+    });
+  }
+
+  public async revokeApproval(approvalId: string, reason?: string): Promise<ApprovalPersistenceResult> {
+    return this.withLock(approvalId, async () => {
+      const record = this.records.get(approvalId);
+      if (!record) return { success: false, errorCode: 'APPROVAL_NOT_FOUND', retryable: false };
+      
+      if (record.status === 'CONSUMED' || record.status === 'RESERVED') {
+        return { success: false, errorCode: 'APPROVAL_STATE_TRANSITION_INVALID', retryable: false };
+      }
+
+      record.status = 'REVOKED';
+      record.updatedAt = Date.now();
+      
+      return { success: true, record: { ...record } };
+    });
+  }
+
+  public async listPendingApprovals(filter?: { missionId?: string; workbenchSessionId?: string }): Promise<ApprovalPersistenceResult<ApprovalRecord[]>> {
+    const list = Array.from(this.records.values())
+      .filter(r => r.status === 'REQUESTED' && 
+        (!filter?.missionId || r.missionId === filter.missionId) &&
+        (!filter?.workbenchSessionId || r.workbenchSessionId === filter.workbenchSessionId))
+      .map(r => ({ ...r }));
+      
+    return { success: true, data: list };
+  }
+
+  public async expireApprovals(now: number): Promise<ApprovalPersistenceResult<number>> {
     let count = 0;
+    // For safety, we should lock individually, but to avoid deadlocks we can do a pass to gather IDs
+    const toExpire: string[] = [];
     for (const record of this.records.values()) {
-      if (record.status === 'REQUESTED' && record.expiresAt < beforeTime) {
-        record.status = 'EXPIRED';
-        count++;
+      if ((record.status === 'REQUESTED' || record.status === 'APPROVED') && record.expiresAt <= now) {
+        toExpire.push(record.approvalId);
       }
     }
-    return count;
+    
+    for (const id of toExpire) {
+      await this.withLock(id, async () => {
+        const record = this.records.get(id);
+        if (record && (record.status === 'REQUESTED' || record.status === 'APPROVED') && record.expiresAt <= now) {
+          record.status = 'EXPIRED';
+          record.updatedAt = now;
+          count++;
+        }
+      });
+    }
+
+    return { success: true, data: count };
   }
 }
 
