@@ -437,8 +437,11 @@ export function MarkdownEditor({
      *   동적으로 마운트되는 원격/프리미엄 플러그인(마인드맵, 프레젠테이션 등)에서 에디터의 실시간 문서 구조를 읽거나 쓸 수 있도록 지원한다.
      */
     if (typeof window !== 'undefined') {
-      (window as any).AMEVA_CORE = (window as any).AMEVA_CORE || {}
-      (window as any).AMEVA_CORE.editor = editor
+      const win = window as any
+      if (!win.AMEVA_CORE) {
+        win.AMEVA_CORE = {}
+      }
+      win.AMEVA_CORE.editor = editor
     }
   }, [editor])
 
