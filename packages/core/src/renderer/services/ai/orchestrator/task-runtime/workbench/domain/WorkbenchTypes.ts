@@ -131,3 +131,32 @@ export interface CommandExecutionResult {
   interrupted: boolean;
   capabilitiesUsed: Record<string, string>;
 }
+
+export interface CodeModification {
+  logicalPath: string;
+  operation: 'CREATE' | 'UPDATE' | 'DELETE';
+  content?: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+export interface CodeChangePlan {
+  planId: string;
+  objective: string;
+  modifications: CodeModification[];
+  expectedImpact: string[];
+}
+
+export interface ValidationResult {
+  passed: boolean;
+  errors: string[];
+  warnings: string[];
+  stdout?: string;
+  stderr?: string;
+}
+
+export interface RepairAttempt {
+  attemptNumber: number;
+  validationResult: ValidationResult;
+  proposedFixes: CodeModification[];
+}
