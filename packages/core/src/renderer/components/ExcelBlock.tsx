@@ -20,7 +20,7 @@ const LazyWorkbook = lazy(() =>
     }
     return { default: Comp || (() => <div style={{ padding: 20, color: '#ef4444' }}>Excel Component Load Failed</div>) };
   })
-)
+) as any;
 
 // 블록 사양 정의
 const ExcelBlockSpec = createReactBlockSpec(

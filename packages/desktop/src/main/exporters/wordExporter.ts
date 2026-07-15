@@ -484,6 +484,137 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
      * - 만족 시: 본 케이스 전용 연산을 이행하고 break/return을 거쳐 스위치 게이트를 마감함.
      * - 예시: `default:` 만족 시 해당 포맷 바이너리 빌더 호출.
      */
+      case 'kanban': {
+        const kanbanDataRaw = block.props?.data || '{}'
+        try {
+          const board = JSON.parse(kanbanDataRaw)
+          const cols = board.columns || []
+          if (cols.length > 0) {
+            docChildren.push(new Paragraph({
+              children: [new TextRun({ text: `[Kanban Board]`, bold: true, size: 28, color: '475569', font: 'Calibri' })],
+              spacing: { before: 200, after: 120 }
+            }))
+
+            const maxCards = Math.max(...cols.map(c => (c.cards || []).length))
+            const docxRows = []
+            
+            docxRows.push(new TableRow({
+              children: cols.map(col => new TableCell({
+                children: [new Paragraph({
+                  children: [new TextRun({ text: `${col.title || 'Untitled'} (${(col.cards||[]).length})`, bold: true, size: 20, color: '334155', font: 'Calibri' })],
+                  alignment: AlignmentType.CENTER
+                })],
+                shading: { type: ShadingType.CLEAR, fill: 'F8FAFC' },
+                borders: { top: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0' }, left: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0' } },
+                margins: { top: 80, bottom: 80, left: 80, right: 80 }
+              }))
+            }))
+
+            for (let i = 0; i < maxCards; i++) {
+              docxRows.push(new TableRow({
+                children: cols.map(col => {
+                  const card = (col.cards || [])[i]
+                  if (!card) {
+                    return new TableCell({ children: [new Paragraph({ children: [] })], borders: { top: { style: BorderStyle.NIL }, bottom: { style: BorderStyle.NIL }, left: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'E2E8F0' } } })
+                  }
+                  const cardLines = [new Paragraph({ children: [new TextRun({ text: card.title || '', bold: true, size: 18, font: 'Calibri' })], spacing: { after: 60 } })]
+                  
+                  if (card.labels && card.labels.length > 0) {
+                    cardLines.push(new Paragraph({ children: [new TextRun({ text: `Labels: ${card.labels.map(l => l.text).join(', ')}`, size: 16, color: '64748B', font: 'Calibri' })], spacing: { after: 60 } }))
+                  }
+                  if (card.description) {
+                    cardLines.push(new Paragraph({ children: [new TextRun({ text: card.description, size: 16, color: '475569', font: 'Calibri' })], spacing: { after: 0 } }))
+                  }
+                  return new TableCell({
+                    children: cardLines,
+                    shading: { type: ShadingType.CLEAR, fill: 'FFFFFF' },
+                    borders: { top: { style: BorderStyle.SINGLE, size: 4, color: 'CBD5E1' }, bottom: { style: BorderStyle.SINGLE, size: 4, color: 'CBD5E1' }, left: { style: BorderStyle.SINGLE, size: 4, color: 'CBD5E1' }, right: { style: BorderStyle.SINGLE, size: 4, color: 'CBD5E1' } },
+                    margins: { top: 80, bottom: 80, left: 80, right: 80 }
+                  })
+                })
+              }))
+            }
+
+            docChildren.push(new DocxTable({
+              rows: docxRows,
+              width: { size: 100, type: WidthType.PERCENTAGE },
+              layout: TableLayoutType.FIXED
+            }))
+            docChildren.push(new Paragraph({ children: [], spacing: { after: 160 } }))
+            break
+          }
+        } catch (e) {
+          console.error('[exportToWord] ameva-kanban 파싱 실패:', e)
+        }
+        break
+      }
+
+      case 'excel': {
+        const excelDataRaw = block.props?.data || '[]'
+        try {
+          const sheets = JSON.parse(excelDataRaw)
+          if (Array.isArray(sheets) && sheets.length > 0) {
+            for (const sheet of sheets) {
+              const celldata = sheet.celldata || []
+              if (celldata.length === 0) continue
+              
+              let maxRow = 0
+              let maxCol = 0
+              for (const cell of celldata) {
+                if (cell.r > maxRow) maxRow = cell.r
+                if (cell.c > maxCol) maxCol = cell.c
+              }
+              
+              const grid: any[][] = Array(maxRow + 1).fill(null).map(() => Array(maxCol + 1).fill(null))
+              for (const cell of celldata) {
+                grid[cell.r][cell.c] = cell.v
+              }
+
+              docChildren.push(new Paragraph({
+                children: [new TextRun({ text: `[Excel] ${sheet.name || 'Sheet'}`, bold: true, size: 24, color: '475569', font: 'Calibri' })],
+                spacing: { before: 200, after: 120 }
+              }))
+
+              const docxRows = grid.map((row, ri) => {
+                const docxCells = row.map((v, ci) => {
+                  let val = ''
+                  if (v) {
+                    if (typeof v === 'string' || typeof v === 'number') val = String(v)
+                    else if (v.m !== undefined) val = String(v.m)
+                    else if (v.v !== undefined) val = String(v.v)
+                  }
+                  return new TableCell({
+                    children: [new Paragraph({
+                      children: [new TextRun({ text: val, font: 'Calibri', size: 20 })],
+                      spacing: { after: 0 }
+                    })],
+                    borders: {
+                      top: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                      bottom: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                      left: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                      right: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                    },
+                    margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                  })
+                })
+                return new TableRow({ children: docxCells })
+              })
+              
+              docChildren.push(new DocxTable({
+                rows: docxRows,
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                layout: TableLayoutType.AUTOFIT,
+              }))
+              docChildren.push(new Paragraph({ children: [], spacing: { after: 160 } }))
+            }
+            break
+          }
+        } catch (e) {
+          console.error('[exportToWord] ameva-excel 파싱 실패:', e)
+        }
+        break
+      }
+
       default:
       /*
        * [ALGORITHM BRANCH / DECISION]

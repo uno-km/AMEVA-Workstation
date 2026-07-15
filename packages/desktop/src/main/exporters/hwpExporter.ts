@@ -194,8 +194,8 @@ export async function exportToHWPX(blocks: ExporterBlock[]): Promise<Buffer> {
     const lines = (block.type === 'codeBlock' ? getPlainTextFromNormalized(block) : text).split('\n')
     
     // INTERCEPT AMEVA-EXCEL FOR HWPX
-    if (block.type === 'codeBlock' && block.props?.language === 'ameva-excel') {
-      const excelDataRaw = getPlainTextFromNormalized(block) || '[]'
+    if (block.type === 'excel') {
+      const excelDataRaw = block.props?.data || '[]'
       try {
         const sheets = JSON.parse(excelDataRaw)
         if (Array.isArray(sheets) && sheets.length > 0) {
@@ -240,8 +240,8 @@ export async function exportToHWPX(blocks: ExporterBlock[]): Promise<Buffer> {
     }
 
     // INTERCEPT AMEVA-KANBAN FOR HWPX
-    if (block.type === 'codeBlock' && block.props?.language === 'ameva-kanban') {
-      const kanbanDataRaw = getPlainTextFromNormalized(block) || '{}'
+    if (block.type === 'kanban') {
+      const kanbanDataRaw = block.props?.data || '{}'
       try {
         const board = JSON.parse(kanbanDataRaw)
         const cols = board.columns || []
