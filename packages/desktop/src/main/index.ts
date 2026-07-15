@@ -243,6 +243,7 @@ function createWindow() {
 
   // 윈도우 인스턴스 구축
   mainWindow = new BrowserWindow({
+    icon: join(__dirname, '../../../../public/favicon.svg'),
     width: 1440,
     height: 900,
     minWidth: 900,
