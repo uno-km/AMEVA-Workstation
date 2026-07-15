@@ -458,6 +458,10 @@ export class SourceApplyService {
         // Rollback Transition
         await this.applyExecRepo.updateExecutionStatus(executionId, 'ROLLING_BACK');
         await this.internalRollbackApply(executionId, workspaceRoot);
+        const rbRecord = await this.applyExecRepo.getExecutionRecord(executionId);
+        if (rbRecord?.status === 'ROLLBACK_FAILED') {
+          return { success: false, errorCode: 'EXECUTION_FAILED_ROLLBACK_FAILED' };
+        }
         return { success: false, errorCode: 'EXECUTION_FAILED_ROLLED_BACK' };
       }
 

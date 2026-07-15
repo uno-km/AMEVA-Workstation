@@ -227,7 +227,7 @@ describe('SourceApplyService Execution (Phase 6.4.1B)', () => {
     }, { allowedWorkspaceRoot: workspaceRoot, workbenchSessionId: 'w1' });
 
     expect(res.success).toBe(false);
-    expect(res.errorCode).toBe('EXECUTION_FAILED_ROLLED_BACK'); // Wait, if internal rollback fails, does executeApply throw or return ROLLBACK_FAILED?
+    expect(res.errorCode).toBe('EXECUTION_FAILED_ROLLBACK_FAILED');
     
     // Let's check the execution record instead of the response
     const execs = Array.from(applyExecRepo['executions'].values());
