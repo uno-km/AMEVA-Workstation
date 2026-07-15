@@ -145,6 +145,30 @@ export function openRuntimeDB(): Promise<IDBDatabase> {
         db.createObjectStore('apply_verifications', { keyPath: 'verificationId' });
       }
 
+      if (!db.objectStoreNames.contains('approval_authorization_tickets')) {
+        db.createObjectStore('approval_authorization_tickets', { keyPath: 'authorizationTicketId' });
+      }
+
+      // Add indexes to approval_records if not exist
+      if (db.objectStoreNames.contains('approval_records')) {
+        const store = (event.target as IDBOpenDBRequest).transaction!.objectStore('approval_records');
+        if (!store.indexNames.contains('missionId')) store.createIndex('missionId', 'missionId', { unique: false });
+        if (!store.indexNames.contains('workbenchSessionId')) store.createIndex('workbenchSessionId', 'workbenchSessionId', { unique: false });
+        if (!store.indexNames.contains('status')) store.createIndex('status', 'status', { unique: false });
+        if (!store.indexNames.contains('expiresAt')) store.createIndex('expiresAt', 'expiresAt', { unique: false });
+        if (!store.indexNames.contains('reservedByOperationId')) store.createIndex('reservedByOperationId', 'reservedByOperationId', { unique: false });
+        if (!store.indexNames.contains('updatedAt')) store.createIndex('updatedAt', 'updatedAt', { unique: false });
+      }
+
+      // Add indexes to approval_authorization_tickets if not exist
+      if (db.objectStoreNames.contains('approval_authorization_tickets')) {
+        const store = (event.target as IDBOpenDBRequest).transaction!.objectStore('approval_authorization_tickets');
+        if (!store.indexNames.contains('approvalId')) store.createIndex('approvalId', 'approvalId', { unique: false });
+        if (!store.indexNames.contains('sourceApplyOperationId')) store.createIndex('sourceApplyOperationId', 'sourceApplyOperationId', { unique: false });
+        if (!store.indexNames.contains('status')) store.createIndex('status', 'status', { unique: false });
+        if (!store.indexNames.contains('expiresAt')) store.createIndex('expiresAt', 'expiresAt', { unique: false });
+      }
+
       // [Item 4] Schema Migration 실행
       SchemaMigrationEngine.runMigrations(db, transaction, oldVersion, newVersion)
         .catch((migErr: unknown) => {

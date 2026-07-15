@@ -159,23 +159,386 @@ export class ApprovalRepositoryIndexedDB implements IApprovalRepositoryPersisten
   }
 
   public async compareAndReserveApproval(input: ApprovalReservationInput): Promise<ApprovalPersistenceResult> {
-    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+    const db = await this.getDB();
+    return new Promise<ApprovalPersistenceResult>((resolve) => {
+      const tx = db.transaction(['approval_records', 'approval_authorization_tickets'], 'readwrite');
+      const storeRecords = tx.objectStore('approval_records');
+      const storeTickets = tx.objectStore('approval_authorization_tickets');
+
+      const req = storeRecords.get(input.approvalId);
+      
+      let finalResult: ApprovalPersistenceResult | null = null;
+      let aborted = false;
+
+      const abortWith = (errorCode: string) => {
+        aborted = true;
+        finalResult = { success: false, errorCode, retryable: false };
+        tx.abort();
+      };
+
+      req.onsuccess = () => {
+        const record = req.result as ApprovalRecord | undefined;
+        if (!record) return abortWith('APPROVAL_NOT_FOUND');
+        
+        if (record.status === 'RESERVED') return abortWith('APPROVAL_ALREADY_RESERVED');
+        if (record.status === 'CONSUMED') return abortWith('APPROVAL_ALREADY_CONSUMED');
+        if (record.status !== 'APPROVED') return abortWith('APPROVAL_STATE_TRANSITION_INVALID');
+        
+        if (record.expiresAt <= input.now) return abortWith('APPROVAL_EXPIRED');
+
+        if (record.missionId !== input.missionId ||
+            record.taskId !== input.taskId ||
+            record.attemptId !== input.attemptId ||
+            record.workbenchSessionId !== input.workbenchSessionId ||
+            record.repositoryArtifactId !== input.repositoryArtifactId ||
+            record.artifactRevision !== input.artifactRevision ||
+            record.sourceWorkspaceId !== input.sourceWorkspaceId ||
+            record.sourceDigest !== input.sourceDigest ||
+            record.previewDigest !== input.previewDigest ||
+            record.operationDigest !== input.operationDigest ||
+            record.affectedPathsDigest !== input.affectedPathsDigest ||
+            record.riskLevel !== input.riskLevel) {
+          return abortWith('APPROVAL_CONTEXT_MISMATCH');
+        }
+
+        const ticketId = `ticket_${crypto.randomUUID()}`;
+        record.status = 'RESERVED';
+        record.reservedAt = input.now;
+        record.reservedByOperationId = input.sourceApplyOperationId;
+        record.updatedAt = input.now;
+
+        const ticket: import('../approval/types').ApprovalAuthorizationTicket = {
+          authorizationTicketId: ticketId,
+          approvalId: record.approvalId,
+          sourceApplyRequestId: input.sourceApplyRequestId,
+          sourceApplyOperationId: input.sourceApplyOperationId,
+          missionId: record.missionId,
+          taskId: record.taskId,
+          attemptId: record.attemptId,
+          workbenchSessionId: record.workbenchSessionId,
+          repositoryArtifactId: record.repositoryArtifactId,
+          artifactRevision: record.artifactRevision,
+          sourceWorkspaceId: record.sourceWorkspaceId,
+          sourceDigest: record.sourceDigest,
+          previewDigest: record.previewDigest,
+          operationDigest: record.operationDigest,
+          affectedPathsDigest: record.affectedPathsDigest,
+          riskLevel: record.riskLevel,
+          reservedAt: input.now,
+          expiresAt: record.expiresAt,
+          status: 'RESERVED',
+          schemaVersion: record.schemaVersion
+        };
+
+        const putReq1 = storeRecords.put(record);
+        putReq1.onerror = () => abortWith('TRANSACTION_FAILED');
+        const putReq2 = storeTickets.put(ticket);
+        putReq2.onerror = () => abortWith('TRANSACTION_FAILED');
+
+        if (!aborted) {
+          finalResult = { success: true, record: { ...record }, ticket: { ...ticket } };
+        }
+      };
+
+      req.onerror = () => {
+        abortWith('TRANSACTION_FAILED');
+      };
+
+      tx.oncomplete = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'UNKNOWN_ERROR' });
+      };
+
+      tx.onerror = () => {
+        db.close();
+        if (!aborted) resolve({ success: false, errorCode: 'TRANSACTION_FAILED', retryable: false });
+      };
+
+      tx.onabort = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'TRANSACTION_ABORTED', retryable: false });
+      };
+    });
   }
 
   public async compareAndConsumeApproval(input: ApprovalConsumptionInput): Promise<ApprovalPersistenceResult> {
-    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+    const db = await this.getDB();
+    return new Promise<ApprovalPersistenceResult>((resolve) => {
+      const tx = db.transaction(['approval_records', 'approval_authorization_tickets'], 'readwrite');
+      const storeRecords = tx.objectStore('approval_records');
+      const storeTickets = tx.objectStore('approval_authorization_tickets');
+
+      const reqRecord = storeRecords.get(input.approvalId);
+      
+      let finalResult: ApprovalPersistenceResult | null = null;
+      let aborted = false;
+
+      const abortWith = (errorCode: string) => {
+        aborted = true;
+        finalResult = { success: false, errorCode, retryable: false };
+        tx.abort();
+      };
+
+      reqRecord.onsuccess = () => {
+        const record = reqRecord.result as ApprovalRecord | undefined;
+        if (!record) return abortWith('APPROVAL_NOT_FOUND');
+        
+        if (record.status === 'CONSUMED') return abortWith('APPROVAL_ALREADY_CONSUMED');
+        if (record.status !== 'RESERVED') return abortWith('APPROVAL_STATE_TRANSITION_INVALID');
+        
+        if (record.reservedByOperationId !== input.expectedReservedByOperationId || record.reservedByOperationId !== input.sourceApplyOperationId) {
+          return abortWith('APPROVAL_RESERVATION_OWNER_MISMATCH');
+        }
+
+        if (record.sourceDigest !== input.sourceDigest ||
+            record.previewDigest !== input.previewDigest ||
+            record.operationDigest !== input.operationDigest ||
+            record.affectedPathsDigest !== input.affectedPathsDigest) {
+          return abortWith('APPROVAL_CONTEXT_MISMATCH');
+        }
+
+        if (record.expiresAt <= input.now) return abortWith('APPROVAL_EXPIRED');
+
+        const reqTicket = storeTickets.get(input.authorizationTicketId);
+        reqTicket.onsuccess = () => {
+          const ticket = reqTicket.result as import('../approval/types').ApprovalAuthorizationTicket | undefined;
+          if (!ticket) return abortWith('APPROVAL_NOT_FOUND');
+          if (ticket.status !== 'RESERVED') return abortWith('APPROVAL_STATE_TRANSITION_INVALID');
+
+          record.status = 'CONSUMED';
+          record.consumedAt = input.now;
+          record.updatedAt = input.now;
+          
+          ticket.status = 'CONSUMED';
+
+          const putReq1 = storeRecords.put(record);
+          putReq1.onerror = () => abortWith('TRANSACTION_FAILED');
+          const putReq2 = storeTickets.put(ticket);
+          putReq2.onerror = () => abortWith('TRANSACTION_FAILED');
+
+          if (!aborted) {
+            finalResult = { success: true, record: { ...record }, ticket: { ...ticket } };
+          }
+        };
+        reqTicket.onerror = () => abortWith('TRANSACTION_FAILED');
+      };
+
+      reqRecord.onerror = () => {
+        abortWith('TRANSACTION_FAILED');
+      };
+
+      tx.oncomplete = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'UNKNOWN_ERROR' });
+      };
+
+      tx.onerror = () => {
+        db.close();
+        if (!aborted) resolve({ success: false, errorCode: 'TRANSACTION_FAILED', retryable: false });
+      };
+
+      tx.onabort = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'TRANSACTION_ABORTED', retryable: false });
+      };
+    });
   }
 
   public async releaseApprovalReservation(input: ApprovalReservationReleaseInput): Promise<ApprovalPersistenceResult> {
-    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+    const db = await this.getDB();
+    return new Promise<ApprovalPersistenceResult>((resolve) => {
+      const tx = db.transaction(['approval_records', 'approval_authorization_tickets'], 'readwrite');
+      const storeRecords = tx.objectStore('approval_records');
+      const storeTickets = tx.objectStore('approval_authorization_tickets');
+
+      const reqRecord = storeRecords.get(input.approvalId);
+      let finalResult: ApprovalPersistenceResult | null = null;
+      let aborted = false;
+
+      const abortWith = (errorCode: string) => {
+        aborted = true;
+        finalResult = { success: false, errorCode, retryable: false };
+        tx.abort();
+      };
+
+      reqRecord.onsuccess = () => {
+        const record = reqRecord.result as ApprovalRecord | undefined;
+        if (!record) return abortWith('APPROVAL_NOT_FOUND');
+        
+        if (record.status !== 'RESERVED') return abortWith('APPROVAL_STATE_TRANSITION_INVALID');
+        if (record.reservedByOperationId !== input.sourceApplyOperationId) return abortWith('APPROVAL_RESERVATION_OWNER_MISMATCH');
+
+        const reqTicket = storeTickets.get(input.authorizationTicketId);
+        reqTicket.onsuccess = () => {
+          const ticket = reqTicket.result as import('../approval/types').ApprovalAuthorizationTicket | undefined;
+          if (!ticket) return abortWith('APPROVAL_NOT_FOUND');
+          
+          record.status = 'RELEASED';
+          record.releasedAt = input.now;
+          record.updatedAt = input.now;
+          
+          ticket.status = 'RELEASED';
+
+          const putReq1 = storeRecords.put(record);
+          putReq1.onerror = () => abortWith('TRANSACTION_FAILED');
+          const putReq2 = storeTickets.put(ticket);
+          putReq2.onerror = () => abortWith('TRANSACTION_FAILED');
+
+          if (!aborted) {
+            finalResult = { success: true, record: { ...record }, ticket: { ...ticket } };
+          }
+        };
+        reqTicket.onerror = () => abortWith('TRANSACTION_FAILED');
+      };
+
+      reqRecord.onerror = () => abortWith('TRANSACTION_FAILED');
+
+      tx.oncomplete = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'UNKNOWN_ERROR' });
+      };
+
+      tx.onerror = () => {
+        db.close();
+        if (!aborted) resolve({ success: false, errorCode: 'TRANSACTION_FAILED', retryable: false });
+      };
+
+      tx.onabort = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'TRANSACTION_ABORTED', retryable: false });
+      };
+    });
   }
 
   public async invalidateApproval(input: ApprovalInvalidationInput): Promise<ApprovalPersistenceResult> {
-    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+    const db = await this.getDB();
+    return new Promise<ApprovalPersistenceResult>((resolve) => {
+      const tx = db.transaction(['approval_records', 'approval_authorization_tickets'], 'readwrite');
+      const storeRecords = tx.objectStore('approval_records');
+      const storeTickets = tx.objectStore('approval_authorization_tickets');
+
+      const reqRecord = storeRecords.get(input.approvalId);
+      let finalResult: ApprovalPersistenceResult | null = null;
+      let aborted = false;
+
+      const abortWith = (errorCode: string) => {
+        aborted = true;
+        finalResult = { success: false, errorCode, retryable: false };
+        tx.abort();
+      };
+
+      reqRecord.onsuccess = () => {
+        const record = reqRecord.result as ApprovalRecord | undefined;
+        if (!record) return abortWith('APPROVAL_NOT_FOUND');
+        
+        if (record.status === 'CONSUMED' || record.status === 'INVALIDATED') {
+          return abortWith('APPROVAL_STATE_TRANSITION_INVALID');
+        }
+
+        record.status = 'INVALIDATED';
+        record.invalidatedAt = input.now;
+        record.invalidationReason = input.invalidationReason;
+        record.updatedAt = input.now;
+
+        const putReq1 = storeRecords.put(record);
+        putReq1.onerror = () => abortWith('TRANSACTION_FAILED');
+
+        if (input.authorizationTicketId) {
+          const reqTicket = storeTickets.get(input.authorizationTicketId);
+          reqTicket.onsuccess = () => {
+            const ticket = reqTicket.result as import('../approval/types').ApprovalAuthorizationTicket | undefined;
+            if (ticket) {
+              ticket.status = 'INVALIDATED';
+              const putReq2 = storeTickets.put(ticket);
+              putReq2.onerror = () => abortWith('TRANSACTION_FAILED');
+              if (!aborted) {
+                finalResult = { success: true, record: { ...record }, ticket: { ...ticket } };
+              }
+            } else {
+              if (!aborted) {
+                finalResult = { success: true, record: { ...record } };
+              }
+            }
+          };
+          reqTicket.onerror = () => abortWith('TRANSACTION_FAILED');
+        } else {
+          if (!aborted) {
+            finalResult = { success: true, record: { ...record } };
+          }
+        }
+      };
+
+      reqRecord.onerror = () => abortWith('TRANSACTION_FAILED');
+
+      tx.oncomplete = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'UNKNOWN_ERROR' });
+      };
+
+      tx.onerror = () => {
+        db.close();
+        if (!aborted) resolve({ success: false, errorCode: 'TRANSACTION_FAILED', retryable: false });
+      };
+
+      tx.onabort = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'TRANSACTION_ABORTED', retryable: false });
+      };
+    });
   }
 
   public async revokeApproval(approvalId: string, reason?: string): Promise<ApprovalPersistenceResult> {
-    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+    const db = await this.getDB();
+    return new Promise<ApprovalPersistenceResult>((resolve) => {
+      const tx = db.transaction(['approval_records'], 'readwrite');
+      const storeRecords = tx.objectStore('approval_records');
+
+      const reqRecord = storeRecords.get(approvalId);
+      let finalResult: ApprovalPersistenceResult | null = null;
+      let aborted = false;
+
+      const abortWith = (errorCode: string) => {
+        aborted = true;
+        finalResult = { success: false, errorCode, retryable: false };
+        tx.abort();
+      };
+
+      reqRecord.onsuccess = () => {
+        const record = reqRecord.result as ApprovalRecord | undefined;
+        if (!record) return abortWith('APPROVAL_NOT_FOUND');
+        
+        if (record.status === 'CONSUMED' || record.status === 'RESERVED') {
+          return abortWith('APPROVAL_STATE_TRANSITION_INVALID');
+        }
+
+        record.status = 'REVOKED';
+        record.updatedAt = Date.now();
+
+        const putReq = storeRecords.put(record);
+        putReq.onerror = () => abortWith('TRANSACTION_FAILED');
+
+        if (!aborted) {
+          finalResult = { success: true, record: { ...record } };
+        }
+      };
+
+      reqRecord.onerror = () => abortWith('TRANSACTION_FAILED');
+
+      tx.oncomplete = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'UNKNOWN_ERROR' });
+      };
+
+      tx.onerror = () => {
+        db.close();
+        if (!aborted) resolve({ success: false, errorCode: 'TRANSACTION_FAILED', retryable: false });
+      };
+
+      tx.onabort = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'TRANSACTION_ABORTED', retryable: false });
+      };
+    });
   }
 
   public async listPendingApprovals(filter?: { missionId?: string; workbenchSessionId?: string }): Promise<ApprovalPersistenceResult<ApprovalRecord[]>> {
@@ -201,7 +564,56 @@ export class ApprovalRepositoryIndexedDB implements IApprovalRepositoryPersisten
   }
 
   public async expireApprovals(now: number): Promise<ApprovalPersistenceResult<number>> {
-    return { success: false, errorCode: 'ATOMIC_APPROVAL_UNSUPPORTED', retryable: false };
+    const db = await this.getDB();
+    return new Promise<ApprovalPersistenceResult<number>>((resolve) => {
+      const tx = db.transaction(['approval_records'], 'readwrite');
+      const storeRecords = tx.objectStore('approval_records');
+
+      const reqAll = storeRecords.getAll();
+      let finalResult: ApprovalPersistenceResult<number> | null = null;
+      let aborted = false;
+
+      const abortWith = (errorCode: string) => {
+        aborted = true;
+        finalResult = { success: false, errorCode, retryable: false };
+        tx.abort();
+      };
+
+      reqAll.onsuccess = () => {
+        const records = reqAll.result as ApprovalRecord[];
+        let count = 0;
+        
+        for (const record of records) {
+          if ((record.status === 'REQUESTED' || record.status === 'APPROVED') && record.expiresAt <= now) {
+            record.status = 'EXPIRED';
+            record.updatedAt = now;
+            storeRecords.put(record);
+            count++;
+          }
+        }
+
+        if (!aborted) {
+          finalResult = { success: true, data: count };
+        }
+      };
+
+      reqAll.onerror = () => abortWith('TRANSACTION_FAILED');
+
+      tx.oncomplete = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'UNKNOWN_ERROR' });
+      };
+
+      tx.onerror = () => {
+        db.close();
+        if (!aborted) resolve({ success: false, errorCode: 'TRANSACTION_FAILED', retryable: false });
+      };
+
+      tx.onabort = () => {
+        db.close();
+        resolve(finalResult ?? { success: false, errorCode: 'TRANSACTION_ABORTED', retryable: false });
+      };
+    });
   }
 }
 

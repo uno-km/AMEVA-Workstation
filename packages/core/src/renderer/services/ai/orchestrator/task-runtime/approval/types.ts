@@ -26,10 +26,12 @@ export interface ApprovalRecordBase {
   repositoryArtifactId: string;
   artifactRevision: number;
   sourceWorkspaceId: string;
+  previewId: string;
   sourceDigest: string;
   previewDigest: string;
   operationDigest: string;
   affectedPathsDigest: string;
+  artifactDigest: string;
   riskLevel: ToolRiskLevel;
   requestType: string;
   status: ApprovalRecordStatus;

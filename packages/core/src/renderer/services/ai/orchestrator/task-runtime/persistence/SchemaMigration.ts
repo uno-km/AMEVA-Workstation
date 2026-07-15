@@ -84,10 +84,75 @@ const MIGRATORS: SchemaMigrator[] = [
     toVersion: 3,
     /**
      * V2 → V3 마이그레이션
-     * 변경사항: Phase 6.4 도메인 리포지토리 스토어 추가.
-     * 데이터 마이그레이션 불필요 (신규 생성).
+     * 변경사항: Phase 6.4 도메인 리포지토리 스토어 추가 및 기존 Approval 데이터의 Digest 검증
      */
     migrate: async (db: IDBDatabase, transaction: IDBTransaction): Promise<void> => {
+      const STORE_APPROVAL_RECORDS = 'approval_records';
+
+      if (!db.objectStoreNames.contains(STORE_APPROVAL_RECORDS)) {
+        return;
+      }
+
+      const store = transaction.objectStore(STORE_APPROVAL_RECORDS);
+
+      await new Promise<void>((resolve, reject) => {
+        const req = store.openCursor();
+        req.onsuccess = () => {
+          const cursor = req.result;
+          if (cursor) {
+            const record = cursor.value as Record<string, unknown>;
+            
+            // Schema Validation
+            if (record['schemaVersion'] !== undefined && typeof record['schemaVersion'] === 'number' && record['schemaVersion'] > 3) {
+               reject(new Error('UNSUPPORTED_SCHEMA_VERSION'));
+               return;
+            }
+
+            // Digest Requirements
+            if (!record['previewDigest']) {
+              reject(new Error('NEW_PREVIEW_REQUIRED'));
+              return;
+            }
+            if (!record['operationDigest']) {
+              reject(new Error('NEW_APPROVAL_REQUIRED'));
+              return;
+            }
+            if (!record['affectedPathsDigest']) {
+              reject(new Error('NEW_APPROVAL_REQUIRED'));
+              return;
+            }
+
+            // State consistency
+            if (record['status'] === 'RESERVED' && !record['reservedAt']) {
+              reject(new Error('CORRUPTED_PERSISTED_STATE'));
+              return;
+            }
+            if (record['status'] === 'CONSUMED' && !record['consumedAt']) {
+              reject(new Error('CORRUPTED_PERSISTED_STATE'));
+              return;
+            }
+
+            // 민감 정보 스캔
+            const restricted = ['approvaltoken', 'capabilitytoken', 'sessiontoken', 'accesstoken', 'authorization', 'apikey', 'password', 'privatekey', 'cookie', 'credential'];
+            const jsonStr = JSON.stringify(record).toLowerCase();
+            for (const token of restricted) {
+              if (jsonStr.includes(token)) {
+                reject(new Error('SENSITIVE_VALUE_NOT_ALLOWED'));
+                return;
+              }
+            }
+
+            // Upgrade schemaVersion
+            record['schemaVersion'] = 3;
+            cursor.update(record);
+            cursor.continue();
+          } else {
+            resolve();
+          }
+        };
+        req.onerror = () => reject(req.error);
+      });
+
       console.log('[SchemaMigration] V2→V3: Phase 6.4 Repositories 스토어 추가 완료.');
     }
   }

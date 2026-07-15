@@ -66,10 +66,24 @@ export interface SourceApplyRequest {
   requestedAt: number;
 }
 
+export type SourceApplyPreviewStatus =
+  | 'CREATING'
+  | 'READY'
+  | 'STALE'
+  | 'INVALIDATED'
+  | 'EXPIRED'
+  | 'CORRUPTED';
+
 export interface SourceApplyPreview {
-  requestId: string;
-  artifactId: string;
+  previewId: string;
+  sourceApplyRequestId: string;
+  missionId: string;
+  taskId: string;
+  attemptId: string;
+  workbenchSessionId: string;
+  repositoryArtifactId: string;
   artifactRevision: number;
+  sourceWorkspaceId: string;
   baseRevision?: string;
   currentSourceRevision?: string;
   sourceDigest: string;
@@ -80,14 +94,20 @@ export interface SourceApplyPreview {
   renamedCandidates: string[];
   changedSymbols: string[];
   changedRanges: { file: string; startLine: number; endLine: number }[];
+  affectedPaths: string[];
   protectedPathViolations: string[];
   conflicts: ConflictType[];
   riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  approvalRequired: boolean;
   requiredChecks: string[];
-  rollbackPlan?: string;
+  rollbackPlanDigest?: string;
   previewDigest: string;
+  policyVersion: number;
+  status: SourceApplyPreviewStatus;
   createdAt: number;
+  expiresAt: number;
+  invalidatedAt?: number;
+  invalidationReason?: string;
+  schemaVersion: number;
 }
 
 export interface SourceApplyOperation {

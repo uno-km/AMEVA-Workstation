@@ -50,29 +50,7 @@ export function registerSourceApplyIpc() {
     }
   });
 
-  ipcMain.handle('sourceApply:executeApply', async (event, request: IpcExecuteApplyRequest): Promise<IpcResponse<IpcExecuteApplyResponse>> => {
-    try {
-      verifySender(event);
-      const session = sessionRegistry.verifyContext({ 
-        workbenchSessionId: request.applyRequest.workbenchSessionId, 
-        sessionCapabilityToken: request.applyRequest.sessionCapabilityToken 
-      } as any);
-
-      const operation = await sourceApplyService.executeApply(
-        request.operationId,
-        request.applyRequest,
-        request.preview,
-        request.targetArtifact,
-        session.allowedWorkspaceRoot
-      );
-
-      return { success: true, result: { success: true, operation } };
-    } catch (e: any) {
-      return handleSafeError(e, 'EXECUTE_ERROR');
-    }
-  });
-
-  ipcMain.handle('sourceApply:rollbackApply', async (event, request: IpcRollbackApplyRequest & { workbenchSessionId: string, sessionCapabilityToken?: string }): Promise<IpcResponse<IpcRollbackApplyResponse>> => {
+  ipcMain.handle('sourceApply:authorizeOperation', async (event, request: IpcAuthorizeSourceApplyRequest): Promise<IpcResponse<IpcAuthorizeSourceApplyResponse>> => {
     try {
       verifySender(event);
       const session = sessionRegistry.verifyContext({ 
@@ -80,10 +58,18 @@ export function registerSourceApplyIpc() {
         sessionCapabilityToken: request.sessionCapabilityToken 
       } as any);
 
-      await sourceApplyService.rollbackApply(request.operationId, request.rollbackSnapshotId, session.allowedWorkspaceRoot);
-      return { success: true, result: { success: true } };
+      const response = await sourceApplyService.authorizeOperation(request, session);
+      return { success: true, result: response };
     } catch (e: any) {
-      return handleSafeError(e, 'ROLLBACK_ERROR');
+      return handleSafeError(e, 'AUTHORIZE_ERROR');
     }
+  });
+
+  ipcMain.handle('sourceApply:executeApply', async (event, request: IpcExecuteApplyRequest): Promise<IpcResponse<IpcExecuteApplyResponse>> => {
+    return { success: false, errorCode: 'BLOCKED', error: 'Phase 6.4.1B Required' };
+  });
+
+  ipcMain.handle('sourceApply:rollbackApply', async (event, request: IpcRollbackApplyRequest & { workbenchSessionId: string, sessionCapabilityToken?: string }): Promise<IpcResponse<IpcRollbackApplyResponse>> => {
+    return { success: false, errorCode: 'BLOCKED', error: 'Phase 6.4.1B Required' };
   });
 }

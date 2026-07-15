@@ -45,3 +45,56 @@ export interface IpcRollbackApplyResponse {
   success: boolean;
   error?: string;
 }
+
+export type SourceApplyAuthorizationErrorCode = 
+  | 'PREVIEW_STALE'
+  | 'SOURCE_DIGEST_MISMATCH'
+  | 'APPROVAL_NOT_FOUND'
+  | 'APPROVAL_INVALIDATED'
+  | 'CAPABILITY_INVALID'
+  | 'ARTIFACT_MISMATCH'
+  | 'DIGEST_MISMATCH';
+
+export interface IpcAuthorizeSourceApplyRequest {
+  sourceApplyRequestId: string;
+  sourceApplyOperationId: string;
+  approvalId: string;
+  missionId: string;
+  taskId: string;
+  attemptId: string;
+  workbenchSessionId: string;
+  sessionCapabilityToken?: string;
+  repositoryArtifactId: string;
+  artifactRevision: number;
+  sourceWorkspaceReference: string;
+  previewId: string;
+  idempotencyKey: string;
+  requestedAt: number;
+}
+
+export interface IpcAuthorizeSourceApplyResponse {
+  success: boolean;
+  authorizationTicketId?: string;
+  errorCode?: SourceApplyAuthorizationErrorCode;
+  errorMessage?: string;
+}
+
+export interface IpcGetAuthorizationStatusRequest {
+  authorizationTicketId: string;
+}
+
+export interface IpcGetAuthorizationStatusResponse {
+  success: boolean;
+  status?: string;
+  errorCode?: string;
+}
+
+export interface IpcReleaseAuthorizationRequest {
+  authorizationTicketId: string;
+  reason?: string;
+}
+
+export interface IpcReleaseAuthorizationResponse {
+  success: boolean;
+  errorCode?: string;
+}
