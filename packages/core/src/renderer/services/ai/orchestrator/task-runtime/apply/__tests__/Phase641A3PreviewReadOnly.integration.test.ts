@@ -1,6 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'fs';
-import * as fsp from 'fs/promises';
 import { SourceApplyDigestService } from '../SourceApplyDigestService';
 
 vi.mock('fs', async (importOriginal) => {

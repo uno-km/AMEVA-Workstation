@@ -74,10 +74,17 @@ export function registerSourceApplyIpc() {
   });
 
   ipcMain.handle('sourceApply:executeApply', async (event, request: IpcExecuteApplyRequest): Promise<IpcResponse<IpcExecuteApplyResponse>> => {
-    return { success: false, errorCode: 'BLOCKED' } as any;
-  });
+    try {
+      verifySender(event);
+      const session = sessionRegistry.verifyContext({ 
+        workbenchSessionId: request.workbenchSessionId, 
+        sessionCapabilityToken: request.sessionCapabilityToken 
+      } as any);
 
-  ipcMain.handle('sourceApply:rollbackApply', async (event, request: IpcRollbackApplyRequest & { workbenchSessionId: string, sessionCapabilityToken?: string }): Promise<IpcResponse<IpcRollbackApplyResponse>> => {
-    return { success: false, errorCode: 'BLOCKED' } as any;
+      const response = await sourceApplyService.executeApply(request, session);
+      return { success: true, result: response };
+    } catch (e: any) {
+      return handleSafeError(e);
+    }
   });
 }

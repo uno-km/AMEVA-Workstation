@@ -28,19 +28,59 @@ export type SourceApplyOperationStatus =
   | 'PREVIEWING'
   | 'WAITING_APPROVAL'
   | 'APPROVED'
-  | 'REVALIDATING'
+  | 'APPLY_AUTHORIZED'
+  | 'PRE_EXECUTE_REVALIDATING'
   | 'SNAPSHOTTING'
+  | 'PRE_APPLY_ABORT'
   | 'APPLYING'
+  | 'APPLY_WRITTEN_PENDING_VERIFICATION'
   | 'VERIFYING'
   | 'COMMITTING'
   | 'APPLIED'
   | 'ROLLING_BACK'
   | 'ROLLED_BACK'
+  | 'ROLLBACK_FAILED'
+  | 'QUARANTINED'
   | 'CONFLICT'
   | 'FAILED'
   | 'INTERRUPTED'
   | 'REJECTED'
   | 'EXPIRED';
+
+export interface ApplyJournalEntry {
+  executionId: string;
+  sequence: number;           
+  targetPath: string;             // Raw provided path
+  normalizedPath: string;         // Absolute resolved path
+  operation: 'CREATE' | 'MODIFY' | 'DELETE';
+  existedBefore: boolean;         // Did the file exist prior to snapshot?
+  fileTypeBefore: 'FILE' | 'SYMLINK' | 'DIR' | 'NONE';
+  snapshotPath: string;           // Backup location (e.g., tmpdir)
+  replaceTempPath: string;        // Staging location (same volume)
+  beforeDigest: string | null;
+  intendedAfterDigest: string;
+  appliedAt: number | null;
+  restoredAt: number | null;
+  restoreStatus: 'PENDING' | 'RESTORED' | 'FAILED' | 'NOT_NEEDED';
+}
+
+export interface WorkspaceExecutionLease {
+  workspaceRoot: string;
+  executionId: string;
+  leaseOwner: string;
+  acquiredAt: number;
+  expiresAt: number;
+}
+
+export interface SourceApplyExecutionRecord {
+  executionId: string;
+  authorizationTicketId: string;
+  workspaceRoot: string;
+  status: SourceApplyOperationStatus;
+  startedAt: number;
+  updatedAt: number;
+  error?: string;
+}
 
 export interface SourceApplyRequest {
   sourceApplyRequestId: string;

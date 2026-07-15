@@ -327,6 +327,11 @@ export class ApprovalRepositoryInMemory implements IApprovalRepositoryPersistenc
 
     return { success: true, data: count };
   }
+
+  public async getAuthorizationTicket(ticketId: string): Promise<ApprovalAuthorizationTicket | null> {
+    const ticket = this.tickets.get(ticketId);
+    return ticket ? { ...ticket } : null;
+  }
 }
 
 export class SourceApplyRepositoryInMemory implements ISourceApplyRepositoryPersistence {
@@ -379,5 +384,116 @@ export class SourceApplyRepositoryInMemory implements ISourceApplyRepositoryPers
 
   public async saveApplyVerificationResult(result: ApplyVerificationResult): Promise<void> {
     this.verifications.set(result.verificationId, { ...result });
+  }
+}
+import type { IApplyExecutionPersistence } from './RepositoryInterfaces';
+import type { 
+  SourceApplyExecutionRecord, 
+  ApplyJournalEntry, 
+  WorkspaceExecutionLease,
+  SourceApplyOperationStatus
+} from '../apply/types';
+
+export class ApplyExecutionPersistenceInMemory implements IApplyExecutionPersistence {
+  private readonly leases = new Map<string, WorkspaceExecutionLease>();
+  private readonly quarantines = new Set<string>();
+  private readonly executions = new Map<string, SourceApplyExecutionRecord>();
+  private readonly journals = new Map<string, Map<number, ApplyJournalEntry>>();
+
+  public async acquireLease(workspaceRoot: string, executionId: string, leaseOwner: string, expiresAt: number): Promise<boolean> {
+    const existing = this.leases.get(workspaceRoot);
+    if (existing && existing.expiresAt > Date.now() && existing.executionId !== executionId) {
+      return false;
+    }
+    this.leases.set(workspaceRoot, {
+      workspaceRoot,
+      executionId,
+      leaseOwner,
+      acquiredAt: Date.now(),
+      expiresAt
+    });
+    return true;
+  }
+
+  public async releaseLease(workspaceRoot: string, executionId: string): Promise<void> {
+    const existing = this.leases.get(workspaceRoot);
+    if (existing && existing.executionId === executionId) {
+      this.leases.delete(workspaceRoot);
+    }
+  }
+
+  public async getLease(workspaceRoot: string): Promise<WorkspaceExecutionLease | null> {
+    const lease = this.leases.get(workspaceRoot);
+    if (lease && lease.expiresAt > Date.now()) {
+      return { ...lease };
+    }
+    if (lease) {
+      return { ...lease }; 
+    }
+    return null;
+  }
+
+  public async quarantineWorkspace(workspaceRoot: string, reason: string): Promise<void> {
+    this.quarantines.add(workspaceRoot);
+  }
+
+  public async isWorkspaceQuarantined(workspaceRoot: string): Promise<boolean> {
+    return this.quarantines.has(workspaceRoot);
+  }
+
+    public async getExecutionByTicketId(ticketId: string): Promise<SourceApplyExecutionRecord | null> {
+    for (const rec of this.executions.values()) {
+      if (rec.authorizationTicketId === ticketId) {
+        return { ...rec };
+      }
+    }
+    return null;
+  }
+  public async saveExecutionRecord(record: SourceApplyExecutionRecord): Promise<void> {
+    this.executions.set(record.executionId, { ...record });
+  }
+
+  public async getExecutionRecord(executionId: string): Promise<SourceApplyExecutionRecord | null> {
+    const rec = this.executions.get(executionId);
+    return rec ? { ...rec } : null;
+  }
+
+  public async updateExecutionStatus(executionId: string, status: SourceApplyOperationStatus, error?: string): Promise<void> {
+    const rec = this.executions.get(executionId);
+    if (rec) {
+      rec.status = status;
+      rec.updatedAt = Date.now();
+      if (error) rec.error = error;
+      this.executions.set(executionId, rec);
+    }
+  }
+
+  public async appendJournalEntry(entry: ApplyJournalEntry): Promise<void> {
+    let executionJournal = this.journals.get(entry.executionId);
+    if (!executionJournal) {
+      executionJournal = new Map<number, ApplyJournalEntry>();
+      this.journals.set(entry.executionId, executionJournal);
+    }
+    executionJournal.set(entry.sequence, { ...entry });
+  }
+
+  public async updateJournalEntryStatus(executionId: string, sequence: number, status: ApplyJournalEntry['restoreStatus']): Promise<void> {
+    const executionJournal = this.journals.get(executionId);
+    if (executionJournal) {
+      const entry = executionJournal.get(sequence);
+      if (entry) {
+        entry.restoreStatus = status;
+        if (status === 'RESTORED' || status === 'FAILED' || status === 'NOT_NEEDED') {
+          entry.restoredAt = Date.now();
+        }
+        executionJournal.set(sequence, entry);
+      }
+    }
+  }
+
+  public async getJournalEntries(executionId: string): Promise<ApplyJournalEntry[]> {
+    const executionJournal = this.journals.get(executionId);
+    if (!executionJournal) return [];
+    return Array.from(executionJournal.values()).sort((a, b) => a.sequence - b.sequence).map(e => ({...e}));
   }
 }

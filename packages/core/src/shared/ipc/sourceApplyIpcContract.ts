@@ -23,27 +23,16 @@ export interface IpcCreatePreviewResponse {
 }
 
 export interface IpcExecuteApplyRequest {
-  operationId: string;
-  applyRequest: SourceApplyRequest;
-  preview: SourceApplyPreview;
-  targetArtifact: RepositoryArtifact;
+  authorizationTicketId: string;
   approvalId?: string;
+  workbenchSessionId: string;
+  sessionCapabilityToken?: string;
 }
 
 export interface IpcExecuteApplyResponse {
   success: boolean;
-  operation?: SourceApplyOperation;
-  error?: string;
-}
-
-export interface IpcRollbackApplyRequest {
-  operationId: string;
-  rollbackSnapshotId: string;
-}
-
-export interface IpcRollbackApplyResponse {
-  success: boolean;
-  error?: string;
+  executionId?: string;
+  errorCode?: string;
 }
 
 export type SourceApplyAuthorizationErrorCode = 
