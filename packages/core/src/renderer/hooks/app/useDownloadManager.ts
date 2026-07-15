@@ -25,7 +25,7 @@ export interface DownloadQueueItem {
   id: string
   url: string
   filename: string
-  type: 'llm' | 'code'
+  type: 'llm' | 'code' | 'stt'
   sizeBytes?: number
   status: 'pending' | 'downloading' | 'completed' | 'error'
   progress?: number

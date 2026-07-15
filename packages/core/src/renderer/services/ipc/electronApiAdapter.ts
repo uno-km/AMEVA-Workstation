@@ -110,7 +110,7 @@ declare global {
       llmRestart?: (modelPath?: string) => Promise<{ success: boolean; error?: string }>
       
       // 7. GGUF 모델 원격 백그라운드 다운로드
-      llmDownloadModel?: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>
+      llmDownloadModel?: (payload: { url: string; filename: string; type?: 'llm' | 'code' | 'stt' }) => Promise<{ success: boolean; error?: string }>
       onLLMDownloadProgress?: (callback: (data: ModelDownloadProgressEvent) => void) => () => void
       
       // 8. 프로 플랜 및 제한 상태 조회

@@ -18,7 +18,7 @@ import { persist } from 'zustand/middleware';
 
 export interface STTSettings {
   /** 현재 선택된 모델 (e.g. 'turbo', 'medium') */
-  activeModel: 'turbo' | 'medium';
+  activeModel: string;
   /** 오프라인 모드 강제 여부 */
   offlineMode: boolean;
   /** 언어 설정 */
@@ -41,7 +41,7 @@ export const useSTTState = create<STTState>()(
   persist(
     (set) => ({
       settings: {
-        activeModel: 'turbo',
+        activeModel: 'ggml-large-v3-turbo.bin',
         offlineMode: true,
         language: 'ko'
       },

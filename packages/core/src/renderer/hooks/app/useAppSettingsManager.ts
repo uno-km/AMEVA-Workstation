@@ -128,6 +128,24 @@ export function useAppSettingsManager(activeRightTab: string, setActiveRightTab:
       // 프리미엄 플러그인(TSX)은 dynamic remote loader가 컴포넌트 마운트 시 실시간으로 컴파일하여 구동하므로,
       // 별도의 script 태그 삽입 및 window 객체 폴링 등록 과정 없이 바로 설치 목록에 활성화 처리합니다.
       if (scriptUrl.endsWith('.tsx')) {
+        if (id === 'VoiceDictationPlugin' || id === 'voice-dictation') {
+          if (window.electronAPI?.executeTerminal) {
+            // Install Whisper.cpp and ggml-small.bin via terminal
+            const cmd = `
+              mkdir "C:\\ameva\\whisper" 2>NUL
+              mkdir "C:\\ameva\\models\\stt" 2>NUL
+              curl.exe -L -o "C:\\ameva\\whisper\\whisper.zip" "https://github.com/ggerganov/whisper.cpp/releases/download/v1.5.4/whisper-bin-x64.zip"
+              tar.exe -xf "C:\\ameva\\whisper\\whisper.zip" -C "C:\\ameva\\whisper"
+              curl.exe -L -o "C:\\ameva\\models\\stt\\ggml-small.bin" "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+            `.trim().replace(/\s*\n\s*/g, ' && ');
+            try {
+              await window.electronAPI.executeTerminal(cmd);
+            } catch (e) {
+              console.error('Failed to install Whisper:', e);
+            }
+          }
+        }
+        
         setSettings(prev => {
           const current = prev.installedPlugins || []
           if (!current.includes(id)) {

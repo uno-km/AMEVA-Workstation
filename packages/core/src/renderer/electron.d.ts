@@ -114,7 +114,7 @@ export interface IElectronAPI {
   sttTranscribe: (payload: { audioPath: string; language?: string }) => Promise<{ success: boolean; text?: string; error?: string }>
   sttGetTempPath: () => Promise<string>
 
-  llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>
+  llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' | 'stt' }) => Promise<{ success: boolean; error?: string }>
   onLLMDownloadProgress: (callback: (data: { filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number }) => void) => () => void
   llmImportModel: (sourcePath: string, type?: 'llm' | 'code') => Promise<{ success: boolean; path?: string; error?: string }>
 

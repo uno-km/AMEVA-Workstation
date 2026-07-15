@@ -215,7 +215,7 @@ export function onModelDownloadProgress(callback: (data: ModelDownloadProgressEv
   return window.electronAPI.onModelDownloadProgress(callback)
 }
 
-export async function llmDownloadModel(payload: { url: string; filename: string; type?: 'llm' | 'code' }): Promise<{ success: boolean; error?: string }> {
+export async function llmDownloadModel(payload: { url: string; filename: string; type?: 'llm' | 'code' | 'stt' }): Promise<{ success: boolean; error?: string }> {
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `!window.electronAPI?.llmDownloadModel`

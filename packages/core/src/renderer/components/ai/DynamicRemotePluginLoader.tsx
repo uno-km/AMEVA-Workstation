@@ -3,6 +3,9 @@ import * as LucideIcons from 'lucide-react';
 import { useLLMInference } from '../../hooks/ai/useLLMInference';
 import { useWorkspaceStore } from '../../stores/useWorkspaceStore';
 import * as Babel from '@babel/standalone';
+import { useSTTState } from '../../stores/useSTTState';
+import { useProcessStore } from '../../stores/useProcessStore';
+import * as AudioProcessor from '../../utils/audio/AudioProcessor';
 
 // 클라이언트 코어 컨텍스트를 전역으로 노출하여 원격 플러그인이 참조할 수 있도록 함
 const win = window as any;
@@ -11,7 +14,16 @@ win.AMEVA_CORE = {
   LucideIcons, 
   useLLMInference,
   useWorkspaceStore,
-  editor: win.AMEVA_CORE?.editor || null
+  useSTTState,
+  useProcessStore,
+  AudioProcessor,
+  removeSilence: AudioProcessor.removeSilence,
+  applyNoiseReduction: AudioProcessor.applyNoiseReduction,
+  trimAudio: AudioProcessor.trimAudio,
+  decodeAudio: AudioProcessor.decodeAudio,
+  audioBufferToWav: AudioProcessor.audioBufferToWav,
+  editor: win.AMEVA_CORE?.editor || null,
+  ipc: win.electronAPI || null
 };
 
 export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
@@ -43,7 +55,8 @@ export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
         code = code.replace(/import\s+\{([^}]+)\}\s+from\s+['"]lucide-react['"];?/gs, 'var {$1} = window.AMEVA_CORE.LucideIcons;');
 
         // 3. 커스텀 훅 import 처리
-        code = code.replace(/import\s+\{([^}]+)\}\s+from\s+['"].*?useLLMInference.*?['"];?/gs, 'var {$1} = window.AMEVA_CORE;');
+        code = code.replace(/import\s+\{([^}]+)\}\s+from\s+['"].*?(?:useLLMInference|useSTTState|useProcessStore|AudioProcessor).*?['"];?/gs, 'var {$1} = window.AMEVA_CORE;');
+        code = code.replace(/import\s+\*\s+as\s+([^\s]+)\s+from\s+['"].*?AudioProcessor.*?['"];?/gs, 'var $1 = window.AMEVA_CORE.AudioProcessor;');
 
         // 4. 나머지 모든 import 구문 제거 (지원되지 않는 모듈 방어)
         code = code.replace(/import\s+.*?from\s+['"].*?['"];?/gs, '');
@@ -51,7 +64,7 @@ export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
         // 5. 공통 객체 주입 (var를 사용하여 중복 선언 에러 방지)
         const injection = `
           var React = window.AMEVA_CORE.React;
-          var { useLLMInference } = window.AMEVA_CORE;
+          var { useLLMInference, useSTTState, useProcessStore, removeSilence, applyNoiseReduction, trimAudio, decodeAudio, audioBufferToWav } = window.AMEVA_CORE;
           var Lucide = window.AMEVA_CORE.LucideIcons;
         `;
 
