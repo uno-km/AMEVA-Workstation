@@ -14,6 +14,16 @@ export class DefaultArtifactReader implements IArtifactReader {
     }
   }
 
+  public async readBytes(path: string): Promise<Uint8Array | null> {
+    try {
+      const bytes = await this.fsAdapter.readBytes(path);
+      return bytes ?? null;
+    } catch (e) {
+      console.error(`[DefaultArtifactReader] Error reading bytes: ${path}`, e);
+      return null;
+    }
+  }
+
   public async exists(path: string): Promise<boolean> {
     try {
       const stat = await this.fsAdapter.stat(path);

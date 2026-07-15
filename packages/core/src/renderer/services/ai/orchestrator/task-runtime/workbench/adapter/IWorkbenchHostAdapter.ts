@@ -1,6 +1,6 @@
-import { IFileSystemAdapter } from '../../artifact/IFileSystemAdapter';
-import { ICommandExecutorAdapter } from './ICommandExecutorAdapter';
-import { ResourceLimits, SnapshotManifest } from '../domain/WorkbenchTypes';
+import type { IFileSystemAdapter } from '../../artifact/IFileSystemAdapter';
+import type { ICommandExecutorAdapter } from './ICommandExecutorAdapter';
+import type { ResourceLimits, SnapshotManifest } from '../domain/WorkbenchTypes';
 
 export type CapabilityStatus = 'ENFORCED' | 'OBSERVED_ONLY' | 'UNSUPPORTED';
 
@@ -33,4 +33,7 @@ export interface IWorkbenchHostAdapter {
   cleanupWorkspace(workspaceDir: string): Promise<void>;
   
   inspectWorkspace(workspaceDir: string): Promise<any>;
+
+  generateDocumentArtifact?(request: any): Promise<any>;
+  extractDocumentArtifact?(request: any): Promise<any>;
 }

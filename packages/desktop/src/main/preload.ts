@@ -306,5 +306,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     cleanupWorkspace: (request: any) => ipcRenderer.invoke('workbench:cleanupWorkspace', request),
     inspectWorkspace: (request: any) => ipcRenderer.invoke('workbench:inspectWorkspace', request),
     closeSession: (request: any) => ipcRenderer.invoke('workbench:closeSession', request),
+    generateDocumentArtifact: (request: any) => ipcRenderer.invoke('workbench:generateDocumentArtifact', request),
+    extractDocumentArtifact: (request: any) => ipcRenderer.invoke('workbench:extractDocumentArtifact', request),
   }
 })

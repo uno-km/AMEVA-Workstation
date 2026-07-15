@@ -13,8 +13,8 @@ import {
   IpcCleanupRequest,
   IpcRegisterSessionRequest,
   IpcRegisterSessionResponse
-} from '../../../../core/src/shared/ipc/workbenchIpcContract';
-import { WorkbenchSessionRegistry, WorkbenchPathValidator, WorkbenchApprovalResolver } from './WorkbenchSecurity';
+} from '../../../../core/src/shared/ipc/workbenchIpcContract.js';
+import { WorkbenchSessionRegistry, WorkbenchPathValidator, WorkbenchApprovalResolver } from './WorkbenchSecurity.js';
 
 const activeCommands = new Map<string, any>();
 const sessionRegistry = new WorkbenchSessionRegistry();
@@ -50,6 +50,32 @@ export function registerWorkbenchIpc() {
       verifySender(event);
       const res = sessionRegistry.registerSession(request);
       return { success: true, result: res };
+    } catch (e: any) {
+      return handleSafeError(e, 'EXECUTION_ERROR');
+    }
+  });
+
+  ipcMain.handle('workbench:generateDocumentArtifact', async (event, request: any) => {
+    try {
+      verifySender(event);
+      const session = sessionRegistry.verifyContext(request);
+      const { MainProcessDocumentHostService } = require('../../../../core/src/shared/services/DocumentArtifactService');
+      const service = new MainProcessDocumentHostService();
+      const result = await service.generateArtifact(request, session.allowedWorkspaceRoot);
+      return { success: true, result };
+    } catch (e: any) {
+      return handleSafeError(e, 'EXECUTION_ERROR');
+    }
+  });
+
+  ipcMain.handle('workbench:extractDocumentArtifact', async (event, request: any) => {
+    try {
+      verifySender(event);
+      const session = sessionRegistry.verifyContext(request);
+      const { MainProcessDocumentHostService } = require('../../../../core/src/shared/services/DocumentArtifactService');
+      const service = new MainProcessDocumentHostService();
+      const result = await service.extractArtifact(request, session.allowedWorkspaceRoot);
+      return { success: true, result };
     } catch (e: any) {
       return handleSafeError(e, 'EXECUTION_ERROR');
     }

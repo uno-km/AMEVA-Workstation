@@ -1,8 +1,8 @@
-import { IWorkbenchHostAdapter, WorkbenchHostCapabilities } from './IWorkbenchHostAdapter';
-import { IFileSystemAdapter } from '../../artifact/IFileSystemAdapter';
-import { ICommandExecutorAdapter } from './ICommandExecutorAdapter';
-import { ResourceLimits, SnapshotManifest, CommandPlan, CommandExecutionResult } from '../domain/WorkbenchTypes';
-import { IpcCommandRequest, IpcSnapshotRequest } from '../../../../shared/ipc/workbenchIpcContract';
+import type { IWorkbenchHostAdapter, WorkbenchHostCapabilities } from './IWorkbenchHostAdapter';
+import type { IFileSystemAdapter } from '../../artifact/IFileSystemAdapter';
+import type { ICommandExecutorAdapter } from './ICommandExecutorAdapter';
+import type { ResourceLimits, SnapshotManifest, CommandPlan, CommandExecutionResult } from '../domain/WorkbenchTypes';
+import type { IpcCommandRequest, IpcSnapshotRequest } from '../../../../../../../shared/ipc/workbenchIpcContract';
 
 // This acts as a proxy to the Main Process IPC where the actual IFileSystemAdapter operations happen for Workbench.
 // For operations outside of snapshot, we can use the existing window.electronAPI file methods, 
@@ -15,6 +15,9 @@ class ElectronFileSystemAdapter implements IFileSystemAdapter {
     const res = await (window as any).electronAPI.readFromPath(path);
     if (res?.success) return res.content;
     return null;
+  }
+  async readBytes(path: string): Promise<Uint8Array | null> {
+    throw new Error('Not implemented via IPC yet.');
   }
   async write(path: string, content: string): Promise<void> {
     const res = await (window as any).electronAPI.saveFile(content, path);
@@ -99,7 +102,7 @@ class ElectronCommandExecutorAdapter implements ICommandExecutorAdapter {
       timeout: 'ENFORCED',
       singleProcessCancellation: 'ENFORCED',
       processTreeCancellation: 'OBSERVED_ONLY',
-      networkPolicy: 'UNENFORCED'
+      networkPolicy: 'UNSUPPORTED'
     };
   }
 }
@@ -113,7 +116,7 @@ export class ElectronWorkbenchHostAdapter implements IWorkbenchHostAdapter {
     processCancellation: 'ENFORCED',
     memoryLimit: 'UNSUPPORTED',
     cpuLimit: 'UNSUPPORTED',
-    networkIsolation: 'UNENFORCED',
+    networkIsolation: 'UNSUPPORTED',
     symlinkInspection: 'OBSERVED_ONLY',
     copyOnWrite: 'UNSUPPORTED'
   };
@@ -178,5 +181,21 @@ export class ElectronWorkbenchHostAdapter implements IWorkbenchHostAdapter {
     const req = { ...this.sessionContext, targetWorkspace: workspaceDir };
     const res = await (window as any).electronAPI.workbench.inspectWorkspace(req);
     return res?.result;
+  }
+
+  async generateDocumentArtifact(request: any): Promise<any> {
+    if (!this.sessionContext) throw new Error('Session not bound to HostAdapter');
+    const req = { ...request, ...this.sessionContext };
+    const res = await (window as any).electronAPI.workbench.generateDocumentArtifact(req);
+    if (!res?.success) throw new Error(`Generation failed: ${res?.safeMessage || 'Unknown error'}`);
+    return res.result;
+  }
+
+  async extractDocumentArtifact(request: any): Promise<any> {
+    if (!this.sessionContext) throw new Error('Session not bound to HostAdapter');
+    const req = { ...request, ...this.sessionContext };
+    const res = await (window as any).electronAPI.workbench.extractDocumentArtifact(req);
+    if (!res?.success) throw new Error(`Extraction failed: ${res?.safeMessage || 'Unknown error'}`);
+    return res.result;
   }
 }

@@ -47,6 +47,12 @@ export class NodeArtifactFileAdapter implements IFileSystemAdapter {
     return fs.promises.readFile(p, 'utf-8');
   }
 
+  public async readBytes(filePath: string): Promise<Uint8Array | null> {
+    const p = this.resolvePath(filePath);
+    if (!fs.existsSync(p)) return null;
+    return fs.promises.readFile(p);
+  }
+
   public async write(filePath: string, content: string): Promise<void> {
     const p = this.resolvePath(filePath);
     await fs.promises.mkdir(path.dirname(p), { recursive: true });

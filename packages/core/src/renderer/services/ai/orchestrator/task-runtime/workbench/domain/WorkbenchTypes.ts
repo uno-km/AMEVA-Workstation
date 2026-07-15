@@ -394,3 +394,115 @@ export interface RepairRequest {
   previousRepairStrategy?: string;
   doNotRepeat: boolean;
 }
+
+// ----------------------------------------------------------------------------
+// Phase 6.3 Document Workbench Specific Types
+// ----------------------------------------------------------------------------
+
+export type DocumentJobStatus = 
+  | 'DECLARED'
+  | 'CONTRACTING'
+  | 'OUTLINING'
+  | 'WRITING'
+  | 'VERIFYING_SECTION'
+  | 'REPAIRING'
+  | 'INTEGRATING'
+  | 'VERIFYING_DOCUMENT'
+  | 'COMMITTING_OUTPUT'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'WAITING_USER'
+  | 'ROLLED_BACK';
+
+export interface DocumentContract {
+  contractId: string;
+  documentType: string;
+  objective: string;
+  audience: string;
+  language: string;
+  style: string;
+  requiredSections: string[];
+  optionalSections: string[];
+  acceptanceCriteria: string[];
+  complianceRules: string[];
+  minimumLength: number;
+  maximumLength: number;
+  requiredTables: number;
+  requiredFigures: number;
+  requiredArtifacts: string[];
+}
+
+export interface DocumentSection {
+  sectionId: string;
+  title: string;
+  order: number;
+  required: boolean;
+  expectedLength: number;
+  dependencies: string[];
+  content?: string;
+  revision?: string;
+  status?: string;
+}
+
+export interface DocumentOutline {
+  outlineId: string;
+  sections: DocumentSection[];
+  hierarchy: Record<string, string[]>;
+  dependencies: Record<string, string[]>;
+  estimatedLength: number;
+}
+
+export interface IntegratedDocument {
+  documentId: string;
+  sections: DocumentSection[];
+  fullText: string;
+  revision: string;
+}
+
+export interface DocumentWorkbenchJob {
+  documentJobId: string;
+  missionId: string;
+  taskId: string;
+  attemptId: string;
+  workbenchSessionId: string;
+  objective: string;
+  documentType: string;
+  artifactFormat: string;
+  language: string;
+  audience: string;
+  outlineId?: string;
+  contractId?: string;
+  sourceInputs: string[];
+  sectionIds: string[];
+  requiredSections: string[];
+  optionalSections: string[];
+  acceptanceCriteria: string[];
+  verificationPolicy: string;
+  outputArtifactId?: string;
+  sourceApplyStatus?: string;
+  status: DocumentJobStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface DocumentIssue {
+  issueId: string;
+  type: 'DUPLICATION' | 'CONTRADICTION' | 'NUMERIC_MISMATCH' | 'TABLE_MISMATCH' | 'TERMINOLOGY_MISMATCH' | 'SECTION_CONFLICT' | 'CONCLUSION_CONFLICT';
+  severity: 'ERROR' | 'WARNING';
+  description: string;
+  evidence: string[];
+  involvedSections: string[];
+}
+
+export type DocumentArtifactState = 'STAGED' | 'WRITTEN' | 'VALIDATED' | 'COMMITTING' | 'COMMITTED';
+
+export interface SyntheticDocumentBenchmarkReport {
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  repairCount: number;
+  contradictionCount: number;
+  placeholderDetected: number;
+  reopenFailures: number;
+  forcedPassCount: number;
+}
