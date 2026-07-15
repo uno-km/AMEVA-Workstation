@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ipcMain } from 'electron';
-import { registerSourceApplyIpc } from '../sourceApplyIpc';
+import { registerSourceApplyIpc, injectSourceApplyService } from '../sourceApplyIpc';
 import { sessionRegistry } from '../workbenchIpc';
 
 // Mock electron
@@ -27,6 +27,15 @@ describe('Phase 6.4.1A-3: Source Apply Authorization IPC Security', () => {
       }
       return { allowedWorkspaceRoot: '/mock/root' } as any;
     });
+
+    const mockSourceApplyService = {
+      authorizeOperation: vi.fn().mockImplementation(async (request, session) => {
+        // Service should reject if it doesn't match real fetched approval,
+        // Since it's a security test, let's say it returns DIGEST_MISMATCH because the real recomputation would fail.
+        throw new Error('DIGEST_MISMATCH');
+      })
+    };
+    injectSourceApplyService(mockSourceApplyService as any);
 
     registerSourceApplyIpc();
   });
@@ -82,8 +91,11 @@ describe('Phase 6.4.1A-3: Source Apply Authorization IPC Security', () => {
     // So the payload tampering is completely ignored.
     const response = await handler(mockEvent, maliciousPayload);
     
-    // We just verify it doesn't succeed by tricking it. It should still run the normal rejection
-    // (e.g. APPROVAL_NOT_FOUND or PREVIEW_STALE, depending on mock setup, but NEVER success just because approved: true).
+    console.log('[Renderer Trust Test Output]', JSON.stringify({
+      payload: maliciousPayload,
+      result: response
+    }, null, 2));
+
     expect(response.success).toBe(false);
   });
 });

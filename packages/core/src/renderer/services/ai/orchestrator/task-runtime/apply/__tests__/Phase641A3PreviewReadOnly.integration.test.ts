@@ -76,13 +76,18 @@ describe('Phase 6.4.1A-3: Preview Read-Only Enforcement', () => {
     const rmSyncCount = (globalThis as any).rmSyncCount;
     const unlinkSyncCount = (globalThis as any).unlinkSyncCount;
 
-    const writeFileCount = (globalThis as any).writeFileCount;
-    const renameCount = (globalThis as any).renameCount;
-    const rmCount = (globalThis as any).rmCount;
-    const unlinkCount = (globalThis as any).unlinkCount;
+    const proof = {
+      writeFile: writeFileCount,
+      writeFileSync: writeFileSyncCount,
+      rename: renameCount,
+      renameSync: renameSyncCount,
+      unlink: unlinkCount,
+      unlinkSync: unlinkSyncCount,
+      rm: rmCount,
+      rmSync: rmSyncCount
+    };
 
-    console.log(`[Read-Only Proof] writeFileSync: ${writeFileSyncCount}, renameSync: ${renameSyncCount}, rmSync: ${rmSyncCount}, unlinkSync: ${unlinkSyncCount}`);
-    console.log(`[Read-Only Proof] writeFile: ${writeFileCount}, rename: ${renameCount}, rm: ${rmCount}, unlink: ${unlinkCount}`);
+    console.log('[Read-Only Proof JSON]\n' + JSON.stringify(proof, null, 2));
 
     expect(writeFileSyncCount).toBe(0);
     expect(renameSyncCount).toBe(0);
