@@ -189,7 +189,7 @@ export class WorkbenchSessionManager {
       }
       
       const lines = listOutput.split('\n');
-      if (lines.length < 2 || lines[0].startsWith('(디렉토리가')) return;
+      if (lines.length < 2 || lines[0].startsWith('(?�렉?�리가')) return;
 
       for (let i = 2; i < lines.length; i++) {
         const line = lines[i].trim();

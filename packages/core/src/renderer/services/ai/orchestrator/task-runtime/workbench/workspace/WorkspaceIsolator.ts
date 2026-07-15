@@ -84,7 +84,7 @@ export class WorkspaceIsolator {
     }
 
     const lines = listOutput.split('\n');
-    if (lines.length < 2 || lines[0].startsWith('(디렉토리가')) {
+    if (lines.length < 2 || lines[0].startsWith('(?�렉?�리가')) {
       return;
     }
 

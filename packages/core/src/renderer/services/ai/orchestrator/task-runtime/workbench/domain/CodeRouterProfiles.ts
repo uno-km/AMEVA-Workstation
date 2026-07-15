@@ -1,0 +1,17 @@
+export const CodeRouterProfiles = {
+  CODE_DISCOVERY: {
+    capabilities: ['TOOL_SELECTION', 'TOOL_RESULT_INTERPRETATION', 'SUMMARIZATION']
+  },
+  CODE_PLANNING: {
+    capabilities: ['PLANNING', 'STRUCTURED_OUTPUT', 'CODE_GENERATION']
+  },
+  CODE_EDIT: {
+    capabilities: ['CODE_GENERATION', 'CODE_REPAIR', 'STRUCTURED_OUTPUT']
+  },
+  CODE_VERIFICATION: {
+    capabilities: ['SEMANTIC_VERIFICATION', 'STRUCTURED_OUTPUT']
+  },
+  CODE_REPAIR: {
+    capabilities: ['CODE_REPAIR', 'TOOL_RESULT_INTERPRETATION']
+  }
+};

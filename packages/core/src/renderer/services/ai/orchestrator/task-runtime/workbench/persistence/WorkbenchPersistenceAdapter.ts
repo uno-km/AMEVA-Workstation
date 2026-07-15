@@ -31,7 +31,7 @@ export class WorkbenchPersistenceAdapter {
 
     const parsedData = data as WorkbenchPersistenceData;
 
-    // Rule 10: Resume 시 RUNNING Command를 성공으로 추정하지 마라.
+    // Rule 10: Resume ??RUNNING Command�??�공?�로 추정?��? 마라.
     // RUNNING -> INTERRUPTED
     if (parsedData.commandState) {
       for (const [cmdId, state] of Object.entries(parsedData.commandState)) {

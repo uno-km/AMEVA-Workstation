@@ -13,9 +13,7 @@ export type WorkbenchSessionStatus =
   | 'WAITING_USER';
 
 export type LargeFilePolicy = 'EXCLUDE' | 'REFERENCE_ONLY' | 'REQUIRE_APPROVAL' | 'FAIL';
-
 export type NetworkPolicy = 'DENY' | 'ALLOWLIST' | 'APPROVAL_REQUIRED';
-
 export type CapabilityStatus = 'ENFORCED' | 'OBSERVED_ONLY' | 'UNSUPPORTED';
 
 export interface ResourceLimits {
@@ -132,31 +130,264 @@ export interface CommandExecutionResult {
   capabilitiesUsed: Record<string, string>;
 }
 
+// ----------------------------------------------------------------------------
+// Phase 6.2 Code Workbench Specific Types
+// ----------------------------------------------------------------------------
+
+export type CodeJobStatus = 
+  | 'DECLARED'
+  | 'DISCOVERING'
+  | 'PLANNING'
+  | 'READY'
+  | 'EDITING'
+  | 'CHECKING'
+  | 'REPAIRING'
+  | 'VERIFYING'
+  | 'COMMITTING_OUTPUT'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'WAITING_USER'
+  | 'ROLLED_BACK';
+
+export interface CodeWorkbenchJob {
+  codeJobId: string;
+  workbenchSessionId: string;
+  missionId: string;
+  taskId: string;
+  attemptId: string;
+  objective: string;
+  repositoryRoot: string;
+  isolatedWorkspace: string;
+  baseRevision: string;
+  sourceDigest: string;
+  targetFiles: string[];
+  allowedFiles: string[];
+  protectedFiles: string[];
+  expectedChanges: string[];
+  acceptanceCriteria: string[];
+  requiredChecks: string[];
+  commandPolicy: string;
+  networkPolicy: NetworkPolicy;
+  resourceLimits: ResourceLimits;
+  routingProfile: string;
+  status: CodeJobStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface RepositoryProfile {
+  language: string;
+  frameworks: string[];
+  packageManager: string;
+  sourceRoots: string[];
+  testRoots: string[];
+  buildCommands: string[];
+  testCommands: string[];
+  lintCommands: string[];
+  formatCommands: string[];
+  typeCheckCommands: string[];
+  generatedPaths: string[];
+  protectedPaths: string[];
+  dependencyFiles: string[];
+  repositoryRevision: string;
+  confidence: number;
+  warnings: string[];
+  discoveredConfigFiles: string[];
+  discoveredScripts: Record<string, string>;
+  packageManagerEvidence: string;
+  frameworkEvidence: string;
+  compilerConfig: any;
+  projectReferences: string[];
+  pathAliases: Record<string, string>;
+  discoveryWarnings: string[];
+}
+
+export type CodeModificationScope = 'FILE' | 'CLASS' | 'FUNCTION' | 'METHOD' | 'FIELD' | 'IMPORT' | 'EXPORT' | 'VARIABLE' | 'INTERFACE' | 'TYPE_ALIAS' | 'TEST' | 'CONFIG';
+
 export interface CodeModification {
-  logicalPath: string;
-  operation: 'CREATE' | 'UPDATE' | 'DELETE';
+  changeId: string;
+  targetFile: string;
+  targetSymbol?: string;
+  scope: CodeModificationScope;
+  changeType: 'CREATE' | 'UPDATE' | 'DELETE';
+  rationale: string;
+  expectedBehavior: string;
+  sourceRevision: string;
+  expectedOldHash: string;
+  allowedRanges: string[];
+  protectedRanges: string[];
+  requiredChecks: string[];
+  dependencies: string[];
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   content?: string;
-  startLine?: number;
-  endLine?: number;
 }
 
 export interface CodeChangePlan {
   planId: string;
   objective: string;
-  modifications: CodeModification[];
-  expectedImpact: string[];
+  affectedSymbols: string[];
+  filesToRead: string[];
+  filesToModify: string[];
+  filesToCreate: string[];
+  filesToDelete: string[];
+  protectedFiles: string[];
+  plannedChanges: CodeModification[];
+  expectedBehavior: string;
+  requiredChecks: string[];
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  approvalRequired: boolean;
+  rollbackStrategy: string;
+  modelId: string;
+  confidence: number;
 }
 
-export interface ValidationResult {
-  passed: boolean;
-  errors: string[];
-  warnings: string[];
-  stdout?: string;
-  stderr?: string;
+export type CheckExecutionMode = 
+  | 'HOST_COMMAND_EXECUTED'
+  | 'SYNTHETIC_COMMAND_EXECUTED'
+  | 'BLOCKED_BY_APPROVAL_INTEGRATION'
+  | 'BLOCKED_BY_POLICY'
+  | 'BLOCKED_BY_ENVIRONMENT';
+
+export type CheckCommandClassification = 
+  | 'TRUSTED_LOCAL_CHECK'
+  | 'APPROVAL_REQUIRED'
+  | 'BLOCKED_BY_POLICY';
+
+export interface CheckResult {
+  checkId: string;
+  checkType: string;
+  sourceOfCommand: string;
+  commandPlan: CommandPlan;
+  required: boolean;
+  capabilityStatus: 'AVAILABLE' | 'BLOCKED_BY_POLICY' | 'BLOCKED_BY_APPROVAL_INTEGRATION' | 'NOT_CONFIGURED' | 'UNSUPPORTED';
+  approvalStatus: string;
+  status: 'NOT_RUN' | 'RUNNING' | 'PASS' | 'FAIL' | 'BLOCKED' | 'INTERRUPTED' | 'NOT_APPLICABLE' | 'BLOCKED_BY_DEPENDENCY' | 'CHECK_SIDE_EFFECT_DETECTED';
+  exitCode: number;
+  startedAt: number;
+  completedAt: number;
+  durationMs: number;
+  stdoutSummary: string;
+  stderrSummary: string;
+  diagnostics: CodeDiagnostic[];
+  artifactReferences: string[];
+  affectedFiles: string[];
+  retryable: boolean;
+  executionMode: CheckExecutionMode;
+  verifiedRevision: string;
+  inputDigest: string;
+  dependsOn?: string[];
+  blocks?: string[];
+  rerunPolicy?: string;
+  scope?: string;
 }
 
-export interface RepairAttempt {
-  attemptNumber: number;
-  validationResult: ValidationResult;
-  proposedFixes: CodeModification[];
+export interface CodeDiagnostic {
+  diagnosticId: string;
+  signature?: string;
+  parserType: string;
+  tool: string;
+  checkId?: string;
+  checkType: string;
+  severity: 'ERROR' | 'WARNING' | 'INFO';
+  logicalFile?: string;
+  file: string;
+  line?: number;
+  column?: number;
+  code?: string;
+  message: string;
+  normalizedMessage: string;
+  relatedSymbol?: string;
+  failingTestId?: string;
+  retryScope: CodeModificationScope;
+  retryable: boolean;
+  confidence?: number;
+  rawOutputReference: string;
+}
+
+export interface CodeRepairPolicy {
+  maxSameDiagnosticRepeats: number;
+  maxRepairAttempts: number;
+  minimumDiagnosticImprovement: number;
+  minimumCheckImprovement: number;
+  stopOnSameHash: boolean;
+  allowStrategyChange: boolean;
+  maxStrategyChanges?: number;
+}
+
+export interface TestWeakeningResult {
+  testFile: string;
+  weakeningDetected: boolean;
+  weakeningTypes: string[];
+  removedTests: string[];
+  skippedTestsAdded: string[];
+  todoTestsAdded: string[];
+  onlyMarkersAdded: string[];
+  assertionsBefore: number;
+  assertionsAfter: number;
+  swallowedErrorsAdded: string[];
+  snapshotUpdates: string[];
+  expectationChanges: Record<string, string>;
+  justificationRequired: boolean;
+  evidence: string[];
+}
+
+export interface SyntheticCodeBenchmarkReport {
+  totalJobs: number;
+  completedJobs: number;
+  failedJobs: number;
+  waitingUserJobs: number;
+  averageCommandCount: number;
+  averageRepairCount: number;
+  partialPatchCount: number;
+  fullFileReplacementCount: number;
+  noProgressCount: number;
+  testWeakeningBlockedCount: number;
+  approvalBlockedCount: number;
+  requiredCheckNotRunSuccessCount: number;
+  forcedPassCount: number;
+  sourceDirectModificationCount: number;
+  averageDurationMs: number;
+}
+
+export type SourceApplyStatus = 
+  | 'NOT_REQUESTED'
+  | 'BLOCKED_BY_APPROVAL_INTEGRATION'
+  | 'WAITING_APPROVAL'
+  | 'APPLIED'
+  | 'NOT_APPLICABLE';
+
+export interface CodeChangeReport {
+  codeJobId: string;
+  objective: string;
+  baseRevision: string;
+  outputRevision: string;
+  addedFiles: string[];
+  modifiedFiles: string[];
+  deletedFiles: string[];
+  renamedCandidates: string[];
+  changedSymbols: string[];
+  changedRanges: string[];
+  checks: CheckResult[];
+  testSummary: string;
+  buildSummary: string;
+  unresolvedDiagnostics: CodeDiagnostic[];
+  riskSummary: string;
+  modelRoutingSummary: string;
+  approvalSummary: string;
+  sourceApplyStatus: SourceApplyStatus;
+  artifactIds: string[];
+  finalOutcome: string;
+}
+
+export interface RepairRequest {
+  diagnosticSignatures: string[];
+  failingCheckId: string;
+  targetFile: string;
+  targetSymbol?: string;
+  retryScope: CodeModificationScope;
+  expectedOldHash: string;
+  sourceRevision: string;
+  protectedRanges: string[];
+  previousRepairStrategy?: string;
+  doNotRepeat: boolean;
 }
