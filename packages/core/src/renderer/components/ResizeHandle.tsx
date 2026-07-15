@@ -41,6 +41,7 @@ interface ResizeHandleProps {
   placement?: 'right' | 'left'
   /** 높이 기본값은 100% */
   height?: string
+  onDoubleClick?: (e: React.MouseEvent) => void
 }
 
   /*
@@ -54,6 +55,7 @@ export function ResizeHandle({
   isDragging,
   placement = 'right',
   height = '100%',
+  onDoubleClick,
 }: ResizeHandleProps) {
   const [isHovered, setIsHovered] = useState(false)
       /*
@@ -70,6 +72,10 @@ export function ResizeHandle({
       onMouseDown={(e) => {
         e.stopPropagation()
         onMouseDown(e)
+      }}
+      onDoubleClick={(e) => {
+        e.stopPropagation()
+        if (onDoubleClick) onDoubleClick(e)
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

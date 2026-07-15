@@ -388,9 +388,26 @@ export default function App() {
   const { width: sidebarWidth, isDragging: isSidebarDragging, handleMouseDown: handleSidebarResizeStart } = usePanelResize({
     storageKey: 'sidebar', defaultWidth: 280, minWidth: 160, maxWidth: 520, direction: 'right'
   })
-  const { width: aiPanelWidth, isDragging: isAIPanelDragging, handleMouseDown: handleAIPanelResizeStart } = usePanelResize({
-    storageKey: 'ai-panel', defaultWidth: 320, minWidth: 220, maxWidth: 600, direction: 'left'
+  const maxAIPanelWidth = window.innerWidth - (showSidebar ? sidebarWidth : 0) - 40 - 6
+
+  const { width: aiPanelWidth, isDragging: isAIPanelDragging, handleMouseDown: handleAIPanelResizeStart, setWidth: setAIPanelWidth } = usePanelResize({
+    storageKey: 'ai-panel', defaultWidth: 320, minWidth: 220, maxWidth: maxAIPanelWidth, direction: 'left'
   })
+
+  const handleAIPanelDoubleClick = useCallback(() => {
+    if (Math.abs(aiPanelWidth - maxAIPanelWidth) < 20) {
+      setAIPanelWidth(320)
+    } else {
+      setAIPanelWidth(maxAIPanelWidth)
+    }
+  }, [aiPanelWidth, maxAIPanelWidth, setAIPanelWidth])
+
+  // Keep AI Panel width clamped within maxAIPanelWidth at all times to prevent overlapping left sidebar/edges
+  useEffect(() => {
+    if (aiPanelWidth > maxAIPanelWidth) {
+      setAIPanelWidth(maxAIPanelWidth)
+    }
+  }, [maxAIPanelWidth, aiPanelWidth, setAIPanelWidth])
 
   /**
    * [SIDE EFFECT - Active Tab Sync]
@@ -537,6 +554,7 @@ export default function App() {
         aiPanelWidth={aiPanelWidth}
         isAIPanelDragging={isAIPanelDragging}
         handleAIPanelResizeStart={handleAIPanelResizeStart}
+        handleAIPanelDoubleClick={handleAIPanelDoubleClick}
         isAIPanelReady={isAIPanelReady}
         showModelHub={showModelHub}
         handleSidebarResizeStart={handleSidebarResizeStart}
