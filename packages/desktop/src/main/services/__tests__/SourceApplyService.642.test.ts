@@ -6,6 +6,7 @@ import crypto from 'crypto';
 import * as os from 'os';
 
 import { SourceApplyService } from '../SourceApplyService';
+import { MainProcessDocumentHostService } from '../MainProcessDocumentHostService';
 import { 
   ApprovalRepositoryInMemory, 
   SourceApplyRepositoryInMemory, 
@@ -299,9 +300,14 @@ describe('SourceApplyService Phase 6.4.2 Verification and Reconciliation', () =>
     preview!.affectedPaths = ['document.docx'];
     await previewRepo.saveSourceApplyPreview(preview!);
     const fsp = require('fs/promises');
-    const path = require('path');
     const recordWS = await applyExecRepo.getExecutionRecord(executionId);
-    await fsp.writeFile(path.join(recordWS.workspaceRoot, 'document.docx'), 'fake');
+    const docService = new MainProcessDocumentHostService();
+    await docService.generateArtifact({
+      type: 'DOCUMENT_GENERATE',
+      artifactFormat: 'DOCX',
+      outputLogicalPath: 'document.docx',
+      integratedDocumentReference: 'Hello AMEVA!'
+    } as any, recordWS.workspaceRoot);
     
     const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
     

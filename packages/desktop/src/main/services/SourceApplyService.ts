@@ -15,6 +15,7 @@ import type { RepositoryArtifact } from '../../../../core/src/renderer/services/
 import type { IApprovalRepositoryPersistence, IArtifactRepositoryPersistence, ISourceApplyRepositoryPersistence, IApplyExecutionPersistence } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/persistence/RepositoryInterfaces';
 import { WorkspaceBlockFlag } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/apply/types.js';
 import type { ApprovalRecord, ApprovalAuthorizationTicket } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/approval/types';
+import { MainProcessDocumentHostService } from './MainProcessDocumentHostService';
 import { SourceApplyDigestService } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/apply/SourceApplyDigestService';
 import { ExecutionTraceManager } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/trace/ExecutionTraceManager';
 import type { IpcAuthorizeSourceApplyRequest, IpcAuthorizeSourceApplyResponse, IpcExecuteApplyRequest, IpcExecuteApplyResponse } from '../../../../core/src/shared/ipc/sourceApplyIpcContract';
@@ -639,8 +640,22 @@ export class SourceApplyService {
          if (file.endsWith('.pdf')) {
             verificationPassed = false;
             verificationError = 'PDF_CREATION_NOT_ALLOWED';
-         } else if (file.endsWith('.docx') && file.includes('fail-docx')) {
-            verificationPassed = false;
+         } else if (file.endsWith('.docx')) {
+            try {
+              const docService = new MainProcessDocumentHostService();
+              const extRes = await docService.extractArtifact({
+                type: 'DOCUMENT_EXTRACT',
+                artifactReference: file,
+                artifactFormat: 'DOCX'
+              }, workspaceRoot);
+              if (!extRes.success) {
+                verificationPassed = false;
+                verificationError = 'DOCX_PARSE_FAILED';
+              }
+            } catch (err) {
+              verificationPassed = false;
+              verificationError = 'DOCX_PARSE_FAILED';
+            }
             verificationError = 'DOCX_PARSE_FAILED';
          } else if ((file.endsWith('.md') || file.endsWith('.html')) && file.includes('fail-md')) {
             verificationPassed = false;
