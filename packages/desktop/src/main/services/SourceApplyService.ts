@@ -11,151 +11,171 @@ import crypto from 'crypto';
 
 import type { SourceApplyRequest, SourceApplyPreview, SourceApplyOperation, ConflictType, ApplyMode } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/apply/types';
 import type { RepositoryArtifact } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/artifact/repository/types';
+import type { IApprovalRepositoryPersistence, IArtifactRepositoryPersistence, ISourceApplyRepositoryPersistence } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/persistence/RepositoryInterfaces';
+import type { ApprovalRecord, ApprovalAuthorizationTicket } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/approval/types';
+import { SourceApplyDigestService } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/apply/SourceApplyDigestService';
+import { ExecutionTraceManager } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/trace/ExecutionTraceManager';
+import type { IpcAuthorizeSourceApplyRequest, IpcAuthorizeSourceApplyResponse } from '../../../../core/src/shared/ipc/sourceApplyIpcContract';
 
 export class SourceApplyService {
-  /**
-   * Generates a preview of the source apply operation without modifying the target.
-   */
-  public async createPreview(
-    request: {
-      requestId: string;
-      missionId: string;
-      taskId: string;
-      workbenchSessionId: string;
-      sourceWorkspaceDigest: string;
-      targetArtifact: RepositoryArtifact;
-    },
-    allowedWorkspaceRoot: string
-  ): Promise<SourceApplyPreview> {
-    const { targetArtifact } = request;
-    const targetFilePath = path.join(allowedWorkspaceRoot, targetArtifact.logicalPath);
+  constructor(
+    private readonly approvalRepo: IApprovalRepositoryPersistence,
+    private readonly previewRepo: ISourceApplyRepositoryPersistence,
+    private readonly artifactRepo: IArtifactRepositoryPersistence,
+    private readonly traceManager: ExecutionTraceManager
+  ) {}
 
-    // Verify containment
-    const resolvedPath = path.resolve(targetFilePath);
-    if (!resolvedPath.startsWith(path.resolve(allowedWorkspaceRoot))) {
-      throw new Error('INVALID_PATH: Path traversal detected.');
-    }
-
-    const preview: SourceApplyPreview = {
-      requestId: request.requestId,
-      artifactId: targetArtifact.repositoryArtifactId,
-      artifactRevision: targetArtifact.revision,
-      sourceDigest: request.sourceWorkspaceDigest,
-      artifactDigest: targetArtifact.contentHash,
-      addedFiles: [],
-      modifiedFiles: [],
-      deletedFiles: [],
-      renamedCandidates: [],
-      changedSymbols: [],
-      changedRanges: [],
-      protectedPathViolations: [],
-      conflicts: [],
-      riskLevel: 'MEDIUM',
-      approvalRequired: true,
-      requiredChecks: [],
-      previewDigest: crypto.randomBytes(16).toString('hex'),
-      createdAt: Date.now()
-    };
-
-    const exists = fs.existsSync(resolvedPath);
-
-    if (exists) {
-      preview.modifiedFiles.push(targetArtifact.logicalPath);
-    } else {
-      preview.addedFiles.push(targetArtifact.logicalPath);
-    }
-
-    // In a real implementation, we would compare the artifact content with the existing file
-    // to populate changedRanges, conflicts, etc.
-
-    return preview;
-  }
-
-  /**
-   * Executes the actual apply operation on the filesystem.
-   */
-  public async executeApply(
-    operationId: string,
-    applyRequest: SourceApplyRequest,
-    preview: SourceApplyPreview,
-    targetArtifact: RepositoryArtifact,
-    allowedWorkspaceRoot: string
-  ): Promise<SourceApplyOperation> {
-    const targetFilePath = path.join(allowedWorkspaceRoot, targetArtifact.logicalPath);
-
-    // Verify containment
-    const resolvedPath = path.resolve(targetFilePath);
-    if (!resolvedPath.startsWith(path.resolve(allowedWorkspaceRoot))) {
-      throw new Error('INVALID_PATH: Path traversal detected.');
-    }
-
-    const operation: SourceApplyOperation = {
-      operationId,
-      requestId: applyRequest.sourceApplyRequestId,
-      missionId: applyRequest.missionId,
-      status: 'APPLYING',
-      startedAt: Date.now(),
-      updatedAt: Date.now(),
-      appliedFileHashes: {}
+  public async authorizeOperation(
+    request: IpcAuthorizeSourceApplyRequest,
+    session: any
+  ): Promise<IpcAuthorizeSourceApplyResponse> {
+    const traceContext = {
+      correlationId: crypto.randomUUID(),
+      approvalId: request.approvalId,
+      previewId: request.previewId
     };
 
     try {
-      // 1. Snapshot creation (Rollback preparation)
-      const rollbackDir = path.join(allowedWorkspaceRoot, '.ameva', 'snapshots', operationId);
-      await fsp.mkdir(rollbackDir, { recursive: true });
+      this.traceManager.emitTrace(request.missionId, 'AUTHORIZATION_REQUESTED', 'SourceApplyService', traceContext);
 
-      if (fs.existsSync(resolvedPath)) {
-        await fsp.copyFile(resolvedPath, path.join(rollbackDir, path.basename(resolvedPath)));
+      // 1. Re-query Approval Repository
+      const approval = await this.approvalRepo.getApprovalRecord(request.approvalId);
+      if (!approval) {
+        this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_NOT_FOUND');
+        return { success: false, errorCode: 'APPROVAL_NOT_FOUND', errorMessage: 'Approval record not found.' };
       }
 
-      operation.rollbackSnapshotId = operationId;
-
-      // 2. Perform modification
-      // The artifact storageReference contains the path to the actual artifact content
-      if (!fs.existsSync(targetArtifact.storageReference)) {
-         throw new Error(`Artifact payload not found at ${targetArtifact.storageReference}`);
+      if (approval.status === 'INVALIDATED') {
+        this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_INVALIDATED');
+        return { success: false, errorCode: 'APPROVAL_INVALIDATED', errorMessage: 'Approval has been invalidated.' };
       }
 
-      await fsp.mkdir(path.dirname(resolvedPath), { recursive: true });
-      await fsp.copyFile(targetArtifact.storageReference, resolvedPath);
+      // 2. Re-query Preview and Artifact
+      const preview = await this.previewRepo.getPreview(request.previewId);
+      if (!preview) {
+        return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Preview not found.' };
+      }
 
-      // Record applied hash
-      const content = await fsp.readFile(resolvedPath);
-      const hash = crypto.createHash('sha256').update(content).digest('hex');
-      operation.appliedFileHashes![targetArtifact.logicalPath] = hash;
+      const artifact = await this.artifactRepo.getRepositoryArtifact(request.repositoryArtifactId);
+      
+      // 3. Artifact Validation Hardening
+      if (!artifact || artifact.missionId !== request.missionId || artifact.revision !== request.artifactRevision) {
+        this.emitAuthFailure(request.missionId, traceContext, 'ARTIFACT_MISMATCH');
+        return { success: false, errorCode: 'ARTIFACT_MISMATCH', errorMessage: 'Artifact validation failed.' };
+      }
 
-      operation.status = 'APPLIED';
-      operation.updatedAt = Date.now();
-      return operation;
+      // 4. Approval-Preview-Artifact Linking Hardening
+      if (approval.previewId !== request.previewId || preview.repositoryArtifactId !== artifact.repositoryArtifactId) {
+         this.emitAuthFailure(request.missionId, traceContext, 'DIGEST_MISMATCH');
+         return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Linkage validation failed.' };
+      }
+
+      // 5. Capability Token Hard Validation
+      if (
+        approval.missionId !== request.missionId ||
+        approval.taskId !== request.taskId ||
+        approval.attemptId !== request.attemptId ||
+        approval.workbenchSessionId !== request.workbenchSessionId
+      ) {
+         this.emitAuthFailure(request.missionId, traceContext, 'CAPABILITY_INVALID');
+         return { success: false, errorCode: 'CAPABILITY_INVALID', errorMessage: 'Capability token binding mismatch.' };
+      }
+
+      // 6. Full Digest Recomputation (MANDATORY)
+      const allowedWorkspaceRoot = session.allowedWorkspaceRoot;
+      const actualSourceDigest = await SourceApplyDigestService.computeSourceDigest(allowedWorkspaceRoot, preview.affectedPaths);
+      
+      if (actualSourceDigest !== approval.sourceDigest) {
+         // STALE detection
+         await this.previewRepo.updatePreviewStatus(request.previewId, 'STALE');
+         await this.approvalRepo.invalidateApproval({
+            approvalId: request.approvalId,
+            invalidationReason: 'SOURCE_DIGEST_MISMATCH',
+            currentSourceDigest: actualSourceDigest,
+            now: Date.now()
+         });
+         this.emitAuthFailure(request.missionId, traceContext, 'PREVIEW_STALE');
+         return { success: false, errorCode: 'PREVIEW_STALE', errorMessage: 'Preview is stale.' };
+      }
+
+      const recomputedPreviewDigest = SourceApplyDigestService.computePreviewDigest(preview);
+      const recomputedOperationDigest = SourceApplyDigestService.computeOperationDigest(preview);
+      const recomputedAffectedPathsDigest = SourceApplyDigestService.computeAffectedPathsDigest(preview.affectedPaths);
+      const recomputedArtifactDigest = SourceApplyDigestService.computeArtifactDigest(artifact.revision, artifact.contentHash);
+
+      if (
+        recomputedPreviewDigest !== approval.previewDigest ||
+        recomputedOperationDigest !== approval.operationDigest ||
+        recomputedAffectedPathsDigest !== approval.affectedPathsDigest ||
+        recomputedArtifactDigest !== approval.artifactDigest
+      ) {
+         await this.approvalRepo.invalidateApproval({
+            approvalId: request.approvalId,
+            invalidationReason: 'DIGEST_MISMATCH',
+            now: Date.now()
+         });
+         this.emitAuthFailure(request.missionId, traceContext, 'DIGEST_MISMATCH');
+         return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Digest recomputation mismatch.' };
+      }
+
+      // 7. Atomic Consumption
+      const reserveResult = await this.approvalRepo.compareAndReserveApproval({
+         approvalId: request.approvalId,
+         sourceApplyRequestId: request.sourceApplyRequestId,
+         sourceApplyOperationId: request.sourceApplyOperationId,
+         missionId: request.missionId,
+         taskId: request.taskId,
+         attemptId: request.attemptId,
+         workbenchSessionId: request.workbenchSessionId,
+         repositoryArtifactId: request.repositoryArtifactId,
+         artifactRevision: request.artifactRevision,
+         sourceWorkspaceId: request.sourceWorkspaceReference,
+         sourceDigest: actualSourceDigest,
+         previewDigest: recomputedPreviewDigest,
+         operationDigest: recomputedOperationDigest,
+         affectedPathsDigest: recomputedAffectedPathsDigest,
+         riskLevel: approval.riskLevel,
+         now: Date.now()
+      });
+
+      if (!reserveResult.success) {
+         this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_INVALIDATED');
+         return { success: false, errorCode: 'APPROVAL_INVALIDATED', errorMessage: 'Atomic reservation failed.' };
+      }
+
+      this.traceManager.emitTrace(request.missionId, 'AUTHORIZATION_GRANTED', 'SourceApplyService', {
+        ...traceContext,
+        result: 'SUCCESS'
+      });
+
+      return {
+        success: true,
+        authorizationTicketId: reserveResult.ticket!.ticketId
+      };
+
     } catch (e: any) {
-      operation.status = 'FAILED';
-      operation.error = e.message;
-      operation.updatedAt = Date.now();
-      throw e;
+      this.emitAuthFailure(request.missionId, traceContext, 'DIGEST_MISMATCH');
+      return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: e.message };
     }
   }
 
-  /**
-   * Reverts the applied changes using the snapshot.
-   */
-  public async rollbackApply(
-    operationId: string,
-    rollbackSnapshotId: string,
-    allowedWorkspaceRoot: string
-  ): Promise<void> {
-    const rollbackDir = path.join(allowedWorkspaceRoot, '.ameva', 'snapshots', rollbackSnapshotId);
-    if (!fs.existsSync(rollbackDir)) {
-      throw new Error(`Rollback snapshot ${rollbackSnapshotId} not found.`);
-    }
+  private emitAuthFailure(missionId: string, context: any, reasonCode: string) {
+    this.traceManager.emitTrace(missionId, 'AUTHORIZATION_VALIDATION_FAILED', 'SourceApplyService', {
+      ...context,
+      result: 'FAIL',
+      reasonCode
+    });
+  }
 
-    // A simplified rollback for a single file. 
-    // In reality, we need the RollbackSnapshotReference manifest to know which files to restore where.
-    const files = await fsp.readdir(rollbackDir);
-    for (const file of files) {
-      // Very naive fallback
-      const snapFilePath = path.join(rollbackDir, file);
-      // We assume logicalPath or some metadata was saved.
-      // Since it's a stub, we will just declare success for testing purposes, but this needs proper mapping.
-    }
+  public async executeApply(): Promise<any> {
+    throw new Error('Phase 6.4.1B Required');
+  }
+
+  public async rollbackApply(): Promise<any> {
+    throw new Error('Phase 6.4.1B Required');
+  }
+
+  public async createPreview(): Promise<any> {
+     throw new Error('Preview creation moved to Renderer Phase');
   }
 }
