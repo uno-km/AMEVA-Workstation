@@ -36,7 +36,7 @@ function verifySender(event: Electron.IpcMainInvokeEvent): void {
 function handleSafeError(e: any): any {
   const msg = e instanceof Error ? e.message : String(e);
   
-  // Rule 2: REMOVE "error" field completely
+  
   // Rule 3: errorCode MUST be the REAL failure reason
   // Rule 4: NO wrapping, NO abstraction, NO masking
   return { success: false, errorCode: msg };
