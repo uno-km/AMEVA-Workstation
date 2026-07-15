@@ -5,15 +5,20 @@
  * @role BlockNote Custom Block for Excel Viewer/Editor
  */
 
-import React, { useRef, useState, useEffect, lazy, Suspense } from 'react'
+import { useRef, useState, useEffect, lazy, Suspense } from 'react'
 import { createReactBlockSpec } from '@blocknote/react'
 import { Maximize2, X, Table } from 'lucide-react'
 
 const LazyWorkbook = lazy(() =>
   import('@fortune-sheet/react').then((m) => {
-    // Dynamic import for CSS
-    import('@fortune-sheet/react/dist/index.css' as any)
-    return { default: m.Workbook }
+    try {
+      import('@fortune-sheet/react/dist/index.css' as any)
+    } catch (_) {}
+    const Comp = (m.Workbook || m.default?.Workbook || m.default) as any;
+    if (!Comp) {
+      console.error('[ExcelBlock] FortuneSheet Workbook component not found in module:', m);
+    }
+    return { default: Comp || (() => <div style={{ padding: 20, color: '#ef4444' }}>Excel Component Load Failed</div>) };
   })
 )
 
@@ -36,10 +41,14 @@ const ExcelBlockSpec = createReactBlockSpec(
 
       useEffect(() => {
         setIsMounted(true)
-        const timer = setTimeout(() => {
-          window.dispatchEvent(new Event('resize'))
-        }, 150)
-        return () => clearTimeout(timer)
+        const timer1 = setTimeout(() => window.dispatchEvent(new Event('resize')), 150)
+        const timer2 = setTimeout(() => window.dispatchEvent(new Event('resize')), 500)
+        const timer3 = setTimeout(() => window.dispatchEvent(new Event('resize')), 1500)
+        return () => {
+          clearTimeout(timer1)
+          clearTimeout(timer2)
+          clearTimeout(timer3)
+        }
       }, [])
 
       const [sheetData] = useState(() => {
@@ -217,7 +226,7 @@ const ExcelBlockSpec = createReactBlockSpec(
                     <button onClick={() => setIsFullScreen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
                   </div>
                 </div>
-                <div style={{ flex: 1, position: 'relative', color: '#000' }}>
+                <div style={{ flex: 1, position: 'relative', color: '#000', overflow: 'hidden' }}>
                   {isMounted && (
                     <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
                       <LazyWorkbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />
@@ -247,7 +256,7 @@ const ExcelBlockSpec = createReactBlockSpec(
                   </button>
                 </div>
               </div>
-              <div style={{ flex: 1, position: 'relative', color: '#000' }}>
+              <div style={{ flex: 1, position: 'relative', color: '#000', overflow: 'hidden' }}>
                 {isMounted && (
                   <Suspense fallback={<div style={{ padding: '20px' }}>Loading Excel...</div>}>
                     <LazyWorkbook ref={workbookRef} data={sheetData} lang="en" onChange={handleSave} />

@@ -172,29 +172,159 @@ export async function exportToWord(blocks: ExporterBlock[]): Promise<Buffer> {
 
       // 5) 코드 블록 (다크 테마 배경에 연두색 폰트로 가시성 매핑)
       case 'codeBlock': {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `lang`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const lang = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
         const lang = block.props?.language || ''
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `lines`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+        
+        // INTERCEPT AMEVA-EXCEL
+        if (lang === 'ameva-excel') {
+          const excelDataRaw = plainText || '[]'
+          try {
+            const sheets = JSON.parse(excelDataRaw)
+            if (Array.isArray(sheets) && sheets.length > 0) {
+              for (const sheet of sheets) {
+                const celldata = sheet.celldata || []
+                if (celldata.length === 0) continue
+                
+                let maxRow = 0
+                let maxCol = 0
+                for (const cell of celldata) {
+                  if (cell.r > maxRow) maxRow = cell.r
+                  if (cell.c > maxCol) maxCol = cell.c
+                }
+                
+                const grid = Array(maxRow + 1).fill(null).map(() => Array(maxCol + 1).fill(null))
+                for (const cell of celldata) {
+                  grid[cell.r][cell.c] = cell.v
+                }
+
+                docChildren.push(new Paragraph({
+                  children: [new TextRun({ text: `[Excel] ${sheet.name || 'Sheet'}`, bold: true, size: 24, color: '475569', font: 'Calibri' })],
+                  spacing: { before: 200, after: 120 }
+                }))
+
+                const docxRows = grid.map((row, ri) => {
+                  const docxCells = row.map((v, ci) => {
+                    let val = ''
+                    if (v) {
+                      if (typeof v === 'string' || typeof v === 'number') val = String(v)
+                      else if (v.m !== undefined) val = String(v.m)
+                      else if (v.v !== undefined) val = String(v.v)
+                    }
+                    return new TableCell({
+                      children: [new Paragraph({
+                        children: [new TextRun({ text: val, font: 'Calibri', size: 20 })],
+                        spacing: { after: 0 }
+                      })],
+                      borders: {
+                        top: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                        bottom: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                        left: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                        right: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                      },
+                      margins: { top: 40, bottom: 40, left: 80, right: 80 },
+                    })
+                  })
+                  return new TableRow({ children: docxCells })
+                })
+                
+                docChildren.push(new DocxTable({
+                  rows: docxRows,
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  layout: TableLayoutType.AUTOFIT,
+                }))
+                docChildren.push(new Paragraph({ children: [], spacing: { after: 160 } }))
+              }
+              break
+            }
+          } catch (e) {
+            console.error('[exportToWord] ameva-excel 파싱 실패:', e)
+          }
+        }
+
+        // INTERCEPT AMEVA-KANBAN
+        if (lang === 'ameva-kanban') {
+          const kanbanDataRaw = plainText || '{}'
+          try {
+            const board = JSON.parse(kanbanDataRaw)
+            const cols = board.columns || []
+            if (cols.length > 0) {
+              docChildren.push(new Paragraph({
+                children: [new TextRun({ text: `[Kanban Board]`, bold: true, size: 28, color: '475569', font: 'Calibri' })],
+                spacing: { before: 200, after: 120 }
+              }))
+
+              const maxCards = Math.max(...cols.map(c => (c.cards || []).length))
+              const docxRows = []
+              
+              docxRows.push(new TableRow({
+                children: cols.map(col => new TableCell({
+                  children: [new Paragraph({
+                    children: [new TextRun({ text: `${col.title || 'Untitled'} (${(col.cards||[]).length})`, bold: true, size: 22, color: '1E293B', font: 'Calibri' })],
+                    alignment: AlignmentType.CENTER
+                  })],
+                  shading: { type: ShadingType.CLEAR, fill: 'F1F5F9' },
+                  borders: {
+                    top: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                    bottom: { style: BorderStyle.SINGLE, size: 4, color: '94A3B8' },
+                    left: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                    right: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                  },
+                  margins: { top: 80, bottom: 80, left: 80, right: 80 },
+                }))
+              }))
+
+              for (let i = 0; i < maxCards; i++) {
+                docxRows.push(new TableRow({
+                  children: cols.map(col => {
+                    const card = (col.cards || [])[i]
+                    const children = []
+                    if (card) {
+                      children.push(new Paragraph({
+                        children: [new TextRun({ text: card.title || '', bold: true, size: 20, color: '334155', font: 'Calibri' })],
+                        spacing: { after: 40 }
+                      }))
+                      if (card.labels && card.labels.length > 0) {
+                        const labelText = card.labels.map(l => `[${l.text}]`).join(' ')
+                        children.push(new Paragraph({
+                          children: [new TextRun({ text: labelText, size: 16, color: '64748B', font: 'Calibri' })],
+                          spacing: { after: 40 }
+                        }))
+                      }
+                      if (card.description) {
+                        children.push(new Paragraph({
+                          children: [new TextRun({ text: card.description, size: 18, color: '475569', font: 'Calibri' })],
+                        }))
+                      }
+                    } else {
+                      children.push(new Paragraph({ children: [new TextRun({ text: '' })] }))
+                    }
+                    return new TableCell({
+                      children: children.length > 0 ? children : [new Paragraph({ children: [new TextRun({ text: '' })] })],
+                      borders: {
+                        top: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                        bottom: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                        left: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                        right: { style: BorderStyle.SINGLE, size: 2, color: 'CBD5E1' },
+                      },
+                      margins: { top: 80, bottom: 80, left: 80, right: 80 },
+                    })
+                  })
+                }))
+              }
+
+              docChildren.push(new DocxTable({
+                rows: docxRows,
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                layout: TableLayoutType.FIXED,
+              }))
+              docChildren.push(new Paragraph({ children: [], spacing: { after: 160 } }))
+              break
+            }
+          } catch (e) {
+            console.error('[exportToWord] ameva-kanban 파싱 실패:', e)
+          }
+        }
+
         const lines = plainText.split('\n')
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `lang`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (lang)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
         if (lang) {
           docChildren.push(new Paragraph({
             children: [new TextRun({ text: lang.toUpperCase(), font: 'Consolas', size: 16, color: '64748B', bold: true })],

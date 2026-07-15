@@ -131,7 +131,88 @@ export async function exportToPPTX(blocks: ExporterBlock[]): Promise<Buffer> {
         currentSlide.contents.push({ type: 'bullet', text: (block.type === 'numberedListItem' ? '1. ' : '') + text })
       }
     } else if (block.type === 'codeBlock') {
-      currentSlide.contents.push({ type: 'code', text })
+      const lang = block.props?.language || ''
+      if (lang === 'ameva-excel') {
+        try {
+          const sheets = JSON.parse(text)
+          if (Array.isArray(sheets) && sheets.length > 0) {
+            for (const sheet of sheets) {
+              const celldata = sheet.celldata || []
+              if (celldata.length === 0) continue
+              let maxRow = 0
+              let maxCol = 0
+              for (const cell of celldata) {
+                if (cell.r > maxRow) maxRow = cell.r
+                if (cell.c > maxCol) maxCol = cell.c
+              }
+              const grid = Array(maxRow + 1).fill(null).map(() => Array(maxCol + 1).fill(null))
+              for (const cell of celldata) {
+                grid[cell.r][cell.c] = cell.v
+              }
+              currentSlide.contents.push({ type: 'bullet', text: `[Excel] ${sheet.name || 'Sheet'}` })
+              
+              const rows = []
+              for (let r = 0; r <= maxRow; r++) {
+                const cells = []
+                for (let c = 0; c <= maxCol; c++) {
+                  const v = grid[r][c]
+                  let val = ''
+                  if (v) {
+                    if (typeof v === 'string' || typeof v === 'number') val = String(v)
+                    else if (v.m !== undefined) val = String(v.m)
+                    else if (v.v !== undefined) val = String(v.v)
+                  }
+                  cells.push([{ text: val }])
+                }
+                rows.push({ cells })
+              }
+              currentSlide.contents.push({ type: 'table', tableRows: rows })
+            }
+          }
+        } catch (e) {
+          console.error('[exportToPPTX] ameva-excel 파싱 실패:', e)
+        }
+      } else if (lang === 'ameva-kanban') {
+        try {
+          const board = JSON.parse(text)
+          const cols = board.columns || []
+          if (cols.length > 0) {
+            currentSlide.contents.push({ type: 'bullet', text: `[Kanban Board]` })
+            const maxCards = Math.max(...cols.map(c => (c.cards || []).length))
+            const rows = []
+            
+            // Header
+            rows.push({
+              cells: cols.map(col => [{ text: `${col.title || 'Untitled'} (${(col.cards||[]).length})` }])
+            })
+            
+            // Cards
+            for (let i = 0; i < maxCards; i++) {
+              rows.push({
+                cells: cols.map(col => {
+                  const card = (col.cards || [])[i]
+                  let val = ''
+                  if (card) {
+                    val += card.title || ''
+                    if (card.labels && card.labels.length > 0) {
+                      val += ' ' + card.labels.map(l => `[${l.text}]`).join(' ')
+                    }
+                    if (card.description) {
+                      val += ' - ' + card.description
+                    }
+                  }
+                  return [{ text: val }]
+                })
+              })
+            }
+            currentSlide.contents.push({ type: 'table', tableRows: rows })
+          }
+        } catch (e) {
+          console.error('[exportToPPTX] ameva-kanban 파싱 실패:', e)
+        }
+      } else {
+        currentSlide.contents.push({ type: 'code', text })
+      }
     } else if (block.type === 'image' && block.props?.url) {
       currentSlide.contents.push({ type: 'image', url: block.props.url })
     } else if (block.type === 'table') {

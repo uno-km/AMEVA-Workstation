@@ -19,7 +19,7 @@
 
 
 import { getDefaultReactSlashMenuItems } from '@blocknote/react'
-import { Code2, Globe, Eye, Terminal, FileImage, Layout } from 'lucide-react'
+import { Code2, Globe, Eye, Terminal, File, Layout, Pencil } from 'lucide-react'
 import { type AmevaEditor } from '../../editor/amevaBlockSchema'
 
   /*
@@ -217,7 +217,7 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
       onItemClick: insertDrawingBlock,
       aliases: ['drawing', 'draw', 'sketch', 'paint', 'canvas'],
       group: 'Drawing',
-      icon: <FileImage size={16} color="#a855f7" />,
+      icon: <Pencil size={16} color="#a855f7" />,
       subtext: 'Excalidraw 기반 화이트보드 드로잉 블록 삽입 (/draw)',
     }
   ] : []
@@ -329,7 +329,7 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
       onItemClick: insertExcelBlock,
       aliases: ['excel', 'sheet', 'spreadsheet', '엑셀', '시트', 'ce'],
       group: 'Office',
-      icon: <FileImage size={16} color="#10b981" />,
+      icon: <File size={16} color="#10b981" />,
       subtext: '엑셀 스프레드시트 편집기 삽입 (/excel)',
     }
   ] : []

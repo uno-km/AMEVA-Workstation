@@ -51,9 +51,6 @@ import {
   SuggestionMenuController,
   SideMenuController,
   SideMenu,
-  RemoveBlockItem,
-  DragHandleMenu,
-  BlockColorsItem,
   DragHandleButton,
   useBlockNoteEditor,
   useExtension,
@@ -307,26 +304,12 @@ const CustomAddBlockButton = () => {
  * [소비처 - CONSUMERS / USAGE CONTEXT]
  * - 소비처 A (MarkdownEditor): BlockNoteView 내부 SideMenuController의 sideMenu prop으로 전달.
  */
-const CustomSideMenu = () => (
-  <SideMenu
-    dragHandleMenu={(menuProps) => (
-      <DragHandleMenu {...menuProps}>
-        <RemoveBlockItem {...menuProps}>삭제 (Delete)</RemoveBlockItem>
-        <BlockColorsItem {...menuProps}>색상 (Colors)</BlockColorsItem>
-      </DragHandleMenu>
-    )}
-  >
+const CustomSideMenu = (props: any) => (
+  <SideMenu {...props}>
     {/* 새 커스텀 + 버튼: BlockNote Context 내부에서 공식 슬래시 메뉴 API 호출 */}
     <CustomAddBlockButton />
-    {/* 공식 드래그 핸들 단추: 블록 순서 재배치 그랩 핸들 */}
-    <DragHandleButton
-      dragHandleMenu={(menuProps) => (
-        <DragHandleMenu {...menuProps}>
-          <RemoveBlockItem {...menuProps}>삭제 (Delete)</RemoveBlockItem>
-          <BlockColorsItem {...menuProps}>색상 (Colors)</BlockColorsItem>
-        </DragHandleMenu>
-      )}
-    />
+    {/* 기본 드래그 핸들 버튼 (BlockNote 기본 메뉴 사용) */}
+    <DragHandleButton {...props} />
   </SideMenu>
 )
 
@@ -599,7 +582,7 @@ export function MarkdownEditor({
           />
         ) : editorMode === 'edit' ? (
           <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
-            <SideMenuController sideMenu={CustomSideMenu} />
+            <SideMenuController />
             {/* 1. 슬래시(/) 명령어 단축 팝업 제어 */}
             <SuggestionMenuController
               triggerCharacter="/"
