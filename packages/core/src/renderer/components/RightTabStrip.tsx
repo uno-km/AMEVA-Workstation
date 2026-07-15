@@ -293,22 +293,6 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
   const isYoutubeSubscribed = installedPlugins.includes('youtube');
       /*
        * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `isNaverSubscribed`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isNaverSubscribed = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const isNaverSubscribed = installedPlugins.includes('naver');
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `isGoogleSubscribed`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isGoogleSubscribed = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const isGoogleSubscribed = installedPlugins.includes('google');
-      /*
-       * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `isCalendarSubscribed`
        * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
@@ -331,7 +315,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
        * - 예시 코드: `const isGoogleMapsSubscribed = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const isGoogleMapsSubscribed = installedPlugins.includes('google-maps') || installedPlugins.includes('GoogleMapsView');
-  const isWebBrowserSubscribed = installedPlugins.includes('web-browser') || installedPlugins.includes('AmevaBrowserView');
+  const isWebBrowserSubscribed = installedPlugins.includes('web-browser') || installedPlugins.includes('AmevaBrowserView') || installedPlugins.includes('SmartSearchScrap');
   const isPdfRagSubscribed = installedPlugins.includes('pdf-rag') || installedPlugins.includes('PdfRagPlugin');
   const isDbExplorerSubscribed = installedPlugins.includes('db-explorer') || installedPlugins.includes('DatabaseExplorerPlugin');
   const isMindMapSubscribed = installedPlugins.includes('mind-map') || installedPlugins.includes('MindMapPlugin');
@@ -354,13 +338,11 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
     ...(isCalculatorSubscribed ? [{ id: 'calculator', icon: Calculator, label: '계산기 도구', badge: false }] : []),
     ...(isFinanceSubscribed ? [{ id: 'finance', icon: TrendingUp, label: '주식/환율 정보센터', badge: false }] : []),
     ...(isYoutubeSubscribed ? [{ id: 'youtube', icon: Play, label: 'YouTube 동영상', badge: false }] : []),
-    ...(isNaverSubscribed ? [{ id: 'naver', icon: Globe, label: '네이버 포털', badge: false }] : []),
-    ...(isGoogleSubscribed ? [{ id: 'google', icon: Search, label: '구글 검색', badge: false }] : []),
     ...(isCalendarSubscribed ? [{ id: 'calendar', icon: Calendar, label: '스케줄 캘린더', badge: false }] : []),
     ...(isGoogleDriveSubscribed ? [{ id: 'google-drive', icon: HardDrive, label: '구글 드라이브', badge: false }] : []),
     ...(isGoogleMapsSubscribed ? [{ id: 'google-maps', icon: Map, label: '구글 지도', badge: false }] : []),
     ...(isPdfRagSubscribed ? [{ id: 'pdf-rag', icon: FileText, label: 'PDF 문서 대화 (RAG)', badge: false }] : []),
-    ...(isWebBrowserSubscribed ? [{ id: 'web-browser', icon: Globe, label: '웹 브라우저 & RPA', badge: false }] : []),
+    ...(isWebBrowserSubscribed ? [{ id: 'web-browser', icon: Globe, label: '검색 및 스크랩 (Smart Search & Scrap)', badge: false }] : []),
     ...(isDbExplorerSubscribed ? [{ id: 'db-explorer', icon: Database, label: '데이터베이스 탐색기', badge: false }] : []),
     ...(isMindMapSubscribed ? [{ id: 'mind-map', icon: Network, label: '마인드맵 생성기', badge: false }] : []),
     ...(isPresentationSubscribed ? [{ id: 'presentation', icon: MonitorPlay, label: '프레젠테이션 모드', badge: false }] : []),
@@ -503,14 +485,14 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
             title={t.id === 'ai' ? t.label + ' (' + formatHotkey(hkeys.toggleAI) + ')' : t.label}
             style={{
               width: '28px', height: '32px', borderRadius: '6px 0 0 6px',
-              background: isActive ? 'var(--bg-main)' : 'transparent',
-              border: isActive ? '1px solid var(--border-glow)' : '1px solid transparent',
+              background: isActive ? 'rgba(236, 72, 153, 0.08)' : 'transparent',
+              border: isActive ? '1px solid #ec4899' : '1px solid transparent',
               borderRight: isActive ? 'none' : '1px solid transparent',
-              color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+              color: isActive ? '#f472b6' : 'var(--text-muted)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', position: 'relative', transition: 'var(--transition-fast)',
               outline: 'none', marginLeft: isActive ? '12px' : '0',
-              boxShadow: isActive ? '0 0 10px var(--primary-glow)' : 'none',
+              boxShadow: isActive ? '0 0 14px rgba(236, 72, 153, 0.25)' : 'none',
             }}
             onMouseEnter={(e) => {
       /*
@@ -539,7 +521,19 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
               }
             }}
           >
-            <Icon size={16} />
+            {isActive && (
+              <span style={{
+                position: 'absolute',
+                left: '2px',
+                top: '6px',
+                bottom: '6px',
+                width: '3px',
+                background: 'linear-gradient(to bottom, #a855f7, #ec4899)',
+                borderRadius: '2px',
+                boxShadow: '0 0 8px #ec4899, 0 0 4px #a855f7',
+              }} />
+            )}
+            <Icon size={isActive ? 18 : 16} strokeWidth={isActive ? 2.5 : 1.8} style={{ transition: 'all 0.2s ease', filter: isActive ? 'drop-shadow(0 0 4px rgba(236, 72, 153, 0.6))' : 'none' }} />
             {t.badge && (
               <span style={{
                 position: 'absolute', top: '2px', right: '2px',

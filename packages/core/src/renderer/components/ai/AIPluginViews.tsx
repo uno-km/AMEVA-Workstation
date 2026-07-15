@@ -37,8 +37,6 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
     calculator: useRef<HTMLDivElement>(null),
     'finance-dashboard': useRef<HTMLDivElement>(null),
     youtube: useRef<HTMLDivElement>(null),
-    naver: useRef<HTMLDivElement>(null),
-    google: useRef<HTMLDivElement>(null),
     calendar: useRef<HTMLDivElement>(null),
     'google-drive': useRef<HTMLDivElement>(null),
     'google-maps': useRef<HTMLDivElement>(null),
@@ -116,15 +114,13 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
     // [LEGACY DOM-BASED PLUGINS]
     case 'calculator': return <div key="calculator" id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />
     case 'youtube': return <div key="youtube" id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />
-    case 'naver': return <div key="naver" id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />
     case 'calendar': return <div key="calendar" id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />
     case 'google-drive': return <div key="google-drive" id="ameva-plugin-google-drive" style={containerStyle} ref={pluginRefs['google-drive']} />
-    case 'google': return <div key="google" id="ameva-plugin-google" style={containerStyle} ref={pluginRefs.google} />
 
     // [MARKET-PLACE DYNAMIC PLUGINS]
     case 'finance':
     case 'finance-dashboard': return <DynamicRemotePluginLoader key="finance-dashboard" pluginId="FinanceDashboardView" />
-    case 'web-browser': return <DynamicRemotePluginLoader key="web-browser" pluginId="AmevaBrowserView" />
+    case 'web-browser': return <DynamicRemotePluginLoader key="web-browser" pluginId="SmartSearchScrap" />
     case 'google-maps': return <DynamicRemotePluginLoader key="google-maps" pluginId="GoogleMapsView" />
     case 'kanban': return <DynamicRemotePluginLoader key="kanban" pluginId="KanbanBoard" />
     

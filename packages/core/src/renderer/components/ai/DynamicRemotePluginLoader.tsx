@@ -30,7 +30,7 @@ export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
         const baseUrl = window.location.hostname === 'localhost'
           ? 'http://localhost:3010'
           : 'https://uno-km.github.io/AMEVA-Workstation-Market-Place';
-        const res = await fetch(`${baseUrl}/plugins/premium/${pluginId}.tsx`);
+        const res = await fetch(`${baseUrl}/plugins/premium/${pluginId}.tsx?t=${Date.now()}`);
         if (!res.ok) throw new Error("플러그인 다운로드에 실패했습니다. 유효한 라이센스인지 확인하세요.");
         let code = await res.text();
 

@@ -72,6 +72,12 @@ export function useAIHealthCheck(
     // 세팅 변경 시 실패 횟수를 0으로 원자적 리셋
     failCountRef.current = 0
 
+    // 순정 브라우저 환경인 경우 헬스 체크를 건너뛰고 항상 가용 상태로 설정
+    if (!ipc.isElectronEnv()) {
+      setIsAvailable(true)
+      return
+    }
+
     // WASM 엔진은 로컬 ping 대신, 실제 WebLLM/WebCPU 모델 로드 여부를 확인하여 가용성 상태를 반영함
     if (settings.apiType === 'wasm') {
       const checkWasmLoaded = () => {

@@ -199,7 +199,10 @@ export const useAIState = create<AIState>((set) => ({
   }),
 
   isAvailable: false,
-  setIsAvailable: (isAvailable) => set({ isAvailable }),
+  setIsAvailable: (isAvailable) => set((state) => {
+    if (state.isAvailable === isAvailable) return state;
+    return { isAvailable };
+  }),
 
   models: [],
   setModels: (models) => set({ models }),

@@ -71,6 +71,19 @@ export function useEditorDragDrop(
     if (!url) return
     url = url.trim()
 
+    // 0. Stock Snapshot Drag & Drop markdown parsing check
+    if (url.startsWith('### 📊') && url.includes('시세 스냅샷')) {
+      e.preventDefault()
+      e.stopPropagation()
+      try {
+        const blocks = await editor.tryParseMarkdownToBlocks(url)
+        editor.insertBlocks(blocks, editor.getTextCursorPosition().block, 'after')
+      } catch (err) {
+        console.error('Failed to parse stock snapshot drop:', err)
+      }
+      return
+    }
+
     // 1. YouTube Shorts, Live 및 일반 주소 통합 감지 정규식
     const ytRegex = /^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/|shorts\/)|youtu\.be\/|youtube\.com\/live\/)?([\w-]{11})(?:[?&][^\s]*)?$/
       /*

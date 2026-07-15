@@ -388,7 +388,10 @@ export default function App() {
   const { width: sidebarWidth, isDragging: isSidebarDragging, handleMouseDown: handleSidebarResizeStart } = usePanelResize({
     storageKey: 'sidebar', defaultWidth: 280, minWidth: 160, maxWidth: 520, direction: 'right'
   })
-  const maxAIPanelWidth = window.innerWidth - (showSidebar ? sidebarWidth : 0) - 40 - 6
+  const maxAIPanelWidth = Math.min(
+    window.innerWidth * 0.5,
+    window.innerWidth - (showSidebar ? sidebarWidth : 0) - 40 - 6
+  )
 
   const { width: aiPanelWidth, isDragging: isAIPanelDragging, handleMouseDown: handleAIPanelResizeStart, setWidth: setAIPanelWidth } = usePanelResize({
     storageKey: 'ai-panel', defaultWidth: 320, minWidth: 220, maxWidth: maxAIPanelWidth, direction: 'left'
