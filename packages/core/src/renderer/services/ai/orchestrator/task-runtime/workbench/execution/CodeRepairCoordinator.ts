@@ -3,6 +3,7 @@ import { CodeWorkbenchJob, CheckResult, RepairRequest, CodeRepairPolicy } from '
 interface DiagnosticHistoryEntry {
   hash: string;
   count: number;
+  strategyChanges: number;
   failingTests: number;
   totalDiagnostics: number;
 }
@@ -37,15 +38,20 @@ export class CodeRepairCoordinator {
             if (!this.policy.allowStrategyChange) {
               throw new Error(`NO_PROGRESS: Identical failure signatures repeated ${countDelta} times without improvement.`);
             }
-            // Implementation for strategy change could be returned here if needed.
-            throw new Error(`NO_PROGRESS: Identical failure signatures repeated ${countDelta} times without improvement.`);
-          }
-          
-          if (!diagNotImproved || !testsNotImproved) {
+            
+            if (this.policy.maxStrategyChanges !== undefined && entry.strategyChanges >= this.policy.maxStrategyChanges) {
+               throw new Error(`NO_PROGRESS: Maximum strategy changes reached (${this.policy.maxStrategyChanges}).`);
+            }
+            
+            entry.strategyChanges++;
+            entry.count = 1; // reset repeat count after strategy change
+            // we let it pass to try a new strategy
+          } else if (!diagNotImproved || !testsNotImproved) {
              // Progress made! reset count
              this.history.set(signatureStr, {
                 hash: currentHash,
                 count: 1,
+                strategyChanges: entry.strategyChanges, // keep strategy changes
                 failingTests: currentFailingTests,
                 totalDiagnostics: check.diagnostics.length
              });
@@ -58,6 +64,7 @@ export class CodeRepairCoordinator {
           this.history.set(signatureStr, {
             hash: currentHash,
             count: 1,
+            strategyChanges: 0,
             failingTests: currentFailingTests,
             totalDiagnostics: check.diagnostics.length
           });

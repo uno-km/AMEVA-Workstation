@@ -72,4 +72,41 @@ describe('Phase 6.2.2: Repair Loop NO_PROGRESS', () => {
     await coordinator.createRepairRequests(job, [checkResult], 'hash-same'); // 1
     await expect(coordinator.createRepairRequests(job, [checkResult], 'hash-same')).rejects.toThrow('NO_PROGRESS: Identical artifact hash'); // Same hash
   });
+
+  it('4. Resets repeat count if progress is made (fewer diagnostics)', async () => {
+    const policy: CodeRepairPolicy = {
+      maxSameDiagnosticRepeats: 2, maxRepairAttempts: 10,
+      minimumDiagnosticImprovement: 1, minimumCheckImprovement: 1,
+      stopOnSameHash: false, allowStrategyChange: false
+    };
+    const coordinator = new CodeRepairCoordinator(policy);
+    const job = { currentRevision: 'rev-1' } as any;
+    
+    // First try: 2 diagnostics
+    let checkResult = { checkId: 'c1', status: 'FAIL', diagnostics: [ { signature: 'tsc', file: 'a.ts' }, { signature: 'tsc', file: 'b.ts' } ] } as any;
+    await coordinator.createRepairRequests(job, [checkResult], 'hash-1'); 
+    
+    // Second try: 1 diagnostic (PROGRESS MADE!)
+    checkResult = { checkId: 'c1', status: 'FAIL', diagnostics: [ { signature: 'tsc', file: 'a.ts' } ] } as any;
+    await coordinator.createRepairRequests(job, [checkResult], 'hash-2');
+    
+    // Third try: still 1 diagnostic (count is 2 -> throws!)
+    await expect(coordinator.createRepairRequests(job, [checkResult], 'hash-3')).rejects.toThrow('NO_PROGRESS');
+  });
+
+  it('5. Allows strategy change up to maxStrategyChanges before throwing', async () => {
+    const policy: CodeRepairPolicy = {
+      maxSameDiagnosticRepeats: 2, maxRepairAttempts: 10,
+      minimumDiagnosticImprovement: 1, minimumCheckImprovement: 1,
+      stopOnSameHash: false, allowStrategyChange: true, maxStrategyChanges: 1
+    };
+    const coordinator = new CodeRepairCoordinator(policy);
+    const job = { currentRevision: 'rev-1' } as any;
+    const checkResult = { checkId: 'c1', status: 'FAIL', diagnostics: [ { signature: 'tsc', file: 'a.ts' } ] } as any;
+
+    await coordinator.createRepairRequests(job, [checkResult], 'hash-1'); // count 1 ("tsc")
+    await coordinator.createRepairRequests(job, [checkResult], 'hash-2'); // count 2 -> triggers strategy change (allowed), count reset to 1
+    
+    await expect(coordinator.createRepairRequests(job, [checkResult], 'hash-3')).rejects.toThrow('NO_PROGRESS: Maximum strategy changes reached (1).');
+  });
 });

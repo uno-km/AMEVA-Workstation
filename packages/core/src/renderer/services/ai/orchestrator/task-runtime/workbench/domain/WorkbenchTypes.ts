@@ -342,10 +342,13 @@ export interface SyntheticCodeBenchmarkReport {
   fullFileReplacementCount: number;
   noProgressCount: number;
   testWeakeningBlockedCount: number;
+  testWeakeningSuccessfulBypassCount: number;
   approvalBlockedCount: number;
+  approvalStubBypassCount: number;
   requiredCheckNotRunSuccessCount: number;
   forcedPassCount: number;
   sourceDirectModificationCount: number;
+  infiniteRepairCount: number;
   averageDurationMs: number;
 }
 
