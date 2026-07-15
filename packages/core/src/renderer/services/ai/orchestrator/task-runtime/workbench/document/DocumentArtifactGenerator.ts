@@ -41,7 +41,7 @@ export class DocumentArtifactGenerator {
           artifactDigest: 'TODO_DIGEST',
           outputArtifactReference: filePath,
           warnings: [],
-          executionMode: 'REAL_GENERATION_EXECUTED'
+          generationExecutionProvenance: 'RENDERER_SAFE_EXECUTED'
         }
       };
     } else {

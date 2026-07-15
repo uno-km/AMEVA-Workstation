@@ -468,6 +468,10 @@ export interface DocumentWorkbenchJob {
   objective: string;
   documentType: string;
   artifactFormat: string;
+  generatorCapability?: string;
+  generationExecutionProvenance?: string;
+  extractorCapability?: string;
+  extractionExecutionProvenance?: string;
   language: string;
   audience: string;
   outlineId?: string;

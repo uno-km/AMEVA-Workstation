@@ -3,14 +3,14 @@ import * as fs from 'fs';
 import * as crypto from 'crypto';
 import * as docx from 'docx';
 import * as mammoth from 'mammoth';
-import { PdfParseAdapter } from './adapters/PdfParseAdapter';
+import { PdfParseAdapter } from '../../../../core/src/shared/services/adapters/PdfParseAdapter';
 
 import type { 
   DocumentArtifactGenerateRequest, 
   DocumentArtifactExtractRequest, 
   GenerationResult, 
   ExtractionResult 
-} from '../ipc/documentHostIpcContract';
+} from '../../../../core/src/shared/ipc/documentHostIpcContract';
 
 export class MainProcessDocumentHostService {
   public async generateArtifact(req: DocumentArtifactGenerateRequest, allowedWorkspaceRoot: string): Promise<GenerationResult> {
@@ -21,12 +21,12 @@ export class MainProcessDocumentHostService {
         generatorName: 'N/A',
         generatorVersion: 'N/A',
         generatorCapability: 'BLOCKED_BY_MISSING_GENERATOR',
+        generationExecutionProvenance: 'NOT_EXECUTED',
         generatedByteLength: 0,
         artifactDigest: '',
         outputArtifactReference: '',
         warnings: [],
-        errorCode: 'BLOCKED_BY_MISSING_GENERATOR',
-        executionMode: 'BLOCKED_BY_MISSING_GENERATOR'
+        errorCode: 'BLOCKED_BY_MISSING_GENERATOR'
       };
     }
 
@@ -62,11 +62,11 @@ export class MainProcessDocumentHostService {
         generatorName: 'docx',
         generatorVersion: '9.7.1',
         generatorCapability: 'REAL_GENERATION_SUPPORTED',
+        generationExecutionProvenance: 'MAIN_PROCESS_HOST_EXECUTED',
         generatedByteLength: buffer.length,
         artifactDigest: digest,
         outputArtifactReference: req.outputLogicalPath,
-        warnings: [],
-        executionMode: 'REAL_GENERATION_EXECUTED'
+        warnings: []
       };
     }
 
@@ -92,7 +92,8 @@ export class MainProcessDocumentHostService {
         format: 'DOCX',
         extractorName: 'mammoth',
         extractorVersion: '1.12.0',
-        executionMode: 'REAL_ARTIFACT_EXTRACTED',
+        extractorCapability: 'REAL_REOPEN_SUPPORTED',
+        extractionExecutionProvenance: 'MAIN_PROCESS_HOST_EXECUTED',
         extractedTextLength: normalized.length,
         extractedText: text,
         normalizedText: normalized,
@@ -109,7 +110,7 @@ export class MainProcessDocumentHostService {
         pdfParseFn = PdfParseAdapter.getPdfParse();
       } catch (e: any) {
         return {
-          success: false, format: 'PDF', extractorName: 'pdf-parse', extractorVersion: '2.4.5', executionMode: 'BLOCKED_BY_ENVIRONMENT', extractedTextLength: 0, normalizedTextDigest: '', extractionDigest: '', sectionCandidates: [], warnings: [], errorCode: e.message
+          success: false, format: 'PDF', extractorName: 'pdf-parse', extractorVersion: '2.4.5', extractorCapability: 'BLOCKED_BY_ENVIRONMENT', extractionExecutionProvenance: 'NOT_EXECUTED', extractedTextLength: 0, normalizedTextDigest: '', extractionDigest: '', sectionCandidates: [], warnings: [], errorCode: e.message
         };
       }
 
@@ -123,7 +124,8 @@ export class MainProcessDocumentHostService {
         format: 'PDF',
         extractorName: 'pdf-parse',
         extractorVersion: '2.4.5',
-        executionMode: 'REAL_ARTIFACT_EXTRACTED',
+        extractorCapability: 'EXTRACTION_ONLY',
+        extractionExecutionProvenance: 'MAIN_PROCESS_HOST_EXECUTED',
         extractedTextLength: normalized.length,
         extractedText: text,
         normalizedText: normalized,

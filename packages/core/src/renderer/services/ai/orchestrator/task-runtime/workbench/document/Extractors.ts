@@ -30,7 +30,8 @@ export class MarkdownExtractor implements IArtifactContentExtractor {
         warnings: [],
         extractorName: 'MarkdownExtractor',
         extractorVersion: '1.0.0',
-        executionMode: 'REAL_ARTIFACT_EXTRACTED'
+        extractorCapability: 'REAL_REOPEN_SUPPORTED',
+        extractionExecutionProvenance: 'RENDERER_SAFE_EXECUTED'
       };
     } catch (e: any) {
       return this.fail(context, 'MARKDOWN_REOPEN_FAILED', [e.message]);
@@ -41,7 +42,7 @@ export class MarkdownExtractor implements IArtifactContentExtractor {
     return {
         success: false, format: context.artifactFormat, extractedText: '', normalizedText: '', contentLength: 0,
         extractionDigest: '', sectionCandidates: [], warnings, errorCode, extractorName: 'MarkdownExtractor',
-        extractorVersion: '1.0.0', executionMode: 'EXTRACTION_FAILED'
+        extractorVersion: '1.0.0', extractorCapability: 'UNSUPPORTED', extractionExecutionProvenance: 'NOT_EXECUTED'
     };
   }
 }
@@ -83,7 +84,8 @@ export class HtmlExtractor implements IArtifactContentExtractor {
         warnings: [],
         extractorName: 'HtmlExtractor',
         extractorVersion: '1.0.0',
-        executionMode: 'REAL_ARTIFACT_EXTRACTED'
+        extractorCapability: 'REAL_REOPEN_SUPPORTED',
+        extractionExecutionProvenance: 'RENDERER_SAFE_EXECUTED'
       };
     } catch (e: any) {
       return this.fail(context, 'HTML_PARSE_FAILED', [e.message]);
@@ -94,7 +96,7 @@ export class HtmlExtractor implements IArtifactContentExtractor {
     return {
         success: false, format: context.artifactFormat, extractedText: '', normalizedText: '', contentLength: 0,
         extractionDigest: '', sectionCandidates: [], warnings, errorCode, extractorName: 'HtmlExtractor',
-        extractorVersion: '1.0.0', executionMode: 'EXTRACTION_FAILED'
+        extractorVersion: '1.0.0', extractorCapability: 'UNSUPPORTED', extractionExecutionProvenance: 'NOT_EXECUTED'
     };
   }
 }
@@ -141,7 +143,8 @@ export class DocxExtractor implements IArtifactContentExtractor {
         warnings: result.warnings,
         extractorName: result.extractorName,
         extractorVersion: result.extractorVersion,
-        executionMode: result.executionMode
+        extractorCapability: result.extractorCapability,
+        extractionExecutionProvenance: result.extractionExecutionProvenance
       };
     } catch (e: any) {
       return this.fail(context, 'DOCX_TEXT_EXTRACTION_FAILED', [e.message]);
@@ -152,7 +155,7 @@ export class DocxExtractor implements IArtifactContentExtractor {
     return {
         success: false, format: context.artifactFormat, extractedText: '', normalizedText: '', contentLength: 0,
         extractionDigest: '', sectionCandidates: [], warnings, errorCode, extractorName: 'DocxExtractor',
-        extractorVersion: 'mammoth', executionMode: 'EXTRACTION_FAILED'
+        extractorVersion: 'mammoth', extractorCapability: 'UNSUPPORTED', extractionExecutionProvenance: 'NOT_EXECUTED'
     };
   }
 }
@@ -199,7 +202,8 @@ export class PdfExtractor implements IArtifactContentExtractor {
         warnings: result.warnings,
         extractorName: result.extractorName,
         extractorVersion: result.extractorVersion,
-        executionMode: result.executionMode
+        extractorCapability: result.extractorCapability,
+        extractionExecutionProvenance: result.extractionExecutionProvenance
       };
     } catch (e: any) {
       return this.fail(context, 'PDF_TEXT_EXTRACTION_FAILED', [e.message]);
@@ -210,7 +214,7 @@ export class PdfExtractor implements IArtifactContentExtractor {
     return {
         success: false, format: context.artifactFormat, extractedText: '', normalizedText: '', contentLength: 0,
         extractionDigest: '', sectionCandidates: [], warnings, errorCode, extractorName: 'PdfExtractor',
-        extractorVersion: 'pdf-parse', executionMode: 'EXTRACTION_FAILED'
+        extractorVersion: 'pdf-parse', extractorCapability: 'UNSUPPORTED', extractionExecutionProvenance: 'NOT_EXECUTED'
     };
   }
 }

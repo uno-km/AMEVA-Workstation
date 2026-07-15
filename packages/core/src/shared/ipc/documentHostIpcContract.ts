@@ -34,12 +34,12 @@ export interface GenerationResult {
   generatorName: string;
   generatorVersion: string;
   generatorCapability: string;
+  generationExecutionProvenance: string;
   generatedByteLength: number;
   artifactDigest: string;
   outputArtifactReference: string;
   warnings: string[];
   errorCode?: string;
-  executionMode: string;
 }
 
 export interface ExtractionResult {
@@ -47,7 +47,8 @@ export interface ExtractionResult {
   format: string;
   extractorName: string;
   extractorVersion: string;
-  executionMode: string;
+  extractorCapability: string;
+  extractionExecutionProvenance: string;
   extractedTextLength: number;
   extractedText?: string;
   normalizedText?: string;

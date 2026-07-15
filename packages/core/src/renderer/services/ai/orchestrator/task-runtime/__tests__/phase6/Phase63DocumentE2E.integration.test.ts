@@ -76,9 +76,8 @@ describe('Phase 6.3 Document Workbench E2E', () => {
     const context = { stagedPath: '/out.docx', artifactFormat: 'DOCX', artifactId: '1', artifactRevision: '1', documentJobId: '1', documentId: '1' };
     const doc = { documentId: '1', fullText: 'Valid body', revision: '1', sections: [] } as any;
     
-    // Direct extract mock to fail
     hostAdapter.extractDocumentArtifact = async () => ({
-      success: false, format: 'DOCX', errorCode: 'EXTRACTION_FAILED', extractorName: 'mammoth', extractorVersion: '1.12', executionMode: 'FAILED', extractedTextLength: 0, normalizedTextDigest: '', extractionDigest: '', sectionCandidates: [], warnings: []
+      success: false, format: 'DOCX', errorCode: 'EXTRACTION_FAILED', extractorName: 'mammoth', extractorVersion: '1.12', extractorCapability: 'UNSUPPORTED', extractionExecutionProvenance: 'TEST_NODE_HOST_EXECUTED', extractedTextLength: 0, normalizedTextDigest: '', extractionDigest: '', sectionCandidates: [], warnings: []
     });
 
     const reopenResult = await verifier.verify(context, doc);

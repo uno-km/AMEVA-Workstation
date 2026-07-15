@@ -59,7 +59,7 @@ export function registerWorkbenchIpc() {
     try {
       verifySender(event);
       const session = sessionRegistry.verifyContext(request);
-      const { MainProcessDocumentHostService } = require('../../../../core/src/shared/services/DocumentArtifactService');
+      const { MainProcessDocumentHostService } = require('../services/MainProcessDocumentHostService');
       const service = new MainProcessDocumentHostService();
       const result = await service.generateArtifact(request, session.allowedWorkspaceRoot);
       return { success: true, result };
@@ -72,7 +72,7 @@ export function registerWorkbenchIpc() {
     try {
       verifySender(event);
       const session = sessionRegistry.verifyContext(request);
-      const { MainProcessDocumentHostService } = require('../../../../core/src/shared/services/DocumentArtifactService');
+      const { MainProcessDocumentHostService } = require('../services/MainProcessDocumentHostService');
       const service = new MainProcessDocumentHostService();
       const result = await service.extractArtifact(request, session.allowedWorkspaceRoot);
       return { success: true, result };

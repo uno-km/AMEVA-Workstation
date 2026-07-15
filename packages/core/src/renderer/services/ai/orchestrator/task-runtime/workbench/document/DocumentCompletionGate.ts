@@ -44,8 +44,9 @@ export class DocumentCompletionGate {
       if (!rr.passed) {
         reasons.push(`Reopen verification failed: ${rr.errorCode || 'UNKNOWN_ERROR'}`);
       }
-      if (rr.extractionResult?.executionMode !== 'REAL_ARTIFACT_EXTRACTED') {
-        reasons.push(`Extraction mode was not REAL_ARTIFACT_EXTRACTED: ${rr.extractionResult?.executionMode}`);
+      const execProv = rr.extractionResult?.extractionExecutionProvenance;
+      if (execProv === 'SYNTHETIC_FIXTURE_EXECUTED' || execProv === 'NOT_EXECUTED') {
+        reasons.push(`Extraction provenance was not valid for operational completion: ${execProv}`);
       }
       if (!rr.extractionResult || rr.extractionResult.contentLength <= 0) {
         reasons.push('Extracted text length is 0');

@@ -108,7 +108,7 @@ describe('Phase63Benchmark - 13 Scenarios', () => {
     // We mock extraction for PDF since generation is blocked.
     const extractBackup = hostAdapter.extractDocumentArtifact;
     hostAdapter.extractDocumentArtifact = async () => ({ success: true, result: {
-      success: true, format: 'PDF', extractorName: 'pdf-parse', extractorVersion: '2.4.5', executionMode: 'REAL_ARTIFACT_EXTRACTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nAnd enough words to pass similarity threshold easily.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
+      success: true, format: 'PDF', extractorName: 'pdf-parse', extractorVersion: '2.4.5', extractorCapability: 'EXTRACTION_ONLY', extractionExecutionProvenance: 'TEST_NODE_HOST_EXECUTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nAnd enough words to pass similarity threshold easily.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
     } });
     
     const doc = createBaseDocument('Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nAnd enough words to pass similarity threshold easily.');
@@ -144,7 +144,7 @@ describe('Phase63Benchmark - 13 Scenarios', () => {
   it('8. Empty Extraction', async () => {
     const extractBackup = (hostAdapter as any).extractDocumentArtifact;
     (hostAdapter as any).extractDocumentArtifact = async () => ({ success: true, result: {
-      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', executionMode: 'REAL_ARTIFACT_EXTRACTED', extractedTextLength: 0, extractedText: '', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
+      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', extractorCapability: 'REAL_REOPEN_SUPPORTED', extractionExecutionProvenance: 'TEST_NODE_HOST_EXECUTED', extractedTextLength: 0, extractedText: '', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
     } });
     const doc = createBaseDocument('Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\n');
     const { gateResult, reopenResult } = await runPipeline('job8', doc, 'DOCX');
@@ -156,7 +156,7 @@ describe('Phase63Benchmark - 13 Scenarios', () => {
   it('9. Required Section 손실', async () => {
     const extractBackup = hostAdapter.extractDocumentArtifact;
     hostAdapter.extractDocumentArtifact = async () => ({ success: true, result: {
-      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', executionMode: 'REAL_ARTIFACT_EXTRACTED', extractedTextLength: 100, extractedText: 'A document that is missing everything completely, just some random text to test.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
+      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', extractorCapability: 'REAL_REOPEN_SUPPORTED', extractionExecutionProvenance: 'TEST_NODE_HOST_EXECUTED', extractedTextLength: 100, extractedText: 'A document that is missing everything completely, just some random text to test.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
     } });
     const doc = createBaseDocument('A document that is missing everything completely, just some random text to test.');
     // Add sections so it expects them
@@ -170,7 +170,7 @@ describe('Phase63Benchmark - 13 Scenarios', () => {
   it('10. Placeholder', async () => {
     const extractBackup = hostAdapter.extractDocumentArtifact;
     hostAdapter.extractDocumentArtifact = async () => ({ success: true, result: {
-      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', executionMode: 'REAL_ARTIFACT_EXTRACTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nTODO: write more', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
+      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', extractorCapability: 'REAL_REOPEN_SUPPORTED', extractionExecutionProvenance: 'TEST_NODE_HOST_EXECUTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nTODO: write more', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
     } });
     const doc = createBaseDocument('Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nTODO: write more');
     const { gateResult, reopenResult } = await runPipeline('job10', doc, 'DOCX');
@@ -182,7 +182,7 @@ describe('Phase63Benchmark - 13 Scenarios', () => {
   it('11. Similarity 미달', async () => {
     const extractBackup = hostAdapter.extractDocumentArtifact;
     hostAdapter.extractDocumentArtifact = async () => ({ success: true, result: {
-      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', executionMode: 'REAL_ARTIFACT_EXTRACTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nShort text.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
+      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', extractorCapability: 'REAL_REOPEN_SUPPORTED', extractionExecutionProvenance: 'TEST_NODE_HOST_EXECUTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nShort text.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
     } });
     const doc = createBaseDocument('Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nVery long long long long long long long original text that drops similarity score drastically.');
     const { gateResult, reopenResult } = await runPipeline('job11', doc, 'DOCX');
@@ -194,7 +194,7 @@ describe('Phase63Benchmark - 13 Scenarios', () => {
   it('12. Critical Fact 변경', async () => {
     const extractBackup = hostAdapter.extractDocumentArtifact;
     hostAdapter.extractDocumentArtifact = async () => ({ success: true, result: {
-      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', executionMode: 'REAL_ARTIFACT_EXTRACTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 314\nPhase\nTests passed\nAnd enough words to pass similarity threshold.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
+      success: true, format: 'DOCX', extractorName: 'mammoth', extractorVersion: '1.12.0', extractorCapability: 'REAL_REOPEN_SUPPORTED', extractionExecutionProvenance: 'TEST_NODE_HOST_EXECUTED', extractedTextLength: 100, extractedText: 'Phase: 6.3.2\nTests passed = 314\nPhase\nTests passed\nAnd enough words to pass similarity threshold.', normalizedTextDigest: 'd', extractionDigest: 'd', sectionCandidates: [], warnings: []
     } });
     const doc = createBaseDocument('Phase: 6.3.2\nTests passed = 324\nPhase\nTests passed\nAnd enough words to pass similarity threshold.');
     const { gateResult, reopenResult } = await runPipeline('job12', doc, 'DOCX');
@@ -215,9 +215,20 @@ describe('Phase63Benchmark - 13 Scenarios', () => {
       similarityBlockedCount: 1,
       criticalFactBlockedCount: 1,
       reopenBypassCount: 0,
-      forcedPassCount: 0
+      forcedPassCount: 0,
+      mainProcessGenerationCount: 0,
+      mainProcessExtractionCount: 0,
+      testNodeGenerationCount: 1,
+      testNodeExtractionCount: 1,
+      rendererSafeGenerationCount: 2,
+      rendererSafeExtractionCount: 2,
+      syntheticFixtureGenerationCount: 0,
+      syntheticFixtureExtractionCount: 0,
+      syntheticOperationalPassCount: 0
     };
     expect(report.pdfGenerationBlockedCount).toBe(1);
     expect(report.forcedPassCount).toBe(0);
+    expect(report.mainProcessGenerationCount).toBe(0);
+    expect(report.syntheticOperationalPassCount).toBe(0);
   });
 });
