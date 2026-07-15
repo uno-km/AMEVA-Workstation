@@ -430,6 +430,18 @@ export function MarkdownEditor({
     }
   }, [selectedFont, selectedSize, editor, editorMode, hasRichStyling, editorContainerRef])
 
+  useEffect(() => {
+    /*
+     * [CONTRACT]
+     * - 현재 활성화된 에디터 인스턴스를 전역 AMEVA_CORE 공간에 바인딩하여,
+     *   동적으로 마운트되는 원격/프리미엄 플러그인(마인드맵, 프레젠테이션 등)에서 에디터의 실시간 문서 구조를 읽거나 쓸 수 있도록 지원한다.
+     */
+    if (typeof window !== 'undefined') {
+      (window as any).AMEVA_CORE = (window as any).AMEVA_CORE || {}
+      (window as any).AMEVA_CORE.editor = editor
+    }
+  }, [editor])
+
   // 코드 펜스, 작업 피어 포커스 레이어 및 파일 드롭 이미지 가로채기 구동
   useBacktickFence(editor)
   useCollaborationHighlight(editor, onBlockHighlight, editorContainerRef)

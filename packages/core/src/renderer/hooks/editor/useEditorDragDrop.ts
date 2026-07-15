@@ -341,15 +341,64 @@ export function useEditorDragDrop(
         } as any], editor.getTextCursorPosition().block, 'after')
       }
     }
+
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `handleInsertJson`
+     * - 자료형 / 예상 값: (e: Event) => void
+     * - 시나리오: REST API 클라이언트 플러그인(RestClientPlugin)에서 발송되는 커스텀 이벤트를 감지하여,
+     *   현재 커서 포커스 위치 바로 아래에 JSON 코드 블록(codeBlock)을 생성하고 삽입한다.
+     */
+    const handleInsertJson = (e: Event) => {
+      const customEvent = e as CustomEvent
+      const jsonText = customEvent.detail?.jsonText
+      
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `jsonText`가 비어있지 않은 적격 문자열인 경우에만 블록 인서트를 진행
+       */
+      if (jsonText) {
+        editor.insertBlocks([{
+          type: 'codeBlock',
+          props: { language: 'json' },
+          content: [{ type: 'text', text: jsonText, styles: {} }]
+        } as any], editor.getTextCursorPosition().block, 'after')
+      }
+    }
+
+    /*
+     * [RUN-TIME STATE / INVARIANT]
+     * - 변수 명: `handleInsertMarkdown`
+     * - 자료형 / 예상 값: (e: Event) => Promise<void>
+     * - 시나리오: 웹 브라우저 플러그인(AmevaBrowserView)에서 수집한 웹 페이지 스크랩 마크다운 데이터를 전달받아,
+     *   에디터 블록 형식으로 파싱 후 현재 포커스 커서 위치 바로 아래에 삽입한다.
+     */
+    const handleInsertMarkdown = async (e: Event) => {
+      const customEvent = e as CustomEvent
+      const markdownText = customEvent.detail?.markdownText
+      
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `markdownText`가 부재하지 않은 경우에만 에디터 내 파싱 및 삽입 연산을 기동한다.
+       */
+      if (markdownText) {
+        const blocks = await editor.tryParseMarkdownToBlocks(markdownText)
+        editor.insertBlocks(blocks, editor.getTextCursorPosition().block, 'after')
+      }
+    }
     
     // 리스너 등록
     window.addEventListener('app:insert-youtube', handleInsertYoutube)
     window.addEventListener('app:insert-map', handleInsertMap)
+    window.addEventListener('app:insert-json', handleInsertJson)
+    window.addEventListener('app:insert-markdown', handleInsertMarkdown)
     
     // CONTRACT: 리스너 누수 제거 클린업 이행
     return () => {
       window.removeEventListener('app:insert-youtube', handleInsertYoutube)
       window.removeEventListener('app:insert-map', handleInsertMap)
+      window.removeEventListener('app:insert-json', handleInsertJson)
+      window.removeEventListener('app:insert-markdown', handleInsertMarkdown)
     }
   }, [editor, editorMode])
 

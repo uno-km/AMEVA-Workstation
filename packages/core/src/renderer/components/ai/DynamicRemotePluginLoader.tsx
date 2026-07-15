@@ -4,7 +4,12 @@ import { useLLMInference } from '../../hooks/ai/useLLMInference';
 import * as Babel from '@babel/standalone';
 
 // 클라이언트 코어 컨텍스트를 전역으로 노출하여 원격 플러그인이 참조할 수 있도록 함
-(window as any).AMEVA_CORE = { React, LucideIcons, useLLMInference };
+(window as any).AMEVA_CORE = { 
+  React, 
+  LucideIcons, 
+  useLLMInference,
+  editor: (window as any).AMEVA_CORE?.editor || null
+};
 
 export function DynamicRemotePluginLoader({ pluginId }: { pluginId: string }) {
   const [Component, setComponent] = useState<React.FC | null>(null);
