@@ -272,6 +272,11 @@ describe('SourceApplyService Phase 6.4.2 Verification and Reconciliation', () =>
     
     const record = await applyExecRepo.getExecutionRecord(executionId);
     expect(record?.status).toBe('APPLIED');
+    
+    const traces = traceManager.getStore().getMissionTrace('m-1').map((e: any) => e.metadata?.event);
+    expect(traces).not.toContain('POST_APPLY_VERIFICATION_STARTED');
+    expect(traces).toContain('APPROVAL_CONSUMPTION_SUCCEEDED');
+    expect(traces).toContain('APPLIED_CONFIRMED');
   });
 
   // NEW SCENARIOS for 6.4.2 COMPLETION:
@@ -280,9 +285,32 @@ describe('SourceApplyService Phase 6.4.2 Verification and Reconciliation', () =>
     
     // Should re-run verification properly
     const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    if (!res.success) console.log('DOCX FAILS WITH:', res.errorCode, res.errorMessage);
     expect(res.success).toBe(true);
     const record = await applyExecRepo.getExecutionRecord(executionId);
     expect(record?.status).toBe('APPLIED');
+  });
+
+  it('Document verification: DOCX/Markdown reopen/parse success path', async () => {
+    const { executionId, ticketId, requestId, workspaceRoot } = await setupMockApplyState();
+    
+    const preview = await previewRepo.getSourceApplyPreview(requestId);
+    preview!.requiredChecks = ['document-reopen'];
+    preview!.affectedPaths = ['document.docx'];
+    await previewRepo.saveSourceApplyPreview(preview!);
+    const fsp = require('fs/promises');
+    const path = require('path');
+    const recordWS = await applyExecRepo.getExecutionRecord(executionId);
+    await fsp.writeFile(path.join(recordWS.workspaceRoot, 'document.docx'), 'fake');
+    
+    const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    
+    expect(res.success).toBe(true);
+    const record = await applyExecRepo.getExecutionRecord(executionId);
+    expect(record?.status).toBe('APPLIED');
+    
+    const traces = traceManager.getStore().getMissionTrace('m-1').map((e: any) => e.metadata?.event);
+    expect(traces).toContain('POST_APPLY_VERIFICATION_PASSED');
   });
 
   it('VERIFIED_PENDING_CONSUME 중단 후 재시작 -> CONSUMING_APPROVAL 재개', async () => {

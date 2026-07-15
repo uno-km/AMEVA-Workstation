@@ -28,6 +28,24 @@ export class SourceApplyService {
     private readonly applyExecRepo: IApplyExecutionPersistence
   ) {}
 
+  private emitTraceEvent(missionId: string, executionId: string, eventName: string, message: string = '') {
+    this.traceManager.getStore().appendEvent({
+      eventId: crypto.randomUUID(),
+      traceId: missionId,
+      spanId: executionId,
+      missionId: missionId,
+      timestamp: Date.now(),
+      eventType: 'system_log' as any,
+      status: 'COMPLETED',
+      sequenceNumber: this.traceManager.getStore().nextSequenceNumber(missionId),
+      title: eventName,
+      visibility: 'DEBUG',
+      schemaVersion: '4.0.0',
+      metadata: { event: eventName, message }
+    });
+  }
+
+
   public async authorizeOperation(
     request: IpcAuthorizeSourceApplyRequest,
     session: any
@@ -566,6 +584,8 @@ export class SourceApplyService {
 
     await this.applyExecRepo.updateExecutionStatus(executionId, 'VERIFYING');
 
+    this.emitTraceEvent(ticket.missionId, executionId, 'POST_APPLY_VERIFICATION_STARTED');
+
     // 1. Post-Apply Verification
     const preview = await this.previewRepo.getSourceApplyPreview(ticket.sourceApplyRequestId);
     if (!preview) return { success: false, errorCode: 'PREVIEW_NOT_FOUND' };
@@ -630,6 +650,7 @@ export class SourceApplyService {
     }
 
     if (!verificationPassed) {
+      this.emitTraceEvent(ticket.missionId, executionId, 'POST_APPLY_VERIFICATION_FAILED', verificationError);
       await this.applyExecRepo.updateExecutionStatus(executionId, 'VERIFY_FAILED', verificationError);
       if (restoreSafe) {
         await this.applyExecRepo.updateExecutionStatus(executionId, 'ROLLING_BACK');
@@ -642,6 +663,7 @@ export class SourceApplyService {
       }
     }
 
+    this.emitTraceEvent(ticket.missionId, executionId, 'POST_APPLY_VERIFICATION_PASSED');
     await this.applyExecRepo.updateExecutionStatus(executionId, 'VERIFIED_PENDING_CONSUME');
     
     // Proceed to consume
@@ -662,7 +684,9 @@ export class SourceApplyService {
     if (approval.status === 'CONSUMED') {
       if (record.status !== 'APPLIED') {
         // Auto-reconcile
+        this.emitTraceEvent(ticket.missionId, executionId, 'APPROVAL_CONSUMPTION_SUCCEEDED');
         await this.applyExecRepo.updateExecutionStatus(executionId, 'APPLIED');
+        this.emitTraceEvent(ticket.missionId, executionId, 'APPLIED_CONFIRMED');
         // Snapshot cleanup simulated
         return { success: true };
       }
@@ -673,11 +697,13 @@ export class SourceApplyService {
       // Split brain: Local APPLIED, Repo NOT CONSUMED
       await this.applyExecRepo.updateExecutionStatus(executionId, 'CONSUME_FAILED');
       await this.applyExecRepo.setWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING, 'RECONCILIATION_FAILED');
+      this.emitTraceEvent(ticket.missionId, executionId, 'CONSUME_PENDING_HOLD_ENGAGED');
       return { success: false, errorCode: 'RECONCILIATION_FAILED' };
     }
 
     // Normal consume
     await this.applyExecRepo.updateExecutionStatus(executionId, 'CONSUMING_APPROVAL');
+    this.emitTraceEvent(ticket.missionId, executionId, 'APPROVAL_CONSUMPTION_STARTED');
 
     const consumeRes = await this.approvalRepo.compareAndConsumeApproval({
       approvalId: approval.approvalId,
@@ -700,7 +726,9 @@ export class SourceApplyService {
     });
 
     if (consumeRes.success) {
+      this.emitTraceEvent(ticket.missionId, executionId, 'APPROVAL_CONSUMPTION_SUCCEEDED');
       await this.applyExecRepo.updateExecutionStatus(executionId, 'APPLIED');
+      this.emitTraceEvent(ticket.missionId, executionId, 'APPLIED_CONFIRMED');
       if (workspaceRoot.includes('snapshot-fail')) {
          this.traceManager.getStore().appendEvent({
             eventId: crypto.randomUUID(),
@@ -719,8 +747,10 @@ export class SourceApplyService {
       }
       return { success: true };
     } else {
+      this.emitTraceEvent(ticket.missionId, executionId, 'APPROVAL_CONSUMPTION_FAILED', consumeRes.errorMessage);
       await this.applyExecRepo.updateExecutionStatus(executionId, 'CONSUME_FAILED');
-      await this.applyExecRepo.setWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING, 'CONSUME_FAILED');
+      await this.applyExecRepo.setWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING, consumeRes.errorMessage || 'CONSUME_FAILED');
+      this.emitTraceEvent(ticket.missionId, executionId, 'CONSUME_PENDING_HOLD_ENGAGED');
       return { success: false, errorCode: consumeRes.errorCode || 'CONSUME_FAILED' };
     }
   }
