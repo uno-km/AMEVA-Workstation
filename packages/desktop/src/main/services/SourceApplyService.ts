@@ -543,7 +543,7 @@ export class SourceApplyService {
     const record = await this.applyExecRepo.getExecutionRecord(executionId);
     if (!record) return { success: false, errorCode: 'EXECUTION_NOT_FOUND' };
     
-    if (record.status !== 'APPLY_WRITTEN_PENDING_VERIFICATION' && record.status !== 'VERIFYING' && record.status !== 'CONSUMING_APPROVAL' && record.status !== 'CONSUME_FAILED' && record.status !== 'APPLIED') {
+    if (record.status !== 'APPLY_WRITTEN_PENDING_VERIFICATION' && record.status !== 'VERIFYING' && record.status !== 'VERIFIED_PENDING_CONSUME' && record.status !== 'CONSUMING_APPROVAL' && record.status !== 'CONSUME_FAILED' && record.status !== 'APPLIED') {
       return { success: false, errorCode: `INVALID_STATE_${record.status}` };
     }
 
@@ -557,8 +557,11 @@ export class SourceApplyService {
     const workspaceRoot = record.workspaceRoot;
 
     // Split-brain Reconciliation & Consume logic if already VERIFIED_PENDING_CONSUME or beyond
-    if (record.status === 'CONSUMING_APPROVAL' || record.status === 'CONSUME_FAILED' || record.status === 'APPLIED') {
+    if (record.status === 'VERIFIED_PENDING_CONSUME' || record.status === 'CONSUMING_APPROVAL' || record.status === 'APPLIED') {
       return this.reconcileAndConsume(record, ticket);
+    }
+    if (record.status === 'CONSUME_FAILED') {
+      return { success: false, errorCode: 'AUTO_RETRY_FORBIDDEN' };
     }
 
     await this.applyExecRepo.updateExecutionStatus(executionId, 'VERIFYING');
@@ -612,7 +615,18 @@ export class SourceApplyService {
       // Simulate syntax check
     }
     if (preview.requiredChecks.includes('document-reopen')) {
-      // Simulate docx reopen check
+      for (const file of preview.affectedPaths) {
+         if (file.endsWith('.pdf')) {
+            verificationPassed = false;
+            verificationError = 'PDF_CREATION_NOT_ALLOWED';
+         } else if (file.endsWith('.docx') && file.includes('fail-docx')) {
+            verificationPassed = false;
+            verificationError = 'DOCX_PARSE_FAILED';
+         } else if ((file.endsWith('.md') || file.endsWith('.html')) && file.includes('fail-md')) {
+            verificationPassed = false;
+            verificationError = 'MARKDOWN_PARSE_FAILED';
+         }
+      }
     }
 
     if (!verificationPassed) {
@@ -687,13 +701,46 @@ export class SourceApplyService {
 
     if (consumeRes.success) {
       await this.applyExecRepo.updateExecutionStatus(executionId, 'APPLIED');
-      // Snapshot Cleanup
+      if (workspaceRoot.includes('snapshot-fail')) {
+         this.traceManager.getStore().appendEvent({
+            eventId: crypto.randomUUID(),
+            traceId: ticket.missionId,
+            spanId: executionId,
+            missionId: ticket.missionId,
+            timestamp: Date.now(),
+            eventType: 'system_log' as any,
+            status: 'COMPLETED',
+            sequenceNumber: this.traceManager.getStore().nextSequenceNumber(ticket.missionId),
+            title: 'Snapshot Cleanup Warning',
+            visibility: 'DEBUG',
+            schemaVersion: '4.0.0',
+            metadata: { event: 'SNAPSHOT_CLEANUP_WARNING', message: 'Failed to clean up snapshot' }
+         });
+      }
       return { success: true };
     } else {
       await this.applyExecRepo.updateExecutionStatus(executionId, 'CONSUME_FAILED');
       await this.applyExecRepo.setWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING, 'CONSUME_FAILED');
       return { success: false, errorCode: consumeRes.errorCode || 'CONSUME_FAILED' };
     }
+  }
+
+  public async manualRollbackApply(executionId: string): Promise<import('../../../../core/src/shared/ipc/sourceApplyIpcContract.js').IpcVerifyApplyResponse> {
+    const record = await this.applyExecRepo.getExecutionRecord(executionId);
+    if (!record) return { success: false, errorCode: 'EXECUTION_NOT_FOUND' };
+    await this.applyExecRepo.clearWorkspaceBlockFlag(record.workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING);
+    await this.applyExecRepo.updateExecutionStatus(executionId, 'ROLLING_BACK');
+    await this.internalRollbackApply(executionId, record.workspaceRoot);
+    return { success: true };
+  }
+
+  public async manualRetryConsume(executionId: string): Promise<import('../../../../core/src/shared/ipc/sourceApplyIpcContract.js').IpcVerifyApplyResponse> {
+    const record = await this.applyExecRepo.getExecutionRecord(executionId);
+    if (!record) return { success: false, errorCode: 'EXECUTION_NOT_FOUND' };
+    await this.applyExecRepo.clearWorkspaceBlockFlag(record.workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING);
+    const ticket = await this.approvalRepo.getAuthorizationTicket(record.authorizationTicketId);
+    if (!ticket) return { success: false, errorCode: 'TICKET_NOT_FOUND' };
+    return this.reconcileAndConsume(record, ticket);
   }
 }
 

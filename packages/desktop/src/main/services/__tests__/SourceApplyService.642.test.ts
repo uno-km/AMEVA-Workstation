@@ -273,4 +273,158 @@ describe('SourceApplyService Phase 6.4.2 Verification and Reconciliation', () =>
     const record = await applyExecRepo.getExecutionRecord(executionId);
     expect(record?.status).toBe('APPLIED');
   });
+
+  // NEW SCENARIOS for 6.4.2 COMPLETION:
+  it('VERIFYING 중단 후 재시작 -> VERIFYING 전체 재수행', async () => {
+    const { executionId, ticketId } = await setupMockApplyState('VERIFYING');
+    
+    // Should re-run verification properly
+    const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    expect(res.success).toBe(true);
+    const record = await applyExecRepo.getExecutionRecord(executionId);
+    expect(record?.status).toBe('APPLIED');
+  });
+
+  it('VERIFIED_PENDING_CONSUME 중단 후 재시작 -> CONSUMING_APPROVAL 재개', async () => {
+    const { executionId, ticketId } = await setupMockApplyState('VERIFIED_PENDING_CONSUME');
+    
+    // Should skip verification and go directly to reconcileAndConsume
+    const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    expect(res.errorCode || 'success').toBe('success');
+    expect(res.success).toBe(true);
+    const record = await applyExecRepo.getExecutionRecord(executionId);
+    expect(record?.status).toBe('APPLIED');
+  });
+
+  it('CONSUME_FAILED 재진입 시 자동 재시도 금지 (AUTO_RETRY_FORBIDDEN)', async () => {
+    const { executionId, ticketId } = await setupMockApplyState('CONSUME_FAILED');
+    
+    const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('AUTO_RETRY_FORBIDDEN');
+  });
+
+  it('hold clear -> manual consume retry -> CONSUMING_APPROVAL 재진입', async () => {
+    const { executionId, ticketId } = await setupMockApplyState('CONSUME_FAILED');
+    await applyExecRepo.setWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING, 'failed');
+    
+    // Manual retry should clear hold and succeed
+    const res = await service.manualRetryConsume(executionId);
+    expect(res.success).toBe(true);
+    const record = await applyExecRepo.getExecutionRecord(executionId);
+    expect(record?.status).toBe('APPLIED');
+    expect(await applyExecRepo.hasWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING)).toBe(false);
+  });
+
+  it('hold clear -> manual rollback -> ROLLING_BACK 진입', async () => {
+    const { executionId, ticketId } = await setupMockApplyState('CONSUME_FAILED');
+    await applyExecRepo.setWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING, 'failed');
+    
+    const res = await service.manualRollbackApply(executionId);
+    expect(res.success).toBe(true);
+    const record = await applyExecRepo.getExecutionRecord(executionId);
+    expect(record?.status).toBe('ROLLED_BACK');
+    expect(await applyExecRepo.hasWorkspaceBlockFlag(workspaceRoot, WorkspaceBlockFlag.QUARANTINE_CONSUME_PENDING)).toBe(false);
+  });
+
+  it('SNAPSHOT_CLEANUP_WARNING 증거: cleanup 실패 강제 시 APPLIED 유지 및 trace 기록', async () => {
+    // Setup with a specific workspace root that triggers the simulate fail branch
+    workspaceRoot = path.join(testRoot, 'snapshot-fail');
+    await fsp.mkdir(workspaceRoot, { recursive: true });
+    
+    const { executionId, ticketId } = await setupMockApplyState('VERIFIED_PENDING_CONSUME');
+    
+    const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    expect(res.errorCode || 'success').toBe('success');
+    expect(res.success).toBe(true);
+    
+    const record = await applyExecRepo.getExecutionRecord(executionId);
+    expect(record?.status).toBe('APPLIED');
+    
+    // verify trace event
+    const events = traceManager.getStore().getMissionTrace('m-1');
+    const warningEvent = events.find((e: any) => e.metadata?.event === 'SNAPSHOT_CLEANUP_WARNING');
+    expect(warningEvent).toBeDefined();
+    expect(warningEvent?.metadata?.message).toBe('Failed to clean up snapshot');
+  });
+
+  it('Document verification: PDF creation blocked -> VERIFY_FAILED', async () => {
+    const { executionId, ticketId, requestId, artifactId } = await setupMockApplyState();
+    
+    await previewRepo.saveSourceApplyPreview({
+      sourceApplyRequestId: requestId,
+      missionId: 'm-1',
+      taskId: 't-1',
+      attemptId: 'a-1',
+      workbenchSessionId: 'ws-1',
+      repositoryArtifactId: artifactId || '',
+      artifactRevision: 1,
+      sourceWorkspaceReference: 'w-1',
+      operations: [],
+      affectedPaths: ['test.pdf'],
+      requiredChecks: ['document-reopen'],
+      status: 'APPROVED',
+      createdAt: Date.now(),
+      schemaVersion: '1.0.0'
+    });
+
+    await fsp.writeFile(path.join(workspaceRoot, 'test.pdf'), 'fake');
+
+    const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('VERIFICATION_FAILED_ROLLED_BACK');
+    
+    // Check log for exact reason in real implementation, but here we can check if it rolled back
+    const record = await applyExecRepo.getExecutionRecord(executionId);
+    expect(record?.status).toBe('ROLLED_BACK');
+  });
+
+  it('Document verification: DOCX reopen/parse failure -> VERIFY_FAILED', async () => {
+    const { executionId, ticketId, requestId, artifactId } = await setupMockApplyState();
+    
+    await previewRepo.saveSourceApplyPreview({
+      sourceApplyRequestId: requestId,
+      missionId: 'm-1',
+      taskId: 't-1',
+      attemptId: 'a-1',
+      workbenchSessionId: 'ws-1',
+      repositoryArtifactId: artifactId || '',
+      artifactRevision: 1,
+      sourceWorkspaceReference: 'w-1',
+      operations: [],
+      affectedPaths: ['fail-docx.docx'],
+      requiredChecks: ['document-reopen'],
+      status: 'APPROVED',
+      createdAt: Date.now(),
+      schemaVersion: '1.0.0'
+    });
+
+    await fsp.writeFile(path.join(workspaceRoot, 'fail-docx.docx'), 'fake');
+
+    const res = await service.verifyApply({ executionId, authorizationTicketId: ticketId });
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('VERIFICATION_FAILED_ROLLED_BACK');
+  });
+
+  it('Renderer forged verification/consume payload ignored (Main strictly controls state)', async () => {
+    const { executionId, ticketId } = await setupMockApplyState();
+    
+    // Send a payload attempting to bypass logic. Notice we only pass IDs. We can't even send arbitrary booleans!
+    // The type itself rejects it, but we cast it as any to simulate runtime IPC tampering.
+    const fakePayload: any = {
+      executionId,
+      authorizationTicketId: ticketId,
+      verified: true,
+      applied: true,
+      forceConsume: true
+    };
+
+    // Make local state fail verification by deleting the file
+    await fsp.unlink(path.join(workspaceRoot, 'test.ts'));
+
+    const res = await service.verifyApply(fakePayload);
+    // Despite `verified: true` in the forged payload, Main Process ignores it and executes actual verification, which fails.
+    expect(res.success).toBe(false);
+    expect(res.errorCode).toBe('VERIFICATION_FAILED_ROLLED_BACK');
+  });
 });
