@@ -33,13 +33,13 @@ function verifySender(event: Electron.IpcMainInvokeEvent): void {
   }
 }
 
-function handleSafeError(e: any, defaultCode: any): any {
-  let errorCode = defaultCode;
-  const msg = e.message || '';
-  if (msg.includes('INVALID_PATH') || msg.includes('UNAUTHORIZED') || msg.includes('CAPABILITY_INVALID')) {
-    errorCode = msg;
-  }
-  return { success: false, errorCode, error: msg };
+function handleSafeError(e: any): any {
+  const msg = e instanceof Error ? e.message : String(e);
+  // Rule 1: REMOVE "AUTHORIZE_ERROR" completely
+  // Rule 2: REMOVE "error" field completely
+  // Rule 3: errorCode MUST be the REAL failure reason
+  // Rule 4: NO wrapping, NO abstraction, NO masking
+  return { success: false, errorCode: msg };
 }
 
 export function registerSourceApplyIpc() {
@@ -54,7 +54,7 @@ export function registerSourceApplyIpc() {
       const preview = await sourceApplyService.createPreview(request, session.allowedWorkspaceRoot);
       return { success: true, result: { success: true, preview } };
     } catch (e: any) {
-      return handleSafeError(e, 'PREVIEW_ERROR');
+      return handleSafeError(e);
     }
   });
 
@@ -69,7 +69,7 @@ export function registerSourceApplyIpc() {
       const response = await sourceApplyService.authorizeOperation(request, session);
       return { success: true, result: response };
     } catch (e: any) {
-      return handleSafeError(e, 'AUTHORIZE_ERROR');
+      return handleSafeError(e);
     }
   });
 

@@ -97,5 +97,7 @@ describe('Phase 6.4.1A-3: Source Apply Authorization IPC Security', () => {
     }, null, 2));
 
     expect(response.success).toBe(false);
+    expect(response.errorCode).toBe('DIGEST_MISMATCH');
+    expect((response as any).error).toBeUndefined();
   });
 });
