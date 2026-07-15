@@ -59,19 +59,27 @@ describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
       repositoryArtifactId: artifactId,
       missionId: 'm1',
       revision: 1,
-      contentHash: 'hash',
+      contentHash: crypto.createHash('sha256').update('content').digest('hex'),
       logicalPath: 'test-file.txt',
       createdAt: Date.now(),
       status: 'AVAILABLE',
       storageReference: 'none'
     } as any);
 
+    const artifactDigest = await SourceApplyDigestService.createArtifactDigest(1, crypto.createHash('sha256').update('content').digest('hex'));
+
     const mockPreview = {
-      requestId: 'req-1',
+      previewId: 'preview-1',
+      sourceApplyRequestId: 'req-1',
+      missionId: 'm1',
+      taskId: 't1',
+      attemptId: 'a1',
+      workbenchSessionId: 'ws1',
       repositoryArtifactId: artifactId,
       artifactRevision: 1,
+      sourceWorkspaceId: 'workspace1',
       sourceDigest: digestBefore,
-      artifactDigest: 'hash',
+      artifactDigest,
       addedFiles: [],
       modifiedFiles: ['test-file.txt'],
       deletedFiles: [],
@@ -80,12 +88,15 @@ describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
       changedRanges: [],
       protectedPathViolations: [],
       conflicts: [],
-      riskLevel: 'MEDIUM',
+      riskLevel: 'MEDIUM' as any,
       approvalRequired: true,
       requiredChecks: [],
-      previewDigest: 'p-digest',
       affectedPaths
     };
+    const previewDigest = await SourceApplyDigestService.createPreviewDigest(mockPreview as any);
+    const operationDigest = await SourceApplyDigestService.createOperationDigest(mockPreview as any);
+    const affectedPathsDigest = await SourceApplyDigestService.createAffectedPathsDigest(mockPreview.affectedPaths);
+
     previewRepo.getPreview.mockResolvedValue(mockPreview);
 
     await approvalRepo.saveApprovalRecord({
@@ -100,10 +111,10 @@ describe('Phase 6.4.1A-3: Preview Stale Detection', () => {
       artifactRevision: 1,
       sourceWorkspaceId: 'workspace1',
       sourceDigest: digestBefore,
-      previewDigest: mockPreview.previewDigest,
-      operationDigest: 'op-digest',
-      affectedPathsDigest: 'path-digest',
-      artifactDigest: 'hash',
+      previewDigest,
+      operationDigest,
+      affectedPathsDigest,
+      artifactDigest,
       riskLevel: 'MEDIUM'
     } as any);
 

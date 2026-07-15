@@ -54,29 +54,27 @@ export class SourceApplyService {
       // 1. Re-query Approval Repository
       const approvalResult = await this.approvalRepo.getApprovalRecord(request.approvalId);
       if (!approvalResult.success || !approvalResult.record) {
-        this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_NOT_FOUND');
+        this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'APPROVAL_NOT_FOUND');
         return { success: false, errorCode: 'APPROVAL_NOT_FOUND', errorMessage: 'Approval record not found.' };
       }
 
       const approval = approvalResult.record;
-
-      if (approval.status === 'INVALIDATED') {
-        this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_INVALIDATED');
-        return { success: false, errorCode: 'APPROVAL_INVALIDATED', errorMessage: 'Approval has been invalidated.' };
+      if (approval.status !== 'APPROVED') {
+        this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'APPROVAL_INVALIDATED');
+        return { success: false, errorCode: 'APPROVAL_INVALIDATED', errorMessage: `Approval status is ${approval.status}` };
       }
 
-      // 2. Re-query Preview and Artifact
+      // 2. Artifact Resolution
+      const artifact = await this.artifactRepo.getRepositoryArtifact(request.repositoryArtifactId, request.artifactRevision);
+      if (!artifact) {
+         return { success: false, errorCode: 'ARTIFACT_MISMATCH', errorMessage: 'Artifact not found.' };
+      }
+
+      // 3. Preview Resolution
       const preview = await this.previewRepo.getPreview(request.previewId);
       if (!preview) {
-        return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Preview not found.' };
-      }
-
-      const artifact = await this.artifactRepo.getRepositoryArtifact(request.repositoryArtifactId);
-      
-      // 3. Artifact Validation Hardening
-      if (!artifact || artifact.missionId !== request.missionId || artifact.revision !== request.artifactRevision) {
-        this.emitAuthFailure(request.missionId, traceContext, 'ARTIFACT_MISMATCH');
-        return { success: false, errorCode: 'ARTIFACT_MISMATCH', errorMessage: 'Artifact validation failed.' };
+        this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'ARTIFACT_MISMATCH');
+        return { success: false, errorCode: 'ARTIFACT_MISMATCH', errorMessage: 'Preview not found.' };
       }
 
       // 4. Approval-Preview-Artifact Linking Hardening
@@ -87,7 +85,7 @@ export class SourceApplyService {
         artA: artifact.repositoryArtifactId 
       });
       if (approval.previewId !== request.previewId || preview.repositoryArtifactId !== artifact.repositoryArtifactId) {
-         this.emitAuthFailure(request.missionId, traceContext, 'DIGEST_MISMATCH');
+         this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'DIGEST_MISMATCH');
          return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Linkage validation failed.' };
       }
 
@@ -98,7 +96,7 @@ export class SourceApplyService {
         approval.attemptId !== request.attemptId ||
         approval.workbenchSessionId !== request.workbenchSessionId
       ) {
-         this.emitAuthFailure(request.missionId, traceContext, 'CAPABILITY_INVALID');
+         this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'CAPABILITY_INVALID');
          return { success: false, errorCode: 'CAPABILITY_INVALID', errorMessage: 'Capability token binding mismatch.' };
       }
 
@@ -115,7 +113,7 @@ export class SourceApplyService {
             currentSourceDigest: actualSourceDigest,
             now: Date.now()
          });
-         this.emitAuthFailure(request.missionId, traceContext, 'PREVIEW_STALE');
+         this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'PREVIEW_STALE');
          return { success: false, errorCode: 'PREVIEW_STALE', errorMessage: 'Preview is stale.' };
       }
 
@@ -129,7 +127,7 @@ export class SourceApplyService {
       console.log(`[Digest Recomputation Proof] operationDigest - stored: ${approval.operationDigest}, recomputed: ${recomputedOperationDigest}`);
       console.log(`[Digest Recomputation Proof] affectedPathsDigest - stored: ${approval.affectedPathsDigest}, recomputed: ${recomputedAffectedPathsDigest}`);
       console.log(`[Digest Recomputation Proof] artifactDigest - stored: ${approval.artifactDigest}, recomputed: ${recomputedArtifactDigest}`);
-
+      
       if (
         recomputedPreviewDigest !== approval.previewDigest ||
         recomputedOperationDigest !== approval.operationDigest ||
@@ -141,11 +139,11 @@ export class SourceApplyService {
             invalidationReason: 'DIGEST_MISMATCH',
             now: Date.now()
          });
-         this.emitAuthFailure(request.missionId, traceContext, 'DIGEST_MISMATCH');
-         return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Digest recomputation mismatch.' };
+         this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'DIGEST_MISMATCH');
+         return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: 'Digest mismatch detected.' };
       }
 
-      // 7. Atomic Consumption
+      // 7. Atomic Consumption (Reservation)
       const reserveResult = await this.approvalRepo.compareAndReserveApproval({
          approvalId: request.approvalId,
          sourceApplyRequestId: request.sourceApplyRequestId,
@@ -166,19 +164,19 @@ export class SourceApplyService {
       });
 
       if (!reserveResult.success) {
-         this.emitAuthFailure(request.missionId, traceContext, 'APPROVAL_INVALIDATED');
+         this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'APPROVAL_INVALIDATED');
          return { success: false, errorCode: 'APPROVAL_INVALIDATED', errorMessage: 'Atomic reservation failed.' };
       }
 
       this.traceManager.getStore().appendEvent({
         eventId: crypto.randomUUID(),
         traceId: request.missionId,
-        spanId: 'SourceApplyService',
+        spanId: request.sourceApplyOperationId,
         missionId: request.missionId,
         timestamp: Date.now(),
         eventType: 'system_log' as any,
         status: 'COMPLETED',
-        sequenceNumber: 0,
+        sequenceNumber: this.traceManager.getStore().nextSequenceNumber(request.missionId),
         title: 'Auth Granted',
         visibility: 'DEBUG',
         schemaVersion: '4.0.0',
@@ -195,21 +193,21 @@ export class SourceApplyService {
       };
 
     } catch (e: any) {
-      this.emitAuthFailure(request.missionId, traceContext, 'DIGEST_MISMATCH');
+      this.emitAuthFailure(request.missionId, request.sourceApplyOperationId, traceContext, 'DIGEST_MISMATCH');
       return { success: false, errorCode: 'DIGEST_MISMATCH', errorMessage: e.message };
     }
   }
 
-  private emitAuthFailure(missionId: string, context: any, reasonCode: string) {
+  private emitAuthFailure(missionId: string, operationId: string, context: any, reasonCode: string) {
     this.traceManager.getStore().appendEvent({
       eventId: crypto.randomUUID(),
       traceId: missionId,
-      spanId: 'SourceApplyService',
+      spanId: operationId,
       missionId: missionId,
       timestamp: Date.now(),
       eventType: 'system_log' as any,
       status: 'COMPLETED',
-      sequenceNumber: 0,
+      sequenceNumber: this.traceManager.getStore().nextSequenceNumber(missionId),
       title: 'Auth Failure',
       visibility: 'DEBUG',
       schemaVersion: '4.0.0',

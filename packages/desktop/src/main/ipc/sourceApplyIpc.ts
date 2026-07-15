@@ -36,7 +36,7 @@ function verifySender(event: Electron.IpcMainInvokeEvent): void {
 function handleSafeError(e: any, defaultCode: any): any {
   let errorCode = defaultCode;
   const msg = e.message || '';
-  if (msg.includes('INVALID_PATH') || msg.includes('UNAUTHORIZED')) {
+  if (msg.includes('INVALID_PATH') || msg.includes('UNAUTHORIZED') || msg.includes('CAPABILITY_INVALID')) {
     errorCode = msg;
   }
   return { success: false, errorCode, error: msg };

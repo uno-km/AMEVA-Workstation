@@ -41,13 +41,14 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
     const previewId = 'preview-1';
     const approvalId = 'approval-1';
     const artifactId = 'artifact-1';
+    const artifactDigest = await SourceApplyDigestService.createArtifactDigest(1, crypto.createHash('sha256').update('content').digest('hex'));
 
     const mockPreview = {
       requestId: 'req-1',
       artifactId: artifactId,
       artifactRevision: 1,
       sourceDigest: digestBefore,
-      artifactDigest: 'hash',
+      artifactDigest,
       addedFiles: [],
       modifiedFiles: ['test-file.txt'],
       deletedFiles: [],
@@ -82,7 +83,7 @@ describe('Phase 6.4.1A-3: Authorization Gate Atomicity', () => {
       previewDigest: mockPreview.previewDigest,
       operationDigest: operationDigest,
       affectedPathsDigest: affectedPathsDigest,
-      artifactDigest: 'hash',
+      artifactDigest: artifactDigest,
       riskLevel: 'MEDIUM',
       expiresAt: Date.now() + 100000
     } as any);
