@@ -74,10 +74,10 @@ export function registerSourceApplyIpc() {
   });
 
   ipcMain.handle('sourceApply:executeApply', async (event, request: IpcExecuteApplyRequest): Promise<IpcResponse<IpcExecuteApplyResponse>> => {
-    return { success: false, errorCode: 'BLOCKED', error: 'Phase 6.4.1B Required' };
+    return { success: false, errorCode: 'BLOCKED' } as any;
   });
 
   ipcMain.handle('sourceApply:rollbackApply', async (event, request: IpcRollbackApplyRequest & { workbenchSessionId: string, sessionCapabilityToken?: string }): Promise<IpcResponse<IpcRollbackApplyResponse>> => {
-    return { success: false, errorCode: 'BLOCKED', error: 'Phase 6.4.1B Required' };
+    return { success: false, errorCode: 'BLOCKED' } as any;
   });
 }
