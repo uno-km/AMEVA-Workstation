@@ -12,7 +12,9 @@ import {
   IpcExecuteApplyRequest, 
   IpcExecuteApplyResponse,
   IpcRollbackApplyRequest,
-  IpcRollbackApplyResponse
+  IpcRollbackApplyResponse,
+  IpcAuthorizeSourceApplyRequest,
+  IpcAuthorizeSourceApplyResponse
 } from '../../../../core/src/shared/ipc/sourceApplyIpcContract.js';
 import { SourceApplyService } from '../services/SourceApplyService.js';
 import { sessionRegistry } from './workbenchIpc.js';
