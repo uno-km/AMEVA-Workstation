@@ -19,22 +19,23 @@ describe('Phase 7: Desktop Integration - Multi-Agent Collaboration', () => {
     );
   });
 
-  const getBaseProvenance = (role: any) => ({
+  const getBaseProvenance = (role: any, taskId: string = 'task-desk-1') => ({
     createdBy: 'agent-desktop-1',
     role,
     timestamp: Date.now(),
-    taskId: 'task-desk-1',
+    taskId,
     missionId: 'mission-desk-1'
   });
 
   it('1. planner -> implementer -> reviewer -> verifier happy path', () => {
     const task = orchestrator.createTask('mission-desk-1', [], 'rev-desk-1');
     expect(task.state).toBe('READY');
+    const tid = task.taskId;
 
     orchestrator.submitPlan({
       artifactId: 'plan-1',
       revision: 1,
-      provenance: getBaseProvenance('PLANNER'),
+      provenance: getBaseProvenance('PLANNER', tid),
       baseRevision: 'rev-desk-1',
       requiredInputs: [],
       targetFiles: ['desktop-main.ts'],
@@ -45,7 +46,7 @@ describe('Phase 7: Desktop Integration - Multi-Agent Collaboration', () => {
     orchestrator.submitChanges({
       artifactId: 'changes-1',
       revision: 1,
-      provenance: { ...getBaseProvenance('IMPLEMENTER'), planId: 'plan-1' },
+      provenance: { ...getBaseProvenance('IMPLEMENTER', tid), planId: 'plan-1' },
       baseRevision: 'rev-desk-1',
       patches: [{ filePath: 'desktop-main.ts', diff: 'diff', checksum: '123' }]
     });
@@ -53,7 +54,7 @@ describe('Phase 7: Desktop Integration - Multi-Agent Collaboration', () => {
     orchestrator.submitReview({
       artifactId: 'rev-report-1',
       revision: 1,
-      provenance: { ...getBaseProvenance('REVIEWER'), targetChangesId: 'changes-1' },
+      provenance: { ...getBaseProvenance('REVIEWER', tid), targetChangesId: 'changes-1' },
       status: 'APPROVED',
       feedback: []
     });
@@ -61,13 +62,13 @@ describe('Phase 7: Desktop Integration - Multi-Agent Collaboration', () => {
     orchestrator.submitVerification({
       artifactId: 'verif-1',
       revision: 1,
-      provenance: { ...getBaseProvenance('VERIFIER'), targetChangesId: 'changes-1' },
+      provenance: { ...getBaseProvenance('VERIFIER', tid), targetChangesId: 'changes-1' },
       status: 'PASSED',
       testResults: { passed: 5, failed: 0, logs: '' },
       lintResults: { passed: true, issues: [] }
     });
 
-    const trace = traceAuditor.getTrace(task.taskId);
+    const trace = traceAuditor.getTrace(tid);
     expect(trace.length).toBe(5); // CREATE, PLAN, CHANGES, REVIEW, VERIFICATION
     expect(trace[trace.length - 1].eventType).toBe('handoffCreated');
     console.log('=== Desktop Integration: Happy Path ===\n', JSON.stringify(trace, null, 2));
