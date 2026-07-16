@@ -106,7 +106,7 @@ export class MultiAgentOrchestrator {
   }
 
   public requestApproval(bundle: ApprovalRequestBundle): void {
-    if (!this.capabilityRouter.validateHighRiskAction('ORCHESTRATOR', 'EXECUTE_APPLY', false, false)) {
+    if (!this.capabilityRouter.validateHighRiskAction(bundle.provenance.role, 'EXECUTE_APPLY', false, false)) {
       this.traceAuditor.appendEvent('quarantineEscalated', bundle.provenance.missionId, bundle.provenance.missionId, 'ORCHESTRATOR', { reason: 'Direct Apply Bypass Attempted' });
       throw new Error("SECURITY_BOUNDARY_VIOLATION");
     }
