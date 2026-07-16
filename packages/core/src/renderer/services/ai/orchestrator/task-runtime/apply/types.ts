@@ -75,10 +75,11 @@ export interface WorkspaceExecutionLease {
   expiresAt: number;
 }
 
-export enum WorkspaceBlockFlag {
-  QUARANTINED = 'QUARANTINED',
-  QUARANTINE_CONSUME_PENDING = 'QUARANTINE_CONSUME_PENDING'
-}
+export const WorkspaceBlockFlag = {
+  QUARANTINED: 'QUARANTINED',
+  QUARANTINE_CONSUME_PENDING: 'QUARANTINE_CONSUME_PENDING'
+} as const;
+export type WorkspaceBlockFlag = typeof WorkspaceBlockFlag[keyof typeof WorkspaceBlockFlag];
 
 export interface SourceApplyExecutionRecord {
   executionId: string;
@@ -238,13 +239,14 @@ export interface ArtifactQueryResponse {
   };
 }
 
-export enum RetentionPolicy {
-  IMMEDIATE = 'IMMEDIATE',
-  SEVEN_DAYS = 'SEVEN_DAYS',
-  NINETY_DAYS = 'NINETY_DAYS',
-  INDEFINITE = 'INDEFINITE',
-  PERMANENT = 'PERMANENT'
-}
+export const RetentionPolicy = {
+  IMMEDIATE: 'IMMEDIATE',
+  SEVEN_DAYS: 'SEVEN_DAYS',
+  NINETY_DAYS: 'NINETY_DAYS',
+  INDEFINITE: 'INDEFINITE',
+  PERMANENT: 'PERMANENT'
+} as const;
+export type RetentionPolicy = typeof RetentionPolicy[keyof typeof RetentionPolicy];
 
 export interface RetentionEvaluationResult {
   shouldCleanupSnapshot: boolean;
