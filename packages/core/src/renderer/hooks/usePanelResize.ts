@@ -51,6 +51,7 @@ interface Result {
   width: number
   isDragging: boolean
   handleMouseDown: (e: React.MouseEvent) => void
+  setWidth: React.Dispatch<React.SetStateAction<number>>
 }
 
   /*
@@ -215,6 +216,6 @@ export function usePanelResize({
     setIsDragging(true)
   }, [width])
 
-  return { width, isDragging, handleMouseDown }
+  return { width, isDragging, handleMouseDown, setWidth }
 }
 

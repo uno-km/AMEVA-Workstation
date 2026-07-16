@@ -192,13 +192,96 @@ export async function exportToHWPX(blocks: ExporterBlock[]): Promise<Buffer> {
        * - 예시 코드: `const lines = ...` 형태로 안전 캐싱 후 가공 기동.
        */
     const lines = (block.type === 'codeBlock' ? getPlainTextFromNormalized(block) : text).split('\n')
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `result`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
+    
+    // INTERCEPT AMEVA-EXCEL FOR HWPX
+    if (block.type === 'excel') {
+      const excelDataRaw = block.props?.data || '[]'
+      try {
+        const sheets = JSON.parse(excelDataRaw)
+        if (Array.isArray(sheets) && sheets.length > 0) {
+          let result = ''
+          for (const sheet of sheets) {
+            const celldata = sheet.celldata || []
+            if (celldata.length === 0) continue
+            let maxRow = 0
+            let maxCol = 0
+            for (const cell of celldata) {
+              if (cell.r > maxRow) maxRow = cell.r
+              if (cell.c > maxCol) maxCol = cell.c
+            }
+            const grid = Array(maxRow + 1).fill(null).map(() => Array(maxCol + 1).fill(null))
+            for (const cell of celldata) {
+              grid[cell.r][cell.c] = cell.v
+            }
+
+            result += `<hp:p xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" charPrRef="1"><hp:run><hp:t>[Excel] ${escapeHtml(sheet.name || 'Sheet')}</hp:t></hp:run></hp:p>\n`
+            result += `<hp:tbl xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" borderType="1" colCnt="${maxCol + 1}" rowCnt="${maxRow + 1}">`
+            for (let r = 0; r <= maxRow; r++) {
+              result += '<hp:tr>'
+              for (let c = 0; c <= maxCol; c++) {
+                const v = grid[r][c]
+                let val = ''
+                if (v) {
+                  if (typeof v === 'string' || typeof v === 'number') val = String(v)
+                  else if (v.m !== undefined) val = String(v.m)
+                  else if (v.v !== undefined) val = String(v.v)
+                }
+                result += `<hp:tc><hp:p charPrRef="0"><hp:run><hp:t>${escapeHtml(val)}</hp:t></hp:run></hp:p></hp:tc>`
+              }
+              result += '</hp:tr>'
+            }
+            result += '</hp:tbl>\n'
+          }
+          return result || `<hp:p xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" charPrRef="0"><hp:run><hp:t>(Empty Excel Block)</hp:t></hp:run></hp:p>`
+        }
+      } catch (e) {
+        console.error('[exportToHWPX] ameva-excel 파싱 실패:', e)
+      }
+    }
+
+    // INTERCEPT AMEVA-KANBAN FOR HWPX
+    if (block.type === 'kanban') {
+      const kanbanDataRaw = block.props?.data || '{}'
+      try {
+        const board = JSON.parse(kanbanDataRaw)
+        const cols = board.columns || []
+        if (cols.length > 0) {
+          let result = `<hp:p xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" charPrRef="1"><hp:run><hp:t>[Kanban Board]</hp:t></hp:run></hp:p>\n`
+          const maxCards = Math.max(...cols.map(c => (c.cards || []).length))
+          result += `<hp:tbl xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" borderType="1" colCnt="${cols.length}" rowCnt="${maxCards + 1}">`
+          
+          result += '<hp:tr>'
+          for (const col of cols) {
+            result += `<hp:tc><hp:p charPrRef="1"><hp:run><hp:t>${escapeHtml(col.title || 'Untitled')} (${(col.cards||[]).length})</hp:t></hp:run></hp:p></hp:tc>`
+          }
+          result += '</hp:tr>'
+
+          for (let i = 0; i < maxCards; i++) {
+            result += '<hp:tr>'
+            for (const col of cols) {
+              const card = (col.cards || [])[i]
+              let cardHtml = ''
+              if (card) {
+                cardHtml += escapeHtml(card.title || '')
+                if (card.labels && card.labels.length > 0) {
+                  cardHtml += ' ' + escapeHtml(card.labels.map(l => `[${l.text}]`).join(' '))
+                }
+                if (card.description) {
+                  cardHtml += ' - ' + escapeHtml(card.description)
+                }
+              }
+              result += `<hp:tc><hp:p charPrRef="0"><hp:run><hp:t>${cardHtml}</hp:t></hp:run></hp:p></hp:tc>`
+            }
+            result += '</hp:tr>'
+          }
+          result += '</hp:tbl>\n'
+          return result
+        }
+      } catch (e) {
+        console.error('[exportToHWPX] ameva-kanban 파싱 실패:', e)
+      }
+    }
+
     let result = lines.map(line =>
       `<hp:p xmlns:hp="http://schemas.hancom.co.kr/hwpml/2011/paragraph" charPrRef="${charId}"><hp:run><hp:t>${escapeHtml(line) || ' '}</hp:t></hp:run></hp:p>`
     ).join('')

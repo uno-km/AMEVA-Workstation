@@ -101,6 +101,7 @@ export interface AppLayoutProps {
   aiPanelWidth: number
   isAIPanelDragging: boolean
   handleAIPanelResizeStart: (e: React.MouseEvent) => void
+  handleAIPanelDoubleClick: () => void
   isAIPanelReady: boolean
   showModelHub: boolean
   handleSidebarResizeStart: (e: React.MouseEvent) => void
@@ -135,7 +136,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
   const {
     settings, showStatusBar, showSidebar, setShowSidebar, sidebarWidth, isSidebarReady,
     editor, editorContainerRef, showAIPanel, aiPanelWidth, isAIPanelDragging,
-    handleAIPanelResizeStart, isAIPanelReady, showModelHub,
+    handleAIPanelResizeStart, handleAIPanelDoubleClick, isAIPanelReady, showModelHub,
     handleSidebarResizeStart, isSidebarDragging, editorZoom,
     handleMouseMove, updateDragSelection, updateBlockHighlight, setSelectedText,
     taggedBlocks, setTaggedBlocks, isChatFloating, toastMessage, showFindReplace,
@@ -147,6 +148,8 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
 
   // 원격 다운로드 매니징 감청 기동
   useDownloadManager()
+
+  const isOverlayMode = showAIPanel && aiPanelWidth > 450;
 
   return (
     <div
@@ -280,13 +283,20 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
           className="ai-panel-wrapper"
           data-focus-region="ai-panel"
           style={{
-            position: 'relative',
+            position: isOverlayMode ? 'absolute' : 'relative',
+            right: isOverlayMode ? '40px' : 'auto',
+            top: isOverlayMode ? 0 : 'auto',
+            bottom: isOverlayMode ? 0 : 'auto',
+            zIndex: isOverlayMode ? 99 : 'auto',
             width: showAIPanel ? aiPanelWidth : 0,
             minWidth: 0,
             overflow: 'hidden',
             height: '100%',
             flexShrink: 0,
-            transition: isAIPanelDragging ? 'none' : 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+            backgroundColor: isOverlayMode ? 'var(--bg-deep)' : 'transparent',
+            borderLeft: isOverlayMode ? '1px solid var(--border-muted)' : 'none',
+            boxShadow: isOverlayMode ? '-8px 0 24px rgba(0, 0, 0, 0.45)' : 'none',
+            transition: isAIPanelDragging ? 'none' : 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1), right 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           }}
         >
           {showAIPanel && (
@@ -294,6 +304,7 @@ export const AppLayout: React.FC<AppLayoutProps> = (props) => {
               onMouseDown={handleAIPanelResizeStart}
               isDragging={isAIPanelDragging}
               placement="left"
+              onDoubleClick={handleAIPanelDoubleClick}
             />
           )}
           {isAIPanelReady ? (

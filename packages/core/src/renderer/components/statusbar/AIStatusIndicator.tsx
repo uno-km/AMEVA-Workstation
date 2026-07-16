@@ -91,7 +91,7 @@ export function AIStatusIndicator({
    * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
    * - 예시 코드: `const portInfo = ...` 형태로 안전 캐싱 후 가공 기동.
    */
-  let portInfo = '포트: 3010 (로컬)'
+  let portInfo = '호스팅: GitHub Pages (정적)'
   
   /*
    * [ALGORITHM BRANCH / DECISION]
@@ -204,7 +204,7 @@ export function AIStatusIndicator({
                       return
                     }
                     ipc.llmAddLog({ text: '[System] 재구동 요청을 메인 프로세스로 전송합니다...', prefix: 'System' })
-                    ipc.llmRestart().then((res: any) => {
+                    ipc.llmRestart(aiSettings?.modelPath).then((res: any) => {
                       ipc.llmAddLog({ 
                         text: res.success ? '[System] 수동 재구동(웜업) 완료.' : `[Error] 재구동 실패: ${res.error}`,
                         prefix: 'System'

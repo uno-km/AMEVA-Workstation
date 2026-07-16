@@ -288,7 +288,7 @@ export function registerFileIpc(
         title: 'Save Document',
         defaultPath: filePath,
         filters: [
-          { name: 'All Supported Documents', extensions: ['md', 'markdown', 'txt', 'docx', 'pdf', 'hwpx', 'xlsx', 'ipynb', 'adc'] },
+          { name: 'AMEVA Document', extensions: ['adc'] },
           { name: 'Markdown Document', extensions: ['md'] },
           { name: 'Plain Text', extensions: ['txt'] },
           { name: 'Word Document', extensions: ['docx'] },
@@ -296,6 +296,7 @@ export function registerFileIpc(
           { name: 'HWPX Document', extensions: ['hwpx'] },
           { name: 'Excel Sheet', extensions: ['xlsx'] },
           { name: 'Jupyter Notebook', extensions: ['ipynb'] },
+          { name: 'All Supported Documents', extensions: ['adc', 'md', 'markdown', 'txt', 'docx', 'pdf', 'hwpx', 'xlsx', 'ipynb'] },
         ],
       })
       /*

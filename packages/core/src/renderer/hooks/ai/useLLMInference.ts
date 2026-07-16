@@ -1,11 +1,11 @@
 import { useState, useCallback } from 'react'
-import { useAppContext } from '../../contexts/AppContext'
+import { useAIState } from '../../stores/useAIState'
 import * as ipc from '../../services/ipc/electronApiAdapter'
 import { WebLLMEngine } from '../../services/ai/WebLLMEngine'
 import { useAIIpc } from './useAIIpc'
 
 export function useLLMInference() {
-  const { settings } = useAppContext()
+  const settings = useAIState(state => state.settings)
   const { subscribeSession, unsubscribeSession } = useAIIpc()
   const [isGenerating, setIsGenerating] = useState(false)
   

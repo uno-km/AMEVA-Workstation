@@ -498,6 +498,95 @@ export function blocksToHTML(rawBlocks: any): string {
      */
       case 'divider':
         return '<hr />\n'
+
+      // ── AMEVA EXCEL BLOCK → HTML TABLE ─────────────────────────────────────
+      case 'excel': {
+        const excelDataRaw = block.props?.data || '[]'
+        try {
+          const sheets = typeof excelDataRaw === 'string' ? JSON.parse(excelDataRaw) : excelDataRaw
+          const sheetArr = Array.isArray(sheets) ? sheets : [sheets]
+          if (sheetArr.length === 0) return `<p><em>(Empty Excel Block)</em></p>\n`
+          let html = ''
+          for (const sheet of sheetArr) {
+            const celldata = sheet.celldata || []
+            if (sheet.data && Array.isArray(sheet.data)) {
+              // Already a 2D matrix
+              const matrix = sheet.data.filter((r: any[]) => Array.isArray(r) && r.some(c => c !== null && c !== undefined && c !== ''))
+              if (matrix.length === 0) continue
+              html += `<div style="margin-bottom:1.5rem"><h4 style="color:#475569;margin-bottom:.4rem">[Excel] ${escapeHtml(sheet.name||'Sheet')}</h4>`
+              html += `<table border="1" style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #cbd5e1">\n<tbody>\n`
+              for (let r = 0; r < matrix.length; r++) {
+                html += '<tr>\n'
+                for (let c = 0; c < matrix[r].length; c++) {
+                  const val = matrix[r][c]
+                  const display = val !== null && val !== undefined ? escapeHtml(String(val)) : ''
+                  const tag = r === 0 ? 'th' : 'td'
+                  html += `<${tag} style="border:1px solid #cbd5e1;padding:4px 8px;min-width:50px">${display}</${tag}>\n`
+                }
+                html += '</tr>\n'
+              }
+              html += `</tbody>\n</table>\n</div>\n`
+            } else if (celldata.length > 0) {
+              let maxR = 0, maxC = 0
+              for (const cell of celldata) { if (cell.r > maxR) maxR = cell.r; if (cell.c > maxC) maxC = cell.c }
+              const grid: any[][] = Array(maxR+1).fill(null).map(() => Array(maxC+1).fill(''))
+              for (const cell of celldata) {
+                const v = cell.v
+                grid[cell.r][cell.c] = v?.m ?? v?.v ?? (typeof v === 'string' || typeof v === 'number' ? v : '')
+              }
+              html += `<div style="margin-bottom:1.5rem"><h4 style="color:#475569;margin-bottom:.4rem">[Excel] ${escapeHtml(sheet.name||'Sheet')}</h4>`
+              html += `<table border="1" style="width:100%;border-collapse:collapse;font-size:13px;border:1px solid #cbd5e1">\n<tbody>\n`
+              for (let r = 0; r <= maxR; r++) {
+                html += '<tr>\n'
+                for (let c = 0; c <= maxC; c++) {
+                  const display = grid[r][c] !== '' ? escapeHtml(String(grid[r][c])) : ''
+                  const tag = r === 0 ? 'th' : 'td'
+                  html += `<${tag} style="border:1px solid #cbd5e1;padding:4px 8px;min-width:50px">${display}</${tag}>\n`
+                }
+                html += '</tr>\n'
+              }
+              html += `</tbody>\n</table>\n</div>\n`
+            }
+          }
+          return html || `<p><em>(Empty Excel Block)</em></p>\n`
+        } catch (e) {
+          return `<p><em>(Invalid Excel Data)</em></p>\n`
+        }
+      }
+
+      // ── AMEVA KANBAN BLOCK → HTML TABLE ────────────────────────────────────
+      case 'kanban': {
+        const kanbanRaw = block.props?.data || '{}'
+        try {
+          const board = typeof kanbanRaw === 'string' ? JSON.parse(kanbanRaw) : kanbanRaw
+          const cols = board.columns || []
+          if (cols.length === 0) return `<p><em>(Empty Kanban Board)</em></p>\n`
+          let html = `<div style="margin-bottom:1.5rem">`
+          html += `<h4 style="color:#475569;margin-bottom:.8rem">[Kanban Board]</h4>`
+          html += `<table style="width:100%;border-collapse:separate;border-spacing:10px 0;table-layout:fixed">\n<tbody>\n<tr>\n`
+          for (const col of cols) {
+            const cards = col.cards || []
+            html += `<td style="vertical-align:top;background:#f8fafc;border-radius:8px;padding:10px;border:1px solid #e2e8f0;width:${100/cols.length}%">`
+            html += `<div style="font-weight:600;font-size:13px;color:#334155;border-bottom:2px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">${escapeHtml(col.title||'Untitled')} (${cards.length})</div>`
+            html += `<ul style="list-style:none;padding:0;margin:0">`
+            for (const card of cards) {
+              html += `<li style="background:#fff;padding:10px;margin-bottom:8px;border-radius:6px;border:1px solid #cbd5e1">`
+              html += `<strong style="font-size:13px;color:#1e293b;display:block;margin-bottom:2px">${escapeHtml(card.title||'(제목 없음)')}</strong>`
+              if (card.description) html += `<span style="font-size:11px;color:#64748b">${escapeHtml(card.description)}</span>`
+              if (card.priority) html += `<span style="font-size:10px;color:#94a3b8;margin-top:4px;display:block">우선순위: ${escapeHtml(card.priority)}</span>`
+              html += `</li>`
+            }
+            if (cards.length === 0) html += `<li style="font-size:11px;color:#94a3b8;text-align:center;padding:8px">(비어있음)</li>`
+            html += `</ul></td>\n`
+          }
+          html += `</tr>\n</tbody>\n</table>\n</div>\n`
+          return html
+        } catch (e) {
+          return `<p><em>(Invalid Kanban Data)</em></p>\n`
+        }
+      }
+
+
     /*
      * [CASE ROUTING DECISION BINDING]
      * - 분기 타겟: `default:`

@@ -63,6 +63,7 @@ import { registerLlmIpc } from './ipc/llmIpc.js'
 import { registerTerminalIpc } from './ipc/terminalIpc.js'
 import { registerWorkbenchIpc } from './ipc/workbenchIpc.js'
 import { registerSourceApplyIpc } from './ipc/sourceApplyIpc.js'
+import { registerRestIpc } from './ipc/restIpc.js'
 
 // [FEAT-MEDIA-PROTOCOL-PRIVILEGES] media 커스텀 프로토콜에 로컬 자원 접근 및 스트리밍 특권 부여
 protocol.registerSchemesAsPrivileged([
@@ -245,6 +246,7 @@ function createWindow() {
 
   // 윈도우 인스턴스 구축
   mainWindow = new BrowserWindow({
+    icon: join(__dirname, '../../../../public/favicon.svg'),
     width: 1440,
     height: 900,
     minWidth: 900,
@@ -322,6 +324,7 @@ registerTerminalIpc()
 registerGoogleAuthIpc()
 registerWorkbenchIpc()
 registerSourceApplyIpc()
+registerRestIpc()
 
 /*
  * [FIX-FINANCE-001] Finance IPC 채널: CORS 우회 Yahoo Finance 주식/지수 조회

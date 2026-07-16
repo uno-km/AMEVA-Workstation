@@ -66,6 +66,63 @@ const SAAS_ITEMS = [
   }
 ]
 
+function parseDescription(html: string) {
+  if (!html) return null;
+  if (!html.includes('<span') && !html.includes('<br')) {
+    return html;
+  }
+
+  const regex = /<span\s+class=['"]([^'"]+)['"]>(.*?)<\/span>|<br\s*\/?>/g;
+  const elements: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let key = 0;
+
+  while ((match = regex.exec(html)) !== null) {
+    if (match.index > lastIndex) {
+      elements.push(html.substring(lastIndex, match.index));
+    }
+
+    if (match[0].startsWith('<br')) {
+      elements.push(<br key={key++} />);
+    } else {
+      const className = match[1];
+      const content = match[2];
+
+      const bRegex = /<b>(.*?)<\/b>/g;
+      const spanChildren: React.ReactNode[] = [];
+      let bLastIndex = 0;
+      let bMatch;
+      let bKey = 0;
+
+      while ((bMatch = bRegex.exec(content)) !== null) {
+        if (bMatch.index > bLastIndex) {
+          spanChildren.push(content.substring(bLastIndex, bMatch.index));
+        }
+        spanChildren.push(<b key={bKey++}>{bMatch[1]}</b>);
+        bLastIndex = bRegex.lastIndex;
+      }
+      if (bLastIndex < content.length) {
+        spanChildren.push(content.substring(bLastIndex));
+      }
+
+      elements.push(
+        <span key={key++} className={className}>
+          {spanChildren.length > 0 ? spanChildren : content}
+        </span>
+      );
+    }
+
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < html.length) {
+    elements.push(html.substring(lastIndex));
+  }
+
+  return elements;
+}
+
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `MarketplaceModal`
@@ -254,7 +311,7 @@ export function MarketplaceModal({
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const res = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      const res = await fetch('http://localhost:3010/api/plugins', { signal: controller.signal })
+      const res = await fetch('https://uno-km.github.io/AMEVA-Workstation-Market-Place/api/plugins.json', { signal: controller.signal })
       clearTimeout(timeoutId)
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -283,9 +340,9 @@ export function MarketplaceModal({
        * - 예시: `if (err.name === 'AbortError')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
       if (err.name === 'AbortError') {
-        setError('Marketplace 서버 연결 시간 초과 (5초). 서버가 실행 중인지 확인하세요. (Port: 3010)')
+        setError('Marketplace 서버 연결 시간 초과 (5초). 깃허브 페이지 호스팅 상태를 확인하세요.')
       } else {
-        setError('Marketplace 서버를 찾을 수 없거나 오프라인 상태입니다. (Port: 3010) — 앱을 완전히 종료 후 재시작하거나 아래 버튼을 눌러 재시도하세요.')
+        setError('Marketplace 서버를 찾을 수 없거나 오프라인 상태입니다. 인터넷 연결을 확인하거나 아래 버튼을 눌러 재시도하세요.')
       }
     } finally {
       setLoading(false)
@@ -417,14 +474,13 @@ export function MarketplaceModal({
           gap: '10px',
         }}
       >
-        {loading && (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
+        {loading ? (
+          <div key="loading" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
             익스텐션 목록을 가져오는 중입니다...
           </div>
-        )}
-
-        {error && (
+        ) : error ? (
           <div
+            key="error"
             style={{
               padding: '16px',
               background: 'rgba(239,68,68,0.06)',
@@ -452,61 +508,49 @@ export function MarketplaceModal({
               🔄 다시 시도
             </button>
           </div>
-        )}
+        ) : (
+          <div key="content" style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {filteredPlugins.length === 0 && (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
+                조건에 맞는 플러그인이 없습니다.
+              </div>
+            )}
 
-        {!loading && !error && filteredPlugins.length === 0 && (
-          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '11px' }}>
-            조건에 맞는 플러그인이 없습니다.
+            {/* 👑 SaaS Premium Toggles (DuckDuckGo, Python Sandbox, Request Queue) */}
+            {categories.length > 0 && (() => {
+              const filteredSaas = SAAS_ITEMS.filter(p => {
+                const matchesCategory = selectedCategory === 'all' || p.type === selectedCategory
+                const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase())
+                return matchesCategory && matchesSearch
+              })
+
+              return filteredSaas.map(p => (
+                <SaaSPluginCard
+                  key={p.id}
+                  id={p.id}
+                  name={p.name}
+                  version={p.version}
+                  type={p.type}
+                  description={p.description}
+                  isEnabled={enabledPlugins[p.id] ?? false}
+                  onToggle={handleToggleSaaSPlugin}
+                  onPreview={handlePreview}
+                />
+              ))
+            })()}
+
+            {filteredPlugins.map((p) => (
+              <PluginCard
+                key={p.id}
+                plugin={p}
+                isInstalled={installedPlugins.includes(p.id)}
+                isActionLoading={!!actionLoading[p.id]}
+                onToggleInstall={handleToggleInstall}
+                onPreview={handlePreview}
+              />
+            ))}
           </div>
         )}
-
-        {/* 👑 SaaS Premium Toggles (DuckDuckGo, Python Sandbox, Request Queue) */}
-        {!loading && categories.length > 0 && (() => {
-          const filteredSaas = SAAS_ITEMS.filter(p => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `matchesCategory`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const matchesCategory = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const matchesCategory = selectedCategory === 'all' || p.type === selectedCategory
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `matchesSearch`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const matchesSearch = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-            const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase())
-            return matchesCategory && matchesSearch
-          })
-
-          return filteredSaas.map(p => (
-            <SaaSPluginCard
-              key={p.id}
-              id={p.id}
-              name={p.name}
-              version={p.version}
-              type={p.type}
-              description={p.description}
-              isEnabled={enabledPlugins[p.id] ?? false}
-              onToggle={handleToggleSaaSPlugin}
-              onPreview={handlePreview}
-            />
-          ))
-        })()}
-
-        {!loading && !error && filteredPlugins.map((p) => (
-          <PluginCard
-            key={p.id}
-            plugin={p}
-            isInstalled={installedPlugins.includes(p.id)}
-            isActionLoading={!!actionLoading[p.id]}
-            onToggleInstall={handleToggleInstall}
-            onPreview={handlePreview}
-          />
-        ))}
       </div>
       
       {previewData && createPortal(
@@ -577,7 +621,7 @@ export function MarketplaceModal({
                   {previewData.name}
                 </h1>
                 <p style={{ fontSize: '15px', lineHeight: '1.6', color: '#a1a1aa', margin: '0 0 30px 0' }}>
-                  {previewData.description}
+                  {parseDescription(previewData.description || '')}
                 </p>
                 <div style={{
                   height: '200px', background: '#18181b', borderRadius: '12px',

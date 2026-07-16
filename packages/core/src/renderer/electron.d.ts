@@ -95,7 +95,15 @@ export interface IElectronAPI {
   llmAddLog: (payload: { text: string; prefix?: string }) => void
   llmGetLogs: () => Promise<string>
   llmCheckHealth: () => Promise<{ status: 'ok' | 'offline' | 'loading model'; running: boolean; error?: string }>
-  llmRestart: () => Promise<{ success: boolean; error?: string }>
+  llmRestart: (modelPath?: string) => Promise<{ success: boolean; error?: string }>
+  httpRequest: (payload: { url: string; method: string; headers?: Record<string, string>; body?: string }) => Promise<{
+    success: boolean
+    status?: number
+    statusText?: string
+    headers?: Record<string, string>
+    body?: string
+    error?: string
+  }>
 
   llmListModels: (type?: 'llm' | 'code' | 'ollama') => Promise<LLMModel[]>
   selectLocalFile: (filters?: { name: string; extensions: string[] }[]) => Promise<{ filePath: string; base64: string } | null>
@@ -106,7 +114,7 @@ export interface IElectronAPI {
   sttTranscribe: (payload: { audioPath: string; language?: string }) => Promise<{ success: boolean; text?: string; error?: string }>
   sttGetTempPath: () => Promise<string>
 
-  llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' }) => Promise<{ success: boolean; error?: string }>
+  llmDownloadModel: (payload: { url: string; filename: string; type?: 'llm' | 'code' | 'stt' }) => Promise<{ success: boolean; error?: string }>
   onLLMDownloadProgress: (callback: (data: { filename: string; progress: number; speed: number; downloadedBytes: number; totalBytes: number; timeRemaining: number }) => void) => () => void
   llmImportModel: (sourcePath: string, type?: 'llm' | 'code') => Promise<{ success: boolean; path?: string; error?: string }>
 

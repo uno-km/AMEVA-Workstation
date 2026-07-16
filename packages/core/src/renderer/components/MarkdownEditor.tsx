@@ -51,9 +51,6 @@ import {
   SuggestionMenuController,
   SideMenuController,
   SideMenu,
-  RemoveBlockItem,
-  DragHandleMenu,
-  BlockColorsItem,
   DragHandleButton,
   useBlockNoteEditor,
   useExtension,
@@ -98,7 +95,6 @@ import mermaid from 'mermaid'
  */
 import { useBacktickFence } from './useBacktickFence'
 import { useCollaborationHighlight } from './useCollaborationHighlight'
-import { DynamicRemotePluginLoader } from './ai/DynamicRemotePluginLoader'
 import { useNativeUploadIntercept } from './useNativeUploadIntercept'
 
 // Mermaid 초기화 시도
@@ -121,7 +117,6 @@ try {
  * - RichStyleToolbar: 폰트 및 폰트크기 강제 커스텀 툴바.
  * - ImageLightbox: 이미지 클릭 시 전체스크린 확대 뷰 모달.
  */
-import { MarkdownPreview } from './MarkdownPreview'
 import { PeerBlockHighlightLayer } from './editor/PeerBlockHighlightLayer'
 import { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
 import { WelcomeBanner } from './editor/WelcomeBanner'
@@ -291,44 +286,6 @@ const CustomAddBlockButton = () => {
   )
 }
 
-/**
- * @component CustomSideMenu
- * @location packages/core/src/renderer/components/MarkdownEditor.tsx
- * @description BlockNote SideMenuController에 주입하는 커스텀 SideMenu 조합 컴포넌트.
- *
- * [설계 핵심 이유 - WHY NAMED COMPONENT]
- * - SideMenuController의 sideMenu prop은 컴포넌트 생성기(FC)를 받는데,
- *   인라인 화살표 함수 `sideMenu={(props) => <SideMenu .../>}` 방식으로 넘기면
- *   MarkdownEditor가 리렌더링될 때마다 함수 참조가 생성되어 React가 컴포넌트 타입이
- *   바뀐 것으로 판단하고 SideMenu를 언마운트/리마운트한다.
- *   결과적으로 마우스를 올릴 때마다 사이드 메뉴가 깜빡이는 현상이 발생한다.
- * - Named 컴포넌트로 분리하면 참조가 안정화(stable)되어 불필요한 리마운트가 사라진다.
- *
- * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - 소비처 A (MarkdownEditor): BlockNoteView 내부 SideMenuController의 sideMenu prop으로 전달.
- */
-const CustomSideMenu = () => (
-  <SideMenu
-    dragHandleMenu={(menuProps) => (
-      <DragHandleMenu {...menuProps}>
-        <RemoveBlockItem {...menuProps}>삭제 (Delete)</RemoveBlockItem>
-        <BlockColorsItem {...menuProps}>색상 (Colors)</BlockColorsItem>
-      </DragHandleMenu>
-    )}
-  >
-    {/* 새 커스텀 + 버튼: BlockNote Context 내부에서 공식 슬래시 메뉴 API 호출 */}
-    <CustomAddBlockButton />
-    {/* 공식 드래그 핸들 단추: 블록 순서 재배치 그랩 핸들 */}
-    <DragHandleButton
-      dragHandleMenu={(menuProps) => (
-        <DragHandleMenu {...menuProps}>
-          <RemoveBlockItem {...menuProps}>삭제 (Delete)</RemoveBlockItem>
-          <BlockColorsItem {...menuProps}>색상 (Colors)</BlockColorsItem>
-        </DragHandleMenu>
-      )}
-    />
-  </SideMenu>
-)
 
 /**
  * @component MarkdownEditor
@@ -429,6 +386,21 @@ export function MarkdownEditor({
       }
     }
   }, [selectedFont, selectedSize, editor, editorMode, hasRichStyling, editorContainerRef])
+
+  useEffect(() => {
+    /*
+     * [CONTRACT]
+     * - 현재 활성화된 에디터 인스턴스를 전역 AMEVA_CORE 공간에 바인딩하여,
+     *   동적으로 마운트되는 원격/프리미엄 플러그인(마인드맵, 프레젠테이션 등)에서 에디터의 실시간 문서 구조를 읽거나 쓸 수 있도록 지원한다.
+     */
+    if (typeof window !== 'undefined') {
+      const win = window as any
+      if (!win.AMEVA_CORE) {
+        win.AMEVA_CORE = {}
+      }
+      win.AMEVA_CORE.editor = editor
+    }
+  }, [editor])
 
   // 코드 펜스, 작업 피어 포커스 레이어 및 파일 드롭 이미지 가로채기 구동
   useBacktickFence(editor)
@@ -584,7 +556,7 @@ export function MarkdownEditor({
           />
         ) : editorMode === 'edit' ? (
           <BlockNoteView editor={editor} theme={theme === 'white' ? 'light' : 'dark'} editable slashMenu={false}>
-            <SideMenuController sideMenu={CustomSideMenu} />
+            <SideMenuController />
             {/* 1. 슬래시(/) 명령어 단축 팝업 제어 */}
             <SuggestionMenuController
               triggerCharacter="/"

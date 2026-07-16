@@ -66,6 +66,7 @@
   },
   "build": {
     "appId": "com.ameva.markdowneditor",
+    "icon": "public/favicon.svg",
     "productName": "AMEVA Markdown Editor",
     "directories": {
       "output": "release"

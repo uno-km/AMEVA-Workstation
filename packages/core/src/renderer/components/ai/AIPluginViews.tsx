@@ -17,8 +17,7 @@
  * - MUST NOT: TypeScript any 형식을 우회 수단으로 함부로 선언하지 말 것.
  */
 
-import React, { useRef, useEffect, useState, useMemo } from 'react'
-import { MapPin, Search, ArrowLeft, ArrowRight, RotateCw, Home, X, ChevronUp, ChevronDown } from 'lucide-react'
+import React, { useRef, useEffect } from 'react'
 import { DynamicRemotePluginLoader } from './DynamicRemotePluginLoader'
 
 // ─────────────────────────────────────────────────────────────
@@ -38,8 +37,6 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
     calculator: useRef<HTMLDivElement>(null),
     'finance-dashboard': useRef<HTMLDivElement>(null),
     youtube: useRef<HTMLDivElement>(null),
-    naver: useRef<HTMLDivElement>(null),
-    google: useRef<HTMLDivElement>(null),
     calendar: useRef<HTMLDivElement>(null),
     'google-drive': useRef<HTMLDivElement>(null),
     'google-maps': useRef<HTMLDivElement>(null),
@@ -115,28 +112,27 @@ export function AIPluginViews({ activeTab }: { activeTab: string }) {
        */
   switch (activeTab) {
     // [LEGACY DOM-BASED PLUGINS]
-    case 'calculator': return <div id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />
-    case 'youtube': return <div id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />
-    case 'naver': return <div id="ameva-plugin-naver" style={containerStyle} ref={pluginRefs.naver} />
-    case 'calendar': return <div id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />
-    case 'google-drive': return <div id="ameva-plugin-google-drive" style={containerStyle} ref={pluginRefs['google-drive']} />
+    case 'calculator': return <div key="calculator" id="ameva-plugin-calculator" style={containerStyle} ref={pluginRefs.calculator} />
+    case 'youtube': return <div key="youtube" id="ameva-plugin-youtube" style={containerStyle} ref={pluginRefs.youtube} />
+    case 'calendar': return <div key="calendar" id="ameva-plugin-calendar" style={containerStyle} ref={pluginRefs.calendar} />
+    case 'google-drive': return <div key="google-drive" id="ameva-plugin-google-drive" style={containerStyle} ref={pluginRefs['google-drive']} />
 
     // [MARKET-PLACE DYNAMIC PLUGINS]
     case 'finance':
-    case 'finance-dashboard': return <DynamicRemotePluginLoader pluginId="FinanceDashboardView" />
-    case 'web-browser': return <DynamicRemotePluginLoader pluginId="AmevaBrowserView" />
-    case 'google-maps': return <DynamicRemotePluginLoader pluginId="GoogleMapsView" />
-    case 'kanban': return <DynamicRemotePluginLoader pluginId="KanbanBoard" />
+    case 'finance-dashboard': return <DynamicRemotePluginLoader key="finance-dashboard" pluginId="FinanceDashboardView" />
+    case 'web-browser': return <DynamicRemotePluginLoader key="web-browser" pluginId="SmartSearchScrap" />
+    case 'google-maps': return <DynamicRemotePluginLoader key="google-maps" pluginId="GoogleMapsView" />
+    case 'kanban': return <DynamicRemotePluginLoader key="kanban" pluginId="KanbanBoard" />
     
     // The 8 Epic Plugins
-    case 'pdf-rag': return <DynamicRemotePluginLoader pluginId="PdfRagPlugin" />
-    case 'db-explorer': return <DynamicRemotePluginLoader pluginId="DatabaseExplorerPlugin" />
-    case 'voice-dictation': return <DynamicRemotePluginLoader pluginId="VoiceDictationPlugin" />
-    case 'presentation': return <DynamicRemotePluginLoader pluginId="PresentationPlugin" />
-    case 'mind-map': return <DynamicRemotePluginLoader pluginId="MindMapPlugin" />
-    case 'pomodoro': return <DynamicRemotePluginLoader pluginId="PomodoroPlugin" />
-    case 'rest-client': return <DynamicRemotePluginLoader pluginId="RestClientPlugin" />
-    case 'wireframe': return <DynamicRemotePluginLoader pluginId="WireframePlugin" />
+    case 'pdf-rag': return <DynamicRemotePluginLoader key="pdf-rag" pluginId="PdfRagPlugin" />
+    case 'db-explorer': return <DynamicRemotePluginLoader key="db-explorer" pluginId="DatabaseExplorerPlugin" />
+    case 'voice-dictation': return <DynamicRemotePluginLoader key="voice-dictation" pluginId="VoiceDictationPlugin" />
+    case 'presentation': return <DynamicRemotePluginLoader key="presentation" pluginId="PresentationPlugin" />
+    case 'mind-map': return <DynamicRemotePluginLoader key="mind-map" pluginId="MindMapPlugin" />
+    case 'pomodoro': return <DynamicRemotePluginLoader key="pomodoro" pluginId="PomodoroPlugin" />
+    case 'rest-client': return <DynamicRemotePluginLoader key="rest-client" pluginId="RestClientPlugin" />
+    case 'wireframe': return <DynamicRemotePluginLoader key="wireframe" pluginId="WireframePlugin" />
 
     default: return null;
   }

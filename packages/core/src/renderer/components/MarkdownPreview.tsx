@@ -27,6 +27,8 @@ import { resolveLocalMediaUrl } from '../utils/markdownUtils'
 import { InlineMermaidRenderer } from './markdown/InlineMermaidRenderer'
 import { InlineLinkPreviewRenderer } from './markdown/InlineLinkPreviewRenderer'
 import { InlineMapRenderer } from './markdown/InlineMapRenderer'
+import { InlineKanbanRenderer } from './markdown/InlineKanbanRenderer'
+import { InlineExcelRenderer } from './markdown/InlineExcelRenderer'
 import { InlineYoutubeRenderer } from './markdown/InlineYoutubeRenderer'
 import { InlineDrawingRenderer } from './markdown/InlineDrawingRenderer'
 
@@ -406,6 +408,22 @@ export function MarkdownPreview({ markdown, editor }: { markdown: string; editor
             return (
               <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
                 <InlineLinkPreviewRenderer code={seg.code} />
+              </div>
+            )
+          }
+
+          if (seg.language === 'ameva-kanban') {
+            return (
+              <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
+                <InlineKanbanRenderer code={seg.code} />
+              </div>
+            )
+          }
+
+          if (seg.language === 'ameva-excel') {
+            return (
+              <div key={idx} style={{ margin: '16px 0', width: '100%' }}>
+                <InlineExcelRenderer code={seg.code} />
               </div>
             )
           }

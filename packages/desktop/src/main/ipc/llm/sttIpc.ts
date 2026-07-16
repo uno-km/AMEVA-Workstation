@@ -32,6 +32,7 @@ export function registerSttIpc(): void {
   ipcMain.handle('stt:transcribe', async (_event, payload: {
     audioPath: string
     language?: string
+    modelId?: string
   }) => {
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -48,7 +49,7 @@ export function registerSttIpc(): void {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const modelPath = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const modelPath = 'C:\\ameva\\models\\stt\\ggml-small.bin'
+    const modelPath = payload.modelId ? `C:\\ameva\\models\\stt\\${payload.modelId}` : 'C:\\ameva\\models\\stt\\ggml-small.bin'
 
       /*
        * [ALGORITHM BRANCH / DECISION]

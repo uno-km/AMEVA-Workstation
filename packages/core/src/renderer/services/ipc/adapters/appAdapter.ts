@@ -224,3 +224,28 @@ export function forceCloseApp(): void {
   window.electronAPI.forceCloseApp()
 }
 
+  /*
+   * [FUNCTION CONTRACT]
+   * - 함수 명: `httpRequest`
+   * - 역할: 메인 프로세스의 CORS 바이패스 프록시를 경유해 HTTP 요청을 안전하게 비동기 기동하고 응답 결과를 렌더러로 회신한다.
+   * - 예시: `httpRequest({ url: '...', method: 'GET' })` 호출 시 비동기 IPC 연동 개시.
+   */
+export async function httpRequest(payload: { url: string; method: string; headers?: Record<string, string>; body?: string }): Promise<{
+  success: boolean
+  status?: number
+  statusText?: string
+  headers?: Record<string, string>
+  body?: string
+  error?: string
+}> {
+      /*
+       * [ALGORITHM BRANCH / DECISION]
+       * - 조건 식: `!window.electronAPI?.httpRequest` 일렉트론 브릿지가 부재한 경우(브라우저 독립 테스팅 등)에는 에러 코드 반환
+       */
+  if (!window.electronAPI?.httpRequest) {
+    return { success: false, error: 'API not available in this environment' }
+  }
+  return window.electronAPI.httpRequest(payload)
+}
+
+
