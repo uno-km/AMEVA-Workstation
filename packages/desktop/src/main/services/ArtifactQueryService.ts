@@ -17,12 +17,11 @@ export class ArtifactQueryService {
   public async queryArtifact(req: ArtifactQueryRequest): Promise<ArtifactQueryResponse> {
     const { executionId, viewType } = req;
     
-    // Fallback ID resolution mocked here for completeness
-    const id = executionId || req.approvalId || req.authorizationTicketId || req.missionId || req.workspaceRoot || (req.artifactRevision ? `rev-${req.artifactRevision}` : undefined);
-
-    if (!id) {
+    if (!executionId) {
       return { success: false, errorCode: 'QUERY_INVALID_KEY', viewType };
     }
+
+    const id = executionId;
 
     const record = await this.applyExecRepo.getExecutionRecord(id);
     if (!record) {

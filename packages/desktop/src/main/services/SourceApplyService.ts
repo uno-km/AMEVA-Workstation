@@ -411,11 +411,10 @@ export class SourceApplyService {
           await fsp.mkdir(path.dirname(absPath), { recursive: true });
           const tempPath = path.join(path.dirname(absPath), `.tmp_${crypto.randomUUID()}`);
           
-          // Read from artifact (mock payload since artifact represents actual changes in test)
-          let payload = "mock content";
-          if (fs.existsSync(artifact.storageReference)) {
-            payload = await fsp.readFile(artifact.storageReference, 'utf8');
+          if (!fs.existsSync(artifact.storageReference)) {
+            throw new Error(`Artifact file not found: ${artifact.storageReference}`);
           }
+          const payload = await fsp.readFile(artifact.storageReference, 'utf8');
           
           const fh = await fsp.open(tempPath, 'w');
           await fh.writeFile(payload);
@@ -432,10 +431,11 @@ export class SourceApplyService {
           const absPath = path.join(workspaceRoot, file);
           
           const tempPath = path.join(path.dirname(absPath), `.tmp_mod_${crypto.randomUUID()}`);
-          let payload = "mock modified content";
-          if (fs.existsSync(artifact.storageReference)) {
-            payload = await fsp.readFile(artifact.storageReference, 'utf8');
+          
+          if (!fs.existsSync(artifact.storageReference)) {
+            throw new Error(`Artifact file not found: ${artifact.storageReference}`);
           }
+          const payload = await fsp.readFile(artifact.storageReference, 'utf8');
 
           const fh = await fsp.open(tempPath, 'w');
           await fh.writeFile(payload);

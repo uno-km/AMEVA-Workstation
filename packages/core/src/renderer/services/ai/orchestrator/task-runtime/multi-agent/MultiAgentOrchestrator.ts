@@ -115,17 +115,5 @@ export class MultiAgentOrchestrator {
     this.traceAuditor.appendEvent('approvalRequested', bundle.provenance.missionId, bundle.provenance.missionId, 'ORCHESTRATOR', { bundleId: bundle.artifactId, riskLevel: bundle.riskLevel });
   }
 
-  public handleForgedPayload(payload: any): void {
-    this.traceAuditor.appendEvent('quarantineEscalated', 'unknown', 'unknown', 'ORCHESTRATOR', { reason: 'Forged payload ignored', payload: this.capabilityRouter.routePayload('ORCHESTRATOR', payload) });
-  }
 
-  public resumeTasks(): void {
-    // Mock resume of blocked/failed tasks
-    for (const [id, task] of this.tasks.entries()) {
-      if (task.state === 'BLOCKED') {
-        task.state = 'READY';
-        this.traceAuditor.appendEvent('resumeRecovered', task.taskId, task.missionId, 'ORCHESTRATOR', { state: task.state });
-      }
-    }
-  }
 }
