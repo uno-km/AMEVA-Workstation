@@ -4,7 +4,7 @@ import * as fsp from 'fs/promises';
 import * as path from 'path';
 import crypto from 'crypto';
 import { spawn } from 'child_process';
-import { 
+import type { 
   IpcCommandRequest, 
   IpcCommandResult, 
   IpcResponse, 

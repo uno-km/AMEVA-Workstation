@@ -4,8 +4,8 @@
  * @role Convert Task/Mission data into TaskRoutingProfile
  */
 
-import { Task } from '../../domain/types';
-import { TaskRoutingProfile, Capability, PrivacyLevel } from '../domain/types';
+import type { Task } from '../../domain/types';
+import type { TaskRoutingProfile, Capability, PrivacyLevel } from '../domain/types';
 
 export class TaskProfiler {
   /**

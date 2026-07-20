@@ -6,7 +6,7 @@
 
 import * as ipc from '../../../../../ipc/electronApiAdapter';
 import { ModelRegistry } from './ModelRegistry';
-import { ModelDescriptor, Capability } from '../domain/types';
+import type { ModelDescriptor, Capability } from '../domain/types';
 
 export class ModelDiscoveryAdapter {
   /**

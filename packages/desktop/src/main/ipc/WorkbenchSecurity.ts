@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import crypto from 'crypto';
-import { IpcRegisterSessionRequest, IpcRegisterSessionResponse, IpcSessionContext } from '../../../../core/src/shared/ipc/workbenchIpcContract';
+import type { IpcRegisterSessionRequest, IpcRegisterSessionResponse, IpcSessionContext } from '../../../../core/src/shared/ipc/workbenchIpcContract';
 
 export interface RegisteredSession {
   workbenchSessionId: string;

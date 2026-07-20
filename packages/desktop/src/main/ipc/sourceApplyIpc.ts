@@ -5,8 +5,8 @@
  */
 
 import { ipcMain } from 'electron';
-import { IpcResponse } from '../../../../core/src/shared/ipc/workbenchIpcContract.js';
-import { 
+import type { IpcResponse } from '../../../../core/src/shared/ipc/workbenchIpcContract.js';
+import type { 
   IpcCreatePreviewRequest, 
   IpcCreatePreviewResponse, 
   IpcExecuteApplyRequest, 

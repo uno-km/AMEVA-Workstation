@@ -4,7 +4,7 @@
  * @role Lifecycle manager for ILLMEngineAdapter instances.
  */
 
-import { ILLMEngineAdapter, OrchestratorConfig } from '../../../types';
+import type { ILLMEngineAdapter, OrchestratorConfig } from '../../../types';
 import { LLMEngineAdapterFactory } from '../../../LLMEngineAdapter';
 import { ModelRegistry } from '../registry/ModelRegistry';
 
