@@ -535,11 +535,6 @@ export class AgentOrchestratorSession {
     const initialTasks = await planner.plan(userMessage, (token) => {
       accumulatedPlanText += token
       this.supervisor.onToken(token, accumulatedPlanText, false)
-      this.emitEvent({
-        type: 'thought_token',
-        token,
-        accumulated: accumulatedPlanText
-      })
     })
 
     // [Task Runtime V2] Legacy JSON(initialTasks) -> Domain Entity 변환 및 Store 등록 (Shadow Mode)
@@ -773,14 +768,34 @@ export class AgentOrchestratorSession {
       // 4. Mission 완료 결과 평가 및 최종 마크다운 보고서 생성
       const finalResultGrade = completionManager.evaluateMissionResult()
       const stats = completionManager.getSummaryStats()
-      const finalReportText = FinalReporter.buildReport(
-        userMessage,
+      // 사용자 메시지 끝부분에 실수로 병합된 JSON 태스크 배열 블록 제거
+      const cleanGoal = userMessage.replace(/\[\s*\{[\s\S]*?\}\s*\]\s*$/, '').trim();
+      let finalReportText = FinalReporter.buildReport(
+        cleanGoal,
         stats,
         completionManager.getCompletionRate(),
         finalResultGrade,
         this.currentTurn,
         0 // RecoveryCount
       )
+
+      // [Feature: Append Generated Content directly to Chat Bubble]
+      const v2Tasks = this.taskStore.getAllTasks(this.sessionId);
+      if (v2Tasks.length > 0) {
+        let contentSection = '';
+        for (const vt of v2Tasks) {
+          if (vt.status === 'COMPLETED' && vt.outputs && vt.outputs.length > 0) {
+            for (const out of vt.outputs) {
+              if (out.type === 'text' && out.content) {
+                 contentSection += `\n\n#### 📝 [${vt.title}]\n${out.content}`;
+              }
+            }
+          }
+        }
+        if (contentSection.length > 0) {
+          finalReportText += `\n\n---\n\n### 📄 생성된 본문 리포트 (Generated Outputs)\n${contentSection}`;
+        }
+      }
 
       // 최종 상태 바인딩
       state.setFinalReport(finalReportText)
@@ -1033,15 +1048,18 @@ export class AgentOrchestratorSession {
    * 3. ReAct 출력 포맷 강제 지침
    * 4. Task Plan 생성 지침 (복잡한 요청의 경우)
    */
-  private buildSystemPrompt(): string {
+  public buildSystemPrompt(isSubTask: boolean = false): string {
     const toolList = this.registry.serializeForPrompt()
 
-    return `당신은 AMEVA OS의 자율 ReAct 에이전트입니다. 사용자의 요청을 해결하기 위해 도구를 활용하고, 단계적으로 사고하며 행동합니다.
+    let prompt = `당신은 AMEVA OS의 자율 ReAct 에이전트입니다. 사용자의 요청을 해결하기 위해 도구를 활용하고, 단계적으로 사고하며 행동합니다.
 
 ${toolList}
 
 ## 출력 규칙 (반드시 준수)
+`
 
+    if (!isSubTask) {
+      prompt += `
 복잡한 요청의 경우, 먼저 아래 JSON 형식으로 Task Plan을 작성하세요:
 \`\`\`json
 [
@@ -1050,7 +1068,14 @@ ${toolList}
 ]
 \`\`\`
 
-그런 다음 각 단계를 처리할 때 다음 포맷을 반드시 사용하세요:
+`
+    } else {
+      prompt += `
+현재 단계의 태스크를 단독 수행 중입니다. 절대로 JSON 형태의 Task Plan을 중복 작성하지 마십시오. 오직 현재 태스크의 목표 완수에만 집중하여 행동하십시오.
+`
+    }
+
+    prompt += `그런 다음 각 단계를 처리할 때 다음 포맷을 반드시 사용하세요:
 
 <thought>
 여기에 현재 상황 분석과 다음 행동 계획을 한국어로 작성하세요.
@@ -1069,7 +1094,9 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
 - 한 번에 하나의 도구만 호출하세요 (턴제 원칙).
 - 도구 실행 결과(Observation)를 받은 후 다음 Thought를 작성하세요.
 - 최종 답변이 준비되지 않은 경우 절대로 "Final Answer:"를 사용하지 마세요.
-- 모든 혼잣말(<thought>)과 최종 답변은 한국어로 작성하세요.`
+- 중국어, 영어 등 외국어를 답변 본문이나 생각 과정에 사용하지 말고, 반드시 모든 생각(<thought>)과 최종 답변을 한국어로만 작성하세요.`
+
+    return prompt
   }
 
   private cleanupRecovery(): void {

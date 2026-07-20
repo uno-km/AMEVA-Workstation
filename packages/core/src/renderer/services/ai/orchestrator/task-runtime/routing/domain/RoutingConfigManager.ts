@@ -11,9 +11,9 @@ export class RoutingConfigManager {
   
   private config: RoutingConfig = {
     routingEnabled: true, // Feature flag for Phase 5 routing
-    localFirst: true,
-    allowRemoteForPublic: false,
-    allowRemoteForInternal: false,
+    localFirst: false, // Changed from true to allow routing to selected remote models when appropriate
+    allowRemoteForPublic: true,
+    allowRemoteForInternal: true,
     approvalRequiredForRemoteConfidential: true,
     confidenceThresholdUse: 0.85,
     confidenceThresholdEscalate: 0.60,

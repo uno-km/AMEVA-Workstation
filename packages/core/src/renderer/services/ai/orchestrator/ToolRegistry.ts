@@ -64,7 +64,8 @@ export const BUILTIN_TOOL_NAMES = {
   READ_FILE: 'read_file',
   WRITE_FILE: 'write_file',
   APPLY_PATCH: 'apply_patch',
-  LIST_DIR: 'list_dir'
+  LIST_DIR: 'list_dir',
+  APPEND_FILE: 'append_file'
 } as const;
 
 /* ============================================================
@@ -385,6 +386,97 @@ export class ToolRegistry {
             success: false,
             error: err instanceof Error ? err.message : String(err),
             toolName: BUILTIN_TOOL_NAMES.WRITE_FILE,
+            toolArgs: args
+          }
+        }
+      }
+    })
+
+    /*
+     * [TOOL: append_file]
+     * - 기존 파일 끝에 내용을 추가한다.
+     */
+    this.register({
+      name: BUILTIN_TOOL_NAMES.APPEND_FILE,
+      description: '기존 파일의 끝에 새로운 내용을 추가(Append)합니다. 보고서나 문서를 순차적으로 이어서 작성할 때 이전 내용이 덮어씌워지지 않도록 반드시 이 도구를 사용하세요.',
+      parameters: {
+        type: 'object',
+        properties: {
+          path: { type: 'string', description: '내용을 추가할 파일의 절대 경로 또는 상대 경로' },
+          content: { type: 'string', description: '파일 끝에 추가할 내용' }
+        },
+        required: ['path', 'content']
+      },
+      execute: async (args, context) => {
+        const rawPath = String(args['path'] ?? '')
+        const appendContent = String(args['content'] ?? '')
+
+        let safePath: string;
+        try {
+          safePath = PathSanitizer.sanitizePath(rawPath, 'write', context?.missionId);
+        } catch (sanitizeErr: unknown) {
+          const reason = sanitizeErr instanceof PathSanitizationError ? sanitizeErr.reason : 'UNKNOWN';
+          return {
+            success: false,
+            error: `Append blocked: ${sanitizeErr instanceof Error ? sanitizeErr.message : String(sanitizeErr)} (reason: ${reason})`,
+            toolName: BUILTIN_TOOL_NAMES.APPEND_FILE,
+            toolArgs: args
+          };
+        }
+
+        if (!this.fileAdapter) {
+          return {
+            success: false,
+            error: `fileAdapter is not initialized. Cannot append file.`,
+            toolName: BUILTIN_TOOL_NAMES.APPEND_FILE,
+            toolArgs: args
+          };
+        }
+
+        try {
+          // 1. 기존 내용 읽기 (없으면 빈 문자열)
+          let existingContent = '';
+          try {
+            existingContent = (await this.fileAdapter.read(safePath)) ?? '';
+          } catch (e) {
+            existingContent = '';
+          }
+
+          // 2. 내용 결합
+          let finalContent = existingContent;
+          if (finalContent.length > 0 && !finalContent.endsWith('\n')) {
+            finalContent += '\n';
+          }
+          finalContent += appendContent;
+
+          // 3. 다시 쓰기
+          await this.fileAdapter.write(safePath, finalContent);
+          
+          const stat = await this.fileAdapter.stat(safePath);
+          const hash = await this.fileAdapter.hash(safePath);
+
+          return {
+            success: true,
+            result: `파일 내용 추가(Append) 완료: ${safePath}`,
+            toolName: BUILTIN_TOOL_NAMES.APPEND_FILE,
+            toolArgs: args,
+            artifactId: context?.artifactId,
+            missionId: context?.missionId,
+            taskId: context?.taskId,
+            attemptId: context?.attemptId,
+            outputId: context?.expectedOutput,
+            expectedPath: rawPath,
+            normalizedStagedPath: safePath,
+            size: stat.size,
+            contentHash: hash ?? undefined,
+            revision: 1,
+            idempotencyKey: context?.idempotencyKey
+          }
+        } catch (err: unknown) {
+          return {
+            success: false,
+            error: err instanceof Error ? err.message : String(err),
+            toolName: BUILTIN_TOOL_NAMES.APPEND_FILE,
             toolArgs: args
           }
         }

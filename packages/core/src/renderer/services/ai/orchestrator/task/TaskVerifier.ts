@@ -147,8 +147,8 @@ ${result.summary}
      *   두 단어가 모두 혼용될 경우, includes('FAIL')로 인해 오판 탈락하는 상황을 정규식 및 초반 문자열 매칭으로 해소한다.
      *   단, 최종 판단이 완전히 불확실하거나 모호할 때는 가짜 완료(False Completion) 예방을 위해 보수적으로 FAIL로 귀결시킨다.
      */
-    const hasPass = /\[?PASS\]?/i.test(verdictClean);
-    const hasFail = /\[?FAIL\]?/i.test(verdictClean);
+    const hasPass = /\[?PASS\]?/i.test(verdictClean) || /통과|성공/i.test(verdictClean);
+    const hasFail = /\[?FAIL\]?/i.test(verdictClean) || /실패|미달/i.test(verdictClean);
     
     // 1순위: PASS만 검출되고 FAIL이 없는 경우
     if (hasPass && !hasFail) {
@@ -161,15 +161,23 @@ ${result.summary}
     
     // 3순위: 두 단어가 모두 잡혔거나 모두 잡히지 않은 경우, 답변 시작 15자 내의 단어 가중치 판별
     const first15 = verdictClean.slice(0, 15);
-    if (/PASS/i.test(first15)) {
+    if (/PASS|통과|성공/i.test(first15)) {
       return true;
     }
-    if (/FAIL/i.test(first15)) {
+    if (/FAIL|실패|미달/i.test(first15)) {
       return false;
     }
     
     // 4순위: 애매하거나 모호할 경우, 가짜 완료(False Completion) 방지를 위해 보수적으로 FAIL 처리
     console.warn(`[TaskVerifier] 애매한 LLM 판정 결과("${verdictClean}")로 인해 보수적으로 FAIL 처리함.`);
+    if (session) {
+      session.emitEvent({
+        type: 'critic_feedback',
+        verdict: 'FAIL',
+        reason: `태스크 ${task.id} 비평가 결과 해석 모호 (원본: "${verdictRaw.trim()}")`,
+        taskTitle: task.title
+      });
+    }
     return false;
   }
 }

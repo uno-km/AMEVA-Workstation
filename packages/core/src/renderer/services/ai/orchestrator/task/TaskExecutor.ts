@@ -80,8 +80,7 @@ Final Answer: {
        *   따라서 신규 태스크 실행 진입 시 시스템 프롬프트만 보존한 채 이전의 장황한 ReAct 세부 로그들을 소거하고,
        *   대신 이미 성공적으로 완료된 태스크들의 결과 요약(Summary) 목록만을 정갈하게 합성하여 컨텍스트를 압축 리셋한다.
        */
-      const systemMessage = session.contextMessages.find((m: any) => m.role === 'system');
-      const baseSystemPrompt = systemMessage ? systemMessage.content : '';
+      const baseSystemPrompt = (session as any).buildSystemPrompt ? (session as any).buildSystemPrompt(true) : '';
       
       const completedTaskSummaries = session.taskGraph
         ? session.taskGraph.getTasks()

@@ -993,6 +993,10 @@ export function useAppFileOperations(
       const targetTab = tabs.find(t => t.filePath === filePathVal)
       
       if (!targetTab) {
+        // .log 파일이나 /sys/ 파일인 경우 자동으로 새 탭을 열지 않음
+        if (filePathVal.endsWith('.log') || filePathVal.startsWith('/sys/')) {
+          return
+        }
         // 새 탭 신설 및 활성화
         const newTabId = 'tab_' + Math.random().toString(36).substring(2, 9)
         const newTab = {
@@ -1010,22 +1014,30 @@ export function useAppFileOperations(
         // 동기적으로 에디터에 로딩
         await openFileInTab(editor, contentVal, filePathVal, false)
       } else {
-        // 기존 탭 활성화 포커스
-        setActiveTabId(targetTab.id)
-        
-        // 포커싱 후 본문 내용 동기화
-        if (activeTabId === targetTab.id) {
-          await loadMarkdownIntoEditor(editor, contentVal, false, filePathVal)
+        // .log 파일이나 /sys/ 파일인 경우 활성 탭 전환 없이 내용만 조용히 업데이트
+        if (filePathVal.endsWith('.log') || filePathVal.startsWith('/sys/')) {
+          useWorkspaceStore.getState().updateTab(targetTab.id, { content: contentVal })
+          if (activeTabId === targetTab.id) {
+            await loadMarkdownIntoEditor(editor, contentVal, false, filePathVal)
+          }
         } else {
-          try {
-            const parsed = await editor.tryParseMarkdownToBlocks(normalizeMarkdown(contentVal))
-            useWorkspaceStore.getState().updateActiveTab({
-              filePath: filePathVal,
-              content: contentVal,
-              blocks: parsed
-            })
-          } catch (err: unknown) {
-            console.warn('[AutoUpdate] 비활성 탭 버퍼 동기화 오류:', err)
+          // 기존 탭 활성화 포커스
+          setActiveTabId(targetTab.id)
+          
+          // 포커싱 후 본문 내용 동기화
+          if (activeTabId === targetTab.id) {
+            await loadMarkdownIntoEditor(editor, contentVal, false, filePathVal)
+          } else {
+            try {
+              const parsed = await editor.tryParseMarkdownToBlocks(normalizeMarkdown(contentVal))
+              useWorkspaceStore.getState().updateActiveTab({
+                filePath: filePathVal,
+                content: contentVal,
+                blocks: parsed
+              })
+            } catch (err: unknown) {
+              console.warn('[AutoUpdate] 비활성 탭 버퍼 동기화 오류:', err)
+            }
           }
         }
       }

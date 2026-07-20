@@ -470,6 +470,104 @@ class LlamaLocalEngineAdapter implements ILLMEngineAdapter {
   }
 }
 
+import { useAIState } from '../../../stores/useAIState'
+
+/**
+ * RemoteEngineAdapter
+ * Electron Main Process의 llmGenerate IPC 채널을 경유하여 
+ * 원격 Cloud API(Gemini, Anthropic, OpenAI 등)를 호출하는 어댑터 구현체.
+ */
+class RemoteEngineAdapter implements ILLMEngineAdapter {
+  public modelId?: string
+  public isRemote = true
+  private sessionId: string = 'sess_remote_' + Math.random().toString(36).substring(2, 9)
+  private unsubscribeToken?: () => void
+  private unsubscribeDone?: () => void
+
+  public async loadModel(modelId: string): Promise<void> {
+    this.modelId = modelId
+  }
+
+  public async unloadModel(): Promise<void> {
+    this.modelId = undefined
+  }
+
+  public isReady(): boolean {
+    return typeof window !== 'undefined' && typeof window.electronAPI !== 'undefined'
+  }
+
+  public async abort(): Promise<void> {
+    if (typeof window !== 'undefined' && window.electronAPI) {
+      window.electronAPI.llmAbort(this.sessionId)
+    }
+  }
+
+  public async generateStream(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    onToken: (token: string) => void
+  ): Promise<string> {
+    if (typeof window === 'undefined' || !window.electronAPI) {
+      throw new Error('Electron API is not available in this environment.')
+    }
+
+    const { settings } = useAIState.getState()
+    
+    // Extract system prompt and user prompt
+    const systemMsg = messages.find(m => m.role === 'system')
+    const systemPrompt = systemMsg ? systemMsg.content : ''
+    
+    const userMsgs = messages.filter(m => m.role === 'user')
+    const prompt = userMsgs.length > 0 ? userMsgs[userMsgs.length - 1].content : ''
+    
+    const history = messages
+      .filter(m => m.role !== 'system' && m !== userMsgs[userMsgs.length - 1])
+      .map(m => ({
+        role: (m.role === 'assistant' ? 'assistant' : 'user') as 'assistant' | 'user',
+        content: m.content
+      }))
+
+    this.unsubscribeToken?.()
+    this.unsubscribeDone?.()
+
+    return new Promise<string>((resolve, reject) => {
+      let accumulated = ''
+      
+      this.unsubscribeToken = window.electronAPI!.onLLMToken(this.sessionId, (token) => {
+        accumulated += token
+        onToken(token)
+      })
+
+      this.unsubscribeDone = window.electronAPI!.onLLMDone(this.sessionId, (data) => {
+        this.unsubscribeToken?.()
+        this.unsubscribeDone?.()
+        if (data.success) {
+          resolve(accumulated || data.content || '')
+        } else {
+          reject(new Error(data.error || 'Remote cloud model generation failed.'))
+        }
+      })
+
+      window.electronAPI!.llmGenerate({
+        sessionId: this.sessionId,
+        modelPath: settings.modelPath || '',
+        prompt,
+        systemPrompt,
+        apiType: 'api',
+        apiKey: settings.apiKey,
+        apiEndpoint: settings.apiEndpoint,
+        apiModel: this.modelId || settings.apiModel, // Use routed model ID if loaded
+        temperature: settings.temperature,
+        maxTokens: settings.maxTokens,
+        history
+      }).catch(err => {
+        this.unsubscribeToken?.()
+        this.unsubscribeDone?.()
+        reject(err)
+      })
+    })
+  }
+}
+
 /* ============================================================
  * 4. 어댑터 팩토리 (Factory)
  * ============================================================ */
@@ -502,8 +600,11 @@ export class LLMEngineAdapterFactory {
           config.endpointUrl ?? 'http://localhost:11434'
         )
 
-      case 'local':
+      case 'remote':
       case 'api':
+        return new RemoteEngineAdapter()
+
+      case 'local':
       default:
         return new LlamaLocalEngineAdapter(
           config.endpointUrl ?? 'http://localhost:12345'

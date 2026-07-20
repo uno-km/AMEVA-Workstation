@@ -22,20 +22,28 @@ import { join } from 'path'
 import { LLMProcessManager } from '../../services/llmProcessManager.js'
 import { isFreeModeRequested, getProPlanMemory, setProPlanMemory } from '../../services/planState.js'
 
+import fs from 'fs'
+
 /**
  * LLM 엔진 라이프사이클(시작/정지/재시작/헬스체크), 로그, GPU 정보 및 플랜 상태 관리 IPC 등록
  */
 export function registerLlmLifecycleIpc(): void {
+// ... (in registerLlmLifecycleIpc)
   ipcMain.on('llm:add-log', (_event, payload: { text: string; prefix?: string }) => {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `prefix`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const prefix = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const prefix = payload.prefix || 'SYS';
-    LLMProcessManager.broadcastLog(prefix, payload.text + (!payload.text.endsWith('\n') ? '\n' : ''));
+    const logText = payload.text + (!payload.text.endsWith('\n') ? '\n' : '');
+    LLMProcessManager.broadcastLog(prefix, logText);
+    
+    // [Feature: Persistent Local Logging] Save to physical disk
+    try {
+      const logDir = join(process.cwd(), 'debug-logs');
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+      const logPath = join(logDir, 'agent_reasoning.log');
+      const timestamp = new Date().toISOString();
+      fs.appendFileSync(logPath, `[${timestamp}] [${prefix}] ${logText}`);
+    } catch (err) {
+      console.error('[llmLifecycleIpc] Failed to write persistent log:', err);
+    }
   })
 
   ipcMain.handle('llm:get-logs', () => {

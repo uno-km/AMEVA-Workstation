@@ -52,6 +52,8 @@ export interface AIMessage {
   finalAnswer?: string
   isReasoningCollapsed?: boolean
   isThinking?: boolean
+  instructionId?: string
+  sessionId?: string
 }
 
 export interface AISettings {

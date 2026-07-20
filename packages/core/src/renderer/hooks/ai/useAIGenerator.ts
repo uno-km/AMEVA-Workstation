@@ -220,12 +220,15 @@ export function useAIGenerator(
     resetSession(sessId, assistantId)
 
     // 사용자 질의 구문 말풍선 메타 구성 및 에이전트 메시지 노드 주입
+    const instructionId = `inst_${Math.random().toString(36).substring(2, 9)}`
     const userMsg: AIMessage = {
       id: `msg_${Date.now()}_user`,
       role: 'user',
       content: userMessage,
       timestamp: Date.now(),
-      taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
+      taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined,
+      instructionId,
+      sessionId: sessId
     }
 
     addUserAndAssistantMessages(userMsg, assistantId, originalText, blockId)

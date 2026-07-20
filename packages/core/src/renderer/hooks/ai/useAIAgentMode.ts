@@ -107,6 +107,38 @@ function appendToVfsLog(text: string): void {
     window.dispatchEvent(new CustomEvent('ameva:file-auto-write', {
       detail: { filePath: logPath, content: updatedLog }
     }))
+
+    // 지시 ID별 DB 영구 저장 로직
+    if (activeInstructionId) {
+      try {
+        const dbRaw = localStorage.getItem('ameva_instruction_db')
+        let dbData: Record<string, any> = {}
+        if (dbRaw) {
+          try {
+            dbData = JSON.parse(dbRaw)
+          } catch {
+            dbData = {}
+          }
+        }
+        
+        const instKey = activeInstructionId
+        if (!dbData[instKey]) {
+          dbData[instKey] = {
+            instructionId: activeInstructionId,
+            sessionId: activeSessionId || 'N/A',
+            timestamp: Date.now(),
+            timeString: new Date().toLocaleTimeString('ko-KR'),
+            prompt: '',
+            logs: ''
+          }
+        }
+        
+        dbData[instKey].logs += text + '\n'
+        localStorage.setItem('ameva_instruction_db', JSON.stringify(dbData))
+      } catch (dbErr) {
+        console.warn('[appendToVfsLog] DB 저장 실패:', dbErr)
+      }
+    }
   } catch (err) {
     console.warn('[appendToVfsLog] Failed to append logs to AMEVA VFS:', err)
   }
@@ -119,6 +151,7 @@ function appendToVfsLog(text: string): void {
 export interface AgentModeParams {
   assistantId: string
   sessId: string
+  instructionId?: string
   finalSettings: AISettings
   userMessage: string
   context?: string
@@ -439,12 +472,18 @@ export function useAIAgentMode() {
  * AgentOrchestratorSession을 인스턴스화하고 ReAct 루프를 구동하며,
  * 모든 이벤트를 useAIState 스토어와 메시지 말풍선에 동기화한다.
  */
+// 모듈 레벨에서 현재 활성화된 지시 ID 및 세션 ID를 추적하는 변수 정의
+let activeInstructionId: string | null = null
+let activeSessionId: string | null = null
+
 async function runDeepReasoningMode(
   params: AgentModeParams,
   isAgentRunningRef: React.MutableRefObject<boolean>
 ): Promise<AgentModeResult> {
   const {
     assistantId,
+    sessId,
+    instructionId,
     finalSettings,
     userMessage,
     messages,
@@ -464,6 +503,36 @@ async function runDeepReasoningMode(
     setAgentCurrentToolName,
     setAgentAccumulatedAnswer
   } = useAIState.getState()
+
+  // 모듈 변수 셋업
+  activeInstructionId = instructionId || null
+  activeSessionId = sessId || null
+
+  // 로컬 스토리지 DB 초기화
+  if (instructionId) {
+    try {
+      const dbRaw = localStorage.getItem('ameva_instruction_db')
+      let dbData: Record<string, any> = {}
+      if (dbRaw) {
+        try {
+          dbData = JSON.parse(dbRaw)
+        } catch {
+          dbData = {}
+        }
+      }
+      dbData[instructionId] = {
+        instructionId,
+        sessionId: sessId || 'N/A',
+        timestamp: Date.now(),
+        timeString: new Date().toLocaleTimeString('ko-KR'),
+        prompt: userMessage,
+        logs: ''
+      }
+      localStorage.setItem('ameva_instruction_db', JSON.stringify(dbData))
+    } catch (e) {
+      console.warn('[runDeepReasoningMode] DB 초기화 실패:', e)
+    }
+  }
 
   resetAgentState()
   ipc.llmAddLog({ text: '[딥 리즈닝] AgentOrchestrator 세션 기동', prefix: 'Orchestrator' })

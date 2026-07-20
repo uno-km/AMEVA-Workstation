@@ -59,6 +59,18 @@ export function MessageBubble({
 }: MessageBubbleProps) {
   const [copied, setCopied] = useState(false);
   const [thoughtExpanded, setThoughtExpanded] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const handleClose = () => setContextMenu(null);
+    window.addEventListener('click', handleClose);
+    return () => window.removeEventListener('click', handleClose);
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `isUser`
@@ -209,13 +221,15 @@ export function MessageBubble({
   }
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: isUser ? 'row-reverse' : 'row',
-      gap: '8px',
-      alignItems: 'flex-start',
-      marginBottom: '14px',
-    }}>
+    <div 
+      onContextMenu={handleContextMenu}
+      style={{
+        display: 'flex',
+        flexDirection: isUser ? 'row-reverse' : 'row',
+        gap: '8px',
+        alignItems: 'flex-start',
+        marginBottom: '14px',
+      }}>
       {/* ── 아바타 섹션 ── */}
       <div style={{
         width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
@@ -688,14 +702,38 @@ export function MessageBubble({
           textToApply={textToApply}
           hasSelection={hasSelection}
         />
-
-        {/* 발생 시간 타임스탬프 */}
-        <div style={{
-          fontSize: '9px', color: 'var(--text-dark)', marginTop: '6px', textAlign: isUser ? 'right' : 'left',
-        }}>
-          {new Date(msg.timestamp).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}
         </div>
-      </div>
+      {contextMenu && (
+        <div style={{
+          position: 'fixed',
+          top: contextMenu.y,
+          left: contextMenu.x,
+          background: 'var(--bg-card, #1e1e2e)',
+          border: '1px solid var(--border-muted, #3a3a4a)',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
+          zIndex: 10000,
+          fontSize: '11px',
+          color: 'var(--text-main, #e0e0e0)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+          minWidth: '220px',
+          backdropFilter: 'blur(4px)',
+          animation: 'fadeIn 0.1s ease-out',
+          userSelect: 'text',
+          WebkitUserSelect: 'text'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-muted)', paddingBottom: '4px', marginBottom: '4px', fontWeight: 'bold' }}>
+            <span>📋 정보</span>
+            <span style={{ cursor: 'pointer', color: 'var(--text-muted)' }} onClick={() => setContextMenu(null)}>✕</span>
+          </div>
+          <div>⏱️ <b>발생 시간:</b> {new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</div>
+          <div>🆔 <b>지시 ID:</b> <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{msg.instructionId || msg.id}</code></div>
+          <div>💬 <b>채팅방 ID:</b> <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{msg.sessionId || 'N/A'}</code></div>
+        </div>
+      )}
     </div>
   );
 }

@@ -44,7 +44,9 @@ export function useAddMessages(setMessages: (updater: (prev: AIMessage[]) => AIM
       blockId,
       reasoningTrace: [],
       finalAnswer: undefined,
-      reasoningStatus: undefined
+      reasoningStatus: undefined,
+      instructionId: userMsg.instructionId,
+      sessionId: userMsg.sessionId
     }
 
     setMessages((prev) => [

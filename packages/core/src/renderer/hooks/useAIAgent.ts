@@ -415,12 +415,15 @@ export function useAIAgent() {
       const sessId = crypto.randomUUID()
       resetSession(sessId, assistantId)
 
+      const instructionId = `inst_${Math.random().toString(36).substring(2, 9)}`
       const userMsg: AIMessage = {
         id: `msg_${Date.now()}_user`,
         role: 'user',
         content: processedMsg,
         timestamp: Date.now(),
-        taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
+        taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined,
+        instructionId,
+        sessionId: sessId
       }
       addUserAndAssistantMessages(userMsg, assistantId, orig, bId)
 
@@ -440,6 +443,7 @@ export function useAIAgent() {
       const agentParams = {
         assistantId,
         sessId,
+        instructionId,
         finalSettings,
         userMessage: processedMsg,
         context: ctx,

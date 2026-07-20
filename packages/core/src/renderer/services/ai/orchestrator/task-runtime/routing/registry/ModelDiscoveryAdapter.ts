@@ -40,6 +40,56 @@ export class ModelDiscoveryAdapter {
         }
       }
 
+      // Dynamically register the active remote model if configured
+      try {
+        const savedSettings = localStorage.getItem('ameva_ai_settings') || localStorage.getItem('ai-settings');
+        if (savedSettings) {
+          const parsed = JSON.parse(savedSettings);
+          if (parsed && parsed.apiType === 'api' && parsed.apiModel) {
+            const remoteModelId = parsed.apiModel;
+            const isGemini = remoteModelId.toLowerCase().includes('gemini');
+            const isClaude = remoteModelId.toLowerCase().includes('claude');
+            const isGpt = remoteModelId.toLowerCase().includes('gpt');
+            
+            const remoteDescriptor: ModelDescriptor = {
+              modelId: remoteModelId,
+              displayName: remoteModelId,
+              provider: isGemini ? 'gemini' : isClaude ? 'anthropic' : isGpt ? 'openai' : 'remote',
+              endpointType: 'remote',
+              localOrRemote: 'remote',
+              parameterClass: '32B', // Treat remote models as large models
+              contextWindow: 128000,
+              maxOutputTokens: 8192,
+              supportedLanguages: ['en', 'ko'],
+              capabilities: [
+                'CLASSIFICATION', 'SUMMARIZATION', 'ROUTING', 'PLANNING',
+                'TOOL_RESULT_INTERPRETATION', 'SEMANTIC_VERIFICATION', 'DOCUMENT_DRAFTING',
+                'TOOL_SELECTION', 'STRUCTURED_OUTPUT', 'LONG_CONTEXT'
+              ],
+              toolCallingSupport: 'native',
+              structuredOutputSupport: 'native_schema',
+              codeCapability: true,
+              longContextCapability: true,
+              semanticVerificationCapability: true,
+              privacyLevel: 'PUBLIC',
+              estimatedLatencyClass: 'low',
+              estimatedMemoryMb: 0,
+              requiredVramMb: 0,
+              availability: 'AVAILABLE',
+              healthStatus: 'MODEL_READY',
+              version: '1.0',
+              enabled: true
+            };
+            
+            if (!descriptors.some(d => d.modelId === remoteModelId)) {
+              descriptors.push(remoteDescriptor);
+            }
+          }
+        }
+      } catch (remoteErr) {
+        console.warn('[ModelDiscoveryAdapter] Failed to sync remote model settings:', remoteErr);
+      }
+
       ModelRegistry.getInstance().syncSnapshot(descriptors);
       return descriptors;
     } catch (e) {
