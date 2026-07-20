@@ -1,4 +1,4 @@
-import { ILLMEngineAdapter } from '../../../types';
+import type { ILLMEngineAdapter } from '../../../types';
 import { ModelRegistry } from '../registry/ModelRegistry';
 import { ExecutionTraceManager } from '../../trace/ExecutionTraceManager';
 
