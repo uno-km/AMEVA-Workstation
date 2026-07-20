@@ -26,11 +26,18 @@ Each task must have:
 - title: string
 - objective: string
 - dependencies: string[] (array of task ids)
-- expectedOutputs: string[]
+- outputMode: string (MUST be one of: 'NO_PERSISTED_OUTPUT', 'FILE_OUTPUT_REQUIRED', 'ARTIFACT_OUTPUT_REQUIRED', 'EITHER_FILE_OR_ARTIFACT')
+- expectedFileOutputs: string[]
+- expectedArtifactOutputs: string[]
 - acceptanceCriteria: string[]
 - capabilityRequirements: string[]
 - requirementIds: string[]
 - budgetTurns: number
+
+[CRITICAL RULE FOR OUTPUT MODE]
+- If the task creates/modifies files: set outputMode = "FILE_OUTPUT_REQUIRED" AND include the explicit file paths in expectedFileOutputs (e.g. ["report.md"]).
+- If the task creates a structured report/plan: set outputMode = "ARTIFACT_OUTPUT_REQUIRED" AND include artifact types in expectedArtifactOutputs.
+- If the task is purely for analysis/explanation (no file needed): set outputMode = "NO_PERSISTED_OUTPUT" (expectedFileOutputs and expectedArtifactOutputs can be empty).
 
 [CRITICAL RULE FOR DOCUMENTS/REPORTS]
 If the user requests to write a report, document, or generate text content (e.g., "보고서 작성해", "작성해줘"), YOU MUST append a final task at the very end.

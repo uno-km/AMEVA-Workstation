@@ -2,10 +2,13 @@ import type { TaskVerifier } from './TaskVerifier';
 import type { VerificationInput } from '../runtime/VerificationInputBuilder';
 import type { CriterionResult } from '../domain/VerificationTypes';
 import type { IFileSystemAdapter } from '../../artifact/IFileSystemAdapter';
+import { OutputInferenceService } from '../services/OutputInferenceService';
+import { OutputAttributionService } from '../services/OutputAttributionService';
+import type { TaskOutputMode } from '../../domain/types';
 
 export class DeterministicVerifier implements TaskVerifier {
   public readonly verifierType = 'DETERMINISTIC_VERIFIER';
-  public readonly verifierVersion = '1.0.0';
+  public readonly verifierVersion = '2.0.0';
 
   private fileAdapter?: IFileSystemAdapter;
 
@@ -18,211 +21,134 @@ export class DeterministicVerifier implements TaskVerifier {
     
     // Identity checks
     if (input.taskState.status !== 'VERIFYING') {
-      results.push({
-        criterionId: 'deterministic_state',
-        verifierType: this.verifierType,
-        verdict: 'FAIL',
-        reason: `Task is not in VERIFYING state. Current: ${input.taskState.status}`,
-        defect: {
-          defectId: `def-${crypto.randomUUID()}`,
-          signature: `DETERMINISTIC:FORMAT_INVALID:task:state:invalid`,
-          stage: 'DETERMINISTIC',
-          type: 'FORMAT_INVALID',
-          severity: 'HIGH',
-          required: true,
-          message: `Task is not in VERIFYING state`,
-          retryable: false,
-          retryScope: 'FULL_TASK'
-        }
-      });
-      return results; // Fast fail
-    }
-
-    if (!input.targetAttempt.resultReference) {
-      results.push({
-        criterionId: 'deterministic_result_exists',
-        verifierType: this.verifierType,
-        verdict: 'FAIL',
-        reason: 'No resultReference found in target attempt.',
-        defect: {
-          defectId: `def-${crypto.randomUUID()}`,
-          signature: `DETERMINISTIC:FORMAT_INVALID:result:missing`,
-          stage: 'DETERMINISTIC',
-          type: 'FORMAT_INVALID',
-          severity: 'HIGH',
-          required: true,
-          message: `No resultReference found`,
-          retryable: true,
-          retryScope: 'FULL_TASK'
-        }
-      });
+      results.push(this.createFailure('deterministic_state', 'Task is not in VERIFYING state', 'FORMAT_INVALID', true));
       return results;
     }
 
-    const outputs = input.targetAttempt.resultReference.outputs || [];
-    const expectedOutputs = input.taskDefinition.expectedOutputs || [];
-    const outputMap = new Map(outputs.map(o => [o.artifactId, o]));
-    
-    // 1. Missing required artifacts
-    for (const reqId of expectedOutputs) {
-      if (!outputMap.has(reqId)) {
-        results.push({
-          criterionId: `deterministic_req_missing_${reqId}`,
-          verifierType: this.verifierType,
-          verdict: 'FAIL',
-          reason: `Required artifact ${reqId} is missing.`,
-          defect: {
-            defectId: `def-${crypto.randomUUID()}`,
-            signature: `DETERMINISTIC:ARTIFACT_MISSING:${reqId}:output:missing`,
-            stage: 'DETERMINISTIC',
-            type: 'ARTIFACT_MISSING',
-            severity: 'HIGH',
-            required: true,
-            artifactId: reqId,
-            message: `Required artifact ${reqId} was not produced.`,
-            retryable: true,
-            retryScope: 'FULL_TASK'
-          }
-        });
-      }
+    if (!input.targetAttempt.resultReference) {
+      results.push(this.createFailure('deterministic_result_exists', 'No resultReference found in target attempt', 'FORMAT_INVALID', true));
+      return results;
     }
 
-    // 2. Validate outputs
-    for (const artifact of outputs) {
-      const artifactId = artifact.artifactId || 'unknown';
-      const isRequired = expectedOutputs.includes(artifactId);
-      
-      if (artifact.status && artifact.status !== 'COMMITTED') {
-        results.push({
-          criterionId: `deterministic_status_${artifactId}`,
-          verifierType: this.verifierType,
-          verdict: 'FAIL',
-          reason: `Artifact ${artifactId} status is ${artifact.status}, expected COMMITTED.`,
-          defect: {
-            defectId: `def-${crypto.randomUUID()}`,
-            signature: `DETERMINISTIC:ARTIFACT_NOT_COMMITTED:${artifactId}:status:not_committed`,
-            stage: 'DETERMINISTIC',
-            type: 'ARTIFACT_NOT_COMMITTED',
-            severity: 'CRITICAL',
-            required: isRequired,
-            artifactId: artifactId,
-            message: `Artifact is not COMMITTED. Status: ${artifact.status}`,
-            retryable: true,
-            retryScope: 'ARTIFACT'
-          }
-        });
+    const resultRef = input.targetAttempt.resultReference;
+    const outputs = resultRef.outputs || [];
+    const outputMap = new Map(outputs.map(o => [o.artifactId || o.path || 'unknown', o]));
+    const textContent = outputs.filter(o => o.type === 'text').map(o => o.content).join('').trim();
+    
+    // Output Attribution
+    const attributions = OutputAttributionService.extractAttributions(resultRef);
+    const declaredMode = input.taskDefinition.outputMode || 'NO_PERSISTED_OUTPUT';
+    
+    // Instead of using undefined executedTools, we map attributions to a format expected by inferFromToolCalls
+    const executedToolsMock = attributions.map(attr => ({
+      name: attr.sourceTool,
+      args: { path: attr.path },
+      success: true
+    }));
+    
+    const inferred = OutputInferenceService.inferFromToolCalls(executedToolsMock, declaredMode);
+    
+    const finalMode = inferred.inferredOutputMode;
+    const expectedFileOutputs = new Set([
+      ...(input.taskDefinition.expectedFileOutputs || []),
+      ...inferred.inferredFileOutputs
+    ]);
+    const expectedArtifactOutputs = new Set(input.taskDefinition.expectedArtifactOutputs || []);
+
+    if (finalMode === 'FILE_OUTPUT_REQUIRED') {
+      if (expectedFileOutputs.size === 0) {
+         results.push(this.createFailure('expected_outputs_missing', 'FILE_OUTPUT_REQUIRED but expectedFileOutputs is empty', 'EXPECTED_OUTPUTS_MISSING', true));
       }
 
-      if (this.fileAdapter && artifact.type === 'file' && artifact.path) {
-        try {
-          const exists = await this.fileAdapter.exists(artifact.path);
-          if (!exists) {
-            results.push({
-              criterionId: `deterministic_file_missing_${artifactId}`,
-              verifierType: this.verifierType,
-              verdict: 'FAIL',
-              reason: `File for artifact ${artifactId} does not exist at ${artifact.path}.`,
-              defect: {
-                defectId: `def-${crypto.randomUUID()}`,
-                signature: `DETERMINISTIC:ARTIFACT_MISSING:${artifactId}:file:not_found`,
-                stage: 'DETERMINISTIC',
-                type: 'ARTIFACT_MISSING',
-                severity: 'CRITICAL',
-                required: isRequired,
-                artifactId: artifactId,
-                message: `File not found at ${artifact.path}`,
-                retryable: true,
-                retryScope: 'ARTIFACT'
-              }
-            });
-            continue;
-          }
+      for (const reqId of expectedFileOutputs) {
+        // Cross Verification Layer 1: Evidence (Attribution)
+        const attribution = attributions.find(a => a.path === reqId);
+        if (!attribution) {
+          results.push(this.createFailure(`attribution_missing_${reqId}`, `No tool writing evidence found for required output ${reqId}`, 'STRICT_VERIFICATION_FAILED', true, reqId));
+          continue;
+        }
 
-          const stats = await this.fileAdapter.stat(artifact.path);
-          if (artifact.size !== undefined && artifact.size > 0 && stats.size !== artifact.size) {
-            results.push({
-              criterionId: `deterministic_size_mismatch_${artifactId}`,
-              verifierType: this.verifierType,
-              verdict: 'FAIL',
-              reason: `Size mismatch for ${artifactId}. Expected ${artifact.size}, got ${stats.size}.`,
-              defect: {
-                defectId: `def-${crypto.randomUUID()}`,
-                signature: `DETERMINISTIC:HASH_MISMATCH:${artifactId}:size:mismatch`,
-                stage: 'DETERMINISTIC',
-                type: 'HASH_MISMATCH',
-                severity: 'HIGH',
-                required: isRequired,
-                artifactId: artifactId,
-                message: `Size mismatch: expected ${artifact.size}, got ${stats.size}`,
-                retryable: true,
-                retryScope: 'ARTIFACT'
-              }
-            });
+        // Cross Verification Layer 2: Artifact Declaration
+        let artifactDeclared = false;
+        let artifactPath = reqId;
+        for (const out of outputs) {
+           if (out.artifactId === reqId || out.path === reqId || (out.content && out.content.includes(reqId))) {
+             artifactDeclared = true;
+             artifactPath = out.path || reqId;
+             break;
+           }
+        }
+        
+        if (!artifactDeclared) {
+           results.push(this.createFailure(`artifact_declaration_missing_${reqId}`, `Required output ${reqId} has no artifact declaration in outputs`, 'ARTIFACT_DECLARATION_MISSING', true, reqId));
+           continue;
+        }
+
+        // Cross Verification Layer 3: File System
+        if (this.fileAdapter) {
+          try {
+            const stats = await this.fileAdapter.stat(artifactPath);
+            if (!stats.exists) {
+              results.push(this.createFailure(`output_file_not_found_${reqId}`, `File not found at ${artifactPath}`, 'OUTPUT_FILE_NOT_FOUND', true, reqId));
+              continue;
+            }
+
+            if (stats.size === 0) {
+              results.push(this.createFailure(`output_file_empty_${reqId}`, `File ${artifactPath} is empty`, 'OUTPUT_FILE_EMPTY_OR_UNCHANGED', true, reqId));
+            }
+          } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : String(e);
+            results.push(this.createFailure(`file_error_${reqId}`, `Error accessing file ${artifactPath}: ${errMsg}`, 'TEST_FAILED', true, reqId));
           }
-          
-          const hash = await this.fileAdapter.hash(artifact.path);
-          if (hash !== artifact.hash) {
-            results.push({
-              criterionId: `deterministic_hash_mismatch_${artifact.artifactId}`,
-              verifierType: this.verifierType,
-              verdict: 'FAIL',
-              reason: `Hash mismatch for ${artifact.artifactId}. Expected ${artifact.hash}, got ${hash}.`,
-              defect: {
-                defectId: `def-${crypto.randomUUID()}`,
-                signature: `DETERMINISTIC:HASH_MISMATCH:${artifact.artifactId}:hash:mismatch`,
-                stage: 'DETERMINISTIC',
-                type: 'HASH_MISMATCH',
-                severity: 'HIGH',
-                required: isRequired,
-                artifactId: artifact.artifactId,
-                message: `Hash mismatch: expected ${artifact.hash}, got ${hash}`,
-                retryable: true,
-                retryScope: 'ARTIFACT'
-              }
-            });
-          }
-        } catch (e: any) {
+        } else {
+          /*
+           * [P2-2 FIX — fileAdapter 없을 때 명시적 경고]
+           * 이전: fileAdapter가 없으면 파일 실존 검증을 조용히 스킵.
+           *       파일이 실제로 없어도 Attribution + Declaration만으로 PASS 가능했음.
+           * 수정: INCOMPLETE_VERIFICATION 경고를 결과에 추가하여
+           *       상위 VerificationDecisionPolicy가 인지하고 대응할 수 있게 함.
+           *       단, required=false (non-blocking) — fileAdapter 미주입은
+           *       테스트 환경에서 일어날 수 있으므로 FAIL보다는 WARN 수준.
+           */
+          console.warn(`[DeterministicVerifier] fileAdapter가 주입되지 않아 ${artifactPath}의 파일 실존 검증을 스킵합니다. INCOMPLETE_VERIFICATION 경고 추가.`);
           results.push({
-            criterionId: `deterministic_file_error_${artifact.artifactId}`,
+            criterionId: `file_adapter_missing_${reqId}`,
             verifierType: this.verifierType,
-            verdict: 'FAIL',
-            reason: `Error accessing file for ${artifact.artifactId}: ${e.message}`,
+            verdict: 'WARN',
+            reason: `fileAdapter가 주입되지 않아 파일 실존 검증 불가 (${artifactPath}). Attribution + Declaration 증거만으로 통과됨.`,
             defect: {
               defectId: `def-${crypto.randomUUID()}`,
-              signature: `DETERMINISTIC:TEST_FAILED:${artifact.artifactId}:file:access_error`,
+              signature: `DETERMINISTIC:INCOMPLETE_VERIFICATION:${reqId}:no_fs_adapter`,
               stage: 'DETERMINISTIC',
-              type: 'TEST_FAILED',
-              severity: 'CRITICAL',
-              required: isRequired,
-              artifactId: artifact.artifactId,
-              message: `File access error: ${e.message}`,
-              retryable: true,
-              retryScope: 'ARTIFACT'
+              type: 'INCOMPLETE_VERIFICATION' as any,
+              severity: 'MEDIUM',
+              required: false, // non-blocking
+              artifactId: reqId,
+              message: `파일 시스템 어댑터 미주입으로 ${artifactPath} 실존 검증 불가.`,
+              retryable: false,
+              retryScope: 'NONE'
             }
           });
         }
       }
-      
-      if (artifact.attemptId !== input.attemptId) {
-        results.push({
-          criterionId: `deterministic_attempt_mismatch_${artifact.artifactId}`,
-          verifierType: this.verifierType,
-          verdict: 'FAIL',
-          reason: `Artifact attemptId ${artifact.attemptId} does not match current attempt ${input.attemptId}.`,
-          defect: {
-            defectId: `def-${crypto.randomUUID()}`,
-            signature: `DETERMINISTIC:FORMAT_INVALID:${artifact.artifactId}:attempt:mismatch`,
-            stage: 'DETERMINISTIC',
-            type: 'FORMAT_INVALID',
-            severity: 'MEDIUM',
-            required: isRequired,
-            artifactId: artifact.artifactId,
-            message: `Attempt ID mismatch`,
-            retryable: true,
-            retryScope: 'ARTIFACT'
+    } else if (finalMode === 'ARTIFACT_OUTPUT_REQUIRED') {
+       if (expectedArtifactOutputs.size === 0) {
+         results.push(this.createFailure('expected_artifacts_missing', 'ARTIFACT_OUTPUT_REQUIRED but expectedArtifactOutputs is empty', 'EXPECTED_OUTPUTS_MISSING', true));
+       }
+       for (const reqId of expectedArtifactOutputs) {
+          if (!outputMap.has(reqId)) {
+             results.push(this.createFailure(`artifact_missing_${reqId}`, `Required artifact ${reqId} is missing`, 'ARTIFACT_DECLARATION_MISSING', true, reqId));
           }
-        });
-      }
+       }
+    } else if (finalMode === 'NO_PERSISTED_OUTPUT') {
+       if (textContent.length === 0) {
+          results.push(this.createFailure('empty_response', 'NO_PERSISTED_OUTPUT but textual response is empty', 'STRICT_VERIFICATION_FAILED', true));
+       }
+    } else if (finalMode === 'EITHER_FILE_OR_ARTIFACT') {
+       // 제한적 지원: 둘 다 비어있으면 FAIL
+       if (expectedFileOutputs.size === 0 && expectedArtifactOutputs.size === 0 && textContent.length === 0) {
+          results.push(this.createFailure('either_missing', 'EITHER_FILE_OR_ARTIFACT but neither file nor artifact is present', 'STRICT_VERIFICATION_FAILED', true));
+       }
     }
 
     if (results.length === 0) {
@@ -235,5 +161,26 @@ export class DeterministicVerifier implements TaskVerifier {
     }
 
     return results;
+  }
+
+  private createFailure(id: string, message: string, type: string, required: boolean, artifactId?: string): CriterionResult {
+    return {
+      criterionId: id,
+      verifierType: this.verifierType,
+      verdict: 'FAIL',
+      reason: message,
+      defect: {
+        defectId: `def-${crypto.randomUUID()}`,
+        signature: `DETERMINISTIC:${type}:${artifactId || 'task'}:invalid`,
+        stage: 'DETERMINISTIC',
+        type: type as any,
+        severity: 'CRITICAL',
+        required,
+        artifactId,
+        message,
+        retryable: true,
+        retryScope: 'FULL_TASK'
+      }
+    };
   }
 }

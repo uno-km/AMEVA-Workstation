@@ -14,9 +14,9 @@ export class ContractVerifier implements TaskVerifier {
 
   public async verify(input: VerificationInput): Promise<CriterionResult[]> {
     const results: CriterionResult[] = [];
-    const expectedOutputs = input.taskDefinition.expectedOutputs || [];
+    const expectedFileOutputs = input.taskDefinition.expectedFileOutputs || [];
 
-    if (expectedOutputs.length === 0) {
+    if (expectedFileOutputs.length === 0) {
       results.push({
         criterionId: 'contract_outputs_present',
         verifierType: this.verifierType,
@@ -33,7 +33,7 @@ export class ContractVerifier implements TaskVerifier {
         criterionId: 'contract_outputs_present',
         verifierType: this.verifierType,
         verdict: 'FAIL',
-        reason: `Task expected ${expectedOutputs.length} outputs, but provided none.`,
+        reason: `Task expected ${expectedFileOutputs.length} outputs, but provided none.`,
         defect: {
           defectId: `def-${crypto.randomUUID()}`,
           signature: `CONTRACT:CONTRACT_MISSING:outputs:missing`,
@@ -41,7 +41,7 @@ export class ContractVerifier implements TaskVerifier {
           type: 'CONTRACT_MISSING',
           severity: 'HIGH',
           required: true,
-          message: `Expected ${expectedOutputs.length} outputs, got none.`,
+          message: `Expected ${expectedFileOutputs.length} outputs, got none.`,
           retryable: true,
           retryScope: 'FULL_TASK'
         }
@@ -50,12 +50,12 @@ export class ContractVerifier implements TaskVerifier {
     }
 
     // Check count and structural constraints
-    if (actualOutputs.length < expectedOutputs.length) {
+    if (actualOutputs.length < expectedFileOutputs.length) {
       results.push({
         criterionId: 'contract_output_count',
         verifierType: this.verifierType,
         verdict: 'FAIL',
-        reason: `Expected at least ${expectedOutputs.length} outputs, but got ${actualOutputs.length}.`,
+        reason: `Expected at least ${expectedFileOutputs.length} outputs, but got ${actualOutputs.length}.`,
         defect: {
           defectId: `def-${crypto.randomUUID()}`,
           signature: `CONTRACT:CONTRACT_MISSING:output_count:mismatch`,
@@ -63,7 +63,7 @@ export class ContractVerifier implements TaskVerifier {
           type: 'CONTRACT_MISSING',
           severity: 'HIGH',
           required: true,
-          message: `Expected ${expectedOutputs.length} outputs, got ${actualOutputs.length}.`,
+          message: `Expected ${expectedFileOutputs.length} outputs, got ${actualOutputs.length}.`,
           retryable: true,
           retryScope: 'FULL_TASK'
         }
@@ -73,8 +73,9 @@ export class ContractVerifier implements TaskVerifier {
 
     // 뼈대 검증 (Skeleton/Format)
     let invalidCount = 0;
-    for (const out of actualOutputs) {
-      if (!out || (out.type !== 'FILE' && (typeof out.content === 'undefined' || out.content === null || out.content === ''))) {
+    const fileOutputs = actualOutputs.filter(o => o.type === 'file');
+    for (const out of fileOutputs) {
+      if (!out || (typeof out.content === 'undefined' || out.content === null || out.content === '')) {
         invalidCount++;
         results.push({
           criterionId: `contract_output_validity_${out?.artifactId || 'unknown'}`,

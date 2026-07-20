@@ -50,9 +50,29 @@ export class PowerShellArtifactFileAdapter implements IFileSystemAdapter {
     `;
     const b64 = Buffer.from(script, 'utf-8').toString('base64');
     const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
-    if (res.stderr && res.stderr.includes('File not found')) return null;
-    if (res.stderr) throw new Error(`read error: ${res.stderr}`);
+    if (res.stderr && res.stderr.trim().length > 0) {
+      throw new Error(`read error: ${res.stderr}`);
+    }
     return res.stdout;
+  }
+
+  public async readBytes(path: string): Promise<Uint8Array | null> {
+    this.validatePath(path);
+    const script = `
+      $path = "${path}"
+      if ([System.IO.File]::Exists($path)) {
+        $bytes = [System.IO.File]::ReadAllBytes($path)
+        [Convert]::ToBase64String($bytes)
+      } else {
+        Write-Error "File not found"
+      }
+    `;
+    const b64 = Buffer.from(script, 'utf-8').toString('base64');
+    const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
+    if (res.stderr && res.stderr.trim().length > 0) {
+      throw new Error(`readBytes error: ${res.stderr}`);
+    }
+    return Buffer.from(res.stdout.trim(), 'base64');
   }
 
   public async write(path: string, content: string): Promise<void> {

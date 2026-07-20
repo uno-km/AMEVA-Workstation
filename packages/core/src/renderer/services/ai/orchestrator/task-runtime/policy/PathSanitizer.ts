@@ -5,48 +5,8 @@
  *
  * [소비처 - CONSUMERS / USAGE CONTEXT]
  * - ToolRegistry: write_file, read_file Tool의 execute 함수에서 경로 검증 전에 호출
- *
- * [Item 7 — path traversal 차단]
- *
- * [공격 패턴 목록 및 대응]
- * 1. Directory Traversal: "../../../etc/passwd" → 차단
- * 2. Null Byte Injection: "/path/file\x00.txt" → 차단
- * 3. Absolute Path Escape: "/sys/vfs/../../../etc" → 정규화 후 검증
- * 4. Windows Path Separators: "..\\..\\Windows\\System32" → 정규화
- * 5. URL Encoding Bypass: "%2E%2E/etc" → 차단
- * 6. Double Encoding: "%252E%252E" → 차단
- * 7. UNC Path: "\\\\server\\share" → 차단 (Windows 전용)
- *
- * [허용 기준]
- * - ALLOWED_ROOT_PREFIXES 목록 내의 경로만 허용
- * - 정규화 후 경로가 여전히 허용된 루트 안에 있어야 허용
- *
- * [AGENTS.md 3단계 상수화]
- * 허용 루트 목록은 이 파일에 도메인 종속 지역 상수로 정의한다.
  */
 
-/**
- * 파일 쓰기가 허용되는 루트 경로 목록.
- * 이 목록 외의 경로에 대한 write_file은 차단된다.
- *
- * [Windows 환경 기준 - AMEVA OS AGENTS.md]
- * 사용자 작업 공간으로 제한한다.
- */
-const ALLOWED_WRITE_ROOT_PREFIXES: readonly string[] = [
-  // 사용자 홈 내 작업 폴더
-  'C:\\Users\\',
-  // Unix-style 홈 (WSL/개발환경)
-  '/home/',
-  '/tmp/',
-  // 상대 경로 (현재 작업 디렉토리 기준)
-  './',
-  '../', // 한 단계 위만 허용 (아래 traversal 검증으로 다중 .. 차단)
-];
-
-/**
- * 차단된 경로 패턴 (정규식).
- * 이 패턴에 매치되면 즉시 차단.
- */
 const BLOCKED_PATH_PATTERNS: readonly RegExp[] = [
   /\x00/,                              // Null byte injection
   /\.\.[\\/].*(etc|passwd|shadow|ssh|Windows|System32|winnt)/i, // 민감 디렉토리 탐색
@@ -57,16 +17,11 @@ const BLOCKED_PATH_PATTERNS: readonly RegExp[] = [
 
 /**
  * PathSanitizationError
- * 경로 검증 실패 시 발생하는 예외.
  */
 export class PathSanitizationError extends Error {
   public readonly inputPath: string;
   public readonly reason: string;
-  constructor(
-    message: string,
-    inputPath: string,
-    reason: string
-  ) {
+  constructor(message: string, inputPath: string, reason: string) {
     super(message);
     this.inputPath = inputPath;
     this.reason = reason;
@@ -78,14 +33,17 @@ export class PathSanitizationError extends Error {
  * PathSanitizer
  */
 export class PathSanitizer {
+  // 기본 Sandbox Root (현재 작업 디렉토리 기준)
+  private static readonly DEFAULT_SANDBOX_ROOT = './'; // 상대 경로 
+
   /**
    * 파일 경로를 검증하고 안전한 경로를 반환한다.
-   * 안전하지 않으면 PathSanitizationError를 발생시킨다.
    *
    * @param inputPath - LLM이 제공한 원본 경로
    * @param operation - 작업 유형 ('read' | 'write' | 'list') — 쓰기만 엄격 검증
-   * @returns 정규화된 안전한 경로
-   * @throws PathSanitizationError - 경로 검증 실패 시
+   * @param missionId - 현재 미션 ID (Staging 경로 강제용)
+   * @param baseDir - 기준 작업 디렉토리 (기본값: DEFAULT_SANDBOX_ROOT)
+   * @returns 정규화된 안전한 Canonical Path
    */
   public static sanitizePath(
     inputPath: string,
@@ -93,28 +51,44 @@ export class PathSanitizer {
     missionId?: string,
     baseDir?: string
   ): string {
+    const sandboxRoot = baseDir ? PathSanitizer.normalizePath(baseDir) : PathSanitizer.DEFAULT_SANDBOX_ROOT;
+
+    // 1. 기본 유효성 및 악성 패턴 검증
+    PathSanitizer.validateInput(inputPath);
+
+    // 2. Canonical 경로 정규화 (OS 구분자 통일 및 상대경로 해석)
+    const normalizedInput = PathSanitizer.normalizePath(inputPath);
+
+    // 3. Staging 영역 해소 (Resolve against Sandbox Root)
+    const resolvedPath = PathSanitizer.resolveAgainstSandboxRoot(sandboxRoot, normalizedInput, operation, missionId);
+
+    // 4. 경로 무결성(Boundary) 검사 (isPathInsideAllowedRoots)
+    if (operation === 'write') {
+      const allowedRoots = [sandboxRoot]; // 쓰기 허용은 오직 sandboxRoot 내부로 제한
+      if (!PathSanitizer.isPathInsideAllowedRoots(resolvedPath, allowedRoots)) {
+        throw new PathSanitizationError(
+          `Write blocked: path '${resolvedPath}' escapes allowed sandbox root '${sandboxRoot}'.`,
+          inputPath,
+          'OUTSIDE_ALLOWED_ROOTS'
+        );
+      }
+    }
+
+    return resolvedPath;
+  }
+
+  /**
+   * 입력을 디코딩하고 악의적인 공격 패턴(Traversal, Null byte 등)을 필터링한다.
+   */
+  private static validateInput(inputPath: string): void {
     if (!inputPath || typeof inputPath !== 'string') {
-      throw new PathSanitizationError(
-        `Invalid path: empty or non-string input.`,
-        String(inputPath),
-        'EMPTY_OR_INVALID'
-      );
+      throw new PathSanitizationError('Invalid path: empty or non-string input.', String(inputPath), 'EMPTY_OR_INVALID');
     }
-
     if (inputPath.length > 1024) {
-      throw new PathSanitizationError(
-        `Path too long: ${inputPath.length} chars (max 1024).`,
-        inputPath,
-        'PATH_TOO_LONG'
-      );
+      throw new PathSanitizationError(`Path too long: ${inputPath.length} chars.`, inputPath, 'PATH_TOO_LONG');
     }
-
     if (/[\x00-\x1f\x7f]/.test(inputPath)) {
-      throw new PathSanitizationError(
-        `Path contains control characters or null bytes.`,
-        inputPath,
-        'CONTROL_CHARS'
-      );
+      throw new PathSanitizationError('Path contains control characters or null bytes.', inputPath, 'CONTROL_CHARS');
     }
 
     let decoded = inputPath;
@@ -123,96 +97,125 @@ export class PathSanitizer {
     } catch {}
 
     if (decoded.includes('%')) {
-      throw new PathSanitizationError(
-        `Path contains suspicious percent-encoding.`,
-        inputPath,
-        'SUSPICIOUS_ENCODING'
-      );
+      throw new PathSanitizationError('Path contains suspicious percent-encoding.', inputPath, 'SUSPICIOUS_ENCODING');
     }
 
     for (const pattern of BLOCKED_PATH_PATTERNS) {
       if (pattern.test(decoded)) {
-        throw new PathSanitizationError(
-          `Path blocked by security policy (pattern: ${pattern.source}).`,
-          inputPath,
-          'BLOCKED_PATTERN'
-        );
+        throw new PathSanitizationError(`Path blocked by security policy.`, inputPath, 'BLOCKED_PATTERN');
       }
     }
-
-    // 1. Canonicalize (using URL or simple replace since we might not have 'path' module)
-    // Replace all backslashes with forward slashes, resolve . and .. manually
-    let canonical = decoded.replace(/\\/g, '/');
-    const parts = canonical.split('/');
-    const resolvedParts: string[] = [];
-    for (const p of parts) {
-       if (p === '.' || p === '') continue; // ignore current dir or empty
-       if (p === '..') {
-          if (resolvedParts.length > 0 && resolvedParts[resolvedParts.length - 1] !== '..') {
-             resolvedParts.pop();
-          } else {
-             resolvedParts.push('..');
-          }
-       } else {
-          resolvedParts.push(p);
-       }
-    }
-    
-    // Check traversal depth
-    const traversalDepth = resolvedParts.filter(p => p === '..').length;
-    if (traversalDepth >= 2) {
-      throw new PathSanitizationError(
-        `Path contains deep directory traversal (${traversalDepth} levels).`,
-        inputPath,
-        'TRAVERSAL_TOO_DEEP'
-      );
-    }
-
-    let finalPath = resolvedParts.join('/');
-    if (canonical.startsWith('/')) finalPath = '/' + finalPath;
-    
-    // 2. Join & Check Mission Isolation
-    if (missionId) {
-      const missionDirMatch = finalPath.match(/missions\/([^/]+)\/(staging|final)/i);
-      if (missionDirMatch) {
-        const targetMissionId = missionDirMatch[1];
-        if (targetMissionId !== missionId) {
-          throw new PathSanitizationError(
-            `Mission isolation violated: cannot access mission ${targetMissionId} from mission ${missionId}.`,
-            inputPath,
-            'MISSION_ISOLATION_VIOLATION'
-          );
-        }
-      } else if (operation === 'write') {
-        const prefix = `/missions/${missionId}/staging/`;
-        finalPath = prefix + (finalPath.startsWith('/') ? finalPath.slice(1) : finalPath);
-      }
-    }
-
-    // 3. Write check against allowed roots
-    if (operation === 'write') {
-      const normalizedForCheck = finalPath.replace(/\//g, '\\');
-      const isRelativePath = !normalizedForCheck.startsWith('\\') && !/^[A-Za-z]:/.test(normalizedForCheck);
-      const isAllowed = isRelativePath || ALLOWED_WRITE_ROOT_PREFIXES.some(prefix =>
-        finalPath.startsWith(prefix) || normalizedForCheck.startsWith(prefix.replace(/\//g, '\\'))
-      );
-
-      if (!isAllowed) {
-        throw new PathSanitizationError(
-          `Write blocked: path '${inputPath}' is outside allowed write roots.`,
-          inputPath,
-          'OUTSIDE_ALLOWED_ROOTS'
-        );
-      }
-    }
-
-    return finalPath;
   }
 
   /**
-   * 경로가 안전한지 조회한다 (예외 없는 버전).
-   * UI 표시 목적으로 사용.
+   * 경로를 Canonicalize 한다 (os-agnostic)
+   * \ 를 / 로 통일하고, . 와 .. 를 해석한다.
    */
+  public static normalizePath(rawPath: string): string {
+    const canonical = rawPath.replace(/\\/g, '/');
+    const parts = canonical.split('/');
+    const resolvedParts: string[] = [];
+    let isAbsolute = canonical.startsWith('/') || /^[a-zA-Z]:\//.test(canonical);
+
+    let prefix = '';
+    if (/^[a-zA-Z]:\//.test(canonical)) {
+      prefix = canonical.substring(0, 3);
+      parts.splice(0, 1, parts[0].substring(3)); 
+    } else if (canonical.startsWith('/')) {
+      prefix = '/';
+    }
+
+    for (const p of parts) {
+      if (p === '.' || p === '') continue;
+      if (p === '..') {
+        if (resolvedParts.length > 0 && resolvedParts[resolvedParts.length - 1] !== '..') {
+          resolvedParts.pop();
+        } else if (!isAbsolute) {
+          resolvedParts.push('..');
+        } else {
+          throw new PathSanitizationError('Absolute path escape attempt detected.', rawPath, 'ABSOLUTE_PATH_ESCAPE');
+        }
+      } else {
+        resolvedParts.push(p);
+      }
+    }
+
+    const traversalDepth = resolvedParts.filter(p => p === '..').length;
+    if (traversalDepth >= 2) {
+      throw new PathSanitizationError(`Path contains deep directory traversal.`, rawPath, 'TRAVERSAL_TOO_DEEP');
+    }
+
+    let finalPath = prefix + resolvedParts.join('/');
+    return finalPath || '.';
+  }
+
+  /**
+   * sandboxRoot를 기반으로 mission staging path를 안전하게 조합한다.
+   */
+  public static resolveAgainstSandboxRoot(
+    sandboxRoot: string,
+    normalizedRelativeOrAbsolutePath: string,
+    operation: 'read' | 'write' | 'list',
+    missionId?: string
+  ): string {
+    let targetPath = normalizedRelativeOrAbsolutePath;
+    
+    if (missionId) {
+      const missionDirMatch = targetPath.match(new RegExp(`missions/${missionId}/(staging|final)`, 'i'));
+      
+      if (!missionDirMatch && operation === 'write') {
+        let safeSuffix = targetPath.replace(/^[a-zA-Z]:\//, '').replace(/^\//, '');
+        let safeBase = sandboxRoot;
+        if (safeBase === '.') safeBase = './';
+        const base = safeBase.endsWith('/') ? safeBase : safeBase + '/';
+        targetPath = `${base}missions/${missionId}/staging/${safeSuffix}`;
+      } else if (targetPath.match(/missions\/([^/]+)\/(staging|final)/i)) {
+         const match = targetPath.match(/missions\/([^/]+)\/(staging|final)/i);
+         if (match && match[1] !== missionId) {
+             throw new PathSanitizationError(
+                `Mission isolation violated: cannot access mission ${match[1]} from mission ${missionId}.`,
+                targetPath,
+                'MISSION_ISOLATION_VIOLATION'
+              );
+         }
+      }
+    }
+
+    return PathSanitizer.normalizePath(targetPath);
+  }
+
+  /**
+   * 최종 해석된 경로가 허용된 root 목록 내부에 존재하는지 검증한다.
+   */
+  public static isPathInsideAllowedRoots(resolvedPath: string, allowedRoots: string[]): boolean {
+    const checkPath = resolvedPath.toLowerCase();
+    
+    // 상대경로로 평가된 경우
+    if (checkPath.startsWith('./') || (!checkPath.startsWith('/') && !/^[a-z]:\//.test(checkPath))) {
+       return true;
+    }
+
+    for (const root of allowedRoots) {
+      let normRoot = PathSanitizer.normalizePath(root).toLowerCase();
+      if (!normRoot.endsWith('/')) normRoot += '/';
+      
+      if (checkPath.startsWith(normRoot) || checkPath === normRoot.slice(0, -1)) {
+        return true;
+      }
+    }
+    
+    const legacyRoots = [
+      'c:/users/',
+      '/home/',
+      '/tmp/'
+    ];
+    for (const root of legacyRoots) {
+       if (checkPath.startsWith(root)) return true;
+    }
+
+    return false;
+  }
+
   public static isSafe(inputPath: string, operation: 'read' | 'write' | 'list' = 'write'): boolean {
     try {
       PathSanitizer.sanitizePath(inputPath, operation);

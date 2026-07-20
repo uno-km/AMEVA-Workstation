@@ -24,6 +24,11 @@ class MockArtifactReader implements IArtifactReader {
     return this.files[path] !== undefined ? this.files[path] : null;
   }
   
+  async readBytes(path: string): Promise<Uint8Array | null> {
+    const c = await this.read(path);
+    return c ? new TextEncoder().encode(c) : null;
+  }
+
   async exists(path: string): Promise<boolean> {
     if (this.errors.has(path)) throw new Error('Mock read error');
     return this.files[path] !== undefined;
@@ -63,11 +68,16 @@ describe('Phase 1.1: Fake Completion Blocking Tests', () => {
     failedRequiredTasks: [],
     failedOptionalTasks: [],
     skippedOptionalTasks: [],
+    taskVerificationResults: [],
+    blockedTasks: [],
+    waitingUserTasks: [],
     unresolvedIssues: [],
     totalAttempts: 1,
     totalRepairs: 0,
     totalRetries: 0,
     totalRecoveries: 0,
+    totalReasoningTurns: 1,
+    totalToolCalls: 1,
     completionCandidateStatus: 'READY_FOR_COMPLETION_REVIEW',
     toolRuntimeStatus: 'FULLY_CONNECTED',
     createdAt: Date.now(),

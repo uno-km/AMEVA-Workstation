@@ -122,6 +122,11 @@ export class ApprovalRepositoryInMemory implements IApprovalRepositoryPersistenc
     });
   }
 
+  public async getAuthorizationTicket(ticketId: string): Promise<import('../approval/types').ApprovalAuthorizationTicket | null> {
+    const ticket = this.tickets.get(ticketId);
+    return ticket ? { ...ticket } : null;
+  }
+
   public async updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<ApprovalPersistenceResult> {
     return this.withLock(approvalId, async () => {
       const record = this.records.get(approvalId);

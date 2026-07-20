@@ -148,16 +148,33 @@ ${completedTaskSummaries || '이전 단계 실행 결과 없음'}
         // 빈 턴 가드 및 완화 정책
         consecutiveEmptyTurns++;
         if (consecutiveEmptyTurns >= 3) {
-          console.warn(`[TaskExecutor] 태스크 ${task.id} 수행 중 빈 턴이 3회 연속 감지되어 루틴을 강제 종결합니다.`);
+          console.warn(`[TaskExecutor] 태스크 ${task.id} 수행 중 빈 턴이 3회 연속 감지되어 루틴을 강제 종결합니다. (FAILED 처리)`);
           break;
         }
         
         console.debug(`[TaskExecutor] 태스크 ${task.id} 수행 중 생각(thought)은 출력되었으나 도구 호출 및 최종 답이 없어 턴을 재개합니다. (연속 빈 턴: ${consecutiveEmptyTurns}/3)`);
       }
 
-      // 최종 답변 확보
-      const summaryAnswer = accumulatedText || '태스크 결과 획득 실패 (빈 답변)';
       const executionTime = Date.now() - startTime;
+
+      /*
+       * [P1-1 FIX — False Completion Prevention]
+       * accumulatedText가 비어있는 경우 절대로 'SUCCESS'를 반환하지 않는다.
+       * 빈 답변 = 도구 호출도 없고 Final Answer도 없음 = 실질적 실패.
+       * 이전 코드는 무조건 status:'SUCCESS'를 반환해 가짜 완료(False Completion)를 허용했음.
+       */
+      const isEmpty = !accumulatedText.trim();
+      if (isEmpty) {
+        console.warn(`[TaskExecutor] 태스크 ${task.id} 결과가 비어있어 FAILED 처리합니다. (maxTurns=${maxTaskTurns}, 실제=${turns}턴)`);
+        return {
+          status: 'FAILED',
+          summary: '태스크 결과 획득 실패 (빈 답변 — 모델이 Final Answer를 출력하지 않음)',
+          evidence: `Task ran ${turns} turns but produced no output. Consecutive empty turns: ${consecutiveEmptyTurns}.`,
+          executionTime
+        };
+      }
+
+      const summaryAnswer = accumulatedText;
 
       // 성공 판정 뼈대 반환 (Verifier가 이 반환값을 사후 정적/동적 최종 검정함)
       return {

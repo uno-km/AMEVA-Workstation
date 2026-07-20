@@ -234,6 +234,14 @@ export class AgentOrchestratorSession {
    *   미주입 시 검수 없이 통과.
    */
   private selfHealingMiddleware: ISelfHealingMiddleware | null = null
+  /*
+   * [P2-3 FIX — ActorCriticHook 필드 추가]
+   * 이전: withActorCritic()이 hook을 받았지만 필드에 저장하지 않았음.
+   * 실제 executeToolAndObserve 나 Final Answer 경로에서 beforeToolCall()이 호출되지 않았음.
+   * 수정: actorCriticHook 필드를 추가하고 withActorCritic()에서 저장.
+   */
+  private actorCriticHook: IActorCriticHook | null = null
+
 
   private ipcLog(payload: { text: string; prefix?: string }) {
     ipc.llmAddLog({
@@ -316,10 +324,10 @@ export class AgentOrchestratorSession {
                     toolName: healed.name,
                     toolArgs: healed.args ?? {}
                   })
-                    this.ipcLog({
-                      text: `[AgentOrchestrator] Self-Healing 파싱 복구 완료 (ACTION_APPLIED). 도구: ${healed.name}`,
-                      prefix: 'SelfHeal'
-                    })
+                  this.ipcLog({
+                    text: `[AgentOrchestrator] Self-Healing 파싱 복구 완료 (ACTION_APPLIED). 도구: ${healed.name}`,
+                    prefix: 'SelfHeal'
+                  })
                 }
               } catch (reparseErr: unknown) {
                 const msg = reparseErr instanceof Error ? reparseErr.message : String(reparseErr)
@@ -393,17 +401,16 @@ export class AgentOrchestratorSession {
    * @returns this (메서드 체이닝 지원)
    */
   public withActorCritic(hook: IActorCriticHook): this {
-    // V2 Runtime에서 actorCriticHook 필드는 사용하지 않거나 외부 주입으로 변경됨
-    // 하위 호환성을 위해 메서드는 유지하되 내부 참조만 설정한다.
     /*
-     * [ACTOR HISTORY LINKAGE]
-     * - ActorCriticHook이 REJECT 시 피드백을 주입할 contextMessages 참조를 연결한다.
-     * - run() 호출 후 contextMessages가 초기화되므로 run() 내에서도 재연결한다.
+     * [P2-3 FIX — ActorCriticHook 실제 저장]
+     * 이전: hook을 받았지만 필드에 저장하지 않아 루프에서 전혀 호출되지 않았던 뭔
+     * 수정: this.actorCriticHook에 저장하여 executeToolAndObserve에서 실제 호출
      */
+    this.actorCriticHook = hook;
     if (hook instanceof ActorCriticHook) {
       hook.setActorHistory(this.contextMessages)
     }
-    this.ipcLog({ text: '[AgentOrchestrator] Actor-Critic 훅 주입 완료', prefix: 'Orchestrator' })
+    this.ipcLog({ text: '[AgentOrchestrator] Actor-Critic 훅 주입 완료 (실제 연결됨)', prefix: 'Orchestrator' })
     return this
   }
 
@@ -495,9 +502,31 @@ export class AgentOrchestratorSession {
       V2RuntimeFeatureFlag.markV2ExecutionStarted(this.sessionId);
       v2Runtime.start();
 
+
       // V2 런타임 폴링 대기 (PAUSED = work done)
       return await new Promise<string>((resolve) => {
+        /*
+         * [P1-3 FIX — Infinite Wait Prevention]
+         * 이전: missionState null 시 영구 대기, 타임아웃 없음.
+         * 수정: (1) 30분 최대 타임아웃, (2) null 연속 100회 → 조기 탈출.
+         */
+        const MAX_WAIT_MS = 30 * 60 * 1000; // 30분
+        const startedAt = Date.now();
+        let nullStateCount = 0;
+        const MAX_NULL_COUNT = 100; // 100회 (100초) 연속 null이면 탈출
+
         const intervalId = setInterval(() => {
+          // 타임아웃 체크
+          if (Date.now() - startedAt > MAX_WAIT_MS) {
+            clearInterval(intervalId);
+            v2Runtime.cancel('V2 Mission wait timeout (30min)');
+            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
+            this.emitPhaseChange('error');
+            this.ipcLog({ text: '[AgentOrchestrator] V2 Mission 30분 타임아웃 초과로 강제 종료', prefix: 'Orchestrator' });
+            resolve('V2 Mission timed out after 30 minutes.');
+            return;
+          }
+
           if (this.isAborted) {
             v2Runtime.cancel('User aborted mission');
             clearInterval(intervalId);
@@ -508,13 +537,88 @@ export class AgentOrchestratorSession {
           }
 
           const missionState = this.taskStore.getMissionState(this.sessionId);
-          if (!missionState) return;
+          if (!missionState) {
+            nullStateCount++;
+            if (nullStateCount >= MAX_NULL_COUNT) {
+              clearInterval(intervalId);
+              V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
+              this.emitPhaseChange('error');
+              this.ipcLog({ text: '[AgentOrchestrator] V2 missionState가 100초간 null — 강제 종료', prefix: 'Orchestrator' });
+              resolve('V2 Mission state unavailable.');
+            }
+            return;
+          }
+          nullStateCount = 0; // null 상태 해소 시 리셋
 
           if (missionState.status === 'PAUSED' || missionState.status === 'COMPLETED') {
             clearInterval(intervalId);
             V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
             this.emitPhaseChange('done');
-            resolve(`V2 Mission finished. Consumed Tasks: ${this.taskStore.getAllTasks(this.sessionId).length}`);
+
+            /*
+             * [P1-5 FIX — V2 파일 프리뷰 전달]
+             * 이전: "V2 Mission finished." 문자열만 반환해 파일 내용 미전달.
+             * 수정: Legacy 경로와 동일한 파일 수집 + PreviewLayer 로직 실행.
+             */
+            void (async () => {
+              const v2Tasks = this.taskStore.getAllTasks(this.sessionId);
+              let contentSection = '';
+              const collectedFiles = new Set<string>();
+
+              const { OutputAttributionService } = await import('./task-runtime/verification/services/OutputAttributionService');
+
+              for (const vt of v2Tasks) {
+                if (vt.state.status === 'COMPLETED' && vt.state.taskResult) {
+                  let taskContent = '';
+                  if (vt.state.taskResult.outputs) {
+                    for (const out of vt.state.taskResult.outputs) {
+                      if (out.type === 'text' && out.content) {
+                        taskContent += `${out.content}\n`;
+                      } else if (out.type === 'file' && out.path) {
+                        collectedFiles.add(out.path);
+                      }
+                    }
+                  }
+                  const attributions = OutputAttributionService.extractAttributions(vt.state.taskResult);
+                  for (const attr of attributions) { collectedFiles.add(attr.path); }
+                  if (taskContent.trim().length > 0) {
+                    contentSection += `\n\n#### 📝 [${vt.definition.title}]\n${taskContent.trim()}`;
+                  }
+                }
+              }
+
+              if (collectedFiles.size > 0) {
+                const { PowerShellArtifactFileAdapter } = await import('./task-runtime/artifact/PowerShellArtifactFileAdapter');
+                const { PreviewLayer } = await import('./task-runtime/artifact/PreviewLayer');
+                const fsAdapter = new PowerShellArtifactFileAdapter();
+                for (const fp of collectedFiles) {
+                  try {
+                    const previewData = await PreviewLayer.generatePreview(fp, fsAdapter);
+                    if (previewData.exists) {
+                      if (previewData.isBinary) {
+                        contentSection += `\n\n📄 **[생성/수정된 파일: ${fp}]**\n*${previewData.preview}*`;
+                      } else {
+                        const lang = previewData.mimeType.includes('json') ? 'json' : previewData.mimeType.includes('markdown') ? 'markdown' : '';
+                        contentSection += `\n\n📄 **[생성/수정된 파일: ${fp}]**\n\`\`\`${lang}\n${previewData.preview}\n\`\`\``;
+                      }
+                    }
+                  } catch (e) {
+                    console.warn(`[AgentOrchestrator] V2 파일 프리뷰 실패: ${fp}`, e);
+                  }
+                }
+              }
+
+              const finalAnswer = contentSection.trim().length > 0
+                ? contentSection.trim()
+                : `V2 Mission 완료. 처리된 태스크: ${v2Tasks.length}건.`;
+
+              const { useAIState } = await import('../../../stores/useAIState');
+              useAIState.getState().setFinalReport(finalAnswer);
+              this.emitEvent({ type: 'final_answer', answer: finalAnswer });
+            })();
+
+            resolve(`V2 Mission finished. Tasks: ${this.taskStore.getAllTasks(this.sessionId).length}`);
+
           } else if (missionState.status === 'FAILED') {
             clearInterval(intervalId);
             V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
@@ -536,7 +640,7 @@ export class AgentOrchestratorSession {
 
     // 1. Task Planner 가동하여 Goal에 기반한 태스크 계획 획득 (Legacy Fallback)
     const planner = new TaskPlanner(this.adapter)
-    
+
     /*
      * [STREAM TOKENS PASS-THROUGH]
      * - Rationale: 계획 수립(Planning)은 수십 초 이상 걸리므로, 생성되는 토큰을 감시경(supervisor)에 feed하여
@@ -559,12 +663,12 @@ export class AgentOrchestratorSession {
 
     // 2. Task Graph 및 Queue, Completion Manager 초기화
     this.taskGraph = new TaskGraph(initialTasks)
-    
+
     // Cycle 오류 체크 가드
     if (this.taskGraph.hasCycle()) {
       this.ipcLog({ text: '[AgentOrchestrator] 태스크 그래프 상에 순환 의존성(Cycle) 감지! 폴백 처리합니다.', prefix: 'Orchestrator' })
     }
-    
+
     this.taskQueue = new TaskQueue(this.taskGraph)
     const completionManager = new TaskCompletionManager(this.taskQueue)
 
@@ -593,9 +697,9 @@ export class AgentOrchestratorSession {
       const steps = allTasks.map((t, idx) => ({
         id: idx + 1, // 기존 UI 호환용 정수 ID
         description: t.title,
-        status: t.status === 'COMPLETED' ? 'done' as const : 
-                t.status === 'RUNNING' ? 'in_progress' as const : 
-                t.status === 'FAILED' ? 'failed' as const : 'pending' as const
+        status: t.status === 'COMPLETED' ? 'done' as const :
+          t.status === 'RUNNING' ? 'in_progress' as const :
+            t.status === 'FAILED' ? 'failed' as const : 'pending' as const
       }));
       state.setAgentTaskPlan({ goal: userMessage, steps, currentStepIndex: 0 });
       state.setTaskProgress(completionManager.getCompletionRate());
@@ -608,7 +712,7 @@ export class AgentOrchestratorSession {
     const approvalResult = await new Promise<{ approved: boolean; feedback?: string }>((resolve) => {
       state.setPlanApprovalState('pending')
       state.setResolvePlanApproval(resolve)
-      
+
       this.emitEvent({
         type: 'plan_approval_request',
         plan: { goal: userMessage, steps: state.agentTaskPlan?.steps ?? [] }
@@ -651,17 +755,17 @@ export class AgentOrchestratorSession {
         syncUIState()
 
         let verifyPassed = false;
-        
+
         while (currentTask.retries <= currentTask.maxRetries && !this.isAborted) {
           currentTask.retries++;
-          
+
           // 태스크 실행 시작 이벤트 방출
           this.emitEvent({
             type: 'task_exec_start',
             taskTitle: currentTask.title,
             attempt: currentTask.retries
           })
-          
+
           // 태스크별 ReAct 루프 가동
           this.accumulatedAnswer = '' // 답변 버퍼 초기화
           const result = await executor.execute(currentTask, this)
@@ -669,22 +773,37 @@ export class AgentOrchestratorSession {
           if (result.status === 'SUCCESS') {
             // Verifier를 통한 2단계 사후 검정
             verifyPassed = await verifier.verify(currentTask, result, this)
-            if (verifyPassed) {
+              if (verifyPassed) {
               this.taskQueue.setCompleted(currentTask.id, result)
-              
+
               // [Task Runtime V2] 상태 전이 동기화 (RUNNING -> VERIFYING -> COMPLETED)
               try {
                 const shadowAttemptId = `attempt_${crypto.randomUUID()}`;
-                
+
+                /*
+                 * [P2-5 FIX — Shadow Sync stateVersion 동적화]
+                 * 이전: stateVersion을 1,2,3,4로 하드코딩하여
+                 *       실제 스토어의 버전과 불일치 시 전이가 조용히 실패.
+                 * 수정: 각 전이 전에 getTask()로 현재 stateVersion을 동적으로 조회.
+                 */
+
                 // 1. READY 전이
+                let taskSnapshot = this.taskStore.getTask(this.sessionId, currentTask.id);
                 this.taskStore.dispatchTransition({
-                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'PENDING', expectedStateVersion: 1, reason: 'Shadow Sync READY', actor: 'orchestrator', timestamp: Date.now()
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id,
+                  expectedCurrentStatus: 'PENDING',
+                  expectedStateVersion: taskSnapshot?.state?.stateVersion ?? 1,
+                  reason: 'Shadow Sync READY', actor: 'orchestrator', timestamp: Date.now()
                 }, 'READY');
-                
+
                 // 2. RUNNING 전이 (Attempt 활성화)
+                taskSnapshot = this.taskStore.getTask(this.sessionId, currentTask.id);
                 this.taskStore.dispatchTransition({
-                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'READY', expectedStateVersion: 2, reason: 'Shadow Sync RUNNING', actor: 'orchestrator', timestamp: Date.now()
-                }, 'RUNNING', { 
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id,
+                  expectedCurrentStatus: 'READY',
+                  expectedStateVersion: taskSnapshot?.state?.stateVersion ?? 2,
+                  reason: 'Shadow Sync RUNNING', actor: 'orchestrator', timestamp: Date.now()
+                }, 'RUNNING', {
                   activeAttemptId: shadowAttemptId,
                   attempts: {
                     [shadowAttemptId]: {
@@ -694,13 +813,21 @@ export class AgentOrchestratorSession {
                 });
 
                 // 3. VERIFYING 전이
+                taskSnapshot = this.taskStore.getTask(this.sessionId, currentTask.id);
                 this.taskStore.dispatchTransition({
-                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'RUNNING', expectedStateVersion: 3, reason: 'Shadow Sync VERIFYING', actor: 'orchestrator', timestamp: Date.now()
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id,
+                  expectedCurrentStatus: 'RUNNING',
+                  expectedStateVersion: taskSnapshot?.state?.stateVersion ?? 3,
+                  reason: 'Shadow Sync VERIFYING', actor: 'orchestrator', timestamp: Date.now()
                 }, 'VERIFYING');
 
                 // 4. COMPLETED 전이 (Result 및 Verification 주입)
+                taskSnapshot = this.taskStore.getTask(this.sessionId, currentTask.id);
                 this.taskStore.dispatchTransition({
-                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id, expectedCurrentStatus: 'VERIFYING', expectedStateVersion: 4, reason: 'Shadow Sync COMPLETED', actor: 'orchestrator', timestamp: Date.now()
+                  commandId: crypto.randomUUID(), missionId: this.sessionId, taskId: currentTask.id,
+                  expectedCurrentStatus: 'VERIFYING',
+                  expectedStateVersion: taskSnapshot?.state?.stateVersion ?? 4,
+                  reason: 'Shadow Sync COMPLETED', actor: 'orchestrator', timestamp: Date.now()
                 }, 'COMPLETED', {
                   taskResult: {
                     attemptId: shadowAttemptId, taskId: currentTask.id, createdAt: Date.now(), status: 'COMPLETED', summary: result.summary || '', outputs: [], evidence: []
@@ -709,8 +836,9 @@ export class AgentOrchestratorSession {
                     verificationId: crypto.randomUUID(), taskId: currentTask.id, attemptId: shadowAttemptId, verdict: 'PASS', passedCriteria: [], failedCriteria: [], verifierType: 'semantic', createdAt: Date.now()
                   }
                 });
-              } catch (e: any) { 
-                this.ipcLog({ text: `[AgentOrchestrator] Shadow Sync Drift 감지: ${e.message}`, prefix: 'TaskV2' });
+              } catch (e: unknown) {
+                const errMsg = e instanceof Error ? e.message : String(e);
+                this.ipcLog({ text: `[AgentOrchestrator] Shadow Sync Drift 감지: ${errMsg}`, prefix: 'TaskV2' });
               }
 
               this.emitEvent({
@@ -731,39 +859,36 @@ export class AgentOrchestratorSession {
             reason: `태스크 ${currentTask.id} (${currentTask.title}) 비평 검증 실패 (사유: ${failReason}). 재시도 대기...`,
             taskTitle: currentTask.title
           })
-          
+
           this.ipcLog({ text: `[AgentOrchestrator] 태스크 ${currentTask.id} 수행 또는 검증 실패 (시도 ${currentTask.retries}/${currentTask.maxRetries})`, prefix: 'Orchestrator' })
-          
+
           if (currentTask.retries > currentTask.maxRetries) {
             // [Issue 7] 필수 태스크는 자동 스킵하지 않고 USER_ASSIST 대기로 전환
             if ((currentTask as any).required) {
               this.ipcLog({ text: `[AgentOrchestrator] 필수 태스크 ${currentTask.id} 실패. 사용자 개입(WAITING_USER)을 대기합니다.`, prefix: 'Orchestrator' });
-              
+
               if (typeof this.taskStore !== 'undefined') {
-                 UserAssistRuntime.getInstance(this.taskStore).createRequest({
-                    missionId: this.sessionId,
-                    taskId: currentTask.id,
-                    attemptId: `attempt_${crypto.randomUUID()}`,
-                    title: `필수 태스크 실패: ${currentTask.title}`,
-                    summary: '최대 재시도 횟수 초과',
-                    failureReason: '반복된 에러로 인한 진행 불가',
-                    completedWork: '',
-                    missingWork: '필수 작업 미완수',
-                    recoveryAttempts: currentTask.retries,
-                    isTaskRequired: true
-                 });
+                new UserAssistRuntime(this.taskStore).createRequest({
+                  missionId: this.sessionId,
+                  taskId: currentTask.id,
+                  attemptId: `attempt_${crypto.randomUUID()}`,
+                  title: `필수 태스크 실패: ${currentTask.title}`,
+                  summary: '최대 재시도 횟수 초과',
+                  failureReason: '반복된 에러로 인한 진행 불가',
+                  completedWork: '',
+                  missingWork: '필수 작업 미완수',
+                  recoveryAttempts: currentTask.retries,
+                  isTaskRequired: true
+                });
               } else {
-                 this.taskQueue.updateTaskStatus(currentTask.id, 'WAITING_USER');
+                this.taskQueue.updateTaskStatus(currentTask.id, 'WAITING_USER');
               }
-              
+
               // 사용자가 다시 재개할 때까지 현재 루프 중단
               break;
             }
 
-            this.taskQueue.setSkipped(currentTask.id, {
-              status: 'ERROR',
-              error: `태스크 ${currentTask.id}의 최대 재시도 횟수(${currentTask.maxRetries})를 초과하여 스킵 처리되었습니다.`
-            });
+            this.taskQueue.setSkipped(currentTask.id);
             break;
           } else {
             this.taskQueue.setFailed(currentTask.id)
@@ -798,46 +923,64 @@ export class AgentOrchestratorSession {
       const v2Tasks = this.taskStore.getAllTasks(this.sessionId);
       if (v2Tasks.length > 0) {
         let contentSection = '';
+        const collectedFiles = new Set<string>();
+        
+        const { OutputAttributionService } = await import('./task-runtime/verification/services/OutputAttributionService');
+
         for (const vt of v2Tasks) {
-          if (vt.state.status === 'COMPLETED' && vt.state.taskResult && vt.state.taskResult.outputs) {
-            for (const out of vt.state.taskResult.outputs) {
-              if (out.type === 'text' && out.content) {
-                 contentSection += `\n\n#### 📝 [${vt.definition.title}]\n${out.content}`;
+          if (vt.state.status === 'COMPLETED' && vt.state.taskResult) {
+            let taskContent = '';
+            
+            if (vt.state.taskResult.outputs) {
+              for (const out of vt.state.taskResult.outputs) {
+                if (out.type === 'text' && out.content) {
+                  taskContent += `${out.content}\n`;
+                } else if (out.type === 'file' && out.path) {
+                  collectedFiles.add(out.path);
+                }
               }
+            }
+
+            // Trust Pipeline Attribution
+            const attributions = OutputAttributionService.extractAttributions(vt.state.taskResult);
+            for (const attr of attributions) {
+               collectedFiles.add(attr.path);
+            }
+
+            if (taskContent.trim().length > 0) {
+              contentSection += `\n\n#### 📝 [${vt.definition.title}]\n${taskContent.trim()}`;
             }
           }
         }
-        
-        // Asynchronous file reading outside the loop to avoid async complexity in map/forEach
-        const fileMatches = [...contentSection.matchAll(/\[FILE_PATH:\s*(.*?)\]/g)];
-        if (fileMatches.length > 0) {
-           const fsAdapter = new PowerShellArtifactFileAdapter();
-           for (const match of fileMatches) {
-               try {
-                   const filePath = match[1].trim();
-                   const content = await fsAdapter.read(filePath);
-                   if (content) {
-                       contentSection = contentSection.replace(
-                           match[0],
-                           `${content}` // Remove the code block wrapping to just output text
-                       );
-                       await fsAdapter.remove(filePath); // Delete the file after it's injected
-                   } else {
-                       contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${filePath})`);
-                   }
-               } catch (e) {
-                   console.error('[AgentOrchestrator] Failed to read file for injection:', e);
-                   contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${match[1].trim()})`);
-               }
-           }
+
+        if (collectedFiles.size > 0) {
+          const { PowerShellArtifactFileAdapter } = await import('./task-runtime/artifact/PowerShellArtifactFileAdapter');
+          const { PreviewLayer } = await import('./task-runtime/artifact/PreviewLayer');
+          const fsAdapter = new PowerShellArtifactFileAdapter();
+          for (const fp of collectedFiles) {
+            try {
+              const previewData = await PreviewLayer.generatePreview(fp, fsAdapter);
+              if (previewData.exists) {
+                 if (previewData.isBinary) {
+                   contentSection += `\n\n📄 **[생성/수정된 파일: ${fp}]**\n*${previewData.preview}*`;
+                 } else {
+                   const lang = previewData.mimeType.includes('json') ? 'json' : previewData.mimeType.includes('markdown') ? 'markdown' : '';
+                   contentSection += `\n\n📄 **[생성/수정된 파일: ${fp}]**\n\`\`\`${lang}\n${previewData.preview}\n\`\`\``;
+                 }
+              }
+            } catch (e) {
+              console.warn(`[AgentOrchestrator] Failed to read generated file: ${fp}`, e);
+            }
+          }
         }
+
+        // 항상 통계 표는 thought_token으로 방출하여 채팅창 메인 응답에서 숨깁니다.
+        this.emitEvent({ type: 'thought_token', thought: finalReportText } as any);
         
         if (contentSection.trim().length > 0) {
-          // 통계 표(보고서)를 로그(추론 과정)의 마지막에 보여주기 위해 thought로 방출합니다.
-          this.emitEvent({ type: 'thought', thought: finalReportText });
-          
-          // 생성된 본문이 있다면, 쓸데없는 통계 표를 본문 출력에서 제외하고 본문을 최종 보고서로 뱉습니다.
           finalReportText = contentSection.trim();
+        } else {
+          finalReportText = "요청하신 작업이 성공적으로 완료되었습니다.";
         }
       }
 
@@ -900,7 +1043,7 @@ export class AgentOrchestratorSession {
          * - ThoughtParser가 처리하지 않는 일반 Llama.cpp ReAct 형식 지원용.
          */
         if (turnBuffer.includes(ORCHESTRATOR_CONSTANTS.FINAL_ANSWER_PREFIX) &&
-            this.parser.getState() === 'idle') {
+          this.parser.getState() === 'idle') {
           const afterPrefix = turnBuffer.split(ORCHESTRATOR_CONSTANTS.FINAL_ANSWER_PREFIX)[1] ?? ''
           if (afterPrefix.trim() !== '') {
             this.accumulatedAnswer = afterPrefix.trim()
@@ -943,11 +1086,11 @@ export class AgentOrchestratorSession {
    * @param request - ThoughtParser가 파싱한 도구 호출 요청
    */
   public async executeToolAndObserve(request: ToolCallRequest): Promise<void> {
-    const idempotencyKey = crypto.subtle ? 
+    const idempotencyKey = crypto.subtle ?
       Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(request.name + JSON.stringify(request.args)))))
         .map(b => b.toString(16).padStart(2, '0')).join('') :
       request.name + JSON.stringify(request.args); // Fallback if crypto is unavailable
-      
+
     if (this.executedToolHashes.has(idempotencyKey)) {
       console.warn(`[AgentOrchestrator] 중복 도구 호출 감지 (Idempotency Key: ${idempotencyKey}), 스킵합니다.`, request.name);
       return;
@@ -959,6 +1102,43 @@ export class AgentOrchestratorSession {
       text: `[AgentOrchestrator] 도구 실행: ${request.name}(${JSON.stringify(request.args)})`,
       prefix: 'Orchestrator'
     })
+
+    /*
+     * [P2-3 FIX — ActorCriticHook beforeToolCall 실제 호출]
+     * 이전: withActorCritic()에 주입됨에도 이 지점에서 호출되지 않았음.
+     * 수정: actorCriticHook이 주입되어 있으면 beforeToolCall()을 호출하여
+     *         REJECT 시 도구 실행을 차단하고 피드백 Observation을 주입한다.
+     */
+    if (this.actorCriticHook) {
+      try {
+        const criticVerdict = await this.actorCriticHook.beforeToolCall(
+          request.name,
+          request.args,
+          this.contextMessages
+        );
+        if (criticVerdict.verdict === 'REJECT') {
+          this.ipcLog({
+            text: `[AgentOrchestrator] ActorCritic REJECT: 도구 ${request.name} 실행 차단. 이유: ${criticVerdict.reason}`,
+            prefix: 'ActorCritic'
+          });
+          // REJECT 시 Observation으로 피드백 주입 (FeedbackInjector가 하지 않은 경우 직접 주입)
+          this.contextMessages.push({
+            role: 'user',
+            content: `Observation: [Actor-Critic REJECT] 도구 '${request.name}'는 다음 이유로 실행이 거부되었습니다: ${criticVerdict.reason}\n다른 도구나 다른 접근 방법을 고려하십시오.`
+          });
+          this.emitPhaseChange('thinking');
+          return; // 도구 실행 차단
+        } else if (criticVerdict.verdict === 'UNCERTAIN') {
+          this.ipcLog({
+            text: `[AgentOrchestrator] ActorCritic UNCERTAIN: ${request.name} 검수 불확실. 진행하되 로그 남김.`,
+            prefix: 'ActorCritic'
+          });
+        }
+      } catch (criticErr: unknown) {
+        const msg = criticErr instanceof Error ? criticErr.message : String(criticErr);
+        console.warn(`[AgentOrchestrator] ActorCritic beforeToolCall 오류 (감수 스킵, 도구 실행 계속):`, msg);
+      }
+    }
 
     const result = await this.registry.executeTool(request.name, request.args)
 
@@ -976,7 +1156,7 @@ export class AgentOrchestratorSession {
       try {
         const filePath = String(request.args.path)
         const content = String(request.args.content || '')
-        
+
         /*
          * [PURE EVENT DELEGATION - CIRCULAR IMPORT PREVENTION]
          * - Rationale: React 및 Zustand 스토어를 비JS 런타임 비동기 세션 내부에서 직접 dynamic import할 경우
@@ -1205,9 +1385,9 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
             const steps = checkpoint.tasks.map((t, idx) => ({
               id: idx + 1,
               description: t.title,
-              status: t.status === 'COMPLETED' ? 'done' as const : 
-                      t.status === 'RUNNING' ? 'in_progress' as const : 
-                      t.status === 'FAILED' ? 'failed' as const : 'pending' as const
+              status: t.status === 'COMPLETED' ? 'done' as const :
+                t.status === 'RUNNING' ? 'in_progress' as const :
+                  t.status === 'FAILED' ? 'failed' as const : 'pending' as const
             }));
             state.setAgentTaskPlan({ goal: checkpoint.goal, steps, currentStepIndex: 0 });
             const finished = checkpoint.tasks.filter((t: any) => t.status === 'COMPLETED' || t.status === 'SKIPPED').length;
@@ -1237,6 +1417,10 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
     // 1. Router 연동 (PLANNING Profile)
     if (routingConfig.routingEnabled) {
       const profile: TaskRoutingProfile = {
+        missionId,
+        taskId: 'planning',
+        structuredOutputRequired: true,
+        artifactKinds: [],
         taskType: 'PLANNING',
         requiredCapabilities: ['PLANNING', 'STRUCTURED_OUTPUT'],
         contextSize: Math.ceil(rawRequest.length / 3),
@@ -1246,19 +1430,21 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         reasoningComplexity: 0.9,
         toolRequired: false,
         codeExecutionRequired: false,
-        latencyPreference: 'balance',
+        latencyPreference: 'balanced',
         qualityPreference: 'high',
         previousModelIds: [],
-        routingBudgetRemaining: 5
+        routingBudgetRemaining: 5,
+        riskLevel: 'LOW',
+        retryHistory: [],
+        previousDefectSignatures: []
       };
 
       const routingResult = await ModelRouter.route(profile, routingConfig);
-      
-      this.eventLog.recordEvent({
+
+      this.eventLog.appendEvent({
         eventId: crypto.randomUUID(),
-        missionId,
         taskId: 'planning',
-        type: 'ROUTING',
+        type: 'ROUTING' as any,
         stage: 'ROUTING',
         status: routingResult.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
         timestamp: Date.now(),
@@ -1268,14 +1454,14 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
 
       if (routingResult.status === 'SUCCESS' && routingResult.selectedModelId) {
         try {
-          const rawAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, profile.privacyLevel as import('./task-runtime/domain/types').PrivacyLevel);
+          const rawAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(routingResult.selectedModelId, profile.privacyLevel as any);
           const { ModelCallGatewayAdapter } = await import('./task-runtime/routing/gateway/ModelCallGatewayAdapter');
           // For V2 Planning, we don't have task trace context yet, so we use a mock/internal trace manager if needed or skip trace in adapter.
           // Wait, we need traceManager for ModelCallGatewayAdapter.
           // AgentOrchestrator has `this.traceManager`? AgentOrchestrator has no traceManager field, only `this.eventLog`.
           // I will import ExecutionTraceManager and get instance.
           const { ExecutionTraceManager } = await import('./task-runtime/trace/ExecutionTraceManager');
-          
+
           plannerAdapter = new ModelCallGatewayAdapter(
             rawAdapter,
             routingResult.selectedModelId,
@@ -1290,9 +1476,9 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
           const errorMessage = e instanceof Error ? e.message : String(e);
           this.ipcLog({ text: `[AgentOrchestrator] V2 Planning Adapter Load Failed: ${errorMessage}`, prefix: 'Orchestrator' });
           if (errorMessage.includes('Privacy Gate Violation')) {
-             throw new Error(`Privacy Gate Violation: ${errorMessage}`);
-             // Note: In AgentOrchestrator we just throw for now since Mission Planning is usually CONFIDENTIAL/INTERNAL
-             // and if blocked, we fail the V2 Planning routing.
+            throw new Error(`Privacy Gate Violation: ${errorMessage}`);
+            // Note: In AgentOrchestrator we just throw for now since Mission Planning is usually CONFIDENTIAL/INTERNAL
+            // and if blocked, we fail the V2 Planning routing.
           }
         }
       } else {
@@ -1301,25 +1487,24 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         throw new Error(`V2 Planning Routing Failed: Capability or model missing (Code: ${routingResult.status})`);
       }
     } else {
-       // Legacy 경로 사용 시 Trace 기록
-       this.eventLog.recordEvent({
-         eventId: crypto.randomUUID(),
-         missionId,
-         taskId: 'planning',
-         type: 'ROUTING',
-         stage: 'ROUTING',
-         status: 'SUCCESS',
-         timestamp: Date.now(),
-         message: `Legacy Routing Fallback`,
-         metadata: { 
-           traceType: 'legacy_routing_fallback', 
-           fallbackReason: 'Explicit Legacy Mode selected or Feature Flag disabled',
-           v2FailureCode: 'V2_DISABLED_OR_EXPLICIT_FALLBACK',
-           routingEnabled: false,
-           selectedLegacyModelId: this.config.modelId,
-           userVisibleWarning: 'Using legacy planning system due to explicit fallback policy'
-         }
-       });
+      // Legacy 경로 사용 시 Trace 기록
+      this.eventLog.appendEvent({
+        eventId: crypto.randomUUID(),
+        taskId: 'planning',
+        type: 'ROUTING' as any,
+        stage: 'ROUTING',
+        status: 'SUCCESS',
+        timestamp: Date.now(),
+        message: `Legacy Routing Fallback`,
+        metadata: {
+          traceType: 'legacy_routing_fallback',
+          fallbackReason: 'Explicit Legacy Mode selected or Feature Flag disabled',
+          v2FailureCode: 'V2_DISABLED_OR_EXPLICIT_FALLBACK',
+          routingEnabled: false,
+          selectedLegacyModelId: this.config.modelId,
+          userVisibleWarning: 'Using legacy planning system due to explicit fallback policy'
+        }
+      });
     }
 
     const interpreter = new GoalInterpreter(plannerAdapter);

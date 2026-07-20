@@ -143,7 +143,7 @@ export class ExecutionTraceManager {
         taskId,
         attemptId,
         timestamp: Date.now(),
-        eventType: 'decision_summary_fallback_used',
+        eventType: 'decision_summary_created',
         status: 'WARNING',
         title: 'DecisionSummary Schema Validation Failed - Fallback Used',
         summary: 'DecisionSummary failed validation. Safe fallback summary applied; raw LLM response suppressed.',
@@ -190,7 +190,7 @@ export class ExecutionTraceManager {
     selectionReason: string,
     args: Record<string, unknown>,
     definition?: unknown
-  ): { traceEvent: import('../../trace/types').TraceEvent; toolTrace: import('../../trace/types').ToolExecutionTrace } {
+  ): { traceEvent: TraceEvent; toolTrace: ToolExecutionTrace } {
     const seq = this.store.nextSequenceNumber(missionId);
     const spanId = toolCallId;
     const parentSpanId = `span-t-${taskId}-${attemptId}`;
@@ -297,7 +297,7 @@ export class ExecutionTraceManager {
     toolCallId: string,
     toolName: string,
     approval: unknown
-  ): import('../../trace/types').TraceEvent {
+  ): import('./ExecutionTraceTypes').TraceEvent {
     const seq = this.store.nextSequenceNumber(missionId);
     const ev: TraceEvent = {
       eventId: `${missionId}_${seq}_appr_grant_${toolCallId}`,
@@ -315,7 +315,7 @@ export class ExecutionTraceManager {
       sequenceNumber: seq,
       visibility: 'USER',
       schemaVersion: '4.0.0',
-      approval
+      approval: approval as ApprovalRequest
     };
     this.store.appendEvent(ev);
     return ev;
@@ -350,7 +350,7 @@ export class ExecutionTraceManager {
       sequenceNumber: seq,
       visibility: 'USER',
       schemaVersion: '4.0.0',
-      approval
+      approval: approval as ApprovalRequest
     };
     this.store.appendEvent(ev);
     return ev;
@@ -406,7 +406,7 @@ export class ExecutionTraceManager {
     if (this.store.isTerminalEventRecorded(toolTrace.toolCallId)) {
       console.warn(`[ExecutionTraceManager] Terminal event already recorded for span ${toolTrace.toolCallId}. Skipping duplicate terminal event.`);
       const existing = this.store.getSpan(toolTrace.toolCallId);
-      return existing || ({} as import('../../trace/types').TraceEvent);
+      return existing || ({} as import('./ExecutionTraceTypes').TraceEvent);
     }
 
     const seq = this.store.nextSequenceNumber(missionId);
@@ -535,7 +535,7 @@ export class ExecutionTraceManager {
     taskId: string,
     attemptId: string,
     observation: Record<string, unknown>
-  ): import('../../trace/types').TraceEvent {
+  ): import('./ExecutionTraceTypes').TraceEvent {
     const seq = this.store.nextSequenceNumber(missionId);
     const ev: TraceEvent = {
       eventId: `${missionId}_${seq}_obs_${observation.toolCallId || seq}`,
@@ -546,7 +546,7 @@ export class ExecutionTraceManager {
       taskId,
       attemptId,
       timestamp: observation.createdAt || Date.now(),
-      eventType: 'tool_observation_created' as import('../../trace/types').TraceEventType,
+      eventType: 'tool_observation_created' as import('./ExecutionTraceTypes').TraceEventType,
       status: observation.status === 'SUCCESS' ? 'OBSERVED' : 'FAILED',
       title: `Tool Observation: ${observation.toolName || 'unknown'}`,
       summary: (observation.summary as string) || 'Observation created',
@@ -554,7 +554,7 @@ export class ExecutionTraceManager {
       visibility: 'USER',
       schemaVersion: '4.0.0',
       observation
-    } as import('../../trace/types').TraceEvent;
+    } as import('./ExecutionTraceTypes').TraceEvent;
     this.store.appendEvent(ev);
     return ev;
   }
@@ -646,7 +646,7 @@ export class ExecutionTraceManager {
     taskId: string,
     attemptId: string,
     decision: Record<string, unknown>
-  ): import('../../trace/types').TraceEvent {
+  ): import('./ExecutionTraceTypes').TraceEvent {
     const seq = this.store.nextSequenceNumber(missionId);
     const ev: TraceEvent = {
       eventId: `${missionId}_${seq}_route`,
@@ -658,7 +658,7 @@ export class ExecutionTraceManager {
       attemptId,
       timestamp: Date.now(),
       eventType: 'routing_decision_created',
-      status: decision.status || 'SUCCESS',
+      status: (decision.status as string) || 'SUCCESS',
       title: `Routing Decision: ${decision.selectedModelId}`,
       summary: decision.selectionReasons?.[0] || 'Model routed.',
       sequenceNumber: seq,
@@ -678,7 +678,7 @@ export class ExecutionTraceManager {
     taskId: string,
     attemptId: string,
     escalationPkg: Record<string, unknown>
-  ): import('../../trace/types').TraceEvent {
+  ): import('./ExecutionTraceTypes').TraceEvent {
     const seq = this.store.nextSequenceNumber(missionId);
     const ev: TraceEvent = {
       eventId: `${missionId}_${seq}_escalate`,

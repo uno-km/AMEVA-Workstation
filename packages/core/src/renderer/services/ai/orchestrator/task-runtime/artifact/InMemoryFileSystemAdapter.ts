@@ -21,6 +21,11 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     return this.files.get(path) ?? null;
   }
 
+  public async readBytes(path: string): Promise<Uint8Array | null> {
+    const content = this.files.get(path);
+    return content !== undefined ? new TextEncoder().encode(content) : null;
+  }
+
   public async write(path: string, content: string): Promise<void> {
     this.files.set(path, content);
   }
@@ -79,15 +84,19 @@ export class InMemoryFileSystemAdapter implements IFileSystemAdapter {
     this.files.set(destPath, content);
   }
 
-  public async exists(path: string): Promise<boolean> {
-    return (await this.stat(path)).exists;
+  public async exists(_path: string): Promise<boolean> {
+    return (await this.stat(_path)).exists;
   }
 
-  public async realpath(path: string): Promise<string> {
-    return path;
+  public validatePath(_path: string): void {
+    // InMemory에서는 경로 형식을 엄격히 검사하지 않고 모두 허용
   }
 
-  public async isSymlink(path: string): Promise<boolean> {
+  public async realpath(_path: string): Promise<string> {
+    return _path;
+  }
+
+  public async isSymlink(_path: string): Promise<boolean> {
     return false;
   }
 }

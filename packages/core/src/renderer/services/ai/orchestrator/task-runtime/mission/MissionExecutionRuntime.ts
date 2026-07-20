@@ -50,6 +50,8 @@ import { ArtifactStore } from '../artifact/ArtifactStore';
 import { ArtifactTransactionManager } from '../artifact/ArtifactTransactionManager';
 import { PersistenceIdempotencyStore } from '../artifact/IdempotencyStore';
 import { ToolRegistry } from '../../ToolRegistry';
+import { OUTPUT_MODE_LABELS } from '../planning/goal/TaskOutputClassifier';
+import type { TaskOutputMode } from '../domain/types';
 
 /*
  * [도메인 종속 지역 상수]
@@ -268,6 +270,33 @@ export class MissionExecutionRuntime {
    */
   public getUserAssistRuntime(): UserAssistRuntime {
     return this.userAssistRuntime;
+  }
+
+  /**
+   * [P2-4] OutputMode 선택지 데이터 반환.
+   * AgentOrchestrator가 needsUserConfirmation=true를 감지하면 호출하여
+   * UI에서 사용자에게 선택지를 보여주도록 다.
+   *
+   * @returns 사용자에게 보여줄 선택지 배열
+   */
+  public getOutputModeChoices(): Array<{ mode: TaskOutputMode; label: string }> {
+    return (Object.keys(OUTPUT_MODE_LABELS) as TaskOutputMode[]).map(mode => ({
+      mode,
+      label: OUTPUT_MODE_LABELS[mode]
+    }));
+  }
+
+  /**
+   * [P2-4] 사용자가 선택한 OutputMode를 미션의 내부 메타데이터로 저장한다.
+   * 이 메서드를 호출한 후 start()를 호출하면 선택된 모드로 플래닝이 진행된다.
+   *
+   * @param mode - 사용자가 선택한 TaskOutputMode
+   */
+  public setUserSelectedOutputMode(mode: TaskOutputMode): void {
+    console.info(`[MissionExecutionRuntime] 사용자가 OutputMode를 선택함: ${mode}`);
+    this.store.updateMissionState(this.missionId, {
+      userSelectedOutputMode: mode as string
+    } as any);
   }
 
   /**

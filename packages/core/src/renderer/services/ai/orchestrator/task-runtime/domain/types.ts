@@ -51,9 +51,23 @@ export interface TaskOutput {
 /**
  * 증거(Evidence) 타입
  */
+export type MutatingOperationType = 'CREATE' | 'APPEND' | 'PATCH' | 'DELETE' | 'MOVE' | 'READ' | 'UNKNOWN';
+
+export interface ToolResultEvidenceData {
+  toolCallId: string;
+  toolName: string;
+  status: string;
+  description: string;
+  args?: Record<string, any>;
+  taskId?: string;
+  missionId?: string;
+  operationType?: MutatingOperationType;
+  expectedOutputPath?: string;
+}
+
 export interface TaskEvidence {
   source: 'tool_result' | 'artifact' | 'observation' | 'user_input' | 'deterministic_check';
-  data: any;
+  data: any; // ToolResultEvidenceData when source is 'tool_result'
   timestamp: number;
 }
 
@@ -98,6 +112,12 @@ export interface TaskFailure {
   timestamp: number;
 }
 
+export type TaskOutputMode =
+  | 'NO_PERSISTED_OUTPUT'
+  | 'FILE_OUTPUT_REQUIRED'
+  | 'ARTIFACT_OUTPUT_REQUIRED'
+  | 'EITHER_FILE_OR_ARTIFACT';
+
 /**
  * Task Attempt (개별 실행 시도 인스턴스)
  */
@@ -141,7 +161,9 @@ export interface TaskDefinition {
   maxToolCalls?: number;
 
   // PHASE 2 Planning Extended Fields
-  expectedOutputs?: string[]; // 기대 산출물 목록
+  outputMode: TaskOutputMode;
+  expectedFileOutputs?: string[];
+  expectedArtifactOutputs?: string[];
   acceptanceCriteria?: string[]; // 완료 검수 기준 목록
   capabilityRequirements?: string[]; // 필요한 능력(툴) 목록 (e.g. 'web.search')
   requirementIds?: string[]; // 연결된 원본 사용자 요구사항 ID 목록

@@ -131,6 +131,11 @@ export class V2RuntimeFeatureFlag {
     return true;
   }
 
+  public static isV2OwnershipAcquired(sessionId: string): boolean {
+    const existing = V2RuntimeFeatureFlag.ownerships.get(sessionId);
+    return existing !== undefined && existing.owner === 'V2';
+  }
+
   /**
    * V2 Execution 소유권을 획득합니다.
    * 이미 소유권이 있으면 오류를 발생시킵니다.

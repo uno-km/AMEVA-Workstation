@@ -41,6 +41,13 @@ export class TaskQueue {
   }
 
   /**
+   * 태스크 상태를 업데이트합니다.
+   */
+  public updateTaskStatus(taskId: string, status: any): void {
+    this.graph.updateTaskStatus(taskId, status);
+  }
+
+  /**
    * 실행 가능한 READY 상태의 노드 중 우선순위(priority)가 가장 높은 태스크를 방출합니다.
    * 방출 시 상태는 자동으로 RUNNING으로 전환됩니다.
    *

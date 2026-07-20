@@ -142,6 +142,11 @@ export class ApprovalRepositoryIndexedDB implements IApprovalRepositoryPersisten
     }
   }
 
+  public async getAuthorizationTicket(ticketId: string): Promise<import('../approval/types').ApprovalAuthorizationTicket | null> {
+    // Stub implementation
+    return null;
+  }
+
   public async updateApprovalStatus(approvalId: string, status: ApprovalRecordStatus): Promise<ApprovalPersistenceResult> {
     const res = await this.getApprovalRecord(approvalId);
     if (!res.success || !res.record) return res;

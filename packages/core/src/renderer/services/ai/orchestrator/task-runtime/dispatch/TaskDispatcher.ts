@@ -184,7 +184,12 @@ export class TaskDispatcher {
                 commandId: `cmd-fail-${crypto.randomUUID()}`,
                 missionId,
                 taskId,
-                expectedCurrentStatus: 'DISPATCHED',
+                /*
+                 * [P2-1 FIX — DISPATCHED → RUNNING 상태 오타 수정]
+                 * 이 시점에서 task는 이미 dispatchTask()에서 RUNNING으로 전이된 상태.
+                 * 'DISPATCHED'는 TaskState의 유효한 상태가 아니며 전이가 조용히 실패하던 버그.
+                 */
+                expectedCurrentStatus: 'RUNNING',
                 expectedStateVersion: task.state.stateVersion,
                 reason: 'Routing budget exhausted',
                 actor: 'TaskDispatcher',

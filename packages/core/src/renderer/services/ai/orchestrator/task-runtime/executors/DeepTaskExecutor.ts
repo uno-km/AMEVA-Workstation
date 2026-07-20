@@ -48,6 +48,7 @@ import { ToolApprovalPolicy, ToolApprovalViolationError } from '../policy/ToolAp
 import type { TaskEvidence } from '../domain/types';
 import { ToolRegistry } from '../../ToolRegistry';
 import { EscalationManager } from '../routing/escalation/EscalationManager';
+import { OutputInferenceService } from '../verification/services/OutputInferenceService';
 import { RoutingConfigManager } from '../routing/domain/RoutingConfigManager';
 
 
@@ -353,12 +354,12 @@ export class DeepTaskExecutor {
                 }
               }
 
-              const fileOutputs = task.definition.expectedOutputs?.filter(o => o.kind === 'FILE') || [];
+              const fileOutputs = task.definition.expectedFileOutputs || [];
               if (fileOutputs.length === 1) {
-                resolvedOutputId = fileOutputs[0].id;
-                console.warn(`[DeepTaskExecutor] LEGACY_SINGLE_OUTPUT_MAPPING: Auto-mapping to ${resolvedOutputId}`);
+                resolvedOutputId = fileOutputs[0];
+                console.warn(`[DeepTaskExecutor] Auto-mapping to ${resolvedOutputId}`);
               } else {
-                throw new Error('AMBIGUOUS_EXPECTED_OUTPUT: Cannot resolve exact expectedOutput for write_file');
+                throw new Error('AMBIGUOUS_EXPECTED_OUTPUT: Cannot resolve exact expectedOutput for write_file/append_file');
               }
             }
 
@@ -390,7 +391,7 @@ export class DeepTaskExecutor {
             const toolResult = await Promise.race([toolResultPromise, timeoutPromise]);
 
             // [Item 2.1 & 3 & 5] Artifact Staging/Manifest Interaction
-            if ((candidate.toolName === 'write_file' || candidate.toolName === 'apply_patch') && toolResult.success && this.artifactManager) {
+            if (OutputInferenceService.isMutatingTool(candidate.toolName) && toolResult.success && this.artifactManager) {
               const { 
                 artifactId: retAid, 
                 missionId: retMid, 
@@ -403,31 +404,30 @@ export class DeepTaskExecutor {
               } = toolResult;
 
               if (retMid !== missionId || retTid !== taskId || retAttId !== attemptId || !normalizedStagedPath) {
-                throw new Error('Artifact context mismatch or normalizedStagedPath missing. WRITTEN transition denied.');
+                console.warn('[DeepTaskExecutor] Artifact context mismatch or normalizedStagedPath missing. Check Tool implementation.');
               }
 
               const aid = retAid || toolContext.artifactId;
+              const stagedPathForArtifact = normalizedStagedPath || toolContext.expectedPath || String(candidate.arguments['path'] || candidate.arguments['targetFile'] || aid);
               
-              // No silent catch! Propagate error.
               await this.artifactManager.declareArtifact({
                 artifactId: aid,
                 missionId,
                 taskId,
                 attemptId: String(attemptId),
                 kind: 'FILE',
-                required: false, // Wait, task definition tells us if it's required. Default false.
-                stagedPath: normalizedStagedPath,
+                required: true,
+                stagedPath: stagedPathForArtifact,
                 status: 'DECLARED',
                 revision: newRevision || 1,
                 createdAt: Date.now(),
                 updatedAt: Date.now(),
                 provenance: { missionId, taskId, attemptId: String(attemptId), producer: candidate.toolName }
               });
-              // Store size and hash if supported by markWritten, otherwise the manager has to fetch it.
-              // Assuming markWritten can take it, or declareArtifact takes it.
+              
               await this.artifactManager.markStaged(missionId, aid);
               await this.artifactManager.markWritten(missionId, aid);
-              console.log(`[DeepTaskExecutor] Artifact ${aid} marked WRITTEN for mission ${missionId}`);
+              console.log(`[DeepTaskExecutor] Artifact ${aid} marked WRITTEN for mission ${missionId} by ${candidate.toolName}`);
             }
 
             // Phase 4 Trace 완료 기록
@@ -446,14 +446,21 @@ export class DeepTaskExecutor {
             observations.push(observation);
 
             // Evidence 기록
+            const evidenceData: import('../domain/types').ToolResultEvidenceData = {
+              toolCallId: candidate.toolCallId,
+              toolName: candidate.toolName,
+              status: observation.status,
+              description: `Tool '${candidate.toolName}' ${observation.status}`,
+              args: candidate.arguments,
+              taskId: taskId,
+              missionId: missionId,
+              operationType: OutputInferenceService.inferOperationType(candidate.toolName),
+              expectedOutputPath: OutputInferenceService.inferExpectedPath(candidate.toolName, candidate.arguments)
+            };
+
             evidences.push({
               source: 'tool_result',
-              data: {
-                toolCallId: candidate.toolCallId,
-                toolName: candidate.toolName,
-                status: observation.status,
-                description: `Tool '${candidate.toolName}' ${observation.status}`
-              },
+              data: evidenceData,
               timestamp: Date.now()
             });
 

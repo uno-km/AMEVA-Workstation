@@ -83,7 +83,9 @@ export class PlanNormalizer {
         budgetTurns: typeof rt.budgetTurns === 'number'
           ? Math.min(rt.budgetTurns, PlanningPolicy.budgets.task.maxReasoningTurnsPerTask)
           : PlanningPolicy.budgets.defaultTaskReasoningBudget,
-        expectedOutputs: normalizeStrArray(rt.expectedOutputs),
+        expectedFileOutputs: normalizeStrArray(rt.expectedFileOutputs),
+        expectedArtifactOutputs: normalizeStrArray(rt.expectedArtifactOutputs),
+        outputMode: (rt.outputMode as any) || 'NO_PERSISTED_OUTPUT',
         acceptanceCriteria: normalizeStrArray(rt.acceptanceCriteria),
         capabilityRequirements: normalizeStrArray(rt.capabilityRequirements),
         requirementIds: normalizeStrArray(rt.requirementIds),

@@ -77,7 +77,24 @@ export class TaskVerifier {
         return false;
       }
     } catch (err: unknown) {
-      console.warn(`[TaskVerifier] 동적 검수 도중 오류가 발생해 정적 통과에 기반해 PASS 폴백 처리함:`, err);
+      /*
+       * [P1-2 FIX — False Completion Prevention]
+       * 이전 코드: catch에서 아무것도 반환하지 않아 console.info → return true로 흘러
+       *           LLM 연결 오류가 있어도 PASS 처리되는 치명 결함이 있었음.
+       * 수정: catch에서 명시적으로 false를 반환하여 가짜 완료(False Completion) 차단.
+       * SemanticVerifier와 동일한 원칙: "오류 = UNCERTAIN/FAIL, 절대 PASS 아님."
+       */
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[TaskVerifier] 동적 검수 도중 오류 발생 — FAIL 처리 (가짜 완료 방지):`, errMsg);
+      if (session) {
+        session.emitEvent({
+          type: 'critic_feedback',
+          verdict: 'FAIL',
+          reason: `태스크 ${task.id} 동적 검증 오류로 인한 FAIL: ${errMsg}`,
+          taskTitle: task.title
+        })
+      }
+      return false;
     }
 
     console.info(`[TaskVerifier] 태스크 ${task.id} 검증 최종 통과 (PASS)`);
