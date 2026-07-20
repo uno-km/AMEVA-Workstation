@@ -111,6 +111,7 @@ export interface RoutingConfig {
   maxModelSwitches: number;
   maxTotalModelCalls: number;
   maxEstimatedTokens: number;
+  maxRoutingTimeMs: number;
   rolePreferences: Record<ModelRole, string[]>;
   disabledModelIds: string[];
   forcedLocalTaskTypes: string[];

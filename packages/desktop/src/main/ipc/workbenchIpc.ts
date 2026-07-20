@@ -36,13 +36,6 @@ function handleSafeError(e: any, defaultCode: any): any {
 }
 
 
-function safePathResolve(basePath: string, targetPath: string): string | null {
-  const resolved = path.resolve(basePath, targetPath);
-  if (!resolved.startsWith(path.resolve(basePath))) {
-    return null; // Path traversal detected
-  }
-  return resolved;
-}
 
 export function registerWorkbenchIpc() {
   ipcMain.handle('workbench:registerSession', async (event, request: IpcRegisterSessionRequest): Promise<IpcResponse<IpcRegisterSessionResponse>> => {

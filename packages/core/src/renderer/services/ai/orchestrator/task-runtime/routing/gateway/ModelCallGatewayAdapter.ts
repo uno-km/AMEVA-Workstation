@@ -15,15 +15,31 @@ export class ModelAdapterMismatchError extends Error {
  * before allowing generate/generateStream.
  */
 export class ModelCallGatewayAdapter implements ILLMEngineAdapter {
+  private innerAdapter: ILLMEngineAdapter;
+  private expectedModelId: string;
+  private traceManager: ExecutionTraceManager;
+  private missionId: string;
+  private taskId: string;
+  private attemptId: string;
+  private routingDecisionId?: string;
+
   constructor(
-    private innerAdapter: ILLMEngineAdapter,
-    private expectedModelId: string,
-    private traceManager: ExecutionTraceManager,
-    private missionId: string,
-    private taskId: string,
-    private attemptId: string,
-    private routingDecisionId?: string
-  ) {}
+    innerAdapter: ILLMEngineAdapter,
+    expectedModelId: string,
+    traceManager: ExecutionTraceManager,
+    missionId: string,
+    taskId: string,
+    attemptId: string,
+    routingDecisionId?: string
+  ) {
+    this.innerAdapter = innerAdapter;
+    this.expectedModelId = expectedModelId;
+    this.traceManager = traceManager;
+    this.missionId = missionId;
+    this.taskId = taskId;
+    this.attemptId = attemptId;
+    this.routingDecisionId = routingDecisionId;
+  }
 
   public get modelId(): string | undefined {
     return this.innerAdapter.modelId;
@@ -92,7 +108,7 @@ export class ModelCallGatewayAdapter implements ILLMEngineAdapter {
         taskId: this.taskId,
         attemptId: this.attemptId,
         timestamp: Date.now(),
-        eventType: 'model_call_failed' as import('../../trace/types').TraceEventType,
+        eventType: 'model_call_failed' as import('../../trace/ExecutionTraceTypes').TraceEventType,
         status: 'FAILED',
         title: 'MODEL_ADAPTER_MISMATCH',
         summary: errorMsg,
@@ -106,7 +122,7 @@ export class ModelCallGatewayAdapter implements ILLMEngineAdapter {
           adapterModelId, 
           descriptorModelId: descriptor?.modelId 
         }
-      } as import('../../trace/types').TraceEvent);
+      } as import('../../trace/ExecutionTraceTypes').TraceEvent);
 
       throw new ModelAdapterMismatchError(errorMsg);
     }

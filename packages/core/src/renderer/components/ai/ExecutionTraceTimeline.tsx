@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAIState } from '../../stores/useAIState';
 import { ExecutionTraceViewModel, type TimelineCard } from '../../services/ai/orchestrator/task-runtime/trace/ExecutionTraceViewModel';
 import { Terminal, Shield, FileText, CheckCircle, RefreshCw, Layers, ChevronDown, ChevronRight, Activity, Eye } from 'lucide-react';
@@ -115,12 +115,12 @@ export function ExecutionTraceTimeline() {
                 )}
                 
                 {/* 승인 대기열 액션 버튼 */}
-                {card.type === 'APPROVAL' && card.status === 'PENDING' && card.data?.approvalId && (
+                {card.type === 'APPROVAL' && card.status === 'PENDING' && (card.data as any)?.approvalId && (
                   <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
                     <button
                       onClick={() => {
                         try {
-                          require('../../services/ai/orchestrator/task-runtime/policy/ToolApprovalPolicy').ToolApprovalPolicy.resolveApproval(card.data.approvalId, 'APPROVED');
+                          require('../../services/ai/orchestrator/task-runtime/policy/ToolApprovalPolicy').ToolApprovalPolicy.resolveApproval((card.data as any).approvalId, 'APPROVED');
                         } catch(e) { console.error(e); }
                       }}
                       style={{
@@ -139,7 +139,7 @@ export function ExecutionTraceTimeline() {
                     <button
                       onClick={() => {
                         try {
-                          require('../../services/ai/orchestrator/task-runtime/policy/ToolApprovalPolicy').ToolApprovalPolicy.resolveApproval(card.data.approvalId, 'REJECTED');
+                          require('../../services/ai/orchestrator/task-runtime/policy/ToolApprovalPolicy').ToolApprovalPolicy.resolveApproval((card.data as any).approvalId, 'REJECTED');
                         } catch(e) { console.error(e); }
                       }}
                       style={{

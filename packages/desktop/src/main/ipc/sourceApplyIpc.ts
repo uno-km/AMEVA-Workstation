@@ -7,20 +7,13 @@
 import { ipcMain } from 'electron';
 import type { IpcResponse } from '../../../../core/src/shared/ipc/workbenchIpcContract.js';
 import type { 
-  IpcCreatePreviewRequest, 
-  IpcCreatePreviewResponse, 
   IpcExecuteApplyRequest, 
   IpcExecuteApplyResponse,
-  IpcRollbackApplyRequest,
-  IpcRollbackApplyResponse,
   IpcAuthorizeSourceApplyRequest,
   IpcAuthorizeSourceApplyResponse
 } from '../../../../core/src/shared/ipc/sourceApplyIpcContract.js';
 import { SourceApplyService } from '../services/SourceApplyService.js';
 import { sessionRegistry } from './workbenchIpc.js';
-import { ArtifactRepositoryInMemory, ApprovalRepositoryInMemory } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/persistence/InMemoryRepositories.js';
-import { ExecutionTraceManager } from '../../../../core/src/renderer/services/ai/orchestrator/task-runtime/trace/ExecutionTraceManager.js';
-
 export let sourceApplyService: SourceApplyService;
 
 export function injectSourceApplyService(service: SourceApplyService) {
@@ -43,21 +36,6 @@ function handleSafeError(e: any): any {
 }
 
 export function registerSourceApplyIpc() {
-  ipcMain.handle('sourceApply:createPreview', async (event, request: IpcCreatePreviewRequest): Promise<IpcResponse<IpcCreatePreviewResponse>> => {
-    try {
-      verifySender(event);
-      const session = sessionRegistry.verifyContext({ 
-        workbenchSessionId: request.workbenchSessionId, 
-        sessionCapabilityToken: (request as any).sessionCapabilityToken 
-      } as any);
-
-      const preview = await sourceApplyService.createPreview(request, session.allowedWorkspaceRoot);
-      return { success: true, result: { success: true, preview } };
-    } catch (e: any) {
-      return handleSafeError(e);
-    }
-  });
-
   ipcMain.handle('sourceApply:authorizeOperation', async (event, request: IpcAuthorizeSourceApplyRequest): Promise<IpcResponse<IpcAuthorizeSourceApplyResponse>> => {
     try {
       verifySender(event);

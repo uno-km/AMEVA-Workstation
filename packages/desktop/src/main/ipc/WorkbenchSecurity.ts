@@ -1,7 +1,7 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import crypto from 'crypto';
-import type { IpcRegisterSessionRequest, IpcRegisterSessionResponse, IpcSessionContext } from '../../../../core/src/shared/ipc/workbenchIpcContract';
+import type { IpcRegisterSessionRequest, IpcRegisterSessionResponse, IpcSessionContext } from '../../../../core/src/shared/ipc/workbenchIpcContract.js';
 
 export interface RegisteredSession {
   workbenchSessionId: string;
@@ -112,7 +112,7 @@ export class WorkbenchPathValidator {
 }
 
 export class WorkbenchApprovalResolver {
-  public static verifyApproval(approvalId: string | undefined, session: RegisteredSession, riskLevel?: string): void {
+  public static verifyApproval(approvalId: string | undefined, _session: RegisteredSession, riskLevel?: string): void {
     if (riskLevel === 'HIGH' || riskLevel === 'CRITICAL') {
       if (!approvalId) {
         throw new Error('BLOCKED_BY_APPROVAL_INTEGRATION');

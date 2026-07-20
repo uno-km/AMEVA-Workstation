@@ -4,7 +4,7 @@
  * @role Handles step-by-step model escalation and loop prevention.
  */
 
-import type { ModelRole, EscalationPackage, RoutingDecision } from '../domain/types';
+import type { ModelRole, EscalationPackage } from '../domain/types';
 
 export interface EscalationResult {
   escalationReason: string;
@@ -35,7 +35,7 @@ export class EscalationManager {
     return EscalationManager.ROLE_ORDER[idx + 1];
   }
 
-  public processEscalation(pkg: EscalationPackage, currentDecision: import('../domain/RoutingDecisionResult').RoutingDecisionResult | undefined, budgetRemaining: number): EscalationResult {
+  public processEscalation(pkg: EscalationPackage, _currentDecision: import('../domain/types').ModelSelectionResult | undefined, budgetRemaining: number): EscalationResult {
     const digest = this.createDigest(pkg);
     const isDuplicate = this.isExactDuplicate(pkg.previousModelId, pkg.defectSignatures, pkg.retryScope);
 
