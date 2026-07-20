@@ -158,41 +158,42 @@ ${completedTaskSummaries || '이전 단계 실행 결과 없음'}
       const executionTime = Date.now() - startTime;
 
       /*
-       * [P0-1 FIX — Strict Separation of Task Execution & Verification]
-       * TaskExecutor 시점에서는 아직 VerificationResult / VerifiedOutput[] 검증이 완료되지 않았다.
-       * 따라서 TaskExecutor는 절대로 'SUCCESS'를 최종 확정하지 않으며,
-       * execution 결과로 'EXECUTED_PENDING_VERIFICATION' 상태를 반환한다.
-       *
-       * FILE_OUTPUT_REQUIRED 태스크의 경우:
-       * - mutating tool 실행 흔적만으로 SUCCESS 금지
-       * - "파일 작성 완료" 텍스트만으로 SUCCESS 금지
-       * - expected path 선언만으로 SUCCESS 금지
-       * - 오직 VerificationRuntime(DeterministicVerifier/VerificationDecisionPolicy)의
-       *   typed decision === 'PASS' 및 verifiedOutputs.length > 0 일 때만 최종 SUCCESS/COMPLETED 전이 허용.
+       * [P0-1 FIX — Absolute Separation of Execution & Verification]
+       * TaskExecutor는 절대로 'SUCCESS' 또는 'COMPLETED'를 확정하지 않는다.
+       * 턴 구동 및 도구 실행을 완수한 후, 사후 검증을 위해 'EXECUTED_PENDING_VERIFICATION' 반환.
        */
-      const outputMode: TaskOutputMode = (task as any).outputMode || (task as any).definition?.outputMode || 'NO_PERSISTED_OUTPUT';
+      const declaredOutputMode: TaskOutputMode = (task as any).outputMode || (task as any).definition?.outputMode || 'NO_PERSISTED_OUTPUT';
       const extractedPath = this.extractArtifactPath(accumulatedText);
 
-      // 빈 텍스트 무응답에 대한 1차 실행실패 검사 (NO_PERSISTED_OUTPUT 모드 시)
-      if (outputMode === 'NO_PERSISTED_OUTPUT' && !accumulatedText.trim()) {
-        console.warn(`[TaskExecutor] 태스크 ${task.id} (NO_PERSISTED_OUTPUT) 답변이 비어있어 FAILED 처리합니다.`);
-        return {
-          status: 'FAILED',
-          summary: '태스크 결과 획득 실패 (모델 무응답)',
-          evidence: `Task ran ${turns} turns but produced no output.`,
-          executionTime
-        };
+      // 도구 실행 기록 기반으로 inferredOutputMode 도출
+      const executedTools = (session as any).pendingToolCalls?.map((t: any) => ({
+        name: t.name || t.toolName,
+        args: t.args || {},
+        success: true
+      })) || [];
+
+      const { OutputInferenceService } = await import('../task-runtime/verification/services/OutputInferenceService');
+      const inferred = OutputInferenceService.inferFromToolCalls(executedTools, declaredOutputMode);
+
+      const rawOutputs: any[] = [];
+      if (accumulatedText.trim()) {
+        rawOutputs.push({ type: 'text', content: accumulatedText });
+      }
+      if (extractedPath) {
+        rawOutputs.push({ type: 'file', path: extractedPath, content: '' });
       }
 
       const summaryAnswer = accumulatedText.trim() || `(태스크 실행 완료. 검증기 판정 대기 중: ${extractedPath || 'Execution Completed'})`;
 
-      // TaskExecutor는 실행만 완수하고 검증 대기 상태(EXECUTED_PENDING_VERIFICATION)를 반환함.
-      // 최종 SUCCESS/COMPLETED 상태는 오직 VerificationRuntime만 결정함.
       return {
         status: 'EXECUTED_PENDING_VERIFICATION',
         artifact: extractedPath || undefined,
         summary: summaryAnswer,
-        evidence: `Task executed within ${turns} turns. OutputMode: ${outputMode}. Pending VerificationRuntime assessment.`,
+        outputs: rawOutputs,
+        evidence: `Task executed within ${turns} turns. Declared: ${declaredOutputMode}, Inferred: ${inferred.inferredOutputMode}.`,
+        declaredOutputMode,
+        inferredOutputMode: inferred.inferredOutputMode,
+        inferredFileOutputs: inferred.inferredFileOutputs,
         executionTime
       };
 

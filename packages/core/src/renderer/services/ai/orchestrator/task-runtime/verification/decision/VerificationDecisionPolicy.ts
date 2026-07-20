@@ -166,16 +166,112 @@ export class VerificationDecisionPolicy {
       // Check if all required defects are retryable
       const allRetryable = requiredDefects.every(d => d.retryable);
       finalVerdict = allRetryable ? 'NEEDS_REPAIR' : 'FAIL';
-    } else if (optionalDefects.length > 0) {
-      /*
-       * [P0-2 FIX] 이전: optionalDefects만 있어도 PASS.
-       * 수정: PASS는 맞지만, 이 경로에 도달했다면 이미 hasIncompleteVerification=false임.
-       * 안전하게 PASS 허용 (이미 위에서 INCOMPLETE_VERIFICATION 차단됨).
-       */
-      finalVerdict = 'PASS';
-      warnings.push(`Optional defects present: ${optionalDefects.length}`);
     } else {
       finalVerdict = 'PASS';
+    }
+
+    /*
+     * [P0-2 STRICT CONTRACT — OutputMode-Specific Completion Gate]
+     * finalVerdict가 'PASS' 후보라 하더라도, 각 OutputMode 계약에 부합하는 실제 검증 산출물이 없으면
+     * 절대 최종 PASS로 승인하지 않으며 'FAIL'로 거부한다.
+     */
+    if (finalVerdict === 'PASS') {
+      const outputMode = input.taskDefinition?.outputMode || 'NO_PERSISTED_OUTPUT';
+      
+      // input.verifiedOutputs가 없으면 PASS 판정을 받은 criterionResults의 evidence에서 verifiedOutput 수집
+      const verifiedOutputs: any[] = (input as any).verifiedOutputs || [];
+      if (verifiedOutputs.length === 0) {
+        for (const r of results) {
+          if (r.verdict === 'PASS' && r.evidenceReferences) {
+            for (const ref of r.evidenceReferences) {
+              if (ref.startsWith('verified_output:')) {
+                verifiedOutputs.push({ path: ref.replace('verified_output:', '') });
+              }
+            }
+          }
+        }
+      }
+
+      // 또는 targetAttempt resultReference outputs에서 verified output / file output 추적
+      const outputs = input.targetAttempt?.resultReference?.outputs || [];
+      const hasFileInOutputs = outputs.some((o: any) => (o.type === 'file' || o.path) && o.status !== 'REJECTED');
+      
+      // DeterministicVerifier가 모든 criterion에서 PASS를 리턴했다면 검증된 파일이 존재하는 것임
+      const allDeterministicPassed = results.length > 0 && results.every(r => r.verdict === 'PASS');
+      const effectiveVerifiedOutputsCount = verifiedOutputs.length > 0 ? verifiedOutputs.length : (allDeterministicPassed && hasFileInOutputs ? 1 : 0);
+
+      const hasTextResult = outputs.length === 0 || outputs.some((o: any) => o.type === 'text' ? (o.content && o.content.trim().length > 0) : true);
+      const hasValidatedArtifact = outputs.some((o: any) => (o.type === 'artifact' || o.artifactId) && o.status !== 'REJECTED');
+
+      if (outputMode === 'FILE_OUTPUT_REQUIRED') {
+        if (effectiveVerifiedOutputsCount === 0) {
+          finalVerdict = 'FAIL';
+          failedCriteria.push('FILE_OUTPUT_VERIFICATION');
+          defects.push({
+            defectId: `def-${crypto.randomUUID()}`,
+            signature: `VERIFICATION:FILE_OUTPUT_REQUIRED:NO_VERIFIED_OUTPUT`,
+            stage: 'DETERMINISTIC',
+            type: 'OUTPUT_FILE_NOT_FOUND',
+            severity: 'CRITICAL',
+            required: true,
+            message: 'FILE_OUTPUT_REQUIRED task finished without any verified filesystem output.',
+            retryable: true,
+            retryScope: 'FILE'
+          });
+          warnings.push('[OUTPUT_MODE_BLOCK] FILE_OUTPUT_REQUIRED failed: No VerifiedOutput generated.');
+        }
+      } else if (outputMode === 'ARTIFACT_OUTPUT_REQUIRED') {
+        if (!hasValidatedArtifact) {
+          finalVerdict = 'FAIL';
+          failedCriteria.push('ARTIFACT_OUTPUT_VERIFICATION');
+          defects.push({
+            defectId: `def-${crypto.randomUUID()}`,
+            signature: `VERIFICATION:ARTIFACT_OUTPUT_REQUIRED:MISSING`,
+            stage: 'DETERMINISTIC',
+            type: 'ARTIFACT_MISSING',
+            severity: 'CRITICAL',
+            required: true,
+            message: 'ARTIFACT_OUTPUT_REQUIRED task finished without validated artifact.',
+            retryable: true,
+            retryScope: 'ARTIFACT'
+          });
+          warnings.push('[OUTPUT_MODE_BLOCK] ARTIFACT_OUTPUT_REQUIRED failed: No validated artifact found.');
+        }
+      } else if (outputMode === 'NO_PERSISTED_OUTPUT') {
+        if (!hasTextResult) {
+          finalVerdict = 'FAIL';
+          failedCriteria.push('TEXT_OUTPUT_VERIFICATION');
+          defects.push({
+            defectId: `def-${crypto.randomUUID()}`,
+            signature: `VERIFICATION:NO_PERSISTED_OUTPUT:EMPTY_TEXT`,
+            stage: 'DETERMINISTIC',
+            type: 'INSUFFICIENT_EVIDENCE',
+            severity: 'HIGH',
+            required: true,
+            message: 'NO_PERSISTED_OUTPUT task produced no text or analysis answer.',
+            retryable: true,
+            retryScope: 'FIELD'
+          });
+          warnings.push('[OUTPUT_MODE_BLOCK] NO_PERSISTED_OUTPUT failed: Text answer is empty.');
+        }
+      } else if (outputMode === 'EITHER_FILE_OR_ARTIFACT') {
+        if (effectiveVerifiedOutputsCount === 0 && !hasValidatedArtifact) {
+          finalVerdict = 'FAIL';
+          failedCriteria.push('EITHER_OUTPUT_VERIFICATION');
+          defects.push({
+            defectId: `def-${crypto.randomUUID()}`,
+            signature: `VERIFICATION:EITHER_FILE_OR_ARTIFACT:MISSING`,
+            stage: 'DETERMINISTIC',
+            type: 'INSUFFICIENT_EVIDENCE',
+            severity: 'CRITICAL',
+            required: true,
+            message: 'EITHER_FILE_OR_ARTIFACT task finished without verified output or validated artifact.',
+            retryable: true,
+            retryScope: 'FILE'
+          });
+          warnings.push('[OUTPUT_MODE_BLOCK] EITHER_FILE_OR_ARTIFACT failed: Neither verified output nor validated artifact exists.');
+        }
+      }
     }
 
     // ─── VerificationResult 조립 ───────────────────────────────────────────

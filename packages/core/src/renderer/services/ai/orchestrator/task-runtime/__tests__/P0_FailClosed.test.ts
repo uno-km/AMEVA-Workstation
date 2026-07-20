@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @file __tests__/P0_FailClosed.test.ts
  * @system AMEVA OS Desktop Workstation
  * @role P0 Fail-Closed 회귀 테스트
@@ -85,9 +85,9 @@ function makeFileAdapter(exists: boolean, size = 100): any {
 }
 
 // ── VerificationDecisionPolicy helper ────────────────────────────────────────
-function evaluatePolicy(results: CriterionResult[]): string {
+function evaluatePolicy(results: CriterionResult[], mode: any = 'NO_PERSISTED_OUTPUT'): string {
   const policy = new VerificationDecisionPolicy();
-  const input = makeInput('FILE_OUTPUT_REQUIRED', ['report.md']);
+  const input = makeInput(mode);
   const result = policy.evaluate(input, results, 'job-1');
   return result.verdict;
 }

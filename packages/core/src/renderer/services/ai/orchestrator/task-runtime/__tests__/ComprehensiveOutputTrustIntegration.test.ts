@@ -507,19 +507,53 @@ describe('Real Product Pipeline Integration Tests (Blockers 1, 2, 3)', () => {
       expect(history[history.length - 1].content).toContain('Observation (비평가 검수 거부):');
     });
 
-    // 7. V2 Timeout -> Real persisted terminal failure
-    it('7. V2 Timeout -> Real persisted terminal failure', async () => {
-      const terminalState = {
-        __v2Terminal: true,
-        success: false,
-        missionStatus: 'TIMED_OUT',
-        errorCode: 'MISSION_WAIT_TIMEOUT',
-        reason: 'Polling timeout exceeded'
+    // 7. NO_PERSISTED_OUTPUT + non-empty analysis + no file -> PASS
+    it('8. NO_PERSISTED_OUTPUT + non-empty analysis + no file -> PASS', async () => {
+      const verifier = new DeterministicVerifier(mockFs);
+      const input = {
+        missionId: 'm-req8', planId: 'p8', planVersion: 1, taskId: 't-req8', attemptId: 'att-8',
+        taskState: { status: 'VERIFYING' } as any,
+        taskDefinition: { id: 't-req8', title: 'T8 Analysis', objective: 'Analyze codebase', dependencies: [], outputMode: 'NO_PERSISTED_OUTPUT' as TaskOutputMode },
+        targetAttempt: {
+          attemptId: 'att-8', taskId: 't-req8',
+          resultReference: {
+            attemptId: 'att-8', createdAt: Date.now(), status: 'VERIFYING',
+            summary: '분석 완수', outputs: [{ type: 'text', content: 'Detailed codebase security analysis report...' }],
+            evidence: []
+          } as TaskResult
+        } as any
       };
 
-      expect(terminalState.__v2Terminal).toBe(true);
-      expect(terminalState.success).toBe(false);
-      expect(terminalState.missionStatus).toBe('TIMED_OUT');
+      const results = await verifier.verify(input as any);
+      const policy = new VerificationDecisionPolicy();
+      const decision = policy.evaluate(input as any, results, 'job-req8');
+
+      expect(decision.verdict).toBe('PASS');
+    });
+
+    // 8. ARTIFACT_OUTPUT_REQUIRED + validated structured Artifact + no file -> PASS
+    it('9. ARTIFACT_OUTPUT_REQUIRED + validated structured Artifact + no file -> PASS', async () => {
+      const verifier = new DeterministicVerifier(mockFs);
+      const input = {
+        missionId: 'm-req9', planId: 'p9', planVersion: 1, taskId: 't-req9', attemptId: 'att-9',
+        taskState: { status: 'VERIFYING' } as any,
+        taskDefinition: { id: 't-req9', title: 'T9 Artifact', objective: 'Generate JSON Artifact', dependencies: [], outputMode: 'ARTIFACT_OUTPUT_REQUIRED' as TaskOutputMode },
+        targetAttempt: {
+          attemptId: 'att-9', taskId: 't-req9',
+          resultReference: {
+            attemptId: 'att-9', createdAt: Date.now(), status: 'VERIFYING',
+            summary: 'Structured artifact outputted',
+            outputs: [{ type: 'artifact', artifactId: 'art-json-1', content: '{"status":"ok"}', status: 'VALIDATED' }],
+            evidence: []
+          } as TaskResult
+        } as any
+      };
+
+      const results = await verifier.verify(input as any);
+      const policy = new VerificationDecisionPolicy();
+      const decision = policy.evaluate(input as any, results, 'job-req9');
+
+      expect(decision.verdict).toBe('PASS');
     });
   });
 });

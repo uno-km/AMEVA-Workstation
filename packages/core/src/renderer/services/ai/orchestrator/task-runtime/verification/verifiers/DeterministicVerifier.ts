@@ -142,8 +142,9 @@ export class DeterministicVerifier implements TaskVerifier {
         }
       }
     } else if (finalMode === 'ARTIFACT_OUTPUT_REQUIRED') {
-       if (expectedArtifactOutputs.size === 0) {
-         results.push(this.createFailure('expected_artifacts_missing', 'ARTIFACT_OUTPUT_REQUIRED but expectedArtifactOutputs is empty', 'EXPECTED_OUTPUTS_MISSING', true));
+       const hasAnyArtifactInOutputs = outputs.some((o: any) => o.type === 'artifact' || o.artifactId);
+       if (expectedArtifactOutputs.size === 0 && !hasAnyArtifactInOutputs) {
+          results.push(this.createFailure('expected_artifacts_missing', 'ARTIFACT_OUTPUT_REQUIRED but expectedArtifactOutputs is empty and no artifact in outputs', 'EXPECTED_OUTPUTS_MISSING', true));
        }
        for (const reqId of expectedArtifactOutputs) {
           if (!outputMap.has(reqId)) {
