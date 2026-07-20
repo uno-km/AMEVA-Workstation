@@ -54,15 +54,55 @@ export interface TaskOutput {
 export type MutatingOperationType = 'CREATE' | 'APPEND' | 'PATCH' | 'DELETE' | 'MOVE' | 'READ' | 'UNKNOWN';
 
 export interface ToolResultEvidenceData {
+  /** 도구 호출 고유 ID (멱등성 및 추적용) */
   toolCallId: string;
+  /** 도구 이름 */
   toolName: string;
+  /** 실행 성공/실패 상태 */
   status: string;
+  /** 사람이 읽을 수 있는 설명 */
   description: string;
-  args?: Record<string, any>;
+  /**
+   * 정제된 인자 (SANITIZED — Secret/Token 제외)
+   * raw credential, API key, password는 절대 포함하지 말 것.
+   */
+  sanitizedArgs?: Record<string, string | number | boolean | null>;
+  /** 소속 태스크 ID */
   taskId?: string;
+  /** 소속 서브태스크 ID (있는 경우) */
+  subTaskId?: string;
+  /** 소속 미션 ID */
   missionId?: string;
+  /** 작업 유형 */
   operationType?: MutatingOperationType;
+  /**
+   * 사용자에게 노출할 논리적 출력 경로 (파일명 또는 상대 경로)
+   * canonicalPath와 구분 — UI에는 이것만 노출
+   */
   expectedOutputPath?: string;
+  /**
+   * 실제 파일 시스템 절대 경로 (INTERNAL 전용 — UI 노출 금지)
+   * PathSanitizer를 통해 sandbox root 검증 후에만 설정
+   */
+  canonicalOutputPath?: string;
+  /**
+   * 파일 변경 전 메타데이터 (hash 또는 size)
+   * 기존 파일 수정 여부 증명에 사용
+   */
+  beforeHash?: string;
+  beforeSizeBytes?: number;
+  /**
+   * 파일 변경 후 메타데이터 (hash 또는 size)
+   * 실제 변경이 일어났는지 증명에 사용
+   */
+  afterHash?: string;
+  afterSizeBytes?: number;
+  /** Artifact Registry 등록 ID */
+  artifactId?: string;
+  /** 실행 타임스탬프 (Unix ms) */
+  executedAt?: number;
+  /** 실행 성공 여부 (boolean 형태로 별도 보관) */
+  executionSuccess?: boolean;
 }
 
 export interface TaskEvidence {

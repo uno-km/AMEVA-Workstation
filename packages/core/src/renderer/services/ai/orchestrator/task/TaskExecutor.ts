@@ -158,30 +158,41 @@ ${completedTaskSummaries || '이전 단계 실행 결과 없음'}
       const executionTime = Date.now() - startTime;
 
       /*
-       * [P1-1 FIX — False Completion Prevention]
-       * accumulatedText가 비어있는 경우 절대로 'SUCCESS'를 반환하지 않는다.
-       * 빈 답변 = 도구 호출도 없고 Final Answer도 없음 = 실질적 실패.
-       * 이전 코드는 무조건 status:'SUCCESS'를 반환해 가짜 완료(False Completion)를 허용했음.
+       * [P0-1 FIX — Strict Separation of Task Execution & Verification]
+       * TaskExecutor 시점에서는 아직 VerificationResult / VerifiedOutput[] 검증이 완료되지 않았다.
+       * 따라서 TaskExecutor는 절대로 'SUCCESS'를 최종 확정하지 않으며,
+       * execution 결과로 'EXECUTED_PENDING_VERIFICATION' 상태를 반환한다.
+       *
+       * FILE_OUTPUT_REQUIRED 태스크의 경우:
+       * - mutating tool 실행 흔적만으로 SUCCESS 금지
+       * - "파일 작성 완료" 텍스트만으로 SUCCESS 금지
+       * - expected path 선언만으로 SUCCESS 금지
+       * - 오직 VerificationRuntime(DeterministicVerifier/VerificationDecisionPolicy)의
+       *   typed decision === 'PASS' 및 verifiedOutputs.length > 0 일 때만 최종 SUCCESS/COMPLETED 전이 허용.
        */
-      const isEmpty = !accumulatedText.trim();
-      if (isEmpty) {
-        console.warn(`[TaskExecutor] 태스크 ${task.id} 결과가 비어있어 FAILED 처리합니다. (maxTurns=${maxTaskTurns}, 실제=${turns}턴)`);
+      const outputMode: TaskOutputMode = (task as any).outputMode || (task as any).definition?.outputMode || 'NO_PERSISTED_OUTPUT';
+      const extractedPath = this.extractArtifactPath(accumulatedText);
+
+      // 빈 텍스트 무응답에 대한 1차 실행실패 검사 (NO_PERSISTED_OUTPUT 모드 시)
+      if (outputMode === 'NO_PERSISTED_OUTPUT' && !accumulatedText.trim()) {
+        console.warn(`[TaskExecutor] 태스크 ${task.id} (NO_PERSISTED_OUTPUT) 답변이 비어있어 FAILED 처리합니다.`);
         return {
           status: 'FAILED',
-          summary: '태스크 결과 획득 실패 (빈 답변 — 모델이 Final Answer를 출력하지 않음)',
-          evidence: `Task ran ${turns} turns but produced no output. Consecutive empty turns: ${consecutiveEmptyTurns}.`,
+          summary: '태스크 결과 획득 실패 (모델 무응답)',
+          evidence: `Task ran ${turns} turns but produced no output.`,
           executionTime
         };
       }
 
-      const summaryAnswer = accumulatedText;
+      const summaryAnswer = accumulatedText.trim() || `(태스크 실행 완료. 검증기 판정 대기 중: ${extractedPath || 'Execution Completed'})`;
 
-      // 성공 판정 뼈대 반환 (Verifier가 이 반환값을 사후 정적/동적 최종 검정함)
+      // TaskExecutor는 실행만 완수하고 검증 대기 상태(EXECUTED_PENDING_VERIFICATION)를 반환함.
+      // 최종 SUCCESS/COMPLETED 상태는 오직 VerificationRuntime만 결정함.
       return {
-        status: 'SUCCESS',
-        artifact: this.extractArtifactPath(summaryAnswer) || undefined,
+        status: 'EXECUTED_PENDING_VERIFICATION',
+        artifact: extractedPath || undefined,
         summary: summaryAnswer,
-        evidence: `Task completed within ${turns} turns. Output size: ${summaryAnswer.length} chars.`,
+        evidence: `Task executed within ${turns} turns. OutputMode: ${outputMode}. Pending VerificationRuntime assessment.`,
         executionTime
       };
 

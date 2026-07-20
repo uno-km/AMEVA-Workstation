@@ -102,33 +102,43 @@ export class DeterministicVerifier implements TaskVerifier {
           }
         } else {
           /*
-           * [P2-2 FIX — fileAdapter 없을 때 명시적 경고]
-           * 이전: fileAdapter가 없으면 파일 실존 검증을 조용히 스킵.
-           *       파일이 실제로 없어도 Attribution + Declaration만으로 PASS 가능했음.
-           * 수정: INCOMPLETE_VERIFICATION 경고를 결과에 추가하여
-           *       상위 VerificationDecisionPolicy가 인지하고 대응할 수 있게 함.
-           *       단, required=false (non-blocking) — fileAdapter 미주입은
-           *       테스트 환경에서 일어날 수 있으므로 FAIL보다는 WARN 수준.
+           * [P0-3 FIX — DeterministicVerifier fileAdapter fail-closed]
+           * 이전: WARN + required=false(non-blocking) → VerificationDecisionPolicy가 PASS 허용.
+           *
+           * 수정: INCOMPLETE_VERIFICATION 반환.
+           *   - required=true (blocking) → VerificationDecisionPolicy가 FAIL로 귀결.
+           *   - errorCode = FILESYSTEM_VERIFIER_UNAVAILABLE
+           *
+           * 근거: FILE_OUTPUT_REQUIRED 작업에서 실제 파일 존재 여부를 확인할 수 없으면
+           * 검증이 완료된 것이 아니다. 절대 PASS를 허용할 수 없다.
+           * 테스트 환경에서 fileAdapter를 주입하지 않는다면
+           * FILE_OUTPUT_REQUIRED 태스크를 테스트하지 않는 것과 같음.
            */
-          console.warn(`[DeterministicVerifier] fileAdapter가 주입되지 않아 ${artifactPath}의 파일 실존 검증을 스킵합니다. INCOMPLETE_VERIFICATION 경고 추가.`);
+          console.error(
+            `[DeterministicVerifier] CRITICAL: FILE_OUTPUT_REQUIRED 작업(${reqId})에 fileAdapter 미주입. ` +
+            `INCOMPLETE_VERIFICATION — PASS 금지. errorCode=FILESYSTEM_VERIFIER_UNAVAILABLE`
+          );
           results.push({
-            criterionId: `file_adapter_missing_${reqId}`,
+            criterionId: `filesystem_verifier_unavailable_${reqId}`,
             verifierType: this.verifierType,
-            verdict: 'WARN',
-            reason: `fileAdapter가 주입되지 않아 파일 실존 검증 불가 (${artifactPath}). Attribution + Declaration 증거만으로 통과됨.`,
+            verdict: 'INCOMPLETE_VERIFICATION',
+            reason: `FILE_OUTPUT_REQUIRED 작업이지만 fileAdapter가 주입되지 않아 파일 실존 검증 불가. (${artifactPath})`,
+            incompleteReason: `fileAdapter가 null — FILESYSTEM_VERIFIER_UNAVAILABLE. 이 상태에서는 파일 유무를 알 수 없으므로 PASS 불가.`,
             defect: {
               defectId: `def-${crypto.randomUUID()}`,
-              signature: `DETERMINISTIC:INCOMPLETE_VERIFICATION:${reqId}:no_fs_adapter`,
+              signature: `DETERMINISTIC:FILESYSTEM_VERIFIER_UNAVAILABLE:${reqId}`,
               stage: 'DETERMINISTIC',
-              type: 'INCOMPLETE_VERIFICATION' as any,
-              severity: 'MEDIUM',
-              required: false, // non-blocking
+              type: 'FILESYSTEM_VERIFIER_UNAVAILABLE',
+              severity: 'CRITICAL',
+              required: true, // BLOCKING — VerificationDecisionPolicy가 FAIL로 처리
               artifactId: reqId,
-              message: `파일 시스템 어댑터 미주입으로 ${artifactPath} 실존 검증 불가.`,
+              message: `FILE_OUTPUT_REQUIRED 작업에 fileAdapter 미주입. 파일 실존 확인 불가. PASS 금지.`,
               retryable: false,
-              retryScope: 'NONE'
+              retryScope: 'FULL_TASK'
             }
           });
+          // fileAdapter 없으면 이 파일에 대한 나머지 검증 불가 — 다음 파일로 이동
+          continue;
         }
       }
     } else if (finalMode === 'ARTIFACT_OUTPUT_REQUIRED') {

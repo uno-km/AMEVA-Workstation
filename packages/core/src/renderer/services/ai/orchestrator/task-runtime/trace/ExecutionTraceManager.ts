@@ -143,7 +143,7 @@ export class ExecutionTraceManager {
         taskId,
         attemptId,
         timestamp: Date.now(),
-        eventType: 'decision_summary_created',
+        eventType: 'decision_summary_fallback_used' as any,
         status: 'WARNING',
         title: 'DecisionSummary Schema Validation Failed - Fallback Used',
         summary: 'DecisionSummary failed validation. Safe fallback summary applied; raw LLM response suppressed.',

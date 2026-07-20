@@ -145,7 +145,7 @@ export function llmAddLog(data: LLMLogEventData): void {
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
        * - 예시: `if (!window.electronAPI?.llmAddLog)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-  if (!window.electronAPI?.llmAddLog) return
+  if (typeof window === 'undefined' || !window.electronAPI?.llmAddLog) return
   window.electronAPI.llmAddLog(data)
 }
 

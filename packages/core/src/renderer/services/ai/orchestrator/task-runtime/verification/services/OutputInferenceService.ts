@@ -25,7 +25,19 @@ export class OutputInferenceService {
     'delete_file'
   ]);
 
-  public static isMutatingTool(toolName: string): boolean {
+  public static isMutatingTool(toolName: string, toolDefinition?: any): boolean {
+    if (toolDefinition) {
+      if (typeof toolDefinition.mutatesFilesystem === 'boolean') {
+        return toolDefinition.mutatesFilesystem;
+      }
+      if (toolDefinition.operationType && toolDefinition.operationType !== 'READ' && toolDefinition.operationType !== 'UNKNOWN') {
+        return true;
+      }
+      // 메타데이터가 제공되었으나 mutatesFilesystem가 지정되지 않은 경우, 자동 인정 금지
+      if (toolDefinition.name && !this.MUTATING_TOOLS.has(toolName)) {
+        return false;
+      }
+    }
     return this.MUTATING_TOOLS.has(toolName);
   }
 

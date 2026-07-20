@@ -169,7 +169,7 @@ describe('Output Trust Pipeline Integration', () => {
   describe('PreviewLayer (Requirements G, H)', () => {
     it('[G] Large file -> Preview truncation', async () => {
       vi.mocked(mockFs.stat).mockResolvedValue({ exists: true, size: 5000, isDirectory: false });
-      const largeContent = 'a'.repeat(4000);
+      const largeContent = 'hello world '.repeat(1000);
       vi.mocked(mockFs.read).mockResolvedValue(largeContent);
 
       const preview = await PreviewLayer.generatePreview('big.txt', mockFs, 3000);

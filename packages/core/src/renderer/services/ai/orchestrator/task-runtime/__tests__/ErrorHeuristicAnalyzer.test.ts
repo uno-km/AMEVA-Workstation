@@ -1,3 +1,4 @@
+import { describe, it, expect } from 'vitest';
 import { ErrorHeuristicAnalyzer } from '../workbench/diagnostics/ErrorHeuristicAnalyzer';
 
 describe('ErrorHeuristicAnalyzer', () => {

@@ -241,6 +241,11 @@ export class AgentOrchestratorSession {
    * 수정: actorCriticHook 필드를 추가하고 withActorCritic()에서 저장.
    */
   private actorCriticHook: IActorCriticHook | null = null
+  /**
+   * [P0-6] Actor-Critic REJECT 카운터 — 재작업 횟수 추적.
+   * rework 한도 초과 시 task BLOCKED 전이에 활용 가능.
+   */
+  public _criticReworkCount: number = 0
 
 
   private ipcLog(payload: { text: string; prefix?: string }) {
@@ -506,62 +511,97 @@ export class AgentOrchestratorSession {
       // V2 런타임 폴링 대기 (PAUSED = work done)
       return await new Promise<string>((resolve) => {
         /*
-         * [P1-3 FIX — Infinite Wait Prevention]
-         * 이전: missionState null 시 영구 대기, 타임아웃 없음.
-         * 수정: (1) 30분 최대 타임아웃, (2) null 연속 100회 → 조기 탈출.
+         * [P0-4 FIX — V2 Typed Terminal Results]
+         * 이전:
+         *   - 타임아웃 → resolve('V2 Mission timed out...') 문자열 → UI에 정상 완료로 표시
+         *   - null state → resolve('V2 Mission state unavailable.') 문자열 → UI에 표시
+         * 수정:
+         *   - 모든 terminal 경로가 JSON typed result 반환
+         *   - isResolved 플래그로 terminal result 중복 기록 방어
+         *   - terminal 후 interval 반드시 정리
+         *   - missionStatus별 errorCode 부여
          */
         const MAX_WAIT_MS = 30 * 60 * 1000; // 30분
         const startedAt = Date.now();
         let nullStateCount = 0;
-        const MAX_NULL_COUNT = 100; // 100회 (100초) 연속 null이면 탈출
+        const MAX_NULL_COUNT = 100; // 100초 연속 null이면 탈출
+        let isResolved = false; // terminal result 중복 기록 방어
+
+        const missionId = this.sessionId;
+
+        /** typed terminal result를 JSON으로 직렬화하여 resolve */
+        const terminateWith = (
+          missionStatus: 'TIMED_OUT' | 'FAILED' | 'CANCELLED' | 'USER_ABORTED',
+          errorCode: string,
+          reason: string
+        ) => {
+          if (isResolved) return; // 중복 terminal 방어
+          isResolved = true;
+          clearInterval(intervalId);
+          V2RuntimeFeatureFlag.releaseOwnership(missionId);
+          this.emitPhaseChange('error');
+          this.ipcLog({ text: `[AgentOrchestrator] V2 Mission ${missionStatus}: ${reason}`, prefix: 'Orchestrator' });
+          /*
+           * typed failure result를 JSON으로 직렬화.
+           * UI 레이어는 이것을 파싱하여 정상 완료와 구분해야 함.
+           * 프리픽스: '__V2_TERMINAL__' → UI가 파싱하여 오류 UI 표시.
+           */
+          const typedResult = JSON.stringify({
+            __v2Terminal: true,
+            success: false,
+            missionStatus,
+            errorCode,
+            missionId,
+            reason,
+            verifiedOutputs: [],
+            filePreviews: [],
+            timestamp: Date.now()
+          });
+          resolve(typedResult);
+        };
 
         const intervalId = setInterval(() => {
+          if (isResolved) {
+            clearInterval(intervalId);
+            return;
+          }
+
           // 타임아웃 체크
           if (Date.now() - startedAt > MAX_WAIT_MS) {
-            clearInterval(intervalId);
             v2Runtime.cancel('V2 Mission wait timeout (30min)');
-            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
-            this.emitPhaseChange('error');
-            this.ipcLog({ text: '[AgentOrchestrator] V2 Mission 30분 타임아웃 초과로 강제 종료', prefix: 'Orchestrator' });
-            resolve('V2 Mission timed out after 30 minutes.');
+            terminateWith('TIMED_OUT', 'MISSION_WAIT_TIMEOUT', 'V2 Mission 30분 타임아웃 초과로 강제 종료');
             return;
           }
 
           if (this.isAborted) {
             v2Runtime.cancel('User aborted mission');
-            clearInterval(intervalId);
-            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
-            this.emitPhaseChange('error');
-            resolve('Mission aborted by user.');
+            terminateWith('USER_ABORTED', 'MISSION_USER_ABORTED', '사용자 중단 요청으로 Mission 종료');
             return;
           }
 
-          const missionState = this.taskStore.getMissionState(this.sessionId);
+          const missionState = this.taskStore.getMissionState(missionId);
           if (!missionState) {
             nullStateCount++;
             if (nullStateCount >= MAX_NULL_COUNT) {
-              clearInterval(intervalId);
-              V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
-              this.emitPhaseChange('error');
-              this.ipcLog({ text: '[AgentOrchestrator] V2 missionState가 100초간 null — 강제 종료', prefix: 'Orchestrator' });
-              resolve('V2 Mission state unavailable.');
+              terminateWith('FAILED', 'MISSION_STATE_UNAVAILABLE', 'V2 missionState가 100초간 null — 강제 종료');
             }
             return;
           }
           nullStateCount = 0; // null 상태 해소 시 리셋
 
           if (missionState.status === 'PAUSED' || missionState.status === 'COMPLETED') {
+            if (isResolved) return;
+            isResolved = true;
             clearInterval(intervalId);
-            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
+            V2RuntimeFeatureFlag.releaseOwnership(missionId);
             this.emitPhaseChange('done');
 
             /*
-             * [P1-5 FIX — V2 파일 프리뷰 전달]
-             * 이전: "V2 Mission finished." 문자열만 반환해 파일 내용 미전달.
-             * 수정: Legacy 경로와 동일한 파일 수집 + PreviewLayer 로직 실행.
+             * [P0-4 + P1-5] V2 파일 프리뷰 전달 (Verified files only)
+             * isResolved=true로 먼저 set하여 interval callback 재진입 방어.
              */
             void (async () => {
-              const v2Tasks = this.taskStore.getAllTasks(this.sessionId);
+              const v2Tasks = this.taskStore.getAllTasks(missionId);
               let contentSection = '';
               const collectedFiles = new Set<string>();
 
@@ -617,18 +657,12 @@ export class AgentOrchestratorSession {
               this.emitEvent({ type: 'final_answer', answer: finalAnswer });
             })();
 
-            resolve(`V2 Mission finished. Tasks: ${this.taskStore.getAllTasks(this.sessionId).length}`);
+            resolve(`V2 Mission finished. Tasks: ${this.taskStore.getAllTasks(missionId).length}`);
 
           } else if (missionState.status === 'FAILED') {
-            clearInterval(intervalId);
-            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
-            this.emitPhaseChange('error');
-            resolve(`V2 Mission Failed: ${missionState.cancellationReason || 'Unknown error'}`);
+            terminateWith('FAILED', 'MISSION_EXECUTION_FAILED', missionState.cancellationReason || 'Mission execution failed');
           } else if (missionState.status === 'CANCELLED') {
-            clearInterval(intervalId);
-            V2RuntimeFeatureFlag.releaseOwnership(this.sessionId);
-            this.emitPhaseChange('error');
-            resolve(`V2 Mission Cancelled: ${missionState.cancellationReason}`);
+            terminateWith('CANCELLED', 'MISSION_CANCELLED', missionState.cancellationReason || 'Mission was cancelled');
           }
         }, 1000);
       });
@@ -1121,13 +1155,48 @@ export class AgentOrchestratorSession {
             text: `[AgentOrchestrator] ActorCritic REJECT: 도구 ${request.name} 실행 차단. 이유: ${criticVerdict.reason}`,
             prefix: 'ActorCritic'
           });
-          // REJECT 시 Observation으로 피드백 주입 (FeedbackInjector가 하지 않은 경우 직접 주입)
+
+          /*
+           * [P0-6 FIX — Actor-Critic REJECT typed blocked observation]
+           * 이전: 단순 return → 상위 루프가 빈 응답으로 오인 → empty-turn SUCCESS 위험.
+           * 수정:
+           *   1) typed tool-blocked observation을 contextMessages에 주입
+           *   2) reworkCount 증가 (future: task REWORK_REQUIRED 상태 전이에 활용)
+           *   3) BLOCKED trace event emit
+           *   4) emitPhaseChange('thinking') → 상위 루프가 다음 턴을 계속 진행
+           */
+
+          // rework count 증가 (task state에 기록할 수 있도록 공개 필드로 노출)
+          if (!this._criticReworkCount) this._criticReworkCount = 0;
+          this._criticReworkCount++;
+
+          const rejectionId = `critic-reject-${crypto.randomUUID().slice(0, 8)}`;
+
+          // Typed blocked observation 주입
           this.contextMessages.push({
             role: 'user',
-            content: `Observation: [Actor-Critic REJECT] 도구 '${request.name}'는 다음 이유로 실행이 거부되었습니다: ${criticVerdict.reason}\n다른 도구나 다른 접근 방법을 고려하십시오.`
+            content: JSON.stringify({
+              type: 'TOOL_EXECUTION_BLOCKED',
+              toolExecutionStatus: 'BLOCKED_BY_CRITIC',
+              rejectionId,
+              blockedTool: request.name,
+              reason: criticVerdict.reason,
+              reworkCount: this._criticReworkCount,
+              nextAction: 'REWORK',
+              instruction: `도구 '${request.name}'는 Actor-Critic에 의해 차단되었습니다. 이유: ${criticVerdict.reason}. 다른 도구나 다른 접근 방법을 선택하십시오. (재작업 횟수: ${this._criticReworkCount})`
+            })
           });
+
+          // BLOCKED phase emit (상위 루프가 빈 응답으로 오인하지 않음)
+          this.emitEvent({
+            type: 'critic_feedback',
+            verdict: 'FAIL',
+            reason: `[CRITIC_REJECT] 도구 ${request.name}: ${criticVerdict.reason}`,
+            taskTitle: 'Tool Execution'
+          } as any);
+
           this.emitPhaseChange('thinking');
-          return; // 도구 실행 차단
+          return; // 도구 실행 차단 — contextMessages에 BLOCKED observation이 있으므로 빈 턴 아님
         } else if (criticVerdict.verdict === 'UNCERTAIN') {
           this.ipcLog({
             text: `[AgentOrchestrator] ActorCritic UNCERTAIN: ${request.name} 검수 불확실. 진행하되 로그 남김.`,

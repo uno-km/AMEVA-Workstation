@@ -160,17 +160,25 @@ export class RecoveryCoordinator {
       const availableRetries = (task.state.maxExecutionRetries || 3) - (task.state.executionRetryCount || 0);
       const availableCriticRetries = (task.state.maxSemanticCriticCalls || 3) - (task.state.semanticCriticCallCount || 0);
       
-      // [Feature: Infinite Retry Mode (무한 재시도)]
-      // 원래는 isNoProgress 이거나 availableRetries 가 0이면 FAIL 처리하거나 WAITING_USER로 넘겼으나,
-      // 이제는 무조건 REPAIR_RESULT / RETRY_SAME_STRATEGY를 반환하여 무한 반복합니다.
-      
       if (hasCriticFailure) {
-        decision.action = 'REVERIFY_RESULT';
-        decision.reason = 'Critic parsing failed or unavailable. Retrying verification infinitely.';
-        decision.recoveryBudgetCost = 1; // Uses semanticCriticCallCount mapped later
+        if (availableCriticRetries <= 0) {
+          decision.action = 'FAIL_REQUIRED_TASK';
+          decision.reason = 'Semantic critic budget exhausted';
+        } else {
+          decision.action = 'REVERIFY_RESULT';
+          decision.reason = 'Critic parsing failed or unavailable. Retrying verification.';
+          decision.recoveryBudgetCost = 1;
+        }
+      } else if (isNoProgress) {
+        decision.action = 'WAIT_FOR_USER';
+        decision.reason = 'No progress detected (same defects remain without improvement)';
+        decision.userPrompt = 'No progress detected across multiple retries.';
+      } else if (availableRetries <= 0) {
+        decision.action = 'FAIL_REQUIRED_TASK';
+        decision.reason = 'Retry budget exhausted';
       } else {
         decision.action = verification.verdict === 'NEEDS_REPAIR' ? 'REPAIR_RESULT' : 'RETRY_SAME_STRATEGY';
-        decision.reason = 'Infinite Retry mode active. Budget limits bypassed.';
+        decision.reason = 'Repairing verification defects';
         decision.retryBudgetCost = 1;
         decision.repairScope = [verification.retryScope || 'FULL_TASK'];
       }

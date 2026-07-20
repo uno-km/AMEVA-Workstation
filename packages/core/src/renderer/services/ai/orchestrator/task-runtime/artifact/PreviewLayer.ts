@@ -91,13 +91,17 @@ export class PreviewLayer {
         };
       }
 
-      if (content.length > maxSize) {
+      // [P0-3 FIX] Secret / Token Redaction 적용
+      const { SecretRedactor } = await import('../trace/SecretRedactor');
+      const sanitizedContent = SecretRedactor.redactText(content);
+
+      if (sanitizedContent.length > maxSize) {
         return {
           path: filePath,
           exists: true,
           sizeBytes: Buffer.byteLength(content, 'utf-8'),
           mimeType,
-          preview: content.substring(0, maxSize) + `\n\n... (파일 크기가 커서 ${maxSize}자까지만 표시됩니다. 전체 크기: ${stats.size} Bytes)`,
+          preview: sanitizedContent.substring(0, maxSize) + `\n\n... (파일 크기가 커서 ${maxSize}자까지만 표시됩니다. 전체 크기: ${stats.size} Bytes)`,
           isTruncated: true,
           isBinary: false
         };
@@ -108,7 +112,7 @@ export class PreviewLayer {
         exists: true,
         sizeBytes: Buffer.byteLength(content, 'utf-8'),
         mimeType,
-        preview: content,
+        preview: sanitizedContent,
         isTruncated: false,
         isBinary: false
       };
@@ -123,5 +127,26 @@ export class PreviewLayer {
         isBinary: false
       };
     }
+  }
+
+  /**
+   * [P0-3 FIX] VerifiedOutput[]로만 파일 미리보기를 수집합니다.
+   * 존재하지 않거나 검증되지 않은 파일, canonicalPath 직접 노출은 완전히 제외됩니다.
+   */
+  public static async generatePreviewsFromVerifiedOutputs(
+    verifiedOutputs: Array<{ logicalPath: string; canonicalPath: string; exists: boolean; sizeBytes: number }>,
+    fsAdapter: IFileSystemAdapter,
+    maxSize: number = 3000
+  ): Promise<FilePreview[]> {
+    const previews: FilePreview[] = [];
+    for (const vo of verifiedOutputs) {
+      if (!vo.exists) continue;
+      // logicalPath를 노출하고 실제 FS 읽기는 canonicalPath(또는 logicalPath) 활용
+      const previewObj = await this.generatePreview(vo.canonicalPath || vo.logicalPath, fsAdapter, maxSize);
+      // UI 노출 경로는 항상 logicalPath로 오버라이드
+      previewObj.path = vo.logicalPath;
+      previews.push(previewObj);
+    }
+    return previews;
   }
 }

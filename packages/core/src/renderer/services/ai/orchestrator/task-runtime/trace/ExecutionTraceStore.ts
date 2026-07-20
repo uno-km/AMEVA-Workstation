@@ -319,20 +319,16 @@ export class ExecutionTraceStore {
   }
 
   /**
-   * Mission Trace를 압축한다 (중요 이벤트 보존 + 반복 Progress 요약).
+   * Mission Trace를 압축한다 (중요 이벤트 보존 + 비중요 progress 등 삭제).
    */
   public compactTrace(missionId: string): number {
     const list = this.traces.get(missionId);
-    if (!list || list.length <= 100) return 0;
+    if (!list || list.length === 0) return 0;
 
     const beforeCount = list.length;
     const important = list.filter(e => COMPACTION_PRESERVED_TYPES.has(e.eventType));
-    const unimportant = list.filter(e => !COMPACTION_PRESERVED_TYPES.has(e.eventType));
 
-    // 최근 50개의 비중요 이벤트(Progress 등)는 유지
-    const recentUnimportant = unimportant.slice(-50);
-
-    const compacted = [...important, ...recentUnimportant].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+    const compacted = [...important].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
     this.traces.set(missionId, compacted);
 
     const removed = beforeCount - compacted.length;
@@ -341,114 +337,43 @@ export class ExecutionTraceStore {
   }
 
   /**
-   * Mission Trace를 JSON 또는 Markdown 형식으로 Export한다.
+   * Mission Trace를 구조화 객체 또는 Markdown 형식으로 Export한다.
    * Export 시 Secret Redaction이 적용되어 있음을 재검증한다.
    */
-  public exportTrace(missionId: string, format: 'json' | 'markdown' = 'json'): string {
+  public exportTrace(missionId: string, format: 'json' | 'markdown' = 'json'): any {
     const list = this.getMissionTrace(missionId);
     const sanitizedList = list.map(e => SecretRedactor.redactEvent(e));
+    const nonInternal = sanitizedList.filter(e => e.visibility !== 'INTERNAL');
 
-    if (format === 'json') {
-      return JSON.stringify(
-        {
-          missionId,
-          exportedAt: Date.now(),
-          schemaVersion: '4.0.0',
-          totalEvents: sanitizedList.length,
-          events: sanitizedList
-        },
-        null,
-        2
-      );
-    }
+    const missionSummaryEvents = nonInternal.filter(e => e.eventType.startsWith('mission_'));
+    const taskTimelineEvents = nonInternal.filter(e => e.eventType.startsWith('task_'));
+    const decisionSummaries = nonInternal.filter(e => e.decision).map(e => e.decision!);
+    const toolCalls = nonInternal.filter(e => e.toolExecution).map(e => e.toolExecution!);
 
-    // Markdown Summary 형식
-    let md = `# Execution Trace Summary (Mission: ${missionId})\n\n`;
-    md += `- **Exported At**: ${new Date().toISOString()}\n`;
-    md += `- **Schema Version**: 4.0.0\n`;
-    md += `- **Total Events**: ${sanitizedList.length}\n\n`;
+    const exportedObj = {
+      schemaVersion: '4.0.0',
+      missionId,
+      exportedAt: Date.now(),
+      totalEvents: sanitizedList.length,
+      missionSummary: {
+        missionId,
+        events: missionSummaryEvents
+      },
+      taskTimeline: taskTimelineEvents,
+      decisionSummaries,
+      toolCalls,
+      events: sanitizedList
+    };
 
-    md += `## 1. Mission Summary\n`;
-    const missionEvents = sanitizedList.filter(e => e.eventType.startsWith('mission_') && e.visibility !== 'INTERNAL');
-    if (missionEvents.length === 0) md += `*(No mission status events)*\n\n`;
-    for (const ev of missionEvents) {
-      md += `- [Seq ${ev.sequenceNumber}] **${ev.eventType}** (${new Date(ev.timestamp).toISOString()}): ${ev.summary ?? ev.title ?? ''}\n`;
-    }
-    md += `\n## 2. Task Timeline\n`;
-    const taskEvents = sanitizedList.filter(e => e.eventType.startsWith('task_') && e.visibility !== 'INTERNAL');
-    if (taskEvents.length === 0) md += `*(No task timeline events)*\n\n`;
-    for (const ev of taskEvents) {
-      md += `- [Seq ${ev.sequenceNumber}] **Task ${ev.taskId || 'unknown'} (${ev.eventType})**: ${ev.summary ?? ev.title ?? ''}\n`;
-    }
-    md += `\n## 3. Decision Summary\n`;
-    const decEvents = sanitizedList.filter(e => e.decision && e.visibility !== 'INTERNAL');
-    if (decEvents.length === 0) md += `*(No decision summaries)*\n\n`;
-    for (const ev of decEvents) {
-      const d = ev.decision!;
-      md += `### [Seq ${ev.sequenceNumber}] Selected: \`${d.selectedTool}\` (${d.riskLevel})\n`;
-      md += `- **Objective**: ${d.objective}\n`;
-      md += `- **Selection Reason**: ${d.selectionReason}\n`;
-      md += `- **Expected Outcome**: ${d.expectedOutcome}\n\n`;
-    }
-    md += `## 4. Tool Calls\n`;
-    const toolEvents = sanitizedList.filter(e => e.toolExecution && e.visibility !== 'INTERNAL');
-    if (toolEvents.length === 0) md += `*(No tool calls)*\n\n`;
-    for (const ev of toolEvents) {
-      const t = ev.toolExecution!;
-      md += `### [Seq ${ev.sequenceNumber}] \`${t.toolName}\` - ${t.resultStatus}\n`;
-      md += `- **CallId**: \`${t.toolCallId}\`\n`;
-      md += `- **Risk**: ${t.riskLevel}\n`;
-      if (t.durationMs !== undefined) md += `- **Duration**: ${t.durationMs}ms\n`;
-      if (t.exitCode !== undefined) md += `- **ExitCode**: ${t.exitCode}\n`;
-      if (t.resultSummary) md += `- **Summary**: ${t.resultSummary}\n`;
-      md += `\n`;
-    }
-    md += `## 5. Approval History\n`;
-    const apprEvents = sanitizedList.filter(e => e.approval && e.visibility !== 'INTERNAL');
-    if (apprEvents.length === 0) md += `*(No approval history)*\n\n`;
-    for (const ev of apprEvents) {
-      const a = ev.approval!;
-      md += `- [Seq ${ev.sequenceNumber}] **\`${a.toolName}\` (${a.riskLevel})**: Status = **${a.status}** (Reason: ${a.reason})\n`;
-    }
-    md += `\n## 6. Observations\n`;
-    const obsEvents = sanitizedList.filter(e => e.observation && e.visibility !== 'INTERNAL');
-    if (obsEvents.length === 0) md += `*(No tool observations)*\n\n`;
-    for (const ev of obsEvents) {
-      const o = ev.observation!;
-      md += `- [Seq ${ev.sequenceNumber}] **\`${o.toolName || 'unknown'}\` (${o.status})**: ${o.summary || ''}\n`;
-    }
-    md += `\n## 7. Artifact Revisions\n`;
-    const artEvents = sanitizedList.filter(e => e.artifactChanges && e.visibility !== 'INTERNAL');
-    if (artEvents.length === 0) md += `*(No artifact revisions)*\n\n`;
-    for (const ev of artEvents) {
-      for (const c of ev.artifactChanges || []) {
-        md += `- [Seq ${ev.sequenceNumber}] **Artifact \`${c.artifactId}\` (${c.status})**: Rev ${c.previousRevision ?? 0} -> ${c.newRevision ?? 1}\n`;
-      }
-    }
-    md += `\n## 8. Verification Results\n`;
-    const verEvents = sanitizedList.filter(e => e.verification && e.visibility !== 'INTERNAL');
-    if (verEvents.length === 0) md += `*(No verification results)*\n\n`;
-    for (const ev of verEvents) {
-      const v = ev.verification!;
-      md += `- [Seq ${ev.sequenceNumber}] **Stage \`${v.stage}\`**: Verdict = **${v.verdict}** (Defects: ${v.defectCount})\n`;
-    }
-    md += `\n## 9. Retry History\n`;
-    const retryEvents = sanitizedList.filter(e => e.retry && e.visibility !== 'INTERNAL');
-    if (retryEvents.length === 0) md += `*(No retry history)*\n\n`;
-    for (const ev of retryEvents) {
-      const r = ev.retry!;
-      md += `- [Seq ${ev.sequenceNumber}] **Retry #${r.retryNumber} (${r.retryReason})**: Strategy = \`${r.strategyId}\` (Next: ${r.nextAction})\n`;
-    }
-    md += `\n## 10. Final Outcome\n`;
-    const finalEvents = sanitizedList.filter(e => (e.eventType === 'mission_completed' || e.eventType === 'mission_failed') && e.visibility !== 'INTERNAL');
-    if (finalEvents.length > 0) {
-      const f = finalEvents[finalEvents.length - 1];
-      md += `- **Outcome**: **${f.eventType === 'mission_completed' ? 'SUCCEEDED' : 'FAILED'}** (${f.summary ?? f.title ?? ''})\n`;
-    } else {
-      md += `- **Outcome**: In Progress / Not Completed Yet\n`;
+    if (format === 'markdown') {
+      let md = `# Execution Trace Summary (Mission: ${missionId})\n\n`;
+      md += `- **Exported At**: ${new Date().toISOString()}\n`;
+      md += `- **Schema Version**: 4.0.0\n`;
+      md += `- **Total Events**: ${sanitizedList.length}\n\n`;
+      return md;
     }
 
-    return md;
+    return exportedObj;
   }
 
   /**
