@@ -165,10 +165,13 @@ export async function exportToPPTX(blocks: ExporterBlock[]): Promise<Buffer> {
         } catch (e) {
           console.error('[exportToPPTX] ameva-excel 파싱 실패:', e)
         }
+      } else {
+        currentSlide.contents.push({ type: 'code', text })
+      }
     } else if (block.type === 'kanban') {
       try {
-        const text = block.props?.data || '{}'
-        const board = JSON.parse(text)
+        const kanbanData = block.props?.data || '{}'
+        const board = JSON.parse(kanbanData as string)
         const cols = board.columns || []
         if (cols.length > 0) {
           currentSlide.contents.push({ type: 'bullet', text: `[Kanban Board]` })
@@ -204,8 +207,6 @@ export async function exportToPPTX(blocks: ExporterBlock[]): Promise<Buffer> {
       } catch (e) {
         console.error('[exportToPPTX] ameva-kanban 파싱 실패:', e)
       }
-    } else if (block.type === 'codeBlock') {
-      currentSlide.contents.push({ type: 'code', text: extractText(block) })
     } else if (block.type === 'image' && block.props?.url) {
       currentSlide.contents.push({ type: 'image', url: block.props.url })
     } else if (block.type === 'table') {
