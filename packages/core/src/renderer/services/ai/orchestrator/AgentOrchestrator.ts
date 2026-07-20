@@ -781,54 +781,55 @@ export class AgentOrchestratorSession {
       const stats = completionManager.getSummaryStats()
       // 사용자 메시지 끝부분에 실수로 병합된 JSON 태스크 배열 블록 제거
       const cleanGoal = userMessage.replace(/\[\s*\{[\s\S]*?\}\s*\]\s*$/, '').trim();
+      const resolvedModelName = this.config.modelId
+        ? this.config.modelId.split(/[/\\]/).pop()
+        : 'Local Model';
       let finalReportText = FinalReporter.buildReport(
         cleanGoal,
         stats,
         completionManager.getCompletionRate(),
         finalResultGrade,
         this.currentTurn,
-        0 // RecoveryCount
+        0, // RecoveryCount
+        resolvedModelName
       )
 
       // [Feature: Append Generated Content directly to Chat Bubble]
       const v2Tasks = this.taskStore.getAllTasks(this.sessionId);
       if (v2Tasks.length > 0) {
-        let contentSection = '';
+        const uniqueArtifacts = new Set<string>();
         for (const vt of v2Tasks) {
-          if (vt.status === 'COMPLETED' && vt.outputs && vt.outputs.length > 0) {
-            for (const out of vt.outputs) {
-              if (out.type === 'text' && out.content) {
-                 contentSection += `\n\n#### 📝 [${vt.title}]\n${out.content}`;
+          // V2 Task는 outputs 배열이 아니라 result.artifact에 산출물 경로를 저장합니다.
+          if (vt.status === 'COMPLETED' && vt.result && vt.result.artifact) {
+            uniqueArtifacts.add(vt.result.artifact.trim());
+          }
+        }
+
+        let contentSection = '';
+        if (uniqueArtifacts.size > 0) {
+          const fsAdapter = new PowerShellArtifactFileAdapter();
+          for (const filePath of uniqueArtifacts) {
+            try {
+              const content = await fsAdapter.read(filePath);
+              if (content) {
+                contentSection += `${content}\n\n`;
+                await fsAdapter.remove(filePath); // 읽고 난 후 즉시 삭제
+              } else {
+                contentSection += `(파일을 읽을 수 없습니다: ${filePath})\n\n`;
               }
+            } catch (e) {
+              console.error(`[AgentOrchestrator] Failed to read file for injection (${filePath}):`, e);
+              contentSection += `(파일을 읽을 수 없습니다: ${filePath})\n\n`;
             }
           }
         }
         
-        // Asynchronous file reading outside the loop to avoid async complexity in map/forEach
-        const fileMatches = [...contentSection.matchAll(/\[FILE_PATH:\s*(.*?)\]/g)];
-        if (fileMatches.length > 0) {
-           const fsAdapter = new PowerShellArtifactFileAdapter();
-           for (const match of fileMatches) {
-               try {
-                   const filePath = match[1].trim();
-                   const content = await fsAdapter.read(filePath);
-                   if (content) {
-                       contentSection = contentSection.replace(
-                           match[0],
-                           `\n\n\`\`\`text\n${content}\n\`\`\``
-                       );
-                   } else {
-                       contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${filePath})`);
-                   }
-               } catch (e) {
-                   console.error('[AgentOrchestrator] Failed to read file for injection:', e);
-                   contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${match[1].trim()})`);
-               }
-           }
-        }
-        
-        if (contentSection.length > 0) {
-          finalReportText += `\n\n---\n\n### 📄 생성된 본문 리포트 (Generated Outputs)\n${contentSection}`;
+        if (contentSection.trim().length > 0) {
+          // 통계 표(보고서)를 로그(추론 과정)의 마지막에 보여주기 위해 thought로 방출합니다.
+          this.emitEvent({ type: 'thought', thought: finalReportText });
+          
+          // 생성된 본문이 있다면, 쓸데없는 통계 표를 본문 출력에서 제외하고 본문을 최종 보고서로 뱉습니다.
+          finalReportText = contentSection.trim();
         }
       }
 

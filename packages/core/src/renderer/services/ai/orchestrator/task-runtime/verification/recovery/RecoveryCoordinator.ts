@@ -160,27 +160,19 @@ export class RecoveryCoordinator {
       const availableRetries = (task.state.maxExecutionRetries || 3) - (task.state.executionRetryCount || 0);
       const availableCriticRetries = (task.state.maxSemanticCriticCalls || 3) - (task.state.semanticCriticCallCount || 0);
       
-      if (isNoProgress && repeatedDefectCount >= 2) {
-        decision.action = 'WAIT_FOR_USER';
-        decision.reason = 'NO_PROGRESS detected: The same defects are occurring without measurable progress.';
-        decision.userPrompt = 'The same defects are occurring. Please intervene.';
-      } else if (hasCriticFailure) {
-        if (availableCriticRetries > 0) {
-          decision.action = 'REVERIFY_RESULT';
-          decision.reason = 'Critic parsing failed or unavailable. Retrying verification.';
-          decision.recoveryBudgetCost = 1; // Uses semanticCriticCallCount mapped later
-        } else {
-          decision.action = 'FAIL_REQUIRED_TASK';
-          decision.reason = 'Semantic critic budget exhausted';
-        }
-      } else if (availableRetries > 0) {
+      // [Feature: Infinite Retry Mode (무한 재시도)]
+      // 원래는 isNoProgress 이거나 availableRetries 가 0이면 FAIL 처리하거나 WAITING_USER로 넘겼으나,
+      // 이제는 무조건 REPAIR_RESULT / RETRY_SAME_STRATEGY를 반환하여 무한 반복합니다.
+      
+      if (hasCriticFailure) {
+        decision.action = 'REVERIFY_RESULT';
+        decision.reason = 'Critic parsing failed or unavailable. Retrying verification infinitely.';
+        decision.recoveryBudgetCost = 1; // Uses semanticCriticCallCount mapped later
+      } else {
         decision.action = verification.verdict === 'NEEDS_REPAIR' ? 'REPAIR_RESULT' : 'RETRY_SAME_STRATEGY';
-        decision.reason = 'Budget allows retry';
+        decision.reason = 'Infinite Retry mode active. Budget limits bypassed.';
         decision.retryBudgetCost = 1;
         decision.repairScope = [verification.retryScope || 'FULL_TASK'];
-      } else {
-        decision.action = 'FAIL_REQUIRED_TASK';
-        decision.reason = 'Retry budget exhausted';
       }
     } else if (verification.verdict === 'BLOCKED' || verification.verdict === 'NEEDS_USER' || verification.verdict === 'WAITING_USER') {
       decision.action = 'WAIT_FOR_USER';

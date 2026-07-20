@@ -54,6 +54,7 @@ export interface AIMessage {
   isThinking?: boolean
   instructionId?: string
   sessionId?: string
+  modelName?: string
 }
 
 export interface AISettings {

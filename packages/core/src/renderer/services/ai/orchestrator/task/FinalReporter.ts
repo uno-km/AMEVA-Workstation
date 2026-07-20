@@ -31,7 +31,8 @@ export class FinalReporter {
     completionRate: number,
     resultGrade: 'SUCCESS' | 'PARTIALLY_COMPLETE' | 'FAILED',
     totalTurns: number,
-    recoveryCount: number
+    recoveryCount: number,
+    modelName?: string
   ): string {
     const statusEmoji = resultGrade === 'SUCCESS' ? '🟢 SUCCESS' : resultGrade === 'PARTIALLY_COMPLETE' ? '🟡 PARTIALLY COMPLETE' : '🔴 FAILED';
     
@@ -51,6 +52,7 @@ export class FinalReporter {
 - **Task Completion Rate**: ${completionRate}%
 
 #### ⚙️ Inference & Fault Tolerance metrics
+- **Model Used**: ${modelName || 'Unknown'}
 - **Total Inference Turns**: ${totalTurns} turns
 - **Self-Healing Recovery Count**: ${recoveryCount} times
 - **Verification Verdict**: ${resultGrade === 'SUCCESS' ? 'PASS' : 'WARNING / FAIL'}

@@ -31,7 +31,8 @@ export function useAddMessages(setMessages: (updater: (prev: AIMessage[]) => AIM
     userMsg: AIMessage,
     assistantId: string,
     originalText?: string,
-    blockId?: string
+    blockId?: string,
+    modelName?: string
   ): void => {
     const assistantMsg: AIMessage = {
       id: assistantId,
@@ -46,7 +47,8 @@ export function useAddMessages(setMessages: (updater: (prev: AIMessage[]) => AIM
       finalAnswer: undefined,
       reasoningStatus: undefined,
       instructionId: userMsg.instructionId,
-      sessionId: userMsg.sessionId
+      sessionId: userMsg.sessionId,
+      modelName
     }
 
     setMessages((prev) => [

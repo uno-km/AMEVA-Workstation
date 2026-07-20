@@ -56,6 +56,8 @@ export interface AILogState {
   updateMessage: (id: string, updater: (msg: AIMessage) => AIMessage) => void;
   deleteMessage: (id: string) => void;
   clearMessages: () => void;
+  chatSessionId: string;
+  regenerateChatSessionId: () => void;
 
   // 3. 실시간 토큰 갱신 렌더 바이패스용 텍스트 조각 상태 및 액션
   streamingText: string;
@@ -202,7 +204,9 @@ export const useAILogStore = create<AILogState>((set) => ({
   deleteMessage: (id) => set((state) => ({
     messages: state.messages.filter((m) => m.id !== id),
   })),
-  clearMessages: () => set({ messages: [] }),
+  clearMessages: () => set({ messages: [], chatSessionId: crypto.randomUUID() }),
+  chatSessionId: crypto.randomUUID(),
+  regenerateChatSessionId: () => set({ chatSessionId: crypto.randomUUID() }),
 
   streamingText: '',
   setStreamingText: (text: string) => set({ streamingText: text }),

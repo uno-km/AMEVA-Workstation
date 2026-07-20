@@ -205,6 +205,12 @@ export function useAIGenerator(
       return
     }
 
+    const resolvedModelName = codeModelUsed
+      ? (finalSettings.codeModelPath ? finalSettings.codeModelPath.split(/[/\\]/).pop() : 'Code Model')
+      : (finalSettings.apiType === 'api' 
+          ? (finalSettings.apiModel || finalSettings.apiProvider || 'API Model') 
+          : (finalSettings.modelPath ? finalSettings.modelPath.split(/[/\\]/).pop() : 'Local Model'));
+
     // 신규 말풍선 엘리먼트 ID 및 세션 UUID 생성
     const assistantId = `msg_${Date.now()}_assistant`
       /*
@@ -214,7 +220,7 @@ export function useAIGenerator(
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const sessId = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const sessId = crypto.randomUUID()
+    const sessId = useAILogStore.getState().chatSessionId
 
     // 60ms 디바운서 인스턴스 초기화 기동
     resetSession(sessId, assistantId)
@@ -228,10 +234,11 @@ export function useAIGenerator(
       timestamp: Date.now(),
       taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined,
       instructionId,
-      sessionId: sessId
+      sessionId: sessId,
+      modelName: resolvedModelName
     }
 
-    addUserAndAssistantMessages(userMsg, assistantId, originalText, blockId)
+    addUserAndAssistantMessages(userMsg, assistantId, originalText, blockId, resolvedModelName)
 
       /*
        * [ALGORITHM BRANCH / DECISION]

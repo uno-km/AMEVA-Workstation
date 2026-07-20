@@ -142,9 +142,40 @@ export class DeepTaskExecutor {
     }
     const knownToolNames = new Set(registry.getAllDefinitions().map(t => t.name));
 
-    // 초기 컨텍스트(프롬프트) 생성 - 도구 정의 및 호출 포맷 주입
+    // [동적 자아성찰 힐링 프롬프트 생성]
+    let dynamicRepairPrompt: string | undefined = undefined;
+    const retryCount = task.state.retries || 0;
+    
+    // 재시도 5회 이상부터 작동
+    if (retryCount >= 5 && task.state.previousFailures && task.state.previousFailures.length > 0) {
+      const traceManager = this.store.getTraceManager();
+      traceManager.getStore().appendEvent({
+        eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
+        eventType: 'thought', status: 'WARNING', title: `Self-Reflection Triggered`, summary: `Task has failed ${retryCount} times. Generating self-healing prompt...`, sequenceNumber: 0, visibility: 'USER', schemaVersion: '4.0.0'
+      });
+
+      const lastFailure = task.state.previousFailures[task.state.previousFailures.length - 1];
+      const failureMsg = lastFailure.message || '알 수 없는 이유';
+      const promptToGenerateHeal = [
+        { role: 'system' as const, content: '당신은 AI 에이전트의 자기 성찰(Self-Reflection) 모듈입니다. 에이전트가 동일한 작업을 계속 실패하고 있습니다. 실패 원인을 분석하여, 다음 시도에서는 에이전트가 절대 실패하지 않도록 아주 강력하고 구체적인 행동 지침(1~2문장)을 작성하세요.' },
+        { role: 'user' as const, content: `목표: ${task.definition.objective}\n최근 실패 원인: ${failureMsg}` }
+      ];
+
+      try {
+        dynamicRepairPrompt = await this.adapter.generateStream(promptToGenerateHeal, () => {});
+        // 사용자(또는 시스템)가 실시간으로 볼 수 있도록 thought(추론) 이벤트로 방출
+        traceManager.getStore().appendEvent({
+          eventId: crypto.randomUUID(), traceId: missionId, spanId: `span-t-${taskId}-${attemptId}`, parentSpanId: `span-m-${missionId}`, missionId, taskId, attemptId, timestamp: Date.now(),
+          eventType: 'thought', status: 'WARNING', title: `[🔥 Self-Healing Directive]`, summary: dynamicRepairPrompt, sequenceNumber: 0, visibility: 'USER', schemaVersion: '4.0.0'
+        });
+      } catch (err) {
+        console.warn('[DeepTaskExecutor] 동적 자아성찰 프롬프트 생성 실패:', err);
+      }
+    }
+
+    // 초기 컨텍스트(프롬프트) 생성 - 도구 정의 및 호출 포맷, 동적 프롬프트 주입
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> =
-      this.contextBuilder.buildContextMessages(missionId, task, registry);
+      this.contextBuilder.buildContextMessages(missionId, task, registry, dynamicRepairPrompt);
 
     try {
       while (currentTurn < maxTurns) {

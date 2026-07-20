@@ -734,7 +734,13 @@ export function MessageBubble({
           </div>
           <div>⏱️ <b>발생 시간:</b> {new Date(msg.timestamp).toLocaleTimeString('ko-KR')}</div>
           <div>🆔 <b>지시 ID:</b> <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{msg.instructionId || msg.id}</code></div>
+          {!isUser && (
+            <div>🆔 <b>응답 ID:</b> <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{msg.id}</code></div>
+          )}
           <div>💬 <b>채팅방 ID:</b> <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{msg.sessionId || 'N/A'}</code></div>
+          {msg.modelName && (
+            <div>🤖 <b>사용 모델:</b> <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 4px', borderRadius: '3px', fontFamily: 'monospace' }}>{msg.modelName}</code></div>
+          )}
         </div>
       )}
     </div>

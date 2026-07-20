@@ -47,7 +47,7 @@ export type V2RuntimeMode =
  * 3. V2_PRIMARY_WITH_LEGACY_PLANNING_FALLBACK (실험적)
  * 4. V2_ONLY (충분한 검증 후)
  */
-const DEFAULT_V2_MODE: V2RuntimeMode = 'LEGACY_ONLY';
+const DEFAULT_V2_MODE: V2RuntimeMode = 'V2_PRIMARY_WITH_LEGACY_PLANNING_FALLBACK';
 
 /**
  * Execution Ownership 레코드.

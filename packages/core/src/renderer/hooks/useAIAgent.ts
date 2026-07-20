@@ -290,6 +290,11 @@ export function useAIAgent() {
     let processedMsg = msg;
     let processedRuntimeSettings = { ...runtimeSettings };
     
+    const finalSettingsForModel = { ...settings, ...runtimeSettings };
+    const resolvedModelName = finalSettingsForModel.apiType === 'api' 
+      ? (finalSettingsForModel.apiModel || finalSettingsForModel.apiProvider || 'API Model') 
+      : (finalSettingsForModel.modelPath ? finalSettingsForModel.modelPath.split(/[/\\]/).pop() : 'Local Model');
+
     let isCodeErrorAnalysis = false;
     let codeErrorPayload: CodeErrorAnalysisRequest | null = null;
 
@@ -316,16 +321,21 @@ export function useAIAgent() {
       
       setIsGenerating(true);
       const assistantId = `msg_${Date.now()}_assistant`;
+      const sessId = useAILogStore.getState().chatSessionId;
+      const instructionId = `inst_${Math.random().toString(36).substring(2, 9)}`;
       const userMsg: AIMessage = {
         id: `msg_${Date.now()}_user`,
         role: 'user',
         content: processedMsg,
         timestamp: Date.now(),
-        taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
+        taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined,
+        instructionId,
+        sessionId: sessId,
+        modelName: resolvedModelName
       };
       
       // 빈 메시지 박스 생성 (UI 로딩 인디케이터용)
-      addUserAndAssistantMessages(userMsg, assistantId, orig, bId);
+      addUserAndAssistantMessages(userMsg, assistantId, orig, bId, resolvedModelName);
 
       try {
         const service = new CodeErrorAnalysisService();
@@ -412,7 +422,7 @@ export function useAIAgent() {
 
       setIsGenerating(true)
       const assistantId = `msg_${Date.now()}_assistant`
-      const sessId = crypto.randomUUID()
+      const sessId = useAILogStore.getState().chatSessionId
       resetSession(sessId, assistantId)
 
       const instructionId = `inst_${Math.random().toString(36).substring(2, 9)}`
@@ -423,9 +433,10 @@ export function useAIAgent() {
         timestamp: Date.now(),
         taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined,
         instructionId,
-        sessionId: sessId
+        sessionId: sessId,
+        modelName: resolvedModelName
       }
-      addUserAndAssistantMessages(userMsg, assistantId, orig, bId)
+      addUserAndAssistantMessages(userMsg, assistantId, orig, bId, resolvedModelName)
 
       let isPro = false
       try {
