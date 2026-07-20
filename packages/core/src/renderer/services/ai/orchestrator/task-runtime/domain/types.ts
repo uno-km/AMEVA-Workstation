@@ -42,6 +42,10 @@ export type VerificationVerdict =
 export interface TaskOutput {
   type: 'text' | 'structured_data' | 'file' | 'analysis' | 'decision' | 'tool_output' | 'reference';
   content: any;
+  artifactId?: string;
+  path?: string;
+  status?: string;
+  size?: number;
 }
 
 /**

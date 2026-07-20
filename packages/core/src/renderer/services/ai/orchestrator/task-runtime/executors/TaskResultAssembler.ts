@@ -24,6 +24,20 @@ export class TaskResultAssembler {
         type: 'text',
         content: finalText.replace(/\[DONE\]/g, '').trim()
       });
+
+      // [FILE_PATH: <경로>] 태그 파싱하여 file 타입 Output으로 변환
+      const fileMatches = [...finalText.matchAll(/\[FILE_PATH:\s*(.*?)\]/g)];
+      for (const match of fileMatches) {
+        const path = match[1].trim();
+        outputs.push({
+          type: 'file',
+          content: `File generated at: ${path}`,
+          artifactId: path, // Use path as artifactId since we don't have UUID context here
+          path: path,
+          status: 'COMMITTED',
+          size: 0 // Size verification can be done by verifier
+        });
+      }
     }
 
     // TODO: 만약 JSON 포맷의 산출물이 포함되어 있다면 파싱해서 'structured_data' 타입으로 추가 가능

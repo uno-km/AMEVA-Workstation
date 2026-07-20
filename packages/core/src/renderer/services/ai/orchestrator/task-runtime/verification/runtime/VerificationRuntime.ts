@@ -32,11 +32,12 @@ export class VerificationRuntime {
     recoveryStore: RecoveryRequestStore,
     ledger: MissionBudgetLedger,
     adapter?: ILLMEngineAdapter,
-    artifactManager?: ArtifactTransactionManager
+    artifactManager?: ArtifactTransactionManager,
+    fileSystemAdapter?: import('../../artifact/IFileSystemAdapter').IFileSystemAdapter
   ) {
     this.store = store;
     this.inputBuilder = new VerificationInputBuilder(store);
-    this.coordinator = new TaskVerifierCoordinator(adapter);
+    this.coordinator = new TaskVerifierCoordinator(adapter, fileSystemAdapter);
     this.policy = new VerificationDecisionPolicy();
     this.recoveryCoordinator = new RecoveryCoordinator(store, recoveryStore, ledger);
     this.artifactManager = artifactManager;

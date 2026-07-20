@@ -488,7 +488,7 @@ export class AgentOrchestratorSession {
         });
 
       const v2Runtime = new MissionExecutionRuntime(
-        this.taskStore, this.adapter, this.sessionId, 10000, persistenceAdapter
+        this.taskStore, this.adapter, this.sessionId, 10000, persistenceAdapter, new PowerShellArtifactFileAdapter()
       );
 
       // [STAGE B] Execution 시작 마킹 — 이 이후 Legacy Fallback 절대 금지
@@ -797,31 +797,39 @@ export class AgentOrchestratorSession {
       // [Feature: Append Generated Content directly to Chat Bubble]
       const v2Tasks = this.taskStore.getAllTasks(this.sessionId);
       if (v2Tasks.length > 0) {
-        const uniqueArtifacts = new Set<string>();
-        for (const vt of v2Tasks) {
-          // V2 Task는 outputs 배열이 아니라 result.artifact에 산출물 경로를 저장합니다.
-          if (vt.status === 'COMPLETED' && vt.result && vt.result.artifact) {
-            uniqueArtifacts.add(vt.result.artifact.trim());
-          }
-        }
-
         let contentSection = '';
-        if (uniqueArtifacts.size > 0) {
-          const fsAdapter = new PowerShellArtifactFileAdapter();
-          for (const filePath of uniqueArtifacts) {
-            try {
-              const content = await fsAdapter.read(filePath);
-              if (content) {
-                contentSection += `${content}\n\n`;
-                await fsAdapter.remove(filePath); // 읽고 난 후 즉시 삭제
-              } else {
-                contentSection += `(파일을 읽을 수 없습니다: ${filePath})\n\n`;
+        for (const vt of v2Tasks) {
+          if (vt.state.status === 'COMPLETED' && vt.state.taskResult && vt.state.taskResult.outputs) {
+            for (const out of vt.state.taskResult.outputs) {
+              if (out.type === 'text' && out.content) {
+                 contentSection += `\n\n#### 📝 [${vt.definition.title}]\n${out.content}`;
               }
-            } catch (e) {
-              console.error(`[AgentOrchestrator] Failed to read file for injection (${filePath}):`, e);
-              contentSection += `(파일을 읽을 수 없습니다: ${filePath})\n\n`;
             }
           }
+        }
+        
+        // Asynchronous file reading outside the loop to avoid async complexity in map/forEach
+        const fileMatches = [...contentSection.matchAll(/\[FILE_PATH:\s*(.*?)\]/g)];
+        if (fileMatches.length > 0) {
+           const fsAdapter = new PowerShellArtifactFileAdapter();
+           for (const match of fileMatches) {
+               try {
+                   const filePath = match[1].trim();
+                   const content = await fsAdapter.read(filePath);
+                   if (content) {
+                       contentSection = contentSection.replace(
+                           match[0],
+                           `${content}` // Remove the code block wrapping to just output text
+                       );
+                       await fsAdapter.remove(filePath); // Delete the file after it's injected
+                   } else {
+                       contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${filePath})`);
+                   }
+               } catch (e) {
+                   console.error('[AgentOrchestrator] Failed to read file for injection:', e);
+                   contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${match[1].trim()})`);
+               }
+           }
         }
         
         if (contentSection.trim().length > 0) {

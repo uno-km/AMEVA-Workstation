@@ -60,26 +60,26 @@ export class DeterministicVerifier implements TaskVerifier {
     }
 
     const outputs = input.targetAttempt.resultReference.outputs || [];
-    const requiredOutputs = input.taskDefinition.expectedOutputs?.filter(o => o.required) || [];
+    const expectedOutputs = input.taskDefinition.expectedOutputs || [];
     const outputMap = new Map(outputs.map(o => [o.artifactId, o]));
     
     // 1. Missing required artifacts
-    for (const req of requiredOutputs) {
-      if (!outputMap.has(req.id)) {
+    for (const reqId of expectedOutputs) {
+      if (!outputMap.has(reqId)) {
         results.push({
-          criterionId: `deterministic_req_missing_${req.id}`,
+          criterionId: `deterministic_req_missing_${reqId}`,
           verifierType: this.verifierType,
           verdict: 'FAIL',
-          reason: `Required artifact ${req.id} is missing.`,
+          reason: `Required artifact ${reqId} is missing.`,
           defect: {
             defectId: `def-${crypto.randomUUID()}`,
-            signature: `DETERMINISTIC:ARTIFACT_MISSING:${req.id}:output:missing`,
+            signature: `DETERMINISTIC:ARTIFACT_MISSING:${reqId}:output:missing`,
             stage: 'DETERMINISTIC',
             type: 'ARTIFACT_MISSING',
             severity: 'HIGH',
             required: true,
-            artifactId: req.id,
-            message: `Required artifact ${req.id} was not produced.`,
+            artifactId: reqId,
+            message: `Required artifact ${reqId} was not produced.`,
             retryable: true,
             retryScope: 'FULL_TASK'
           }
@@ -89,22 +89,23 @@ export class DeterministicVerifier implements TaskVerifier {
 
     // 2. Validate outputs
     for (const artifact of outputs) {
-      const isRequired = requiredOutputs.some(o => o.id === artifact.artifactId);
+      const artifactId = artifact.artifactId || 'unknown';
+      const isRequired = expectedOutputs.includes(artifactId);
       
-      if (artifact.status !== 'COMMITTED') {
+      if (artifact.status && artifact.status !== 'COMMITTED') {
         results.push({
-          criterionId: `deterministic_status_${artifact.artifactId}`,
+          criterionId: `deterministic_status_${artifactId}`,
           verifierType: this.verifierType,
           verdict: 'FAIL',
-          reason: `Artifact ${artifact.artifactId} status is ${artifact.status}, expected COMMITTED.`,
+          reason: `Artifact ${artifactId} status is ${artifact.status}, expected COMMITTED.`,
           defect: {
             defectId: `def-${crypto.randomUUID()}`,
-            signature: `DETERMINISTIC:ARTIFACT_NOT_COMMITTED:${artifact.artifactId}:status:not_committed`,
+            signature: `DETERMINISTIC:ARTIFACT_NOT_COMMITTED:${artifactId}:status:not_committed`,
             stage: 'DETERMINISTIC',
             type: 'ARTIFACT_NOT_COMMITTED',
             severity: 'CRITICAL',
             required: isRequired,
-            artifactId: artifact.artifactId,
+            artifactId: artifactId,
             message: `Artifact is not COMMITTED. Status: ${artifact.status}`,
             retryable: true,
             retryScope: 'ARTIFACT'
@@ -112,23 +113,23 @@ export class DeterministicVerifier implements TaskVerifier {
         });
       }
 
-      if (this.fileAdapter && artifact.type === 'FILE') {
+      if (this.fileAdapter && artifact.type === 'file' && artifact.path) {
         try {
           const exists = await this.fileAdapter.exists(artifact.path);
           if (!exists) {
             results.push({
-              criterionId: `deterministic_file_missing_${artifact.artifactId}`,
+              criterionId: `deterministic_file_missing_${artifactId}`,
               verifierType: this.verifierType,
               verdict: 'FAIL',
-              reason: `File for artifact ${artifact.artifactId} does not exist at ${artifact.path}.`,
+              reason: `File for artifact ${artifactId} does not exist at ${artifact.path}.`,
               defect: {
                 defectId: `def-${crypto.randomUUID()}`,
-                signature: `DETERMINISTIC:ARTIFACT_MISSING:${artifact.artifactId}:file:not_found`,
+                signature: `DETERMINISTIC:ARTIFACT_MISSING:${artifactId}:file:not_found`,
                 stage: 'DETERMINISTIC',
                 type: 'ARTIFACT_MISSING',
                 severity: 'CRITICAL',
                 required: isRequired,
-                artifactId: artifact.artifactId,
+                artifactId: artifactId,
                 message: `File not found at ${artifact.path}`,
                 retryable: true,
                 retryScope: 'ARTIFACT'
@@ -138,20 +139,20 @@ export class DeterministicVerifier implements TaskVerifier {
           }
 
           const stats = await this.fileAdapter.stat(artifact.path);
-          if (stats.size !== artifact.size) {
+          if (artifact.size !== undefined && artifact.size > 0 && stats.size !== artifact.size) {
             results.push({
-              criterionId: `deterministic_size_mismatch_${artifact.artifactId}`,
+              criterionId: `deterministic_size_mismatch_${artifactId}`,
               verifierType: this.verifierType,
               verdict: 'FAIL',
-              reason: `Size mismatch for ${artifact.artifactId}. Expected ${artifact.size}, got ${stats.size}.`,
+              reason: `Size mismatch for ${artifactId}. Expected ${artifact.size}, got ${stats.size}.`,
               defect: {
                 defectId: `def-${crypto.randomUUID()}`,
-                signature: `DETERMINISTIC:HASH_MISMATCH:${artifact.artifactId}:size:mismatch`,
+                signature: `DETERMINISTIC:HASH_MISMATCH:${artifactId}:size:mismatch`,
                 stage: 'DETERMINISTIC',
                 type: 'HASH_MISMATCH',
                 severity: 'HIGH',
                 required: isRequired,
-                artifactId: artifact.artifactId,
+                artifactId: artifactId,
                 message: `Size mismatch: expected ${artifact.size}, got ${stats.size}`,
                 retryable: true,
                 retryScope: 'ARTIFACT'

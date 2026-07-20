@@ -122,9 +122,6 @@ export class MissionExecutionRuntime {
     this.leaseManager = new TaskLeaseManager(store);
     this.recoveryStore = new RecoveryRequestStore();
     this.scheduler = new TaskScheduler(store, this.ledger, this.recoveryStore);
-    this.verificationRuntime = new VerificationRuntime(
-      store, this.recoveryStore, this.ledger, adapter
-    );
 
     const catalog = new CapabilityCatalog();
     const resolver = new ExecutionStrategyResolver(catalog);
@@ -142,6 +139,10 @@ export class MissionExecutionRuntime {
        artifactTxManager = new ArtifactTransactionManager(artifactStore, fileSystemAdapter, idempotencyStore);
        toolRegistry = new ToolRegistry(fileSystemAdapter);
     }
+    
+    this.verificationRuntime = new VerificationRuntime(
+      store, this.recoveryStore, this.ledger, adapter, artifactTxManager as any, fileSystemAdapter
+    );
     
     this.dispatcher = new TaskDispatcher(
       store, this.leaseManager, this.ledger, resolver, adapter,
