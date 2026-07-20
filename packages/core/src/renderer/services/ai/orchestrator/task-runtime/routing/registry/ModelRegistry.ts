@@ -8,7 +8,7 @@
  * - This is an independent domain service that holds the state of available models.
  */
 
-import { ModelDescriptor, ModelRole, Capability, PrivacyLevel } from '../domain/types';
+import type { ModelDescriptor, ModelRole, Capability, PrivacyLevel } from '../domain/types';
 
 export class ModelRegistry {
   private static instance: ModelRegistry;
