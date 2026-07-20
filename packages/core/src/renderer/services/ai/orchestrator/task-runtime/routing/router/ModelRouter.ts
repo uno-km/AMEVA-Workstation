@@ -42,6 +42,29 @@ export class ModelRouter {
       };
     }
 
+    if (profile.taskType.startsWith('CODE_')) {
+       const codeModelId = config.codingModelId || 'qwen-7b-code';
+       selectionReasons.push(`Task is CODE specific (${profile.taskType}), bypassing general routing and forcing coding model: ${codeModelId}`);
+       return {
+         routingDecisionId,
+         selectedModelId: codeModelId,
+         selectedRole: 'PRIMARY_MODEL',
+         candidateModelIds: [codeModelId],
+         rejectedCandidates: [],
+         selectionReasons,
+         requiredCapabilities: profile.requiredCapabilities,
+         estimatedContextTokens: profile.contextSize,
+         estimatedOutputTokens: profile.expectedOutputTokens,
+         privacyDecision: { allowed: true, reason: 'Local coding model execution' },
+         escalationPolicy: 'NONE',
+         confidence: 1.0,
+         fallbackModelIds: [],
+         routingBudgetRemaining: profile.routingBudgetRemaining,
+         decidedAt,
+         status: 'SUCCESS'
+       };
+    }
+
     if (!config.routingEnabled) {
        // Legacy Fallback mode
        const allAvailable = registry.getAvailableModels();

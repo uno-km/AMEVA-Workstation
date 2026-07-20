@@ -50,10 +50,12 @@ export function JupyterCodeViewer({
   code,
   language,
   onRunFailure,
+  onAskAgent
 }: {
   code: string
   language: string
   onRunFailure?: (err: any) => void
+  onAskAgent?: (errorLog: string, code: string) => void
 }) {
   console.debug("Unused vars (JupyterCodeViewer):", { React, onRunFailure });
   // 메타데이터 주석 해독
@@ -409,9 +411,29 @@ export function JupyterCodeViewer({
           tableData={tableData}
           outputLines={outputLines}
           accentColor={accentColor}
+          onAskAgent={onAskAgent ? () => {
+            const errorLog = outputLines.filter(l => l.type === 'stderr').map(l => l.text).join('\n');
+            onAskAgent(errorLog, resolvedCode);
+          } : () => {
+            const errorLog = outputLines.filter(l => l.type === 'stderr').map(l => l.text).join('\n');
+            const payload = {
+              type: 'code_analyze_error',
+              data: {
+                requestId: `err_${Date.now()}`,
+                language: resolvedLanguage,
+                executionContextType: resolvedLanguage === 'python' ? 'python' : 'typescript',
+                rawErrorLog: errorLog,
+                fullSourceAvailable: true,
+                codeSnippet: resolvedCode,
+                errorLineNumber: null,
+                surroundingStartLine: null,
+                surroundingEndLine: null
+              }
+            };
+            window.dispatchEvent(new CustomEvent('ameva:ask-agent-direct', { detail: JSON.stringify(payload) }));
+          }}
         />
       )}
     </div>
   )
 }
-

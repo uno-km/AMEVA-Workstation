@@ -55,6 +55,8 @@ import { useAIQueue } from './ai/useAIQueue'
 import { useAIEngineLogs } from './ai/useAIEngineLogs'
 import * as ipc from '../services/ipc/electronApiAdapter'
 import { WebLLMEngine } from '../services/ai/WebLLMEngine'
+import { CodeErrorAnalysisService } from '../services/ai/orchestrator/task-runtime/workbench/diagnostics/CodeErrorAnalysisService'
+import type { CodeErrorAnalysisRequest } from '../services/ai/orchestrator/task-runtime/workbench/diagnostics/CodeErrorAnalysisTypes'
 import type { AIMessage } from '../types/aiTypes'
 
 /* 
@@ -285,18 +287,96 @@ export function useAIAgent() {
     // Rationale: 비동기 완료 시점에 에디터에 블록을 수정 삽입하기 위해 editorRef.current에 주입 보존한다.
     if (editor) editorRef.current = editor
 
+    let processedMsg = msg;
+    let processedRuntimeSettings = { ...runtimeSettings };
+    
+    let isCodeErrorAnalysis = false;
+    let codeErrorPayload: CodeErrorAnalysisRequest | null = null;
+
+    try {
+      const parsed = JSON.parse(processedMsg);
+      if (parsed.type === 'code_analyze_error') {
+        isCodeErrorAnalysis = true;
+        codeErrorPayload = parsed.data;
+        // UI 출력을 위한 유저 메시지 텍스트 재구성
+        processedMsg = `[에러 분석 요청] ${codeErrorPayload?.language} 코드 실행 중 오류 발생\n\`\`\`\n${codeErrorPayload?.rawErrorLog}\n\`\`\``;
+      }
+    } catch(e) {
+      // 일반 텍스트이거나 CODE_ERROR_ANALYSIS: 레거시 문자열인 경우
+      if (processedMsg.startsWith('CODE_ERROR_ANALYSIS:')) {
+        processedMsg = processedMsg.replace(/^CODE_ERROR_ANALYSIS:\s*/, '');
+      }
+    }
+
+    // [CODE_ERROR_ANALYSIS INTERCEPT - DIAGNOSTIC SERVICE ROUTING]
+    if (isCodeErrorAnalysis && codeErrorPayload) {
+      if (isGeneratingRef.current) {
+        return { success: false, hasPendingDecision: false };
+      }
+      
+      setIsGenerating(true);
+      const assistantId = `msg_${Date.now()}_assistant`;
+      const userMsg: AIMessage = {
+        id: `msg_${Date.now()}_user`,
+        role: 'user',
+        content: processedMsg,
+        timestamp: Date.now(),
+        taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
+      };
+      
+      // 빈 메시지 박스 생성 (UI 로딩 인디케이터용)
+      addUserAndAssistantMessages(userMsg, assistantId, orig, bId);
+
+      try {
+        const service = new CodeErrorAnalysisService();
+        const response = await service.analyzeError(codeErrorPayload);
+        
+        let finalContent = `**[${response.category} - ${response.subtype}]**\n\n`;
+        finalContent += `${response.explanation}\n\n`;
+        if (response.suggestedFix) {
+           // Markdown 블록으로 출력하여 채팅창 내에서 [Apply] 버튼이 생성되도록 유도
+           finalContent += `### 권장 수정 사항\n\`\`\`${codeErrorPayload.language}\n${response.suggestedFix}\n\`\`\``;
+        }
+
+        // 완성된 응답 메시지로 업데이트
+        setMessages((msgs: AIMessage[]) => {
+           const newMsgs = [...msgs];
+           const idx = newMsgs.findIndex((m: AIMessage) => m.id === assistantId);
+           if (idx >= 0) {
+              newMsgs[idx] = { ...newMsgs[idx], content: finalContent, isStreaming: false };
+           }
+           return newMsgs;
+        });
+      } catch (err: any) {
+        setMessages((msgs: AIMessage[]) => {
+           const newMsgs = [...msgs];
+           const idx = newMsgs.findIndex((m: AIMessage) => m.id === assistantId);
+           if (idx >= 0) {
+              newMsgs[idx] = { ...newMsgs[idx], content: `에러 분석 중 문제가 발생했습니다:\n\`\`\`\n${err.message}\n\`\`\``, isStreaming: false, isError: true };
+           }
+           return newMsgs;
+        });
+      } finally {
+        setIsGenerating(false);
+        processNextQueueRef.current?.();
+      }
+      
+      return { success: true, hasPendingDecision: false };
+    }
+
+
     /*
      * [PLAN APPROVAL INTERCEPT]
      * - Rationale: 플랜 승인 대기 상태이거나, 사용자의 메시지가 계획 리뷰 피드백 접두사([계획 리뷰])로 시작할 때 즉시 가로챈다.
      * - Rationale: isGeneratingRef.current 락에 걸려 대기 큐(pendingQueue)에 쌓이는 예외를 방지하여 피드백이 즉시 재계획 루프에 주입되도록 보장한다.
      */
     const currentState = useAIState.getState()
-    const isReviewFeedback = msg.startsWith('[계획 리뷰]')
+    const isReviewFeedback = processedMsg.startsWith('[계획 리뷰]')
     if (currentState.planApprovalState === 'pending' || isReviewFeedback) {
       const resolve = currentState.resolvePlanApproval
       if (resolve) {
         // [계획 리뷰] 접두사 제거 후 피드백으로 전달
-        const feedbackText = msg.replace(/^\[계획 리뷰\]\s*/, '').trim()
+        const feedbackText = processedMsg.replace(/^\[계획 리뷰\]\s*/, '').trim()
         
         /*
          * [VISUAL SYNC]
@@ -306,7 +386,7 @@ export function useAIAgent() {
         const userMsg: AIMessage = {
           id: `msg_${Date.now()}_user`,
           role: 'user',
-          content: msg,
+          content: processedMsg,
           timestamp: Date.now(),
           taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
         }
@@ -338,7 +418,7 @@ export function useAIAgent() {
       const userMsg: AIMessage = {
         id: `msg_${Date.now()}_user`,
         role: 'user',
-        content: msg,
+        content: processedMsg,
         timestamp: Date.now(),
         taggedBlocks: taggedBlocks && taggedBlocks.length > 0 ? [...taggedBlocks] : undefined
       }
@@ -349,7 +429,7 @@ export function useAIAgent() {
         isPro = localStorage.getItem('is-pro-plan') === 'true'
       } catch {}
 
-      const intent = determineIntent(msg, taggedBlocks, finalSettings.resolvedMode)
+      const intent = determineIntent(processedMsg, taggedBlocks, finalSettings.resolvedMode)
 
       let enabledPlugins: Record<string, boolean> = {}
       try {
@@ -361,7 +441,7 @@ export function useAIAgent() {
         assistantId,
         sessId,
         finalSettings,
-        userMessage: msg,
+        userMessage: processedMsg,
         context: ctx,
         taggedBlocks,
         intent,
@@ -378,8 +458,8 @@ export function useAIAgent() {
       return await runAgentMode(agentParams)
     }
 
-    return coreGenerateResponse(msg, ctx, orig, bId, runtimeSettings, editor, taggedBlocks)
-  }, [coreGenerateResponse, settings, runAgentMode, enqueue, setIsGenerating, resetSession, addUserAndAssistantMessages, messages, setMessages, currentAssistantIdRef])
+    return coreGenerateResponse(processedMsg, ctx, orig, bId, processedRuntimeSettings, editor, taggedBlocks)
+  }, [coreGenerateResponse, settings, runAgentMode, enqueue, setIsGenerating, resetSession, addUserAndAssistantMessages, messages, setMessages, currentAssistantIdRef, codeModels])
 
   /*
    * [SIDE EFFECT - Scheduler Callback Sync]

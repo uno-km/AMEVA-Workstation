@@ -54,7 +54,7 @@ export interface ModelDescriptor {
 export interface TaskRoutingProfile {
   missionId: string;
   taskId: string;
-  taskType: 'PLANNING' | 'EXECUTION' | 'VERIFICATION' | 'SEMANTIC_VERIFIER' | 'PARTIAL_REPAIR' | 'SUMMARIZATION' | 'ROUTING';
+  taskType: 'PLANNING' | 'EXECUTION' | 'VERIFICATION' | 'SEMANTIC_VERIFIER' | 'PARTIAL_REPAIR' | 'SUMMARIZATION' | 'ROUTING' | 'CODE_ERROR_ANALYSIS' | 'CODE_AUTO_FIX';
   retryScope?: string;
   sourceModelId?: string;
   protectedRanges?: unknown[];
@@ -116,6 +116,8 @@ export interface RoutingConfig {
   forcedLocalTaskTypes: string[];
   forcedModelByCapability: Partial<Record<Capability, string>>;
   maxRuleEngineContextTokens: number;
+  codingModelId?: string;
+  codingModelPath?: string;
 }
 
 export interface EscalationPackage {

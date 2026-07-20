@@ -45,3 +45,8 @@ ehthumbs.db
 .agents/
 source-doc/
 
+
+# Temporary extraction files
+all_extracted_files.txt
+phase1_7_extracted_files.txt
+phase1_7_file_list.md

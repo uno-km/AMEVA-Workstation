@@ -103,7 +103,7 @@ describe('MissionCompletionRuntime Integration', () => {
   it('should return SUCCESS when all required tasks are COMPLETED and PASSED', async () => {
     taskStore.initMission('m1', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
-    const VALID_MOCK_CONTENT = `First paragraph of the mock content which is sufficiently long to pass the fake completion check implemented in Phase 1.1.\nSecond line in the first paragraph.\n\nSecond paragraph providing more details so that the paragraph count is at least 2.\nThis should satisfy the skeleton deliverable checks.\n\nThird paragraph for good measure, ensuring the total length, line count, and paragraph count are well above the minimum thresholds required by the DeliverableCoverageEvaluator.`;
+import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
     
     // t1 is required explicitly
     const task1 = createMockTaskEntity('t1', 1, 'COMPLETED', true, [{ type: 'doc1', content: VALID_MOCK_CONTENT }]);
@@ -135,7 +135,7 @@ describe('MissionCompletionRuntime Integration', () => {
 
   it('should treat missing outputs with Placeholder string as missing deliverables', async () => {
     taskStore.initMission('m6', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
-    const VALID_MOCK_CONTENT = `First paragraph of the mock content which is sufficiently long to pass the fake completion check implemented in Phase 1.1.\nSecond line in the first paragraph.\n\nSecond paragraph providing more details so that the paragraph count is at least 2.\nThis should satisfy the skeleton deliverable checks.\n\nThird paragraph for good measure, ensuring the total length, line count, and paragraph count are well above the minimum thresholds required by the DeliverableCoverageEvaluator.`;
+import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
     const task1 = createMockTaskEntity('fake_out', 1, 'COMPLETED', true, [{ type: 'req-fake_out', content: 'Placeholder data' }]);
     task1.definition.required = true;
     taskStore.registerTask(task1, 'm6');
@@ -162,7 +162,7 @@ describe('MissionCompletionRuntime Integration', () => {
 
   it('should return the same decision via idempotency caching', async () => {
     taskStore.initMission('m8', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
-    const VALID_MOCK_CONTENT = `First paragraph of the mock content which is sufficiently long to pass the fake completion check implemented in Phase 1.1.\nSecond line in the first paragraph.\n\nSecond paragraph providing more details so that the paragraph count is at least 2.\nThis should satisfy the skeleton deliverable checks.\n\nThird paragraph for good measure, ensuring the total length, line count, and paragraph count are well above the minimum thresholds required by the DeliverableCoverageEvaluator.`;
+import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
     const task1 = createMockTaskEntity('semantic_task', 1, 'COMPLETED', true, [{ type: 'out', content: VALID_MOCK_CONTENT }]);
     task1.definition.required = true;
     taskStore.registerTask(task1, 'm7');
@@ -176,7 +176,7 @@ describe('MissionCompletionRuntime Integration', () => {
   it('should return SUCCESS_WITH_WARNINGS if optional tasks fail', async () => {
     taskStore.initMission('m2', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
-    const VALID_MOCK_CONTENT = `First paragraph of the mock content which is sufficiently long to pass the fake completion check implemented in Phase 1.1.\nSecond line in the first paragraph.\n\nSecond paragraph providing more details so that the paragraph count is at least 2.\nThis should satisfy the skeleton deliverable checks.\n\nThird paragraph for good measure, ensuring the total length, line count, and paragraph count are well above the minimum thresholds required by the DeliverableCoverageEvaluator.`;
+import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
     const task1 = createMockTaskEntity('req1', 1, 'COMPLETED', true, [{ type: 'out', content: VALID_MOCK_CONTENT }]);
     task1.definition.required = true;
     const task2 = createMockTaskEntity('opt1', 10, 'FAILED', false);
@@ -195,7 +195,7 @@ describe('MissionCompletionRuntime Integration', () => {
   it('should return FAILED if a required task fails even if some completed', async () => {
     taskStore.initMission('m3', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
-    const VALID_MOCK_CONTENT = `First paragraph of the mock content which is sufficiently long to pass the fake completion check implemented in Phase 1.1.\nSecond line in the first paragraph.\n\nSecond paragraph providing more details so that the paragraph count is at least 2.\nThis should satisfy the skeleton deliverable checks.\n\nThird paragraph for good measure, ensuring the total length, line count, and paragraph count are well above the minimum thresholds required by the DeliverableCoverageEvaluator.`;
+import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
     const task1 = createMockTaskEntity('req1', 1, 'COMPLETED', true, [{ type: 'out1', content: VALID_MOCK_CONTENT }]);
     task1.definition.required = true;
     const task1b = createMockTaskEntity('req1b', 1, 'COMPLETED', true, [{ type: 'out1b', content: VALID_MOCK_CONTENT }]);

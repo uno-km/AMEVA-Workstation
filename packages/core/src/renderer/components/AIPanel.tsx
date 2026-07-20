@@ -746,6 +746,20 @@ export function AIPanel() {
     return () => window.removeEventListener('ameva:fill-ai-input', handler)
   }, [setInput, textareaRef])
 
+  // 내부 모듈 혹은 UI에서 직접 AI 분석/실행을 트리거하는 이벤트 감청
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (typeof detail === 'string') {
+        handleQuickAction(detail);
+      } else if (detail && typeof detail.prompt === 'string') {
+        handleQuickAction(detail.prompt);
+      }
+    }
+    window.addEventListener('ameva:ask-agent-direct', handler)
+    return () => window.removeEventListener('ameva:ask-agent-direct', handler)
+  }, [handleQuickAction])
+
   // 플랜 리뷰 피드백 요청 시 챗 인풋에 접두사 작성 및 포커스 동기화
   useEffect(() => {
     const handler = () => {

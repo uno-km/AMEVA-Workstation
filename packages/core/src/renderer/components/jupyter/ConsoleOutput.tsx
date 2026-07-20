@@ -26,20 +26,22 @@ interface ConsoleOutputProps {
   tableData: any
   outputLines: { type: 'stdout' | 'stderr' | 'info'; text: string }[]
   accentColor: string
+  onAskAgent?: () => void
 }
 
   /*
    * [FUNCTION CONTRACT]
    * - 함수 명: `ConsoleOutput`
    * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `ConsoleOutput(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
+   * - 예시: `ConsoleOutput(...)` 호출 시 런타임 비동기 연쇄 반응 유도.
    */
 export function ConsoleOutput({
   success,
   resolvedLanguage,
   tableData,
   outputLines,
-  accentColor
+  accentColor,
+  onAskAgent
 }: ConsoleOutputProps) {
   return (
     <div style={{
@@ -60,16 +62,35 @@ export function ConsoleOutput({
           <Terminal size={11} />
           _ OUTPUT
         </span>
-        {success !== null && (
-          <span style={{
-            color: success ? '#10b981' : '#f43f5e',
-            background: success ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)',
-            border: `1px solid ${success ? '#10b98133' : '#f43f5e33'}`,
-            padding: '1px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: 'bold'
-          }}>
-            {success ? 'EXIT 0' : 'EXIT 1'}
-          </span>
-        )}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {success === false && onAskAgent && (
+            <button
+              onClick={onAskAgent}
+              style={{
+                background: 'rgba(139, 92, 246, 0.15)',
+                border: '1px solid rgba(139, 92, 246, 0.4)',
+                color: '#c4b5fd',
+                borderRadius: '4px',
+                padding: '2px 8px',
+                fontSize: '9.5px',
+                fontWeight: 'bold',
+                cursor: 'pointer'
+              }}
+            >
+              ✨ 에이전트에게 물어보기
+            </button>
+          )}
+          {success !== null && (
+            <span style={{
+              color: success ? '#10b981' : '#f43f5e',
+              background: success ? 'rgba(16,185,129,0.1)' : 'rgba(244,63,94,0.1)',
+              border: `1px solid ${success ? '#10b98133' : '#f43f5e33'}`,
+              padding: '1px 6px', borderRadius: '3px', fontSize: '9px', fontWeight: 'bold'
+            }}>
+              {success ? 'EXIT 0' : 'EXIT 1'}
+            </span>
+          )}
+        </div>
       </div>
       <div style={{
         padding: '12px 16px', maxHeight: '200px', overflowY: 'auto',

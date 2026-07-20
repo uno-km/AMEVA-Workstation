@@ -31,7 +31,9 @@ export class RoutingConfigManager {
     disabledModelIds: [],
     forcedLocalTaskTypes: ['VERIFICATION'],
     forcedModelByCapability: {},
-    maxRuleEngineContextTokens: 500
+    maxRuleEngineContextTokens: 500,
+    codingModelId: 'qwen-7b-code',
+    codingModelPath: 'C:\\ameva\\models\\code'
   };
 
   private constructor() {}
