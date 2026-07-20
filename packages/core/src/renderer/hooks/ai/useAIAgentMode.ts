@@ -539,6 +539,8 @@ async function runDeepReasoningMode(
   appendToVfsLog(`\n\n==================================================\n🤖 [에이전트 실행 시작] Goal: "${userMessage}"\n시간: ${new Date().toLocaleString()}\n==================================================`)
 
   const orchestratorConfig: OrchestratorConfig = {
+    chatId: sessId,
+    missionId: instructionId,
     maxTurns: finalSettings.maxAgentTurns ?? 10000,
     contextPoolMaxTokens: finalSettings.agentContextPoolSize ?? 32768,
     engineType: (finalSettings.apiType as OrchestratorConfig['engineType']) ?? 'local',

@@ -32,11 +32,18 @@ Each task must have:
 - requirementIds: string[]
 - budgetTurns: number
 
+[CRITICAL RULE FOR DOCUMENTS/REPORTS]
+If the user requests to write a report, document, or generate text content (e.g., "보고서 작성해", "작성해줘"), YOU MUST append a final task at the very end.
+The objective of this final task MUST be to output a short completion message and the file path tag, EXACTLY in this format:
+"보고서 작성이 완료되었습니다. 이걸 본문에 넣을까요? [FILE_PATH: 생성된_파일_경로.md]"
+DO NOT generate the full document content in the chat to save tokens. The system will automatically read the file and append it.
+
 Goal Objective: ${spec.objective}
 Deliverables: ${spec.deliverables.join(', ')}
 
 Output ONLY valid JSON array.
 `;
+
 
     let llmOutput = '';
     try {

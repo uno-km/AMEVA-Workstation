@@ -61,6 +61,8 @@ export interface LLMDoneEventData {
 export interface LLMLogEventData {
   text: string
   prefix?: string
+  chatId?: string
+  missionId?: string
 }
 
 /** 모델 정보 */

@@ -201,8 +201,8 @@ export class AgentOrchestratorSession {
   public pendingToolCalls: ToolCallRequest[] = []
   public goal: string = ''
   private executedToolHashes: Set<string> = new Set()
-  // Recovery-First 아키텍처 멤버
-  private readonly sessionId: string = 'sess_' + Math.random().toString(36).substring(2, 9)
+  private readonly sessionId: string
+  private readonly chatId?: string
   private readonly supervisor: SupervisorAgent = SupervisorAgent.getInstance()
   private readonly critic: CriticAgent = new CriticAgent()
   private checkpointIntervalId: any = null
@@ -235,9 +235,20 @@ export class AgentOrchestratorSession {
    */
   private selfHealingMiddleware: ISelfHealingMiddleware | null = null
 
+  private ipcLog(payload: { text: string; prefix?: string }) {
+    ipc.llmAddLog({
+      ...payload,
+      chatId: this.chatId,
+      missionId: this.sessionId
+    })
+  }
+
   constructor(config: OrchestratorConfig, onEvent: OrchestratorEventCallback) {
     this.config = config
     this.onEvent = onEvent
+    this.chatId = config.chatId
+    // UI에서 주입한 지시 ID가 있으면 그것을, 없으면 랜덤 생성
+    this.sessionId = config.missionId || ('sess_' + Math.random().toString(36).substring(2, 9))
 
     // ModelAdapterProvider 초기화
     ModelAdapterProvider.getInstance().setBaseConfig(config)
@@ -305,7 +316,7 @@ export class AgentOrchestratorSession {
                     toolName: healed.name,
                     toolArgs: healed.args ?? {}
                   })
-                    ipc.llmAddLog({
+                    this.ipcLog({
                       text: `[AgentOrchestrator] Self-Healing 파싱 복구 완료 (ACTION_APPLIED). 도구: ${healed.name}`,
                       prefix: 'SelfHeal'
                     })
@@ -315,7 +326,7 @@ export class AgentOrchestratorSession {
                 console.error('[AgentOrchestrator] Self-Healing 결과 재파싱 실패:', msg)
               }
             } else {
-              ipc.llmAddLog({
+              this.ipcLog({
                 text: `[AgentOrchestrator] Self-Healing 복구 실패: ${(result as any).reason || (result as any).error || 'Unknown error'}`,
                 prefix: 'SelfHeal'
               })
@@ -334,7 +345,7 @@ export class AgentOrchestratorSession {
    * 엔진 어댑터 연결 확인, 기본 도구 등록, 모델 로딩을 수행한다.
    */
   public async initialize(): Promise<void> {
-    ipc.llmAddLog({ text: '[AgentOrchestrator] 세션 초기화 시작', prefix: 'Orchestrator' })
+    this.ipcLog({ text: '[AgentOrchestrator] 세션 초기화 시작', prefix: 'Orchestrator' })
 
     // 기본 내장 도구(run_command, read_file 등) 및 MCP 도구 등록
     await this.registry.registerDefaultTools()
@@ -342,10 +353,10 @@ export class AgentOrchestratorSession {
     // 엔진 모델 로딩 (WebLLM의 경우 VRAM에 적재)
     try {
       await this.adapter.loadModel(this.config.modelId)
-      ipc.llmAddLog({ text: `[AgentOrchestrator] 모델 로딩 완료: ${this.config.modelId}`, prefix: 'Orchestrator' })
+      this.ipcLog({ text: `[AgentOrchestrator] 모델 로딩 완료: ${this.config.modelId}`, prefix: 'Orchestrator' })
     } catch (loadErr: unknown) {
       const msg = loadErr instanceof Error ? loadErr.message : String(loadErr)
-      ipc.llmAddLog({ text: `[AgentOrchestrator] 모델 로딩 실패 (로컬 서버 미가동 가능성): ${msg}`, prefix: 'Orchestrator' })
+      this.ipcLog({ text: `[AgentOrchestrator] 모델 로딩 실패 (로컬 서버 미가동 가능성): ${msg}`, prefix: 'Orchestrator' })
       // 로딩 실패는 경고만 남기고 계속 진행 (Llama.cpp는 서버 기동 시 자동 로드)
     }
   }
@@ -370,7 +381,7 @@ export class AgentOrchestratorSession {
    */
   public withSelfHealing(middleware: ISelfHealingMiddleware): this {
     this.selfHealingMiddleware = middleware
-    ipc.llmAddLog({ text: '[AgentOrchestrator] Self-Healing 미들웨어 주입 완료', prefix: 'Orchestrator' })
+    this.ipcLog({ text: '[AgentOrchestrator] Self-Healing 미들웨어 주입 완료', prefix: 'Orchestrator' })
     return this
   }
 
@@ -392,7 +403,7 @@ export class AgentOrchestratorSession {
     if (hook instanceof ActorCriticHook) {
       hook.setActorHistory(this.contextMessages)
     }
-    ipc.llmAddLog({ text: '[AgentOrchestrator] Actor-Critic 훅 주입 완료', prefix: 'Orchestrator' })
+    this.ipcLog({ text: '[AgentOrchestrator] Actor-Critic 훅 주입 완료', prefix: 'Orchestrator' })
     return this
   }
 
@@ -410,7 +421,7 @@ export class AgentOrchestratorSession {
   ): Promise<string> {
     this.goal = userMessage
     this.emitPhaseChange('thinking')
-    ipc.llmAddLog({ text: `[AgentOrchestrator] 신규 Task Runtime Engine 가동 시작`, prefix: 'Orchestrator' })
+    this.ipcLog({ text: `[AgentOrchestrator] 신규 Task Runtime Engine 가동 시작`, prefix: 'Orchestrator' })
 
     // supervisor 모니터링 및 체크포인트 시작
     this.supervisor.startMonitoring(this.sessionId, (reason) => {
@@ -424,24 +435,24 @@ export class AgentOrchestratorSession {
 
     if (V2RuntimeFeatureFlag.shouldAttemptV2(this.sessionId)) {
       try {
-        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 mode: ${V2RuntimeFeatureFlag.getMode()}. Attempting V2 Planning Pipeline...`, prefix: 'Orchestrator' });
+        this.ipcLog({ text: `[AgentOrchestrator] V2 mode: ${V2RuntimeFeatureFlag.getMode()}. Attempting V2 Planning Pipeline...`, prefix: 'Orchestrator' });
         activePlan = await this.planAndActivateV2(this.sessionId, userMessage);
         v2Success = true;
       } catch (e: any) {
-        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Failed: ${(e instanceof Error ? e.message : String(e))}. Checking fallback policy...`, prefix: 'Orchestrator' });
+        this.ipcLog({ text: `[AgentOrchestrator] V2 Pipeline Failed: ${(e instanceof Error ? e.message : String(e))}. Checking fallback policy...`, prefix: 'Orchestrator' });
         // Planning/Activation 실패: Execution 미시작이므로 Legacy Fallback 허용 여부 확인
         if (!V2RuntimeFeatureFlag.isLegacyFallbackAllowed(this.sessionId)) {
           // V2_ONLY 모드이거나 이미 Execution이 시작된 경우 — 오류 전파
           throw e;
         }
-        ipc.llmAddLog({ text: `[AgentOrchestrator] Legacy Fallback allowed for session ${this.sessionId}.`, prefix: 'Orchestrator' });
+        this.ipcLog({ text: `[AgentOrchestrator] Legacy Fallback allowed for session ${this.sessionId}.`, prefix: 'Orchestrator' });
       }
     } else {
-      ipc.llmAddLog({ text: `[AgentOrchestrator] V2 mode: ${V2RuntimeFeatureFlag.getMode()}. V2 skipped. Using Legacy path.`, prefix: 'Orchestrator' });
+      this.ipcLog({ text: `[AgentOrchestrator] V2 mode: ${V2RuntimeFeatureFlag.getMode()}. V2 skipped. Using Legacy path.`, prefix: 'Orchestrator' });
     }
 
     if (v2Success && activePlan) {
-      ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Pipeline Success. Launching MissionExecutionRuntime (PHASE 3)`, prefix: 'Orchestrator' });
+      this.ipcLog({ text: `[AgentOrchestrator] V2 Pipeline Success. Launching MissionExecutionRuntime (PHASE 3)`, prefix: 'Orchestrator' });
 
       // [STAGE B] Execution Ownership 획득 — V2가 실행 소유자
       V2RuntimeFeatureFlag.acquireV2Ownership(this.sessionId, this.sessionId);
@@ -465,7 +476,7 @@ export class AgentOrchestratorSession {
         .detectIncompleteMissions()
         .then(incomplete => {
           if (incomplete.length > 0) {
-            ipc.llmAddLog({
+            this.ipcLog({
               text: `[AgentOrchestrator] ${incomplete.length}개의 미완료 Mission이 감지되었습니다: ${incomplete.map(m => m.missionId).join(', ')}`,
               prefix: 'Orchestrator'
             });
@@ -543,7 +554,7 @@ export class AgentOrchestratorSession {
       this.taskStore.registerTask(entity, this.sessionId);
     }
     if (adapterResult.warnings.length > 0) {
-      ipc.llmAddLog({ text: `[AgentOrchestrator] Task Runtime V2 Adapter 경고: ${adapterResult.warnings.length}건 발생`, prefix: 'TaskV2' });
+      this.ipcLog({ text: `[AgentOrchestrator] Task Runtime V2 Adapter 경고: ${adapterResult.warnings.length}건 발생`, prefix: 'TaskV2' });
     }
 
     // 2. Task Graph 및 Queue, Completion Manager 초기화
@@ -551,7 +562,7 @@ export class AgentOrchestratorSession {
     
     // Cycle 오류 체크 가드
     if (this.taskGraph.hasCycle()) {
-      ipc.llmAddLog({ text: '[AgentOrchestrator] 태스크 그래프 상에 순환 의존성(Cycle) 감지! 폴백 처리합니다.', prefix: 'Orchestrator' })
+      this.ipcLog({ text: '[AgentOrchestrator] 태스크 그래프 상에 순환 의존성(Cycle) 감지! 폴백 처리합니다.', prefix: 'Orchestrator' })
     }
     
     this.taskQueue = new TaskQueue(this.taskGraph)
@@ -608,7 +619,7 @@ export class AgentOrchestratorSession {
     state.setResolvePlanApproval(null)
 
     if (!approvalResult.approved) {
-      ipc.llmAddLog({ text: `[AgentOrchestrator] 사용자가 플랜 리뷰를 요청했습니다: ${approvalResult.feedback}`, prefix: 'Orchestrator' })
+      this.ipcLog({ text: `[AgentOrchestrator] 사용자가 플랜 리뷰를 요청했습니다: ${approvalResult.feedback}`, prefix: 'Orchestrator' })
       const replannedMessage = `[이전 목표]\n${userMessage}\n\n[사용자 피드백에 따른 계획 수정 요청]\n${approvalResult.feedback ?? ''}`
       this.cleanupRecovery()
       return await this.run(replannedMessage, history)
@@ -636,7 +647,7 @@ export class AgentOrchestratorSession {
         }
 
         const isV2 = V2RuntimeFeatureFlag.isV2OwnershipAcquired?.(this.sessionId) ?? false;
-        ipc.llmAddLog({ text: `[AgentOrchestrator] [${isV2 ? 'V2-Runtime' : 'Legacy-Runtime'}] 태스크 실행 개시: ${currentTask.id} (${currentTask.title})`, prefix: 'Orchestrator' })
+        this.ipcLog({ text: `[AgentOrchestrator] [${isV2 ? 'V2-Runtime' : 'Legacy-Runtime'}] 태스크 실행 개시: ${currentTask.id} (${currentTask.title})`, prefix: 'Orchestrator' })
         syncUIState()
 
         let verifyPassed = false;
@@ -699,7 +710,7 @@ export class AgentOrchestratorSession {
                   }
                 });
               } catch (e: any) { 
-                ipc.llmAddLog({ text: `[AgentOrchestrator] Shadow Sync Drift 감지: ${e.message}`, prefix: 'TaskV2' });
+                this.ipcLog({ text: `[AgentOrchestrator] Shadow Sync Drift 감지: ${e.message}`, prefix: 'TaskV2' });
               }
 
               this.emitEvent({
@@ -721,12 +732,12 @@ export class AgentOrchestratorSession {
             taskTitle: currentTask.title
           })
           
-          ipc.llmAddLog({ text: `[AgentOrchestrator] 태스크 ${currentTask.id} 수행 또는 검증 실패 (시도 ${currentTask.retries}/${currentTask.maxRetries})`, prefix: 'Orchestrator' })
+          this.ipcLog({ text: `[AgentOrchestrator] 태스크 ${currentTask.id} 수행 또는 검증 실패 (시도 ${currentTask.retries}/${currentTask.maxRetries})`, prefix: 'Orchestrator' })
           
           if (currentTask.retries > currentTask.maxRetries) {
             // [Issue 7] 필수 태스크는 자동 스킵하지 않고 USER_ASSIST 대기로 전환
             if ((currentTask as any).required) {
-              ipc.llmAddLog({ text: `[AgentOrchestrator] 필수 태스크 ${currentTask.id} 실패. 사용자 개입(WAITING_USER)을 대기합니다.`, prefix: 'Orchestrator' });
+              this.ipcLog({ text: `[AgentOrchestrator] 필수 태스크 ${currentTask.id} 실패. 사용자 개입(WAITING_USER)을 대기합니다.`, prefix: 'Orchestrator' });
               
               if (typeof this.taskStore !== 'undefined') {
                  UserAssistRuntime.getInstance(this.taskStore).createRequest({
@@ -792,6 +803,30 @@ export class AgentOrchestratorSession {
             }
           }
         }
+        
+        // Asynchronous file reading outside the loop to avoid async complexity in map/forEach
+        const fileMatches = [...contentSection.matchAll(/\[FILE_PATH:\s*(.*?)\]/g)];
+        if (fileMatches.length > 0) {
+           const fsAdapter = new PowerShellArtifactFileAdapter();
+           for (const match of fileMatches) {
+               try {
+                   const filePath = match[1].trim();
+                   const content = await fsAdapter.read(filePath);
+                   if (content) {
+                       contentSection = contentSection.replace(
+                           match[0],
+                           `\n\n\`\`\`text\n${content}\n\`\`\``
+                       );
+                   } else {
+                       contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${filePath})`);
+                   }
+               } catch (e) {
+                   console.error('[AgentOrchestrator] Failed to read file for injection:', e);
+                   contentSection = contentSection.replace(match[0], `(파일을 읽을 수 없습니다: ${match[1].trim()})`);
+               }
+           }
+        }
+        
         if (contentSection.length > 0) {
           finalReportText += `\n\n---\n\n### 📄 생성된 본문 리포트 (Generated Outputs)\n${contentSection}`;
         }
@@ -817,7 +852,7 @@ export class AgentOrchestratorSession {
     await this.adapter.abort()
     this.emitPhaseChange('error')
     this.cleanupRecovery()
-    ipc.llmAddLog({ text: '[AgentOrchestrator] 사용자 중단 요청 처리됨', prefix: 'Orchestrator' })
+    this.ipcLog({ text: '[AgentOrchestrator] 사용자 중단 요청 처리됨', prefix: 'Orchestrator' })
   }
 
   /* ──────────────────────────────────────────
@@ -846,7 +881,7 @@ export class AgentOrchestratorSession {
         const criticVerdict = this.critic.evaluateThought(this.parser.getAccumulatedThought() ?? '')
         if (criticVerdict === 'stalled') {
           // [Issue 5] 의미론적 실패(Validation Fail)를 TOKEN_FREEZE로 오분류하지 않음
-          ipc.llmAddLog({ text: '[AgentOrchestrator] CriticAgent: 사고 흐름 정체(Stalled) 감지', prefix: 'Orchestrator' })
+          this.ipcLog({ text: '[AgentOrchestrator] CriticAgent: 사고 흐름 정체(Stalled) 감지', prefix: 'Orchestrator' })
         }
 
         /*
@@ -911,7 +946,7 @@ export class AgentOrchestratorSession {
     this.executedToolHashes.add(idempotencyKey);
 
     this.emitPhaseChange('tool_calling')
-    ipc.llmAddLog({
+    this.ipcLog({
       text: `[AgentOrchestrator] 도구 실행: ${request.name}(${JSON.stringify(request.args)})`,
       prefix: 'Orchestrator'
     })
@@ -922,7 +957,7 @@ export class AgentOrchestratorSession {
     this.emitEvent({ type: 'tool_call_end', result } as any)
 
     if (result.success) {
-      ipc.llmAddLog({
+      this.ipcLog({
         text: `[AgentOrchestrator] 도구 실행 성공. 장애 RESOLVED.`,
         prefix: 'Orchestrator'
       })
@@ -956,7 +991,7 @@ export class AgentOrchestratorSession {
       content: observationText
     })
 
-    ipc.llmAddLog({ text: `[AgentOrchestrator] Observation 주입 완료: ${observationText.slice(0, 100)}...`, prefix: 'Orchestrator' })
+    this.ipcLog({ text: `[AgentOrchestrator] Observation 주입 완료: ${observationText.slice(0, 100)}...`, prefix: 'Orchestrator' })
     this.emitPhaseChange('thinking')
   }
 
@@ -1003,7 +1038,7 @@ export class AgentOrchestratorSession {
       }
 
       this.emitEvent({ type: 'task_plan', plan })
-      ipc.llmAddLog({ text: `[AgentOrchestrator] Task Plan 감지: ${steps.length}단계`, prefix: 'Orchestrator' })
+      this.ipcLog({ text: `[AgentOrchestrator] Task Plan 감지: ${steps.length}단계`, prefix: 'Orchestrator' })
     } catch {
       /*
        * [INTENTIONAL IGNORE]
@@ -1241,10 +1276,10 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
             '1',
             routingResult.routingDecisionId
           );
-          ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning: Routed to ${routingResult.selectedModelId}`, prefix: 'Orchestrator' });
+          this.ipcLog({ text: `[AgentOrchestrator] V2 Planning: Routed to ${routingResult.selectedModelId}`, prefix: 'Orchestrator' });
         } catch (e: unknown) {
           const errorMessage = e instanceof Error ? e.message : String(e);
-          ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning Adapter Load Failed: ${errorMessage}`, prefix: 'Orchestrator' });
+          this.ipcLog({ text: `[AgentOrchestrator] V2 Planning Adapter Load Failed: ${errorMessage}`, prefix: 'Orchestrator' });
           if (errorMessage.includes('Privacy Gate Violation')) {
              throw new Error(`Privacy Gate Violation: ${errorMessage}`);
              // Note: In AgentOrchestrator we just throw for now since Mission Planning is usually CONFIDENTIAL/INTERNAL
@@ -1252,7 +1287,7 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
           }
         }
       } else {
-        ipc.llmAddLog({ text: `[AgentOrchestrator] V2 Planning Routing Failed: ${routingResult.status}`, prefix: 'Orchestrator' });
+        this.ipcLog({ text: `[AgentOrchestrator] V2 Planning Routing Failed: ${routingResult.status}`, prefix: 'Orchestrator' });
         // DO NOT silently fall back to V1 if V2 routing fails. Throw an explicit error.
         throw new Error(`V2 Planning Routing Failed: Capability or model missing (Code: ${routingResult.status})`);
       }
@@ -1300,7 +1335,7 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
     draftPlan.status = 'APPROVED';
     activationService.activate(draftPlan);
 
-    ipc.llmAddLog({ text: 'PHASE 2 Planning Pipeline activated successfully.', prefix: 'AgentOrchestrator' });
+    this.ipcLog({ text: 'PHASE 2 Planning Pipeline activated successfully.', prefix: 'AgentOrchestrator' });
     return draftPlan;
   }
 }

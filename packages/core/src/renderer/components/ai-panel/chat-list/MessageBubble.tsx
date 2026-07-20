@@ -704,7 +704,10 @@ export function MessageBubble({
         />
         </div>
       {contextMenu && (
-        <div style={{
+        <div 
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          style={{
           position: 'fixed',
           top: contextMenu.y,
           left: contextMenu.x,

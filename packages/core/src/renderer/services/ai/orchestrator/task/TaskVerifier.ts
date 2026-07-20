@@ -46,7 +46,7 @@ export class TaskVerifier {
         session.emitEvent({
           type: 'critic_feedback',
           verdict: 'FAIL',
-          reason: `태스크 ${task.id} 정적 검증 실패: 결과 요약이 비어있거나 산출물 기재가 누락되었습니다.`,
+          reason: `태스크 ${task.id} 정적 검증 실패: 결과 요약이 비어있거나 산출물 기재가 누락되었습니다.\n(제출된 결과: ${result.summary || '없음'})`,
           taskTitle: task.title
         })
       }
@@ -63,14 +63,14 @@ export class TaskVerifier {
           taskTitle: task.title
         })
       }
-      const dynamicPass = await this.verifyDynamic(task, result);
-      if (!dynamicPass) {
+      const dynamicPassResult = await this.verifyDynamic(task, result, session);
+      if (!dynamicPassResult.pass) {
         console.warn(`[TaskVerifier] 태스크 ${task.id} 2단계 동적 검증 실패.`);
         if (session) {
           session.emitEvent({
             type: 'critic_feedback',
             verdict: 'FAIL',
-            reason: `태스크 ${task.id} 동적 검증 실패: LLM 검수 기준 만족에 실패했습니다.`,
+            reason: `태스크 ${task.id} 동적 검증 실패: ${dynamicPassResult.reason}`,
             taskTitle: task.title
           })
         }
@@ -108,7 +108,7 @@ export class TaskVerifier {
   /**
    * LLM을 사용한 의미론적 완수율 평가 (2단계)
    */
-  private async verifyDynamic(task: Task, result: TaskResult): Promise<boolean> {
+  private async verifyDynamic(task: Task, result: TaskResult, session?: any): Promise<{ pass: boolean, reason: string }> {
     const systemPrompt = `당신은 AMEVA OS의 Task Verification Critic입니다.
 주어진 태스크 목표 및 완료 기준과 실제 실행 결과 요약을 비교하여, 해당 태스크가 성실하게 완수되었는지 철저히 검정하십시오.
 답변은 반드시 '[PASS]' 또는 '[FAIL]' 대괄호를 씌운 단어로 시작하십시오. 잡설이나 설명은 최소화하십시오.
@@ -150,34 +150,29 @@ ${result.summary}
     const hasPass = /\[?PASS\]?/i.test(verdictClean) || /통과|성공/i.test(verdictClean);
     const hasFail = /\[?FAIL\]?/i.test(verdictClean) || /실패|미달/i.test(verdictClean);
     
+    // 실패 시 출력할 상세 내역 (LLM 판정 원문 + 제출된 결과)
+    const failureDetail = `비평가 판단 원문: "${verdictRaw.trim()}"\n\n(제출된 결과: ${result.summary})`;
+
     // 1순위: PASS만 검출되고 FAIL이 없는 경우
     if (hasPass && !hasFail) {
-      return true;
+      return { pass: true, reason: '' };
     }
     // 2순위: FAIL만 검출되고 PASS가 없는 경우
     if (hasFail && !hasPass) {
-      return false;
+      return { pass: false, reason: `LLM 비평가에 의해 FAIL 판정을 받았습니다.\n${failureDetail}` };
     }
     
     // 3순위: 두 단어가 모두 잡혔거나 모두 잡히지 않은 경우, 답변 시작 15자 내의 단어 가중치 판별
     const first15 = verdictClean.slice(0, 15);
     if (/PASS|통과|성공/i.test(first15)) {
-      return true;
+      return { pass: true, reason: '' };
     }
     if (/FAIL|실패|미달/i.test(first15)) {
-      return false;
+      return { pass: false, reason: `LLM 비평가에 의해 FAIL 판정(첫 15자 기준)을 받았습니다.\n${failureDetail}` };
     }
     
     // 4순위: 애매하거나 모호할 경우, 가짜 완료(False Completion) 방지를 위해 보수적으로 FAIL 처리
     console.warn(`[TaskVerifier] 애매한 LLM 판정 결과("${verdictClean}")로 인해 보수적으로 FAIL 처리함.`);
-    if (session) {
-      session.emitEvent({
-        type: 'critic_feedback',
-        verdict: 'FAIL',
-        reason: `태스크 ${task.id} 비평가 결과 해석 모호 (원본: "${verdictRaw.trim()}")`,
-        taskTitle: task.title
-      });
-    }
-    return false;
+    return { pass: false, reason: `비평가 결과 해석 모호로 인한 보수적 FAIL 처리.\n${failureDetail}` };
   }
 }

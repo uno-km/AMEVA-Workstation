@@ -216,6 +216,17 @@ export type OrchestratorEventCallback = (event: OrchestratorEvent) => void
  */
 export interface OrchestratorConfig {
   /**
+   * 프론트엔드 채팅방 ID (로깅 및 폴더 구조화 용도)
+   */
+  chatId?: string
+
+  /**
+   * 프론트엔드 지시 ID / Assistant Message ID (로깅 및 폴더 구조화 용도)
+   * 전달될 경우 AgentOrchestrator의 sessionId로 사용됨
+   */
+  missionId?: string
+
+  /**
    * 최대 ReAct 반복 턴 수.
    * - 예상 값: 1 ~ 10000 (사용자 설정 가능).
    * - 기본값: 10000 (사실상 무제한, 컨텍스트 풀 가드레일이 우선 적용).

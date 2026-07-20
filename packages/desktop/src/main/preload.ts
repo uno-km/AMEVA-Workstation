@@ -179,7 +179,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // 콘솔 로그 수동 기록
-  llmAddLog: (payload: { text: string; prefix?: string }) => ipcRenderer.send('llm:add-log', payload),
+  llmAddLog: (payload: { text: string; prefix?: string; chatId?: string; missionId?: string }) => ipcRenderer.send('llm:add-log', payload),
   // 기록된 모든 llama cli 로그 어레이 취득
   llmGetLogs: () => ipcRenderer.invoke('llm:get-logs'),
 

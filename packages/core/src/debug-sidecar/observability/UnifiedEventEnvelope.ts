@@ -22,6 +22,7 @@ export interface UnifiedEventEnvelope {
   message: string;
   
   mission_id?: string;
+  chat_id?: string;
   session_id?: string;
   goal_id?: string;
   plan_id?: string;

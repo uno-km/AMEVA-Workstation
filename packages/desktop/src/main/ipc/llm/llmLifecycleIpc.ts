@@ -29,14 +29,18 @@ import fs from 'fs'
  */
 export function registerLlmLifecycleIpc(): void {
 // ... (in registerLlmLifecycleIpc)
-  ipcMain.on('llm:add-log', (_event, payload: { text: string; prefix?: string }) => {
+  ipcMain.on('llm:add-log', (_event, payload: { text: string; prefix?: string; chatId?: string; missionId?: string }) => {
     const prefix = payload.prefix || 'SYS';
     const logText = payload.text + (!payload.text.endsWith('\n') ? '\n' : '');
     LLMProcessManager.broadcastLog(prefix, logText);
     
     // [Feature: Persistent Local Logging] Save to physical disk
     try {
-      const logDir = join(process.cwd(), 'debug-logs');
+      let logDir = join(process.cwd(), 'debug-logs');
+      if (payload.chatId && payload.missionId) {
+        logDir = join(logDir, payload.chatId, payload.missionId);
+      }
+      
       if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
       const logPath = join(logDir, 'agent_reasoning.log');
       const timestamp = new Date().toISOString();
