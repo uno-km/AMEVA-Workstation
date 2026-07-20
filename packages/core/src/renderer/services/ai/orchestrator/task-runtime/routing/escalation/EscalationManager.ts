@@ -4,7 +4,7 @@
  * @role Handles step-by-step model escalation and loop prevention.
  */
 
-import { ModelRole, EscalationPackage, RoutingDecision } from '../domain/types';
+import type { ModelRole, EscalationPackage, RoutingDecision } from '../domain/types';
 
 export interface EscalationResult {
   escalationReason: string;

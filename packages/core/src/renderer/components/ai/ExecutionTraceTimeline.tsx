@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAIState } from '../../stores/useAIState';
-import { ExecutionTraceViewModel, TimelineCard } from '../../services/ai/orchestrator/task-runtime/trace/ExecutionTraceViewModel';
+import { ExecutionTraceViewModel, type TimelineCard } from '../../services/ai/orchestrator/task-runtime/trace/ExecutionTraceViewModel';
 import { Terminal, Shield, FileText, CheckCircle, RefreshCw, Layers, ChevronDown, ChevronRight, Activity, Eye } from 'lucide-react';
 
 export function ExecutionTraceTimeline() {

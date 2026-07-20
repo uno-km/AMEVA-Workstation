@@ -4,7 +4,7 @@
  * @role Tracks model routing metrics and limits
  */
 
-import { RoutingConfig } from '../domain/types';
+import type { RoutingConfig } from '../domain/types';
 
 export interface RoutingBudgetState {
   routingDecisionCount: number;
