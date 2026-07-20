@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { DocumentContract, DocumentOutline, DocumentSection } from '../domain/WorkbenchTypes';
 
 export interface PlanOutlineRequest {
@@ -17,7 +16,7 @@ export class DocumentOutlinePlanner {
     const sections: DocumentSection[] = request.proposedSections.map((sec, index) => {
       const isRequiredByContract = request.contract.requiredSections.includes(sec.title);
       return {
-        sectionId: randomUUID(),
+        sectionId: crypto.randomUUID(),
         title: sec.title,
         order: index,
         required: sec.required || isRequiredByContract,
@@ -30,7 +29,7 @@ export class DocumentOutlinePlanner {
     for (const reqSec of request.contract.requiredSections) {
       if (!sections.find(s => s.title === reqSec)) {
         sections.push({
-          sectionId: randomUUID(),
+          sectionId: crypto.randomUUID(),
           title: reqSec,
           order: sections.length,
           required: true,
@@ -49,7 +48,7 @@ export class DocumentOutlinePlanner {
     const estimatedLength = sections.reduce((sum, sec) => sum + sec.expectedLength, 0);
 
     return {
-      outlineId: randomUUID(),
+      outlineId: crypto.randomUUID(),
       sections,
       hierarchy,
       dependencies,

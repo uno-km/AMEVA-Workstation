@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { IntegratedDocument, DocumentIssue } from '../domain/WorkbenchTypes';
 
 export interface ConsistencyVerificationResult {
@@ -17,7 +16,7 @@ export class ConsistencyVerifier {
     for (const p of paragraphs) {
       if (seen.has(p)) {
         issues.push({
-          issueId: randomUUID(),
+          issueId: crypto.randomUUID(),
           type: 'DUPLICATION',
           severity: 'ERROR',
           description: 'Duplicate paragraph found across sections.',
@@ -44,7 +43,7 @@ export class ConsistencyVerifier {
     for (const [entity, numbers] of Object.entries(entityNumbers)) {
       if (numbers.size > 1) {
         issues.push({
-          issueId: randomUUID(),
+          issueId: crypto.randomUUID(),
           type: 'NUMERIC_MISMATCH',
           severity: 'ERROR',
           description: `Conflicting numbers found for ${entity}`,
@@ -57,7 +56,7 @@ export class ConsistencyVerifier {
     // 3. Contradiction detection (heuristic for tests)
     if (text.toLowerCase().includes('single router') && text.toLowerCase().includes('multiple routers')) {
       issues.push({
-        issueId: randomUUID(),
+        issueId: crypto.randomUUID(),
         type: 'CONTRADICTION',
         severity: 'ERROR',
         description: 'Found contradiction regarding Router architecture.',

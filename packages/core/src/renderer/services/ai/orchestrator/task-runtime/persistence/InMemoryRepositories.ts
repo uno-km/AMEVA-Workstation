@@ -33,7 +33,6 @@ import type {
 } from '../apply/types';
 import { WorkspaceBlockFlag } from '../apply/types';
 
-import { randomUUID } from 'crypto';
 
 export class ArtifactRepositoryInMemory implements IArtifactRepositoryPersistence {
   private readonly artifacts = new Map<string, RepositoryArtifact>();
@@ -165,7 +164,7 @@ export class ApprovalRepositoryInMemory implements IApprovalRepositoryPersistenc
         return { success: false, errorCode: 'APPROVAL_CONTEXT_MISMATCH', retryable: false };
       }
 
-      const ticketId = `ticket_${randomUUID()}`;
+      const ticketId = `ticket_${crypto.randomUUID()}`;
       record.status = 'RESERVED';
       record.reservedAt = input.now;
       record.reservedByOperationId = input.sourceApplyOperationId;

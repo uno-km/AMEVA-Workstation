@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { DocumentSection, IntegratedDocument } from '../domain/WorkbenchTypes';
 
 export class DocumentIntegrator {
@@ -14,7 +13,7 @@ export class DocumentIntegrator {
     }
 
     return {
-      documentId: randomUUID(),
+      documentId: crypto.randomUUID(),
       sections: sortedSections,
       fullText: fullText.trim(),
       revision: '1'

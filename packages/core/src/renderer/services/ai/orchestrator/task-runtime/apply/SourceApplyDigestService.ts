@@ -202,8 +202,9 @@ export class SourceApplyDigestService {
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     } else {
-      // Fallback for Node test env if crypto.subtle is absent (though node 18+ has crypto in global)
-      const cryptoModule = await import('crypto');
+      // Fallback for Node test env if crypto.subtle is absent
+      const mod = 'crypto';
+      const cryptoModule = await import(/* @vite-ignore */ mod);
       return cryptoModule.createHash('sha256').update(data).digest('hex');
     }
   }

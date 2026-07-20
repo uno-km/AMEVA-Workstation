@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { DocumentContract } from '../domain/WorkbenchTypes';
 
 export interface CreateContractRequest {
@@ -21,7 +20,7 @@ export interface CreateContractRequest {
 export class DocumentContractService {
   public createContract(request: CreateContractRequest): DocumentContract {
     return {
-      contractId: randomUUID(),
+      contractId: crypto.randomUUID(),
       documentType: request.documentType,
       objective: request.objective,
       audience: request.audience || 'General',
