@@ -228,7 +228,7 @@ export function ReasoningTraceViewer({
       )}
       
       {/* ── Phase 4 Execution Trace (Mission Trace가 있다면 렌더링) ── */}
-      {isExpanded && <ExecutionTraceTimeline />}
+      {thoughtExpanded && <ExecutionTraceTimeline />}
     </div>
   )
 }
