@@ -22,6 +22,7 @@ export class RoutingConfigManager {
     maxModelSwitches: 10,
     maxTotalModelCalls: 50,
     maxEstimatedTokens: 100000,
+    maxRoutingTimeMs: 60000,
     rolePreferences: {
       RULE_ENGINE: [],
       SMALL_MODEL: [],
