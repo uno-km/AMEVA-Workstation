@@ -352,7 +352,7 @@ export function useAIAgent() {
            const newMsgs = [...msgs];
            const idx = newMsgs.findIndex((m: AIMessage) => m.id === assistantId);
            if (idx >= 0) {
-              newMsgs[idx] = { ...newMsgs[idx], content: `에러 분석 중 문제가 발생했습니다:\n\`\`\`\n${err.message}\n\`\`\``, isStreaming: false, isError: true };
+              newMsgs[idx] = { ...newMsgs[idx], content: `에러 분석 중 문제가 발생했습니다:\n\`\`\`\n${err.message}\n\`\`\``, isStreaming: false, error: true };
            }
            return newMsgs;
         });

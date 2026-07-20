@@ -4,7 +4,7 @@
  * @role Central routing decision logic
  */
 
-import { TaskRoutingProfile, ModelSelectionResult, RoutingConfig, ModelRole, ModelDescriptor } from '../domain/types';
+import type { TaskRoutingProfile, ModelSelectionResult, RoutingConfig, ModelRole, ModelDescriptor } from '../domain/types';
 import { ModelRegistry } from '../registry/ModelRegistry';
 import { HardwareResourceService } from './HardwareResourceService';
 import { ModelAdapterProvider } from '../adapter/ModelAdapterProvider';
@@ -20,7 +20,7 @@ export class ModelRouter {
     
     // 1. Check for Rule Engine path first
     // If the task is purely about simple JSON parsing, file check, or simple classification without complex reasoning
-    if (this.canUseRuleEngine(profile)) {
+    if (this.canUseRuleEngine(profile, config)) {
       selectionReasons.push('Task is simple enough to bypass LLM and use RULE_ENGINE.');
       return {
         routingDecisionId,
@@ -256,7 +256,7 @@ export class ModelRouter {
     return roles;
   }
 
-  private static mapModelToRole(model: ModelDescriptor, targetRoles: ModelRole[]): ModelRole {
+  private static mapModelToRole(_model: ModelDescriptor, targetRoles: ModelRole[]): ModelRole {
     // Return the first target role that this model satisfies in the registry mapping, or default to targetRoles[0]
     return targetRoles[0]; // Simplified for now. Registry holds actual mappings.
   }

@@ -4,8 +4,10 @@
  * @role PHASE 5 - Mission Completion Review 통합 테스트
  */
 
+// @ts-ignore
 import { describe, it, beforeEach } from 'vitest';
 import * as assert from 'node:assert';
+import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
 
 import { TaskRuntimeStore } from '../store/TaskRuntimeStore';
 import { MissionCompletionReviewInputBuilder } from '../completion/builder/MissionCompletionReviewInputBuilder';
@@ -96,14 +98,14 @@ describe('MissionCompletionRuntime Integration', () => {
           verifierType: 'deterministic',
           createdAt: Date.now()
         } : undefined
-      }
+      } as any
     };
   };
 
   it('should return SUCCESS when all required tasks are COMPLETED and PASSED', async () => {
     taskStore.initMission('m1', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
-import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
+    
     
     // t1 is required explicitly
     const task1 = createMockTaskEntity('t1', 1, 'COMPLETED', true, [{ type: 'doc1', content: VALID_MOCK_CONTENT }]);
@@ -135,7 +137,7 @@ import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
 
   it('should treat missing outputs with Placeholder string as missing deliverables', async () => {
     taskStore.initMission('m6', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
-import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
+
     const task1 = createMockTaskEntity('fake_out', 1, 'COMPLETED', true, [{ type: 'req-fake_out', content: 'Placeholder data' }]);
     task1.definition.required = true;
     taskStore.registerTask(task1, 'm6');
@@ -162,7 +164,7 @@ import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
 
   it('should return the same decision via idempotency caching', async () => {
     taskStore.initMission('m8', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
-import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
+
     const task1 = createMockTaskEntity('semantic_task', 1, 'COMPLETED', true, [{ type: 'out', content: VALID_MOCK_CONTENT }]);
     task1.definition.required = true;
     taskStore.registerTask(task1, 'm7');
@@ -176,7 +178,7 @@ import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
   it('should return SUCCESS_WITH_WARNINGS if optional tasks fail', async () => {
     taskStore.initMission('m2', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
-import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
+
     const task1 = createMockTaskEntity('req1', 1, 'COMPLETED', true, [{ type: 'out', content: VALID_MOCK_CONTENT }]);
     task1.definition.required = true;
     const task2 = createMockTaskEntity('opt1', 10, 'FAILED', false);
@@ -195,7 +197,7 @@ import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
   it('should return FAILED if a required task fails even if some completed', async () => {
     taskStore.initMission('m3', { maxReasoningTurns: 100, consumedReasoningTurns: 0, reservedReasoningTurns: 0, maxDurationMs: 3600000, consumedDurationMs: 0, maxToolCalls: 100, consumedToolCalls: 0, maxRecoveries: 3, consumedRecoveries: 0 });
     
-import { VALID_MOCK_CONTENT } from './fixtures/MockContentFixture';
+
     const task1 = createMockTaskEntity('req1', 1, 'COMPLETED', true, [{ type: 'out1', content: VALID_MOCK_CONTENT }]);
     task1.definition.required = true;
     const task1b = createMockTaskEntity('req1b', 1, 'COMPLETED', true, [{ type: 'out1b', content: VALID_MOCK_CONTENT }]);

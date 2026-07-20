@@ -1,4 +1,4 @@
-import { ErrorHeuristicAnalysisResult } from './CodeErrorAnalysisTypes';
+import type { ErrorHeuristicAnalysisResult } from './CodeErrorAnalysisTypes';
 
 export class ErrorHeuristicAnalyzer {
   private static readonly MAX_SNIPPET_RADIUS = 12; // ±12 lines
@@ -107,7 +107,7 @@ export class ErrorHeuristicAnalyzer {
     return snippetLines.join('\n');
   }
 
-  private static matchRules(errorLog: string, snippet: string | null, lang: string): any | null {
+  private static matchRules(errorLog: string, _snippet: string | null, _lang: string): any | null {
     // 1. TS1005 (Syntax error)
     if (errorLog.includes('TS1005')) {
       return {

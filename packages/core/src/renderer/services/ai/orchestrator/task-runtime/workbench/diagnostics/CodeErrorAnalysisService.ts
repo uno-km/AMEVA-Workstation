@@ -6,10 +6,14 @@ import { ModelCallGatewayAdapter } from '../../routing/gateway/ModelCallGatewayA
 import { ExecutionTraceManager } from '../../trace/ExecutionTraceManager';
 import { CodeErrorPromptBuilder } from '../../completion/builder/CodeErrorPromptBuilder';
 import { ErrorHeuristicAnalyzer } from './ErrorHeuristicAnalyzer';
-import { CodeErrorAnalysisRequest, CodeErrorAnalysisResponse } from './CodeErrorAnalysisTypes';
+import type { CodeErrorAnalysisRequest, CodeErrorAnalysisResponse } from './CodeErrorAnalysisTypes';
 
 export class CodeErrorAnalysisService {
-  constructor(private traceManager?: ExecutionTraceManager) {}
+  private traceManager?: ExecutionTraceManager;
+
+  constructor(traceManager?: ExecutionTraceManager) {
+    this.traceManager = traceManager;
+  }
 
   public async analyzeError(req: CodeErrorAnalysisRequest): Promise<CodeErrorAnalysisResponse> {
     const config = RoutingConfigManager.getInstance().getConfig();
@@ -52,7 +56,7 @@ export class CodeErrorAnalysisService {
       throw new Error(`Failed to route Code Error Analysis: ${decision.status}`);
     }
 
-    const rawAdapter = ModelAdapterProvider.getInstance().getAdapter(decision.selectedModelId, decision.selectedRole);
+    const rawAdapter = await ModelAdapterProvider.getInstance().getAdapterForModel(decision.selectedModelId);
     if (!rawAdapter) {
       throw new Error(`Adapter not found for ${decision.selectedModelId}`);
     }
@@ -73,15 +77,15 @@ export class CodeErrorAnalysisService {
       heuristicResult.extractedLineNumber
     );
 
-    const response = await gateway.generate(prompt);
+    const responseString = await gateway.generate([{ role: 'user', content: prompt }]);
 
     return {
       success: true,
       category: 'LLM_ANALYSIS',
       subtype: 'Dynamic',
       rootCause: 'Extracted via LLM',
-      explanation: response.content || '',
-      suggestedFix: response.content || '',
+      explanation: responseString || '',
+      suggestedFix: responseString || '',
       confidence: 0.8, // LLM confidence baseline
       analyzerUsed: 'LLM_FALLBACK',
       snippetUsed: snippetToAnalyze,

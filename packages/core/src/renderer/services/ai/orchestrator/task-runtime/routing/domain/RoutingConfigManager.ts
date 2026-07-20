@@ -4,7 +4,7 @@
  * @role Manages routing configurations
  */
 
-import { RoutingConfig, ModelRole } from './types';
+import type { RoutingConfig } from './types';
 
 export class RoutingConfigManager {
   private static instance: RoutingConfigManager;
