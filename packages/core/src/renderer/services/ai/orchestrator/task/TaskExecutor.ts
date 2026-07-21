@@ -9,6 +9,7 @@
  */
 
 import type { Task, TaskResult } from './types';
+import type { TaskOutputMode } from '../task-runtime/domain/types';
 
 /**
  * TaskExecutor

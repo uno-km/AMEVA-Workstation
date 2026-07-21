@@ -1145,10 +1145,11 @@ export class AgentOrchestratorSession {
      */
     if (this.actorCriticHook) {
       try {
+        const conversationContext = this.contextMessages.map(m => `[${m.role}] ${m.content}`).join('\n');
         const criticVerdict = await this.actorCriticHook.beforeToolCall(
           request.name,
           request.args,
-          this.contextMessages
+          conversationContext
         );
         if (criticVerdict.verdict === 'REJECT') {
           this.ipcLog({
@@ -1504,7 +1505,7 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         previousModelIds: [],
         routingBudgetRemaining: 5,
         riskLevel: 'LOW',
-        retryHistory: [],
+        retryHistory: 0,
         previousDefectSignatures: []
       };
 
@@ -1514,11 +1515,10 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         eventId: crypto.randomUUID(),
         taskId: 'planning',
         type: 'ROUTING' as any,
-        stage: 'ROUTING',
         status: routingResult.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
         timestamp: Date.now(),
         message: `V2 Planning Routing: ${routingResult.selectedModelId || 'FAILED'}`,
-        metadata: { routingResult }
+        metadata: { stage: 'ROUTING', routingResult }
       });
 
       if (routingResult.status === 'SUCCESS' && routingResult.selectedModelId) {
@@ -1561,11 +1561,11 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         eventId: crypto.randomUUID(),
         taskId: 'planning',
         type: 'ROUTING' as any,
-        stage: 'ROUTING',
         status: 'SUCCESS',
         timestamp: Date.now(),
         message: `Legacy Routing Fallback`,
         metadata: {
+          stage: 'ROUTING',
           traceType: 'legacy_routing_fallback',
           fallbackReason: 'Explicit Legacy Mode selected or Feature Flag disabled',
           v2FailureCode: 'V2_DISABLED_OR_EXPLICIT_FALLBACK',

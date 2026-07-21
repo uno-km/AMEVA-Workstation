@@ -34,7 +34,7 @@ export type TaskStatus = 'PENDING' | 'READY' | 'RUNNING' | 'COMPLETED' | 'FAILED
  */
 export interface TaskResult {
   /** 실행 및 검증 최종 판정 상태 */
-  readonly status: 'SUCCESS' | 'FAILED' | 'SKIPPED';
+  readonly status: 'SUCCESS' | 'FAILED' | 'SKIPPED' | 'EXECUTED_PENDING_VERIFICATION';
   /** 생성된 실제 파일 경로 또는 본문 텍스트 결과물 */
   readonly artifact?: string;
   /** 태스크 수행 결과 요약 정보 */

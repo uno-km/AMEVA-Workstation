@@ -4,7 +4,6 @@ import type { CriterionResult } from '../domain/VerificationTypes';
 import type { IFileSystemAdapter } from '../../artifact/IFileSystemAdapter';
 import { OutputInferenceService } from '../services/OutputInferenceService';
 import { OutputAttributionService } from '../services/OutputAttributionService';
-import type { TaskOutputMode } from '../../domain/types';
 
 export class DeterministicVerifier implements TaskVerifier {
   public readonly verifierType = 'DETERMINISTIC_VERIFIER';

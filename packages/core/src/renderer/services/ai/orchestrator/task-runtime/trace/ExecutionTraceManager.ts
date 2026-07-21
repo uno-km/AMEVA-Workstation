@@ -18,7 +18,6 @@
 import type {
   TraceEvent,
   TraceEventType,
-  TraceVisibility,
   ToolRiskLevel,
   DecisionSummary,
   ToolExecutionTrace,
