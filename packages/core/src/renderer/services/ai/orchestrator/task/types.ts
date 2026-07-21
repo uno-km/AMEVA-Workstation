@@ -49,6 +49,8 @@ export interface TaskResult {
   readonly declaredOutputMode?: any;
   /** 추론된 출력 모드 */
   readonly inferredOutputMode?: any;
+  /** 추론된 파일 출력 경로 목록 */
+  readonly inferredFileOutputs?: any;
 }
 
 /**
