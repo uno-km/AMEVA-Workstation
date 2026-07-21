@@ -1515,11 +1515,10 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         eventId: crypto.randomUUID(),
         taskId: 'planning',
         type: 'ROUTING' as any,
-        status: routingResult.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED',
         timestamp: Date.now(),
         message: `V2 Planning Routing: ${routingResult.selectedModelId || 'FAILED'}`,
-        metadata: { stage: 'ROUTING', routingResult }
-      });
+        metadata: { stage: 'ROUTING', routingStatus: routingResult.status, routingResult }
+      } as any);
 
       if (routingResult.status === 'SUCCESS' && routingResult.selectedModelId) {
         try {
@@ -1561,11 +1560,11 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
         eventId: crypto.randomUUID(),
         taskId: 'planning',
         type: 'ROUTING' as any,
-        status: 'SUCCESS',
         timestamp: Date.now(),
         message: `Legacy Routing Fallback`,
         metadata: {
           stage: 'ROUTING',
+          routingStatus: 'SUCCESS',
           traceType: 'legacy_routing_fallback',
           fallbackReason: 'Explicit Legacy Mode selected or Feature Flag disabled',
           v2FailureCode: 'V2_DISABLED_OR_EXPLICIT_FALLBACK',
@@ -1573,7 +1572,7 @@ Final Answer: [여기에 사용자에게 전달할 최종 답변을 작성하세
           selectedLegacyModelId: this.config.modelId,
           userVisibleWarning: 'Using legacy planning system due to explicit fallback policy'
         }
-      });
+      } as any);
     }
 
     const interpreter = new GoalInterpreter(plannerAdapter);

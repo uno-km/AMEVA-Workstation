@@ -43,6 +43,12 @@ export interface TaskResult {
   readonly evidence: string;
   /** 태스크 기동부터 종료까지 소요된 총 밀리초 (ms) */
   readonly executionTime: number;
+  /** 도구/텍스트 출력 목록 */
+  readonly outputs?: any[];
+  /** 선언된 출력 모드 */
+  readonly declaredOutputMode?: any;
+  /** 추론된 출력 모드 */
+  readonly inferredOutputMode?: any;
 }
 
 /**
