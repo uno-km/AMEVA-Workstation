@@ -769,6 +769,7 @@ input:checked + .slider:before {
 
 .carousel-track {
   display: flex;
+  align-items: flex-start;
   transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
   width: 500%; /* 5개 카드 (JS, Py, HTML, SQL, MCP/Market) */
 }
