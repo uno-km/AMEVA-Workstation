@@ -21,9 +21,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { ToggleLeft, ToggleRight, Plus, Trash2 } from 'lucide-react'
 import { MCPClientManager } from '../../utils/mcpClient'
 import * as ipc from '../../services/ipc/electronApiAdapter'
+import { RequirePermission } from '../auth/RequirePermission'
 
 interface SettingsTabMCPProps {
-  isProPlan: boolean
   isOpen: boolean
 }
 
@@ -33,7 +33,7 @@ interface SettingsTabMCPProps {
    * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
    * - 예시: `SettingsTabMCP(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
    */
-export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
+export function SettingsTabMCP({ isOpen }: SettingsTabMCPProps) {
   const [mcpServers, setMcpServers] = useState<any[]>([])
   const [newMcpName, setNewMcpName] = useState('')
   const [newMcpType, setNewMcpType] = useState<'stdio' | 'http'>('http')
@@ -218,17 +218,8 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
     setTimeout(() => refreshMcpTools(), 200)
   }
 
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!isProPlan`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!isProPlan)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-  if (!isProPlan) return null
-
   return (
-    <>
+    <RequirePermission scope="mcp:connect">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
         <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0 }}>MCP Server Manager</h3>
         <button
@@ -453,7 +444,7 @@ export function SettingsTabMCP({ isProPlan, isOpen }: SettingsTabMCPProps) {
           </div>
         )}
       </div>
-    </>
+    </RequirePermission>
   )
 }
 

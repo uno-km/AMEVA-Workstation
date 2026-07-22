@@ -27,7 +27,7 @@ export interface MenuBarShortcutsOptions {
   showStatusBar: boolean;
   showSidebar: boolean;
   showConsole: boolean;
-  isProPlan: boolean;
+  canAccessMarketplace: boolean;
   
   setIsAltMode: React.Dispatch<React.SetStateAction<boolean>>;
   setActiveMenu: (menu: string | null) => void;
@@ -128,7 +128,7 @@ export function useMenuBarShortcuts(options: MenuBarShortcutsOptions) {
         else if (key === 'v') { e.preventDefault(); options.setIsAltMode(true); options.setActiveMenu('view') }
         else if (key === 'w') { e.preventDefault(); options.setIsAltMode(true); options.setActiveMenu('window') }
         else if (key === 's') { e.preventDefault(); options.setIsAltMode(false); options.setActiveMenu(null); options.onOpenSettings() }
-        else if (key === 'm' && options.isProPlan) { e.preventDefault(); options.setIsAltMode(false); options.setActiveMenu(null); options.onOpenMarketplace() }
+        else if (key === 'm' && options.canAccessMarketplace) { e.preventDefault(); options.setIsAltMode(false); options.setActiveMenu(null); options.onOpenMarketplace() }
         else if (key === 'h') { e.preventDefault(); options.setIsAltMode(true); options.setActiveMenu('help') }
         return
       }
@@ -200,7 +200,7 @@ export function useMenuBarShortcuts(options: MenuBarShortcutsOptions) {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [
     options.isAltMode, options.activeMenu, options.editorMode, options.showStatusBar, 
-    options.showSidebar, options.showConsole, options.isProPlan,
+    options.showSidebar, options.showConsole, options.canAccessMarketplace,
     options.onNewWindow, options.onOpenFile, options.onSaveFile, options.onSaveAs, 
     options.onPrint, options.onCloseApp,
     options.setEditorMode, options.setShowStatusBar, options.setShowSidebar, options.setShowConsole,

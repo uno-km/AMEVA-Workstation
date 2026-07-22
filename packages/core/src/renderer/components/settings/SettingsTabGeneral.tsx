@@ -19,36 +19,37 @@
 
 import { ToggleLeft, ToggleRight } from 'lucide-react'
 import type { AppSettings } from '../SettingsModal'
+import { useProcessStore, UserTier } from '../../stores/useProcessStore'
 
 export interface SettingsTabGeneralProps {
   activeTab: string
   settings: AppSettings
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void
-  isProPlan: boolean
-  handleToggleProPlan: () => void | Promise<void>
 }
 
-  /*
-   * [FUNCTION CONTRACT]
-   * - 함수 명: `SettingsTabGeneral`
-   * - 역할: 인자 정보를 검수하고 비즈니스 계약 조건에 맞춰 최종 바인딩 결과물/바이너리 버퍼를 반환함.
-   * - 예시: `SettingsTabGeneral(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
-   */
 export function SettingsTabGeneral({
   activeTab,
   settings,
   onUpdateSettings,
-  isProPlan,
-  handleToggleProPlan,
 }: SettingsTabGeneralProps) {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `activeTab !== 'General'`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (activeTab !== 'General')` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
+  const userTier = useProcessStore((state) => state.userTier)
+  const setUserTier = useProcessStore((state) => state.setUserTier)
+  const setGrantedPermissions = useProcessStore((state) => state.setGrantedPermissions)
+
   if (activeTab !== 'General') return null
+
+  const handleTierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newTier = e.target.value as UserTier;
+    setUserTier(newTier);
+    if (newTier === 'free') {
+      setGrantedPermissions([]);
+    } else if (newTier === 'pro') {
+      setGrantedPermissions(['mcp:connect', 'plugin:premium', 'ai:unlimited']);
+    } else if (newTier === 'enterprise') {
+      // Mocking a custom enterprise that has only mcp but no hwp export
+      setGrantedPermissions(['mcp:connect']);
+    }
+  };
 
   return (
     <>
@@ -116,14 +117,26 @@ export function SettingsTabGeneral({
           padding: '10px 12px'
         }}>
           <div>
-            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--primary)' }}>👑 AMEVA Pro 플랜 활성화</div>
+            <div style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--primary)' }}>👑 AMEVA License Tier (Dev)</div>
             <div style={{ fontSize: '9.5px', color: 'var(--text-muted)', marginTop: '2px' }}>
-              유료 기능을 활성화합니다. 마켓플레이스 접근 및 외부 MCP 서버(Stdio/HTTP) 매니저 탭이 개방됩니다.
+              권한 테스트용 라이선스 등급 스위처입니다.
             </div>
           </div>
-          <button onClick={handleToggleProPlan} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}>
-            {isProPlan ? <ToggleRight size={26} /> : <ToggleLeft size={26} style={{ color: 'var(--text-dark)' }} />}
-          </button>
+          <select 
+            value={userTier} 
+            onChange={handleTierChange}
+            style={{ 
+              background: 'var(--bg-glass-active)', 
+              color: 'var(--text-primary)', 
+              border: '1px solid var(--border-muted)', 
+              borderRadius: '4px', 
+              padding: '4px 8px' 
+            }}
+          >
+            <option value="free">Free Tier</option>
+            <option value="pro">Pro Tier</option>
+            <option value="enterprise">Enterprise Tier</option>
+          </select>
         </div>
       </div>
     </>

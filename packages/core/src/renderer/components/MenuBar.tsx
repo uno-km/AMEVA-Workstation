@@ -23,8 +23,8 @@ import { Check, LayoutGrid, PanelLeft, PanelBottom, PanelRight, Search, Settings
 import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 
 import { useAppContext } from '../contexts/AppContext'
-import { useUIStore } from '../stores/useUIStore'
 import { useWorkspaceStore } from '../stores/useWorkspaceStore'
+import { useProcessStore } from '../stores/useProcessStore'
 import * as ipc from '../services/ipc/electronApiAdapter'
 
 export interface MenuBarProps {}
@@ -51,7 +51,6 @@ export function MenuBar({}: MenuBarProps = {}) {
     handleOpenGithub: onOpenGithub,
     settings,
     handleUpdateSettings,
-    isProPlan,
     setUsername,
   } = useAppContext()
   
@@ -66,6 +65,8 @@ export function MenuBar({}: MenuBarProps = {}) {
   } = useUIStore()
 
   const filePath = useWorkspaceStore((state) => state.filePath)
+  const hasPermission = useProcessStore((s) => s.hasPermission)
+  const canAccessMarketplace = hasPermission('plugin:premium')
   const [googlePopoverOpen, setGooglePopoverOpen] = useState(false)
   const [googleProfile, setGoogleProfile] = useState<any | null>(null)
 
@@ -272,7 +273,7 @@ export function MenuBar({}: MenuBarProps = {}) {
 
   // Alt 메뉴 핫키 라우팅 커스텀 훅으로 위임 (관심사 분리)
   useMenuBarShortcuts({
-    isAltMode, activeMenu, editorMode, showStatusBar, showSidebar, showConsole, isProPlan,
+    isAltMode, activeMenu, editorMode, showStatusBar, showSidebar, showConsole, canAccessMarketplace,
     setIsAltMode, setActiveMenu, triggerAction,
     onNewWindow, onOpenFile, onSaveFile, onSaveAs, onPrint, onCloseApp,
     setEditorMode, setShowStatusBar, setShowSidebar, setShowConsole,
@@ -544,7 +545,7 @@ export function MenuBar({}: MenuBarProps = {}) {
           </div>
 
           {/* 1.5 Marketplace 메뉴 */}
-          {isProPlan && (
+          {canAccessMarketplace && (
             <div style={{ position: 'relative' }}>
               <button
                 style={menuStyle}

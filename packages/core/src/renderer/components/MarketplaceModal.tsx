@@ -25,6 +25,7 @@ import { SaaSPluginCard } from './marketplace/SaaSPluginCard'
 import { PluginCard } from './marketplace/PluginCard'
 import { FreeModal } from './ui/modals/FreeModal'
 import { Layers } from 'lucide-react'
+import { useProcessStore } from '../stores/useProcessStore'
 
 export type { PluginMetadata, MarketplaceModalProps }
 
@@ -135,8 +136,10 @@ export function MarketplaceModal({
   installedPlugins,
   onInstallPlugin,
   onUninstallPlugin,
-  isProPlan = false,
 }: MarketplaceModalProps) {
+  const hasPermission = useProcessStore((s) => s.hasPermission)
+  const canUsePremium = hasPermission('plugin:premium')
+
   const [plugins, setPlugins] = useState<PluginMetadata[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -216,12 +219,12 @@ export function MarketplaceModal({
           const parsed = JSON.parse(stored)
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!isProPlan`
+       * - 조건 식: `!canUsePremium`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!isProPlan)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (!canUsePremium)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-          if (!isProPlan) {
+          if (!canUsePremium) {
             setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false, excelViewer: false, kanbanBoard: false })
           } else {
             setEnabledPlugins(parsed)
@@ -229,12 +232,12 @@ export function MarketplaceModal({
         } else {
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isProPlan`
+       * - 조건 식: `canUsePremium`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isProPlan)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (canUsePremium)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-          if (isProPlan) {
+          if (canUsePremium) {
             setEnabledPlugins({ webSearch: true, pythonConsole: true, requestQueue: false, excelViewer: false, kanbanBoard: false })
           } else {
             setEnabledPlugins({ webSearch: false, pythonConsole: false, requestQueue: false, excelViewer: false, kanbanBoard: false })
@@ -242,7 +245,7 @@ export function MarketplaceModal({
         }
       } catch (e) {}
     }
-  }, [isOpen, isProPlan])
+  }, [isOpen, canUsePremium])
 
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -254,12 +257,12 @@ export function MarketplaceModal({
   const handleToggleSaaSPlugin = (id: string) => {
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!isProPlan`
+       * - 조건 식: `!canUsePremium`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!isProPlan)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (!canUsePremium)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-    if (!isProPlan) {
+    if (!canUsePremium) {
       alert('⚠️ 해당 기능은 Pro 플랜 이상에서만 활성화할 수 있는 프리미엄 도구입니다. 가격 플랜 탭에서 업그레이드를 진행하세요.')
       return
     }

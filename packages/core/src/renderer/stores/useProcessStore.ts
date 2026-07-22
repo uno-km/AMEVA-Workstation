@@ -45,6 +45,14 @@ export const IDLE_EXPORT_PROGRESS: ExportProgress = {
   message: ''
 }
 
+export type PermissionScope = 
+  | 'mcp:connect'
+  | 'plugin:premium'
+  | 'export:hwp'
+  | 'ai:unlimited';
+
+export type UserTier = 'free' | 'pro' | 'enterprise';
+
 /**
  * ProcessState 인터페이스 정의.
  * 다운로드 큐, 트랜잭션 진행 상태 및 렌더 배율을 관리하는 스토어 구조.
@@ -88,13 +96,19 @@ export interface ProcessState {
 
   /*
    * [MEMBERSHIP BILLING & FREE LOCK STATES]
-   * - isProPlan: 프로 결제 활성화 여부.
-   * - setIsProPlan: 플랜 변경 액션.
+   * - userTier: 현재 요금제 등급
+   * - setUserTier: 요금제 변경 액션
+   * - grantedPermissions: 유저에게 부여된 권한 배열
+   * - setGrantedPermissions: 권한 배열 갱신 액션
+   * - hasPermission: 특정 권한 유무 확인 유틸
    * - isFreeModeLocked: 일일 AI 제한 한도 도달에 따른 잠금 상태 플래그.
    * - setIsFreeModeLocked: 잠금 지정 액션.
    */
-  isProPlan: boolean
-  setIsProPlan: (val: boolean) => void
+  userTier: UserTier
+  setUserTier: (tier: UserTier) => void
+  grantedPermissions: PermissionScope[]
+  setGrantedPermissions: (perms: PermissionScope[]) => void
+  hasPermission: (scope: PermissionScope) => boolean
   isFreeModeLocked: boolean
   setIsFreeModeLocked: (val: boolean) => void
 
@@ -132,20 +146,32 @@ export interface ProcessState {
 }
 
 /**
- * 요금제 초기값: LocalStorage에서 안전하게 동기 복원하여 반환하는 헬퍼 함수.
+ * 권한 및 요금제 초기값: LocalStorage에서 동기 복원
  */
-function loadIsProPlan(): boolean {
+function loadUserTier(): UserTier {
   try {
-    return localStorage.getItem('is-pro-plan') === 'true'
+    const tier = localStorage.getItem('user-tier');
+    if (tier === 'pro' || tier === 'enterprise') return tier as UserTier;
+    return 'free';
   } catch {
-    return false
+    return 'free';
+  }
+}
+
+function loadGrantedPermissions(): PermissionScope[] {
+  try {
+    const perms = localStorage.getItem('granted-permissions');
+    if (perms) return JSON.parse(perms);
+    return loadUserTier() === 'pro' ? ['mcp:connect', 'plugin:premium', 'ai:unlimited'] : [];
+  } catch {
+    return [];
   }
 }
 
 /**
  * useProcessStore Zustand 스토어 본체 정의.
  */
-export const useProcessStore = create<ProcessState>((set) => ({
+export const useProcessStore = create<ProcessState>((set, get) => ({
   downloadStatus: null,
   setDownloadStatus: (status) => set((state) => ({ downloadStatus: typeof status === 'function' ? status(state.downloadStatus) : status })),
 
@@ -179,8 +205,19 @@ export const useProcessStore = create<ProcessState>((set) => ({
   setExportMinimized: (val) => set({ exportMinimized: val }),
   toggleExportMinimized: () => set((state) => ({ exportMinimized: !state.exportMinimized })),
 
-  isProPlan: loadIsProPlan(),
-  setIsProPlan: (val) => set({ isProPlan: val }),
+  userTier: loadUserTier(),
+  setUserTier: (tier) => {
+    localStorage.setItem('user-tier', tier);
+    set({ userTier: tier });
+  },
+  grantedPermissions: loadGrantedPermissions(),
+  setGrantedPermissions: (perms) => {
+    localStorage.setItem('granted-permissions', JSON.stringify(perms));
+    set({ grantedPermissions: perms });
+  },
+  hasPermission: (scope) => {
+    return get().grantedPermissions.includes(scope);
+  },
 
   isFreeModeLocked: false,
   setIsFreeModeLocked: (val) => set({ isFreeModeLocked: val }),

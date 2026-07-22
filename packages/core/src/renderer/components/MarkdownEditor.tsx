@@ -145,6 +145,7 @@ import { useSelectionTracking } from '../hooks/editor/useSelectionTracking'
  */
 import { useAppContext } from '../contexts/AppContext'
 import { useWorkspaceStore } from '../stores/useWorkspaceStore'
+import { useProcessStore } from '../stores/useProcessStore'
 
 /**
  * @interface MarkdownEditorProps
@@ -316,12 +317,11 @@ export function MarkdownEditor({
    * - editorMode: welcome/edit/preview/raw 화면 모드 지정.
    * - peers: 현재 편집에 참여 중인 피어 목록.
    * - settings: 렌더링 일반 세팅 정보.
-   * - isProPlan: 프로 요금제 가입 여부.
    * - handleOpenFile: 파일 열기 트리거.
    * - handleStartWelcomeEdit: 웰컴 화면 종료 및 에디터 로드 콜백.
    * - handleStartNewDocument: 새 문서 생성 콜백.
    */
-  const { editor, editorMode, peers, settings, isProPlan, handleOpenFile, handleStartWelcomeEdit, handleStartNewDocument } = useAppContext()
+  const { editor, editorMode, peers, settings, handleOpenFile, handleStartWelcomeEdit, handleStartNewDocument } = useAppContext()
   
   /*
    * [ZUSTAND STORE PROPERTIES]
@@ -330,6 +330,9 @@ export function MarkdownEditor({
    * - tabs: 다중 문서 탭 정보 목록.
    */
   const { currentContent, setCurrentContent, tabs } = useWorkspaceStore()
+  
+  const hasPermission = useProcessStore((s) => s.hasPermission)
+  const canUseAITagging = hasPermission('ai:unlimited')
   
   /*
    * [LOCAL CONFIG VARIABLES]
@@ -360,7 +363,7 @@ export function MarkdownEditor({
    * - handleEditorMouseMove: 에디터 캔버스 내 마우스 이동 실시간 감지 핸들러.
    */
   const { hoverBlock, handleEditorMouseMove } = useHoverBlock(
-    editor, editorMode, editorContainerRef, onMouseMove, isProPlan
+    editor, editorMode, editorContainerRef, onMouseMove, canUseAITagging
   )
 
   /*
@@ -461,9 +464,9 @@ export function MarkdownEditor({
         <PeerBlockHighlightLayer peers={peers} containerRef={editorContainerRef} />
 
         {/* 블록 컨텍스트 연동 호버 어시스턴트 별표(★) 버튼 레이어 
-          * [CONTRACT] isProPlan 조건 적용 위치: 이 별표 버튼은 Pro 전용 기능(블록 컨텍스트 태깅)이므로 isProPlan=true일 때만 표시.
+          * [CONTRACT] canUseAITagging 조건 적용 위치: 이 별표 버튼은 Pro 전용 기능(블록 컨텍스트 태깅)이므로 권한이 있을 때만 표시.
           */}
-        {hoverBlock && editorMode === 'edit' && isProPlan && (
+        {hoverBlock && editorMode === 'edit' && canUseAITagging && (
           <button
             className="sparkle-hover-btn"
             style={{

@@ -21,7 +21,7 @@ import React, { useState, useEffect } from 'react'
 import { MCPClientManager } from '../../utils/mcpClient'
 
 interface MCPStatusIndicatorProps {
-  isProPlan: boolean
+  canUseMCP: boolean
   mcpServers: any[]
   activeTooltip: string | null
   handleMouseEnter: (id: string) => void
@@ -36,7 +36,7 @@ interface MCPStatusIndicatorProps {
    * - 예시: `MCPStatusIndicator(...)` 호출 시 런타임 비동기/동기 연쇄 반응 유도.
    */
 export function MCPStatusIndicator({
-  isProPlan,
+  canUseMCP,
   mcpServers,
   activeTooltip,
   handleMouseEnter,
@@ -75,26 +75,26 @@ export function MCPStatusIndicator({
     }
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isProPlan && mcpServers && mcpServers.length > 0`
+       * - 조건 식: `canUseMCP && mcpServers && mcpServers.length > 0`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isProPlan && mcpServers && mcpServers.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (canUseMCP && mcpServers && mcpServers.length > 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-    if (isProPlan && mcpServers && mcpServers.length > 0) {
+    if (canUseMCP && mcpServers && mcpServers.length > 0) {
       loadTools()
     } else {
       setMcpTools([])
     }
-  }, [mcpServers, isProPlan])
+  }, [mcpServers, canUseMCP])
 
       /*
        * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!isProPlan || !mcpServers || mcpServers.length === 0`
+       * - 조건 식: `!canUseMCP || !mcpServers || mcpServers.length === 0`
        * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
        * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!isProPlan || !mcpServers || mcpServers.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
+       * - 예시: `if (!canUseMCP || !mcpServers || mcpServers.length === 0)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
-  if (!isProPlan || !mcpServers || mcpServers.length === 0) return null
+  if (!canUseMCP || !mcpServers || mcpServers.length === 0) return null
 
       /*
        * [RUN-TIME STATE / INVARIANT]

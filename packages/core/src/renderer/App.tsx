@@ -314,7 +314,7 @@ export default function App() {
    * - editorZoom: 마크다운 에디터 렌더링 배율 값.
    */
   const {
-    isProPlan, setIsProPlan, mcpServersState, setMcpServersState,
+    mcpServersState, setMcpServersState,
     editorZoom
   } = useProcessStore()
 
@@ -448,16 +448,7 @@ export default function App() {
        * - 예시: `if (stored) setMcpServersState(JSON.parse(stored))` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
        */
       if (stored) setMcpServersState(JSON.parse(stored))
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `proStored`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const proStored = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const proStored = localStorage.getItem('is-pro-plan') === 'true'
-      setIsProPlan(proStored)
-    } catch {}
+      } catch {}
   }
 
   /** Yjs 협업 메신저 메시지 스트림 관리 */
@@ -533,7 +524,6 @@ export default function App() {
     <AppProvider value={{
       settings, handleUpdateSettings, handleInstallPlugin, handleUninstallPlugin,
       handleOpenGithub, handleCloseApp, handleToggleFullscreen, handleZoomIn, handleZoomOut, handleZoomReset,
-      isProPlan,
       editor, editorMode, setEditorMode, handleSwitchMode, handleStartWelcomeEdit, handleStartNewDocument,
       handleOpenFile, handleSaveFile, handleSaveAsFile, handleExport,
       snapshots, createSnapshot, deleteSnapshot, handleSelectSnapshotForDiff, handleRollback, getLineDiff,

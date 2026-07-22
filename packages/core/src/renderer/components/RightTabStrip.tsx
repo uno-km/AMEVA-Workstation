@@ -22,6 +22,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 
 import { useUIStore } from '../stores/useUIStore';
 import { useAppContext } from '../contexts/AppContext';
+import { useProcessStore } from '../stores/useProcessStore';
 
 export interface RightTabStripProps {}
 
@@ -149,7 +150,9 @@ function TabContextMenu({
    */
 export function RightTabStrip({}: RightTabStripProps = {}) {
   const { activeRightTab: activeTab, showAIPanel: isOpen, setShowAIPanel, setActiveRightTab, hasChatUnread } = useUIStore();
-  const { settings, isProPlan } = useAppContext();
+  const { settings } = useAppContext();
+  const hasPermission = useProcessStore((s) => s.hasPermission);
+  const canAccessPremium = hasPermission('plugin:premium');
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `installedPlugins`
@@ -332,7 +335,7 @@ export function RightTabStrip({}: RightTabStripProps = {}) {
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const tabs = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-  const tabs = isProPlan ? [
+  const tabs = canAccessPremium ? [
     { id: 'ai', icon: Sparkles, label: 'AI 어시스턴트', badge: hasChatUnread },
     ...(isOutlineSubscribed ? [{ id: 'outline', icon: List, label: '문서 구조도 (TOC)', badge: false }] : []),
     ...(isCalculatorSubscribed ? [{ id: 'calculator', icon: Calculator, label: '계산기 도구', badge: false }] : []),

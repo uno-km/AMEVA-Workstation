@@ -54,7 +54,7 @@ export function useHoverBlock(
   editorMode: EditorMode,
   editorContainerRef: React.RefObject<HTMLDivElement | null>,
   onMouseMove: (e: React.MouseEvent) => void,
-  isProPlan: boolean
+  canUseAITagging: boolean
 ) {
   /*
    * [INVARIANT - Hover Block Record State]
@@ -71,7 +71,7 @@ export function useHoverBlock(
     onMouseMove(e)
 
     // 편집 모드가 아니거나 에디터 인스턴스가 활성화 전인 경우 즉각 초기화
-    // WARNING: 절대 isProPlan 검사를 추가하여 락을 걸지 마라. (Free 에디터의 + 슬래시 삽입 붕괴 방지).
+    // WARNING: 절대 canUseAITagging 검사를 추가하여 락을 걸지 마라. (Free 에디터의 + 슬래시 삽입 붕괴 방지).
     if (editorMode !== 'edit' || !editor) {
       /*
        * [ALGORITHM BRANCH / DECISION]
@@ -285,7 +285,7 @@ export function useHoverBlock(
     if (hoverBlock !== null) {
       setHoverBlock(null)
     }
-  }, [editor, editorMode, onMouseMove, editorContainerRef, hoverBlock, isProPlan])
+  }, [editor, editorMode, onMouseMove, editorContainerRef, hoverBlock, canUseAITagging])
 
   return { hoverBlock, setHoverBlock, handleEditorMouseMove }
 }

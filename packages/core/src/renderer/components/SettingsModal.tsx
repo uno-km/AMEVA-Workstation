@@ -171,91 +171,28 @@ export function SettingsModal({
   const [localCodeModels, setLocalCodeModels] = useState<import('../services/ipc/ipcTypes').ModelInfo[]>([])
   const [gpuName, setGpuName] = useState<string | undefined>(undefined)
 
-  // 🦾 Pro Plan 상태 (마켓플레이스 및 MCP 노출을 제어)
-  const [isProPlan, setIsProPlan] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('is-pro-plan') === 'true'
-    } catch {
-      return false
-    }
-  })
+  const hasPermission = (await import('../stores/useProcessStore')).useProcessStore.getState().hasPermission
+  const canUseMCP = hasPermission('mcp:connect')
   const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
 
-
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `isUserDirty`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isUserDirty = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const isUserDirty = tempName !== username || tempColor !== userColor
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `isAnyDirty`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const isAnyDirty = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const isAnyDirty = isAppDirty || isAIDirty || isUserDirty
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleSaveAndApply`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleSaveAndApply = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const handleSaveAndApply = () => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!isAnyDirty`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!isAnyDirty)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if (!isAnyDirty) {
       onClose()
       return
     }
     setIsApplying(true)
     setTimeout(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isAppDirty) onUpdateSettings(draftSettings`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isAppDirty) onUpdateSettings(draftSettings)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
       if (isAppDirty) onUpdateSettings(draftSettings)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isAIDirty) onUpdateAISettings(draftAISettings`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isAIDirty) onUpdateAISettings(draftAISettings)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
       if (isAIDirty) onUpdateAISettings(draftAISettings)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isUserDirty && onUpdateUser) onUpdateUser(tempName, tempColor`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isUserDirty && onUpdateUser) onUpdateUser(tempName, tempColor)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
       if (isUserDirty && onUpdateUser) onUpdateUser(tempName, tempColor)
       setIsApplying(false)
       onClose()
     }, 1800)
   }
 
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleCancel`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleCancel = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
   const handleCancel = () => {
     resetDraft()
     setDraftAISettings(aiSettings)
@@ -266,32 +203,12 @@ export function SettingsModal({
   }
 
   useEffect(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isOpen`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if (isOpen) {
-      // Pro 플랜 설정 실시간 반영
-      try {
-        setIsProPlan(localStorage.getItem('is-pro-plan') === 'true')
-      } catch {}
-
       // 시작 시 무료 플래그 상태 체크
       if (ipc.isElectronEnv()) {
         ipc.isFreeMode().then(isFree => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isFree`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isFree)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
           if (isFree) {
             setIsFreeModeLocked(true)
-            setIsProPlan(false)
           }
         })
       }
@@ -300,82 +217,12 @@ export function SettingsModal({
 
   // 라이브 테마 프리뷰: Appearance 설정 탭에서 고르면 닫기 전까지 임시 적용
   useEffect(() => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isOpen`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isOpen)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
     if (isOpen) {
       document.documentElement.setAttribute('data-theme', draftSettings.theme)
     } else {
       document.documentElement.setAttribute('data-theme', settings.theme)
     }
   }, [isOpen, draftSettings.theme, settings.theme])
-
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `handleToggleProPlan`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const handleToggleProPlan = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const handleToggleProPlan = async () => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `isFreeModeLocked`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (isFreeModeLocked)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (isFreeModeLocked) {
-      alert('⚠️ 무료 모드 데모 플래그(--free)로 실행되어 요금제 강제 전환이 불가능합니다.')
-      return
-    }
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `nextVal`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const nextVal = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-    const nextVal = !isProPlan
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `ipc.isElectronEnv()`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (ipc.isElectronEnv())` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (ipc.isElectronEnv()) {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `result`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const result = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-      const result = await ipc.planSetStatus(nextVal)
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `result && !result.success`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (result && !result.success)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-      if (result && !result.success) {
-        alert(`요금제 변경 실패: ${result.error}`)
-        return
-      }
-    }
-    setIsProPlan(nextVal)
-    localStorage.setItem('is-pro-plan', String(nextVal))
-    // 탭 선택 보정: 유료에서 무료로 전환 시 현재 MCP 탭에 있었다면 General 탭으로 대피시킴
-    if (!nextVal && activeTab === 'MCP') {
-      setActiveTab('General')
-    }
-  }
 
   useEffect(() => {
       /*
@@ -561,7 +408,7 @@ export function SettingsModal({
             { id: 'Models', label: 'Models', icon: Bot },
             { id: 'Customizations', label: 'Customizations', icon: ToyBrick },
             { id: 'Hotkeys', label: 'Hotkeys', icon: Keyboard },
-            ...(isProPlan ? [{ id: 'MCP', label: 'MCP Manager', icon: ToyBrick }] : [])
+            { id: 'MCP', label: 'MCP Manager', icon: ToyBrick }
           ].map(t => {
       /*
        * [RUN-TIME STATE / INVARIANT]
@@ -607,8 +454,6 @@ export function SettingsModal({
             activeTab={activeTab}
             settings={draftSettings}
             onUpdateSettings={updateDraft}
-            isProPlan={isProPlan}
-            handleToggleProPlan={handleToggleProPlan}
           />
 
           {/* AIEngine Tab */}
@@ -667,9 +512,9 @@ export function SettingsModal({
           {/* Hotkeys Tab */}
           <SettingsTabHotkeys activeTab={activeTab} settings={draftSettings} onUpdateSettings={updateDraft} />
 
-          {/* MCP Manager Tab (Pro Plan Only) */}
+          {/* MCP Manager Tab (Requires Permission) */}
           {activeTab === 'MCP' && (
-            <SettingsTabMCP isProPlan={isProPlan} isOpen={isOpen} />
+            <SettingsTabMCP isOpen={isOpen} />
           )}
 
 

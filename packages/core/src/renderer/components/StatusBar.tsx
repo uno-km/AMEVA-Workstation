@@ -78,11 +78,12 @@ export function StatusBar({}: StatusBarProps = {}) {
    * - handleUpdateSettings: 설정 정보 부분 저장.
    * - isProPlan: 멤버십 요금제 프로 가입 여부.
    */
-  const { peers, serverRunning, settings, handleUpdateSettings, mcpServers, isProPlan } = useAppContext()
+  const { peers, serverRunning, settings, handleUpdateSettings, mcpServers } = useAppContext()
   const { setIsSettingsOpen } = useUIStore()
   
   // 줌 크기 및 모델 파일 다운로드 현황 스토어 구독
-  const { editorZoom: zoomLevel, browserZoom = 1.0 } = useProcessStore()
+  const { editorZoom: zoomLevel, browserZoom = 1.0, hasPermission } = useProcessStore()
+  const canUseMCP = hasPermission('mcp:connect')
   const { filePath, currentContent, lastSavedTime, originalContent } = useWorkspaceStore()
   const { downloadStatus } = useProcessStore()
   
@@ -252,14 +253,14 @@ export function StatusBar({}: StatusBarProps = {}) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
         {/* MCP 서버 동작 상태 */}
         <MCPStatusIndicator 
-          isProPlan={isProPlan}
+          canUseMCP={canUseMCP}
           mcpServers={mcpServers || []}
           activeTooltip={activeTooltip}
           handleMouseEnter={handleMouseEnter}
           handleMouseLeave={handleMouseLeave}
           tooltipStyle={tooltipStyle}
         />
-        {isProPlan && mcpServers && mcpServers.length > 0 && <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />}
+        {canUseMCP && mcpServers && mcpServers.length > 0 && <div style={{ width: '1px', height: '12px', backgroundColor: 'var(--border-muted)' }} />}
 
         {/* AI 엔진 백그라운드 구동 가능 상태 */}
         <AIStatusIndicator 

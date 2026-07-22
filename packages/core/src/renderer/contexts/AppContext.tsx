@@ -58,7 +58,6 @@ export interface AppContextType {
   handleZoomIn: () => void
   handleZoomOut: () => void
   handleZoomReset: () => void
-  isProPlan: boolean
 
   // ── [2. Editor instance & state] 에디터 및 화면 모드 ──
   editor: AppEditor | null

@@ -48,7 +48,7 @@ export interface ModalManagerProps {}
    */
 export function ModalManager({}: ModalManagerProps = {}) {
   const {
-    settings, handleUpdateSettings, handleInstallPlugin, handleUninstallPlugin, isProPlan,
+    settings, handleUpdateSettings, handleInstallPlugin, handleUninstallPlugin,
     username, setUsername, userColor, setUserColor, getLineDiff, handleRollback,
     handleOpenGithub, refreshMcpServers, handleCloseApp
   } = useAppContext()
@@ -160,7 +160,6 @@ export function ModalManager({}: ModalManagerProps = {}) {
         installedPlugins={settings.installedPlugins || []}
         onInstallPlugin={handleInstallPlugin}
         onUninstallPlugin={handleUninstallPlugin}
-        isProPlan={isProPlan}
       />
       <PricingModal
         isOpen={showPricingModal}

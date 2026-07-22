@@ -33,6 +33,5 @@ export interface MarketplaceModalProps {
   installedPlugins: string[]
   onInstallPlugin: (id: string, scriptUrl: string) => Promise<void>
   onUninstallPlugin: (id: string) => void
-  isProPlan?: boolean
 }
 
