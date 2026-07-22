@@ -44,10 +44,18 @@ export class TaskExecutor {
 - 제목: ${task.title}
 - 목표: ${task.objective}
 - 산출물 검증 기준 (expectedOutput): ${task.expectedOutput}
-
+${(task as any).proposedPlan ? `
+[복구 계획 (Reflection) - 이전에 당신이 실패 후 분석하여 제안한 계획입니다. 다음 지시를 반드시 따르십시오.]
+- 원인 분석: ${(task as any).proposedPlan.analysis}
+- 행동 계획: ${(task as any).proposedPlan.proposedAction}
+` : ''}
 [작업 지침]
 1. 위 궁극의 미션 목표를 달성하기 위해, 이전 단계들의 작업 결과(문맥)를 이어받아 **현재 할당된 태스크의 목표만을 집중적으로** 완수하십시오.
 2. [매우 중요] 이전 단계에서 작성된 문서 내용(예: 개요, 목차 등)을 다시 처음부터 베껴 쓰거나 덮어쓰지 마십시오! 이미 작성된 파일에 새로운 섹션(예: 역사, 본문 등)을 이어서 추가해야 한다면 반드시 'append_file' 도구를 사용해야 합니다.
+3. [도구 호출 형식] 시스템 도구를 호출할 때는 **반드시** 아래와 같이 XML 태그 형식으로 감싸서 출력해야 합니다 (JSON만 뱉으면 안 됩니다):
+<tool_call>
+{"name": "도구이름", "args": {"파라미터명": "값"}}
+</tool_call>
 
 🚨 [작업 완료 선언 시 절대 규칙]
 당신은 절대로 작업을 완료했다고 주장해서는 안 됩니다.

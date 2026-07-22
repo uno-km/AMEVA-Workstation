@@ -75,6 +75,7 @@ import { AIDownloadProgress } from './ai/AIDownloadProgress'
 import { AIInputContextBar } from './ai/AIInputContextBar'
 import { AIDocumentOutline } from './ai/AIDocumentOutline'
 import { AIPluginViews } from './ai/AIPluginViews'
+import { UserAssistPrompt } from './ai/UserAssistPrompt'
 
 /* 
  * [ZUSTAND GLOBAL STORES]
@@ -981,6 +982,8 @@ export function AIPanel() {
                 </select>
               </div>
             )}
+
+            <UserAssistPrompt />
 
             <AIInputContextBar
               manualMode={manualMode} setManualMode={setManualMode}

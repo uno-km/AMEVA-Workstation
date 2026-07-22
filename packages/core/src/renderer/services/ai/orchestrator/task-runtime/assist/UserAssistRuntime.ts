@@ -34,7 +34,9 @@ export type UserAssistOption =
   | 'GRANT_PERMISSION'
   | 'USE_PARTIAL_RESULT'
   | 'SKIP_OPTIONAL_TASK'
-  | 'CANCEL_MISSION';
+  | 'CANCEL_MISSION'
+  | 'ACCEPT_PROPOSED_PLAN'
+  | 'DISAGREE_AND_REPLAN';
 
 /**
  * User Assist Request.
@@ -61,6 +63,8 @@ export interface UserAssistRequest {
   recoveryAttempts: number;
   /** 제공 가능한 옵션 */
   options: UserAssistOption[];
+  /** LLM이 제안하는 복구 계획 (있는 경우) */
+  proposedPlan?: { analysis: string; proposedAction: string };
   /** 권장 옵션 */
   recommendedOption: UserAssistOption;
   /** 필수 응답 여부 */
@@ -114,6 +118,7 @@ export class UserAssistRuntime {
     missingWork: string;
     availableCheckpointId?: string;
     recoveryAttempts: number;
+    proposedPlan?: { analysis: string; proposedAction: string };
     isTaskRequired: boolean;
   }): UserAssistRequest {
     const idempotencyKey = `ua-${params.taskId}-${params.attemptId}`;
@@ -154,8 +159,9 @@ export class UserAssistRuntime {
       missingWork: params.missingWork,
       availableCheckpointId: params.availableCheckpointId,
       recoveryAttempts: params.recoveryAttempts,
+      proposedPlan: params.proposedPlan,
       options,
-      recommendedOption: params.availableCheckpointId ? 'RESUME_FROM_CHECKPOINT' : 'RETRY_SAME_STRATEGY',
+      recommendedOption: params.proposedPlan ? 'ACCEPT_PROPOSED_PLAN' : (params.availableCheckpointId ? 'RESUME_FROM_CHECKPOINT' : 'RETRY_SAME_STRATEGY'),
       required: params.isTaskRequired,
       createdAt: now,
       expiresAt: now + DEFAULT_EXPIRY_MS,
@@ -252,6 +258,8 @@ export class UserAssistRuntime {
       case 'RETRY_DIFFERENT_STRATEGY':
       case 'PROVIDE_ADDITIONAL_INPUT':
       case 'GRANT_PERMISSION':
+      case 'ACCEPT_PROPOSED_PLAN':
+      case 'DISAGREE_AND_REPLAN':
         // WAITING_USER → READY (Scheduler가 처리)
         this.store.dispatchTransition(
           { ...baseCommand, reason: `User selected: ${response.selectedOption}` },

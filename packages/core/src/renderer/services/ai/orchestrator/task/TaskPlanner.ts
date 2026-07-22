@@ -130,6 +130,7 @@ export class TaskPlanner {
           expectedOutput,
           retries: 0,
           maxRetries: 3,
+          required: true,
           createdAt: Date.now()
         };
       });
@@ -162,6 +163,7 @@ export class TaskPlanner {
         expectedOutput: '기초 데이터 수집 완료 및 요약문 확보',
         retries: 0,
         maxRetries: 3,
+        required: true,
         createdAt: Date.now()
       },
       {
@@ -174,6 +176,7 @@ export class TaskPlanner {
         expectedOutput: '마크다운 분석 결과 초안 작성 완료',
         retries: 0,
         maxRetries: 3,
+        required: true,
         createdAt: Date.now()
       },
       {
@@ -186,6 +189,7 @@ export class TaskPlanner {
         expectedOutput: '최종 보고서 검토 및 Mission 완수',
         retries: 0,
         maxRetries: 3,
+        required: true,
         createdAt: Date.now()
       }
     ];

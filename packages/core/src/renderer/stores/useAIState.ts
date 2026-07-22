@@ -23,6 +23,7 @@ import type { AgentPhase, TaskPlan } from '../services/ai/orchestrator/types';
 import { AI_TERMINAL_CONSTANTS } from '../features/ai-terminal/constants';
 import type { RecoveryState, RecoveryReason, InferencePhase } from '../services/ai/orchestrator/recovery/types';
 import type { TraceEvent } from '../services/ai/orchestrator/task-runtime/trace/ExecutionTraceTypes';
+import type { UserAssistRequest } from '../services/ai/orchestrator/task-runtime/assist/UserAssistRuntime';
 
 export interface AIState {
   // 1. 전역 생성 상태
@@ -135,6 +136,10 @@ export interface AIState {
   setPlanApprovalState: (state: 'idle' | 'pending' | 'approved' | 'rejected') => void;
   resolvePlanApproval: ((value: { approved: boolean; feedback?: string }) => void) | null;
   setResolvePlanApproval: (resolve: ((value: { approved: boolean; feedback?: string }) => void) | null) => void;
+
+  // ── User Assist State Slice ──
+  userAssistRequests: UserAssistRequest[];
+  setUserAssistRequests: (requests: UserAssistRequest[]) => void;
 
   /** 오케스트레이터 상태 전체 초기화 (새 세션 시작 시 사용) */
   resetAgentState: () => void;
@@ -295,6 +300,9 @@ export const useAIState = create<AIState>((set) => ({
   resolvePlanApproval: null,
   setResolvePlanApproval: (resolvePlanApproval) => set({ resolvePlanApproval }),
 
+  userAssistRequests: [],
+  setUserAssistRequests: (userAssistRequests) => set({ userAssistRequests }),
+
   resetAgentState: () => set({
     agentPhase: 'idle',
     agentThoughts: [],
@@ -310,7 +318,8 @@ export const useAIState = create<AIState>((set) => ({
     inferencePhase: 'Planning',
     resumeFromCheckpoint: null,
     planApprovalState: 'idle',
-    resolvePlanApproval: null
+    resolvePlanApproval: null,
+    userAssistRequests: []
   })
 }));
 

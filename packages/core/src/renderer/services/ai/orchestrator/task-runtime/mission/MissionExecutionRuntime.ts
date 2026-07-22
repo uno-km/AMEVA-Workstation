@@ -551,6 +551,16 @@ export class MissionExecutionRuntime {
         this.requestTick(1000);
       }
 
+      // [UI Sync] Sync UserAssistRequests to useAIState
+      void (async () => {
+        try {
+          const { useAIState } = await import('../../../../../stores/useAIState');
+          useAIState.getState().setUserAssistRequests(this.userAssistRuntime.getAllRequests());
+        } catch (e) {
+          // ignore error in non-UI environments
+        }
+      })();
+
     } catch (error: unknown) {
       const msg = error instanceof Error ? (error.stack || error.message) : String(error);
       console.error(`[MissionExecutionRuntime] Error during tick:`, msg);

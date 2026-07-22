@@ -55,6 +55,7 @@ import { FinalReporter } from './task/FinalReporter'
 import { TaskEventLog } from './task-runtime/events/TaskEventLog'
 import { TaskRuntimeStore } from './task-runtime/store/TaskRuntimeStore'
 import { LegacyTaskPlanAdapter, type LegacyTaskPayload } from './task-runtime/compatibility/LegacyTaskPlanAdapter'
+import { ReflectionAgent } from './recovery/ReflectionAgent'
 
 // PHASE 2 신규 Planning 파이프라인 임포트
 import { GoalInterpreter } from './task-runtime/planning/goal/GoalInterpreter'
@@ -503,6 +504,24 @@ export class AgentOrchestratorSession {
         this.taskStore, this.adapter, this.sessionId, 10000, persistenceAdapter, new PowerShellArtifactFileAdapter()
       );
 
+      // Listen for UserAssist UI responses
+      const handleUserAssistResponse = (e: Event) => {
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.requestId && detail.selectedOption) {
+          const result = v2Runtime.getUserAssistRuntime().respondToRequest({
+            requestId: detail.requestId,
+            selectedOption: detail.selectedOption,
+            respondedAt: Date.now()
+          });
+          if (result.success) {
+            this.ipcLog({ text: `[AgentOrchestrator] 사용자 응답 수신 완료: ${detail.selectedOption}`, prefix: 'UserAssist' });
+          } else {
+            this.ipcLog({ text: `[AgentOrchestrator] 사용자 응답 처리 실패: ${result.message}`, prefix: 'UserAssist' });
+          }
+        }
+      };
+      window.addEventListener('ameva:user-assist-response', handleUserAssistResponse);
+
       // [STAGE B] Execution 시작 마킹 — 이 이후 Legacy Fallback 절대 금지
       V2RuntimeFeatureFlag.markV2ExecutionStarted(this.sessionId);
       v2Runtime.start();
@@ -538,6 +557,7 @@ export class AgentOrchestratorSession {
           if (isResolved) return; // 중복 terminal 방어
           isResolved = true;
           clearInterval(intervalId);
+          window.removeEventListener('ameva:user-assist-response', handleUserAssistResponse);
           V2RuntimeFeatureFlag.releaseOwnership(missionId);
           this.emitPhaseChange('error');
           this.ipcLog({ text: `[AgentOrchestrator] V2 Mission ${missionStatus}: ${reason}`, prefix: 'Orchestrator' });
@@ -593,6 +613,7 @@ export class AgentOrchestratorSession {
             if (isResolved) return;
             isResolved = true;
             clearInterval(intervalId);
+            window.removeEventListener('ameva:user-assist-response', handleUserAssistResponse);
             V2RuntimeFeatureFlag.releaseOwnership(missionId);
             this.emitPhaseChange('done');
 
@@ -899,19 +920,29 @@ export class AgentOrchestratorSession {
           if (currentTask.retries > currentTask.maxRetries) {
             // [Issue 7] 필수 태스크는 자동 스킵하지 않고 USER_ASSIST 대기로 전환
             if ((currentTask as any).required) {
-              this.ipcLog({ text: `[AgentOrchestrator] 필수 태스크 ${currentTask.id} 실패. 사용자 개입(WAITING_USER)을 대기합니다.`, prefix: 'Orchestrator' });
+              this.ipcLog({ text: `[AgentOrchestrator] 필수 태스크 ${currentTask.id} 실패. LLM 자아 성찰(Reflection)을 가동합니다.`, prefix: 'Orchestrator' });
+
+              // 1. Reflection Agent 가동
+              const reflectionAgent = new ReflectionAgent(this.adapter);
+              const proposedPlan = await reflectionAgent.reflectOnFailure(currentTask, failReason, '반복된 에러로 인한 진행 불가');
+              
+              // 다음 시도를 위해 task 객체에 기록
+              (currentTask as any).proposedPlan = proposedPlan;
+
+              this.ipcLog({ text: `[AgentOrchestrator] 자아 성찰 완료. 사용자 개입(WAITING_USER)을 대기합니다.`, prefix: 'Orchestrator' });
 
               if (typeof this.taskStore !== 'undefined') {
                 new UserAssistRuntime(this.taskStore).createRequest({
                   missionId: this.sessionId,
                   taskId: currentTask.id,
                   attemptId: `attempt_${crypto.randomUUID()}`,
-                  title: `필수 태스크 실패: ${currentTask.title}`,
-                  summary: '최대 재시도 횟수 초과',
-                  failureReason: '반복된 에러로 인한 진행 불가',
+                  title: `필수 태스크 실패 및 복구 제안: ${currentTask.title}`,
+                  summary: '최대 재시도 횟수 초과 및 새 계획 수립',
+                  failureReason: failReason,
                   completedWork: '',
                   missingWork: '필수 작업 미완수',
                   recoveryAttempts: currentTask.retries,
+                  proposedPlan,
                   isTaskRequired: true
                 });
               } else {
