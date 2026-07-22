@@ -188,37 +188,38 @@ SELECT * FROM developers;</textarea>
             </div>
           </div>
 
-          <!-- AI 인라인 수락/거절 체험판 (에디터 통합 컨트롤러) -->
-          <section style="margin-top: 20px; padding: 20px 24px; border-radius: 16px; background: var(--bg-main); border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15); position: relative; overflow: hidden;">
-            <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--primary), var(--secondary));"></div>
-            
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-              <h4 style="font-weight: 700; color: var(--text-main); font-size: 15px; display: flex; align-items: center; gap: 8px; margin: 0;">
-                <span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 4px 8px; border-radius: 6px; color: white; font-size: 11px;">
-                  <i class="fas fa-sparkles"></i> AI Co-Pilot
-                </span>
-                상단 에디터 AI 인라인 승인/거절(Accept/Reject) 모션 시뮬레이션
-              </h4>
-              <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">
-                <i class="fas fa-info-circle" style="color: var(--primary);"></i> 프롬프트 입력 후 Diff 수락 시 상단 에디터에 즉시 반영됩니다
-              </span>
-            </div>
-
-            <div style="display:flex; gap:12px; margin-bottom: 8px; position: relative; z-index: 1;">
-              <div style="position: relative; flex: 1;">
-                <i class="fas fa-magic" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--primary); opacity: 0.7;"></i>
-                <input type="text" id="ai-sim-prompt" class="sim-prompt-input" placeholder="예: 구동율 100% 문구를 가속 구동으로 변경하고 개선해줘" style="width: 100%; padding: 12px 14px 12px 40px; border-radius: 10px; background: var(--bg-glass); border: 1px solid var(--border-muted); color: var(--text-main); font-size: 13px; transition: all 0.3s ease; outline: none; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 2px var(--primary-glow)';" onblur="this.style.borderColor='var(--border-muted)'; this.style.boxShadow='none';">
-              </div>
-              <button id="ai-sim-btn" class="run-btn" style="margin:0; background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 0 24px; border-radius: 10px; font-weight: 600; font-size: 13px; border: none; color: white; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
-                <i class="fas fa-paper-plane"></i> AI 제안 요청
-              </button>
-            </div>
-            <div id="ai-sim-output-container" style="position: relative; z-index: 1; margin-top: 12px;"></div>
-          </section>
         </div>
 
       </div>
     </div>
+
+    <!-- AI 인라인 수락/거절 체험판 (에디터 통합 컨트롤러) -->
+    <section id="ai-copilot-section" style="margin-top: 6px; padding: 20px 24px; border-radius: 16px; background: var(--bg-main); border: 1px solid rgba(139, 92, 246, 0.3); box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15); position: relative; overflow: hidden; transition: all 0.3s ease;">
+      <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--primary), var(--secondary));"></div>
+      
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <h4 style="font-weight: 700; color: var(--text-main); font-size: 15px; display: flex; align-items: center; gap: 8px; margin: 0;">
+          <span style="background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 4px 8px; border-radius: 6px; color: white; font-size: 11px;">
+            <i class="fas fa-sparkles"></i> AI Co-Pilot
+          </span>
+          상단 에디터 AI 인라인 승인/거절(Accept/Reject) 모션 시뮬레이션
+        </h4>
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 500;">
+          <i class="fas fa-info-circle" style="color: var(--primary);"></i> 프롬프트 입력 후 Diff 수락 시 상단 에디터에 즉시 반영됩니다
+        </span>
+      </div>
+
+      <div style="display:flex; gap:12px; margin-bottom: 8px; position: relative; z-index: 1;">
+        <div style="position: relative; flex: 1;">
+          <i class="fas fa-magic" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--primary); opacity: 0.7;"></i>
+          <input type="text" id="ai-sim-prompt" class="sim-prompt-input" placeholder="예: 구동율 100% 문구를 가속 구동으로 변경하고 개선해줘" style="width: 100%; padding: 12px 14px 12px 40px; border-radius: 10px; background: var(--bg-glass); border: 1px solid var(--border-muted); color: var(--text-main); font-size: 13px; transition: all 0.3s ease; outline: none; box-sizing: border-box;" onfocus="this.style.borderColor='var(--primary)'; this.style.boxShadow='0 0 0 2px var(--primary-glow)';" onblur="this.style.borderColor='var(--border-muted)'; this.style.boxShadow='none';">
+        </div>
+        <button id="ai-sim-btn" class="run-btn" style="margin:0; background: linear-gradient(135deg, var(--primary), var(--secondary)); padding: 0 24px; border-radius: 10px; font-weight: 600; font-size: 13px; border: none; color: white; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer;" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='translateY(0)';">
+          <i class="fas fa-paper-plane"></i> AI 제안 요청
+        </button>
+      </div>
+      <div id="ai-sim-output-container" style="position: relative; z-index: 1; margin-top: 12px;"></div>
+    </section>
   </main>
 
   <script type="module">
@@ -277,6 +278,12 @@ SELECT * FROM developers;</textarea>
 
         // 트랙 휙휙 미끄러지는 transform 연출 (5개 탭이므로 20% 간격)
         track.style.transform = `translateX(-${slideIdx * 20}%)`;
+        
+        // 5번째 슬라이드(AI & Marketplace)에서는 AI Co-Pilot 블록 숨김
+        const aiCopilotSection = document.getElementById('ai-copilot-section');
+        if (aiCopilotSection) {
+          aiCopilotSection.style.display = (slideIdx === 4) ? 'none' : 'block';
+        }
         
         // 탭 변경 시마다 해당 슬라이드 높이로 애니메이션 밀착
         setTimeout(updateCarouselHeight, 10);
