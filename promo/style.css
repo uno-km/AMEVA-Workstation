@@ -911,18 +911,22 @@ input:checked + .slider:before {
   padding: 18px 24px;
   text-align: left;
   border-bottom: 1px solid var(--border-muted);
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-height: 1.65;
 }
 
 .comparison-table th {
   background: var(--bg-card);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-main);
   text-transform: uppercase;
 }
 
 .comparison-table td {
-  font-size: 13px;
+  font-size: 14px;
+  color: var(--text-muted);
 }
 
 .comparison-column-legacy {
