@@ -1,17 +1,17 @@
-import { BaseTool } from '../base/BaseTool';
+﻿import { BaseTool } from '../base/BaseTool';
 import type { ToolCallResult, ToolExecutionContext } from '../../types';
 import type { IFileSystemAdapter } from '../../task-runtime/artifact/IFileSystemAdapter';
 import { PathSanitizer, PathSanitizationError } from '../../task-runtime/policy/PathSanitizer';
 
 export class WriteFileTool extends BaseTool {
   public readonly name = 'write_file';
-  public readonly description = '지?�된 경로???�용???�일�??�?�합?�다. 코드 ?�성, ?�정 ?�일 ?�성 ?�에 ?�용?�세??';
+  public readonly description = '吏?뺣맂 寃쎈줈???댁슜???뚯씪濡???ν빀?덈떎. 肄붾뱶 ?앹꽦, ?ㅼ젙 ?뚯씪 ?묒꽦 ?깆뿉 ?ъ슜?섏꽭??';
   
   public readonly parameters = {
     type: 'object' as const,
     properties: {
-      path: { type: 'string', description: '?�?�할 ?�일???��? 경로 ?�는 ?��? 경로' },
-      content: { type: 'string', description: '?�일???�?�할 ?�용' }
+      path: { type: 'string', description: '??ν븷 ?뚯씪???덈? 寃쎈줈 ?먮뒗 ?곷? 寃쎈줈' },
+      content: { type: 'string', description: '?뚯씪????ν븷 ?댁슜' }
     },
     required: ['path', 'content']
   };
@@ -56,7 +56,7 @@ export class WriteFileTool extends BaseTool {
 
     return {
       success: true,
-      result: `?�일 ?�???�료: ${safePath}`,
+      result: `?뚯씪 ????꾨즺: ${safePath}`,
       toolName: this.name,
       toolArgs: args,
       artifactId: context?.artifactId,
@@ -73,4 +73,5 @@ export class WriteFileTool extends BaseTool {
     };
   }
 }
+
 

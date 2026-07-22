@@ -1,4 +1,4 @@
-import { BaseTool } from '../base/BaseTool';
+﻿import { BaseTool } from '../base/BaseTool';
 import type { ToolCallResult, ToolExecutionContext, ApplyPatchArgs } from '../../types';
 import type { IFileSystemAdapter } from '../../task-runtime/artifact/IFileSystemAdapter';
 import { PathSanitizer } from '../../task-runtime/policy/PathSanitizer';
@@ -213,7 +213,7 @@ export class ApplyPatchTool extends BaseTool {
 
     return {
       success: true,
-      result: `?�일 부�??�정 ?�료: ${stagingPath}`,
+      result: `?뚯씪 遺遺??섏젙 ?꾨즺: ${stagingPath}`,
       toolName: this.name,
       toolArgs: args,
       artifactId,
@@ -234,4 +234,5 @@ export class ApplyPatchTool extends BaseTool {
     };
   }
 }
+
 

@@ -1,4 +1,4 @@
-import { BaseTool } from '../base/BaseTool';
+﻿import { BaseTool } from '../base/BaseTool';
 import type { ToolCallResult, ToolExecutionContext } from '../../types';
 import { executeTerminal } from '../../../../ipc/electronApiAdapter';
 import * as path from 'path';
@@ -7,12 +7,12 @@ import * as fs from 'fs';
 
 export class ExecuteNodeTool extends BaseTool {
   public readonly name = 'execute_node';
-  public readonly description = 'Node.js(JavaScript) 코드�??�드박스 ?�경(?�는 로컬)?�서 ?�행?�고 �?결과�?반환?�니?? ?�크립트 ?�행, 로직 검�??�에 ?�용?�세??';
+  public readonly description = 'Node.js(JavaScript) 肄붾뱶瑜??뚮뱶諛뺤뒪 ?섍꼍(?먮뒗 濡쒖뺄)?먯꽌 ?ㅽ뻾?섍퀬 洹?寃곌낵瑜?諛섑솚?⑸땲?? ?ㅽ겕由쏀듃 ?ㅽ뻾, 濡쒖쭅 寃利??깆뿉 ?ъ슜?섏꽭??';
   
   public readonly parameters = {
     type: 'object' as const,
     properties: {
-      code: { type: 'string', description: '?�행??Node.js(JavaScript) 코드 블록' }
+      code: { type: 'string', description: '?ㅽ뻾??Node.js(JavaScript) 肄붾뱶 釉붾줉' }
     },
     required: ['code']
   };
@@ -20,7 +20,7 @@ export class ExecuteNodeTool extends BaseTool {
   protected async executeCore(args: Record<string, unknown>, context?: ToolExecutionContext): Promise<ToolCallResult> {
     const code = String(args['code'] ?? '');
     
-    // ?�시 ?�일 ?�성
+    // ?꾩떆 ?뚯씪 ?앹꽦
     const tmpDir = os.tmpdir();
     const fileName = `agent_sandbox_${Date.now()}.js`;
     const filePath = path.join(tmpDir, fileName);
@@ -32,7 +32,7 @@ export class ExecuteNodeTool extends BaseTool {
       
       return {
         success: true,
-        result: result.stdout || result.stderr || '(출력 ?�음)',
+        result: result.stdout || result.stderr || '(異쒕젰 ?놁쓬)',
         toolName: this.name,
         toolArgs: args
       };
@@ -50,9 +50,10 @@ export class ExecuteNodeTool extends BaseTool {
           fs.unlinkSync(filePath);
         }
       } catch (e) {
-        console.error(`?�시 ?�일 ??�� ?�패: ${filePath}`);
+        console.error(`?꾩떆 ?뚯씪 ??젣 ?ㅽ뙣: ${filePath}`);
       }
     }
   }
 }
+
 
