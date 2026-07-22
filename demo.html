@@ -246,12 +246,23 @@ SELECT * FROM developers;</textarea>
     const tabs = document.querySelectorAll('.solution-tab-btn[data-slide]');
     const wrapper = document.querySelector('.carousel-wrapper');
     let activeSlideIndex = 0;
-
     const updateCarouselHeight = () => {
-      const slides = document.querySelectorAll('.carousel-slide');
-      if (slides[activeSlideIndex]) {
-        // 전체 슬라이드 콘텐츠 높이에 맞춰 wrapper 높이를 동적으로 조절
-        wrapper.style.height = `${slides[activeSlideIndex].scrollHeight}px`;
+      const activeSlide = document.querySelectorAll('.carousel-slide')[activeSlideIndex];
+      if (activeSlide) {
+        let totalHeight = 0;
+        const children = activeSlide.children;
+        for (let i = 0; i < children.length; i++) {
+          const child = children[i];
+          const style = window.getComputedStyle(child);
+          const marginTop = parseFloat(style.marginTop) || 0;
+          const marginBottom = parseFloat(style.marginBottom) || 0;
+          totalHeight += child.offsetHeight + marginTop + marginBottom;
+        }
+        
+        // 최소 안전 높이 보장 (만약 계산이 실패할 경우 대비)
+        if (totalHeight < 200) totalHeight = 550;
+        
+        wrapper.style.height = `${totalHeight + 10}px`;
       }
     };
 
