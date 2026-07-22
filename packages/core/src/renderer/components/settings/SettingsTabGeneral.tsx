@@ -19,7 +19,7 @@
 
 import { ToggleLeft, ToggleRight } from 'lucide-react'
 import type { AppSettings } from '../SettingsModal'
-import { useProcessStore, UserTier } from '../../stores/useProcessStore'
+import { useProcessStore, type UserTier } from '../../stores/useProcessStore'
 
 export interface SettingsTabGeneralProps {
   activeTab: string
@@ -34,22 +34,12 @@ export function SettingsTabGeneral({
 }: SettingsTabGeneralProps) {
   const userTier = useProcessStore((state) => state.userTier)
   const setUserTier = useProcessStore((state) => state.setUserTier)
-  const setGrantedPermissions = useProcessStore((state) => state.setGrantedPermissions)
-
-  if (activeTab !== 'General') return null
-
   const handleTierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTier = e.target.value as UserTier;
     setUserTier(newTier);
-    if (newTier === 'free') {
-      setGrantedPermissions([]);
-    } else if (newTier === 'pro') {
-      setGrantedPermissions(['mcp:connect', 'plugin:premium', 'ai:unlimited']);
-    } else if (newTier === 'enterprise') {
-      // Mocking a custom enterprise that has only mcp but no hwp export
-      setGrantedPermissions(['mcp:connect']);
-    }
   };
+
+  if (activeTab !== 'General') return null
 
   return (
     <>

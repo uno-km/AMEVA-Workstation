@@ -82,8 +82,8 @@ export function StatusBar({}: StatusBarProps = {}) {
   const { setIsSettingsOpen } = useUIStore()
   
   // 줌 크기 및 모델 파일 다운로드 현황 스토어 구독
-  const { editorZoom: zoomLevel, browserZoom = 1.0, hasPermission } = useProcessStore()
-  const canUseMCP = hasPermission('mcp:connect')
+  const { editorZoom: zoomLevel, browserZoom = 1.0 } = useProcessStore()
+  const canUseMCP = true
   const { filePath, currentContent, lastSavedTime, originalContent } = useWorkspaceStore()
   const { downloadStatus } = useProcessStore()
   

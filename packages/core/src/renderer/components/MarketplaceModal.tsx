@@ -137,8 +137,7 @@ export function MarketplaceModal({
   onInstallPlugin,
   onUninstallPlugin,
 }: MarketplaceModalProps) {
-  const hasPermission = useProcessStore((s) => s.hasPermission)
-  const canUsePremium = hasPermission('plugin:premium')
+  const canUsePremium = true
 
   const [plugins, setPlugins] = useState<PluginMetadata[]>([])
   const [loading, setLoading] = useState(false)
@@ -255,24 +254,6 @@ export function MarketplaceModal({
        * - 예시 코드: `const handleToggleSaaSPlugin = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const handleToggleSaaSPlugin = (id: string) => {
-      /*
-       * [ALGORITHM BRANCH / DECISION]
-       * - 조건 식: `!canUsePremium`
-       * - 만족 시: 비즈니스 요구사항을 만족하여 대응 내부 분기 블록을 구동함.
-       * - 불만족 시: 바이패스(Bypass)하여 하위 연산으로 폴백하거나 조건 스택을 탈출함.
-       * - 예시: `if (!canUsePremium)` 만족 시 런타임 내포 연산 및 데이터 매핑 즉시 활성화.
-       */
-    if (!canUsePremium) {
-      alert('⚠️ 해당 기능은 Pro 플랜 이상에서만 활성화할 수 있는 프리미엄 도구입니다. 가격 플랜 탭에서 업그레이드를 진행하세요.')
-      return
-    }
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `updated`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const updated = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
     const updated = {
       ...enabledPlugins,
       [id]: !enabledPlugins[id]

@@ -171,8 +171,7 @@ export function SettingsModal({
   const [localCodeModels, setLocalCodeModels] = useState<import('../services/ipc/ipcTypes').ModelInfo[]>([])
   const [gpuName, setGpuName] = useState<string | undefined>(undefined)
 
-  const hasPermission = (await import('../stores/useProcessStore')).useProcessStore.getState().hasPermission
-  const canUseMCP = hasPermission('mcp:connect')
+  const canUseMCP = true
   const [isFreeModeLocked, setIsFreeModeLocked] = useState(false)
 
   const isUserDirty = tempName !== username || tempColor !== userColor

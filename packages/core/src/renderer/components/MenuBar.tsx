@@ -25,6 +25,7 @@ import { useMenuBarShortcuts } from '../hooks/app/useMenuBarShortcuts'
 import { useAppContext } from '../contexts/AppContext'
 import { useWorkspaceStore } from '../stores/useWorkspaceStore'
 import { useProcessStore } from '../stores/useProcessStore'
+import { useUIStore } from '../stores/useUIStore'
 import * as ipc from '../services/ipc/electronApiAdapter'
 
 export interface MenuBarProps {}
@@ -65,8 +66,7 @@ export function MenuBar({}: MenuBarProps = {}) {
   } = useUIStore()
 
   const filePath = useWorkspaceStore((state) => state.filePath)
-  const hasPermission = useProcessStore((s) => s.hasPermission)
-  const canAccessMarketplace = hasPermission('plugin:premium')
+  const canAccessMarketplace = true
   const [googlePopoverOpen, setGooglePopoverOpen] = useState(false)
   const [googleProfile, setGoogleProfile] = useState<any | null>(null)
 

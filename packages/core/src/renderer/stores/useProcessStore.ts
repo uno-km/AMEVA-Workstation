@@ -46,10 +46,11 @@ export const IDLE_EXPORT_PROGRESS: ExportProgress = {
 }
 
 export type PermissionScope = 
-  | 'mcp:connect'
-  | 'plugin:premium'
-  | 'export:hwp'
-  | 'ai:unlimited';
+  | 'collab:doc_edit'    // 실시간 문서 공동 편집 & 캐럿/프레젠스 공유
+  | 'collab:text_chat'   // 실시간 텍스트 채팅 채널
+  | 'collab:voice_chat'  // WebRTC 기반 음성 통화
+  | 'collab:cloud_relay' // AMEVA 클라우드 전용 고성능 중계 서버
+  | 'collab:enterprise'; // 엔터프라이즈 맞춤 계약 권한
 
 export type UserTier = 'free' | 'pro' | 'enterprise';
 
@@ -162,7 +163,10 @@ function loadGrantedPermissions(): PermissionScope[] {
   try {
     const perms = localStorage.getItem('granted-permissions');
     if (perms) return JSON.parse(perms);
-    return loadUserTier() === 'pro' ? ['mcp:connect', 'plugin:premium', 'ai:unlimited'] : [];
+    const tier = loadUserTier();
+    if (tier === 'pro') return ['collab:doc_edit', 'collab:text_chat', 'collab:voice_chat', 'collab:cloud_relay'];
+    if (tier === 'enterprise') return ['collab:doc_edit', 'collab:text_chat', 'collab:voice_chat', 'collab:cloud_relay', 'collab:enterprise'];
+    return [];
   } catch {
     return [];
   }
@@ -208,7 +212,12 @@ export const useProcessStore = create<ProcessState>((set, get) => ({
   userTier: loadUserTier(),
   setUserTier: (tier) => {
     localStorage.setItem('user-tier', tier);
-    set({ userTier: tier });
+    const defaultPerms: PermissionScope[] = 
+      tier === 'pro' ? ['collab:doc_edit', 'collab:text_chat', 'collab:voice_chat', 'collab:cloud_relay'] :
+      tier === 'enterprise' ? ['collab:doc_edit', 'collab:text_chat', 'collab:voice_chat', 'collab:cloud_relay', 'collab:enterprise'] : [];
+    
+    localStorage.setItem('granted-permissions', JSON.stringify(defaultPerms));
+    set({ userTier: tier, grantedPermissions: defaultPerms });
   },
   grantedPermissions: loadGrantedPermissions(),
   setGrantedPermissions: (perms) => {

@@ -21,7 +21,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { ToggleLeft, ToggleRight, Plus, Trash2 } from 'lucide-react'
 import { MCPClientManager } from '../../utils/mcpClient'
 import * as ipc from '../../services/ipc/electronApiAdapter'
-import { RequirePermission } from '../auth/RequirePermission'
 
 interface SettingsTabMCPProps {
   isOpen: boolean
@@ -219,7 +218,7 @@ export function SettingsTabMCP({ isOpen }: SettingsTabMCPProps) {
   }
 
   return (
-    <RequirePermission scope="mcp:connect">
+    <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
         <h3 style={{ fontSize: '13px', fontWeight: 700, margin: 0 }}>MCP Server Manager</h3>
         <button
@@ -444,7 +443,7 @@ export function SettingsTabMCP({ isOpen }: SettingsTabMCPProps) {
           </div>
         )}
       </div>
-    </RequirePermission>
+    </>
   )
 }
 

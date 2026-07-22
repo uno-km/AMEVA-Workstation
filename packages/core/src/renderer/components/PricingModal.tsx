@@ -211,7 +211,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
               
               {/* 장점 요약 */}
               <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '6px', padding: '6px 10px', marginBottom: '12px', fontSize: '9px', color: 'var(--text-muted)' }}>
-                <strong>Advantage:</strong> Distraction-free writing with absolute offline local privacy.
+                <strong>Advantage:</strong> Free access to all Marketplace Plugins & AI tools without limits.
               </div>
 
               <div style={{ height: '1px', background: 'rgba(255,255,255,0.06)', marginBottom: '12px' }} />
@@ -220,18 +220,18 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div>
                   <div style={{ fontSize: '8.5px', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Permissions</div>
-                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Restricted local filesystem access<br />• Closed local-loop (no outbound network)</div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Full local workspace read/write access<br />• Outbound networks for plugins</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '8.5px', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Limits & Usage</div>
-                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Up to 10 local AI generations / day<br />• Single document tab only</div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Unlimited AI inferences<br />• Unlimited Marketplace integrations</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '8.5px', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Core Capabilities</div>
                   <div style={{ fontSize: '9px', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--text-muted)' }} /> Collaborative text editing</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--text-muted)' }} /> Basic Markdown syntax rendering</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--text-muted)' }} /> Local llama-server fallback</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--text-muted)' }} /> <strong>Free Marketplace access</strong></span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--text-muted)' }} /> <strong>Unrestricted AI features</strong></span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--text-muted)' }} /> Basic standalone text editing</span>
                   </div>
                 </div>
               </div>
@@ -281,7 +281,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
             </div>
             <div>
               <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                PRO PLAN <Sparkles size={11} />
+                PRO (COLLAB) <Sparkles size={11} />
               </div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px', margin: '6px 0 12px' }}>
                 <span style={{ fontSize: '24px', fontWeight: 900, color: 'var(--primary)' }}>$12</span>
@@ -290,7 +290,7 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
 
               {/* 장점 요약 */}
               <div style={{ background: 'rgba(168,85,247,0.08)', borderRadius: '6px', padding: '6px 10px', marginBottom: '12px', fontSize: '9px', color: 'var(--text-main)' }}>
-                <strong>Advantage:</strong> Supercharge writing with local sandboxes, web searches & agentic tools.
+                <strong>Advantage:</strong> Powerful real-time collaboration & multi-user syncing via Cloud Relay.
               </div>
 
               <div style={{ height: '1px', background: 'rgba(168,85,247,0.2)', marginBottom: '12px' }} />
@@ -299,18 +299,18 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div>
                   <div style={{ fontSize: '8.5px', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Permissions</div>
-                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Full local workspace read/write access<br />• Outbound networks for DuckDuckGo queries</div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• All Free Plan permissions<br />• Multi-user Y.js cloud networking</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '8.5px', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Limits & Usage</div>
-                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Unlimited local/cloud AI inferencing<br />• Unlimited custom MCP Server integrations</div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Unlimited Multi-user real-time sessions<br />• Unlimited cloud relay proxy bandwidth</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '8.5px', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Core Capabilities</div>
                   <div style={{ fontSize: '9px', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--primary)' }} /> <strong>Advanced AI ReAct Assistant</strong></span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--primary)' }} /> <strong>Sequential Request Queue</strong> buffering</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--primary)' }} /> Live Mouse presence & Selection sharing</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--primary)' }} /> <strong>Real-time Y.js co-editing</strong></span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--primary)' }} /> <strong>Live Mouse presence & tracking</strong></span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: 'var(--primary)' }} /> WebRTC Live Voice Chatting</span>
                   </div>
                 </div>
               </div>
@@ -370,12 +370,12 @@ export function PricingModal({ isOpen, onClose }: PricingModalProps) {
                 </div>
                 <div>
                   <div style={{ fontSize: '8.5px', color: '#06b6d4', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Limits & Usage</div>
-                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Unlimited Request Queue stacking<br />• Dedicated LLM cluster priority access</div>
+                  <div style={{ fontSize: '9px', color: 'var(--text-main)' }}>• Dedicated Collaboration Node<br />• Zero-trust security policy</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '8.5px', color: '#06b6d4', fontWeight: 800, textTransform: 'uppercase', marginBottom: '3px' }}>Core Capabilities</div>
                   <div style={{ fontSize: '9px', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: '#06b6d4' }} /> <strong>WebRTC Live Voice Chatting</strong></span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: '#06b6d4' }} /> <strong>Hardware Security Token API</strong></span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: '#06b6d4' }} /> Virtual SQLite backup snapshot auto-sync</span>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Check size={10} style={{ color: '#06b6d4' }} /> Single Sign-On (SSO) & LDAP directory</span>
                   </div>

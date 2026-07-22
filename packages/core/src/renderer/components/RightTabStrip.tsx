@@ -151,8 +151,7 @@ function TabContextMenu({
 export function RightTabStrip({}: RightTabStripProps = {}) {
   const { activeRightTab: activeTab, showAIPanel: isOpen, setShowAIPanel, setActiveRightTab, hasChatUnread } = useUIStore();
   const { settings } = useAppContext();
-  const hasPermission = useProcessStore((s) => s.hasPermission);
-  const canAccessPremium = hasPermission('plugin:premium');
+  const canAccessPremium = true;
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `installedPlugins`
