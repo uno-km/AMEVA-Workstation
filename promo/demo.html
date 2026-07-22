@@ -250,11 +250,8 @@ SELECT * FROM developers;</textarea>
     const updateCarouselHeight = () => {
       const slides = document.querySelectorAll('.carousel-slide');
       if (slides[activeSlideIndex]) {
-        // 내부 컨텐츠(.simulator-box 등)의 높이에 맞춰 wrapper 높이를 동적으로 조절
-        const child = slides[activeSlideIndex].firstElementChild;
-        if (child) {
-          wrapper.style.height = `${child.offsetHeight}px`;
-        }
+        // 전체 슬라이드 콘텐츠 높이에 맞춰 wrapper 높이를 동적으로 조절
+        wrapper.style.height = `${slides[activeSlideIndex].scrollHeight}px`;
       }
     };
 
