@@ -244,7 +244,19 @@ SELECT * FROM developers;</textarea>
     // 🎪 캐러셀 제어 로직
     const track = document.getElementById('playground-track');
     const tabs = document.querySelectorAll('.solution-tab-btn[data-slide]');
+    const wrapper = document.querySelector('.carousel-wrapper');
     let activeSlideIndex = 0;
+
+    const updateCarouselHeight = () => {
+      const slides = document.querySelectorAll('.carousel-slide');
+      if (slides[activeSlideIndex]) {
+        // 내부 컨텐츠(.simulator-box 등)의 높이에 맞춰 wrapper 높이를 동적으로 조절
+        const child = slides[activeSlideIndex].firstElementChild;
+        if (child) {
+          wrapper.style.height = `${child.offsetHeight}px`;
+        }
+      }
+    };
 
     tabs.forEach(tab => {
       tab.addEventListener('click', () => {
@@ -257,8 +269,15 @@ SELECT * FROM developers;</textarea>
 
         // 트랙 휙휙 미끄러지는 transform 연출 (5개 탭이므로 20% 간격)
         track.style.transform = `translateX(-${slideIdx * 20}%)`;
+        
+        // 탭 변경 시마다 해당 슬라이드 높이로 애니메이션 밀착
+        setTimeout(updateCarouselHeight, 10);
       });
     });
+
+    // 초기 화면 로드 및 창 크기 변경 시 밀착 높이 재계산
+    window.addEventListener('load', () => setTimeout(updateCarouselHeight, 100));
+    window.addEventListener('resize', updateCarouselHeight);
 
     // AI 시뮬레이터 연계
     document.getElementById('ai-sim-btn').addEventListener('click', () => {
