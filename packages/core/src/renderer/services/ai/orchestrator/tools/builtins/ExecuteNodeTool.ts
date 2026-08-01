@@ -1,18 +1,15 @@
-﻿import { BaseTool } from '../base/BaseTool';
+import { BaseTool } from '../base/BaseTool';
 import type { ToolCallResult, ToolExecutionContext } from '../../types';
 import { executeTerminal } from '../../../../ipc/electronApiAdapter';
-import * as path from 'path';
-import * as os from 'os';
-import * as fs from 'fs';
 
 export class ExecuteNodeTool extends BaseTool {
   public readonly name = 'execute_node';
-  public readonly description = 'Node.js(JavaScript) 肄붾뱶瑜??뚮뱶諛뺤뒪 ?섍꼍(?먮뒗 濡쒖뺄)?먯꽌 ?ㅽ뻾?섍퀬 洹?寃곌낵瑜?諛섑솚?⑸땲?? ?ㅽ겕由쏀듃 ?ㅽ뻾, 濡쒖쭅 寃利??깆뿉 ?ъ슜?섏꽭??';
+  public readonly description = 'Node.js(JavaScript) 코드를 샌드박스 환경(또는 로컬)에서 실행하고 그 결과를 반환합니다. 스크립트 실행, 로직 검증 등에 사용하세요.';
   
   public readonly parameters = {
     type: 'object' as const,
     properties: {
-      code: { type: 'string', description: '?ㅽ뻾??Node.js(JavaScript) 肄붾뱶 釉붾줉' }
+      code: { type: 'string', description: '실행할 Node.js(JavaScript) 코드 블록' }
     },
     required: ['code']
   };
@@ -20,19 +17,21 @@ export class ExecuteNodeTool extends BaseTool {
   protected async executeCore(args: Record<string, unknown>, context?: ToolExecutionContext): Promise<ToolCallResult> {
     const code = String(args['code'] ?? '');
     
-    // ?꾩떆 ?뚯씪 ?앹꽦
-    const tmpDir = os.tmpdir();
-    const fileName = `agent_sandbox_${Date.now()}.js`;
-    const filePath = path.join(tmpDir, fileName);
-    
     try {
-      fs.writeFileSync(filePath, code, 'utf-8');
+      // Create temporary file using powershell and execute it
+      const b64 = btoa(unescape(encodeURIComponent(code)));
+      const psCmd = `
+        $tmpPath = Join-Path $env:TEMP "agent_sandbox_$([Guid]::NewGuid().ToString()).js"
+        [System.IO.File]::WriteAllText($tmpPath, [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String('${b64}')))
+        node $tmpPath
+        Remove-Item -Path $tmpPath -ErrorAction SilentlyContinue
+      `.replace(/\\n/g, ';').trim();
       
-      const result = await executeTerminal(`node "${filePath}"`, tmpDir);
+      const result = await executeTerminal(`powershell -NoProfile -Command "${psCmd}"`);
       
       return {
         success: true,
-        result: result.stdout || result.stderr || '(異쒕젰 ?놁쓬)',
+        result: result.stdout || result.stderr || '(출력 없음)',
         toolName: this.name,
         toolArgs: args
       };
@@ -44,14 +43,6 @@ export class ExecuteNodeTool extends BaseTool {
         toolName: this.name,
         toolArgs: args
       };
-    } finally {
-      try {
-        if (fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch (e) {
-        console.error(`?꾩떆 ?뚯씪 ??젣 ?ㅽ뙣: ${filePath}`);
-      }
     }
   }
 }

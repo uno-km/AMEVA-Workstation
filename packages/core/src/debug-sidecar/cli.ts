@@ -19,7 +19,13 @@ function request(method: string, path: string, body?: any): Promise<any> {
     }, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve(JSON.parse(data)));
+      res.on('end', () => {
+        try {
+          resolve(JSON.parse(data));
+        } catch (e) {
+          reject(new Error(`Failed to parse response: ${data}`));
+        }
+      });
     });
     req.on('error', reject);
     if (body) req.write(JSON.stringify(body));

@@ -8,12 +8,17 @@ export class SecretRedactor {
     'authorization', 'apikey', 'api_key', 'token', 'password', 'secret', 'cookie', 'credentials'
   ];
 
-  public static redactObject(obj: any): any {
+  public static redactObject(obj: any, seen = new WeakSet()): any {
     if (obj === null || obj === undefined) return obj;
     if (typeof obj !== 'object') return obj;
 
+    if (seen.has(obj)) {
+      return '[Circular Reference]';
+    }
+    seen.add(obj);
+
     if (Array.isArray(obj)) {
-      return obj.map(item => this.redactObject(item));
+      return obj.map(item => this.redactObject(item, seen));
     }
 
     const redacted = { ...obj };
@@ -21,7 +26,7 @@ export class SecretRedactor {
       if (this.SENSITIVE_KEYS.some(sensitive => key.toLowerCase().includes(sensitive))) {
         redacted[key] = '[REDACTED]';
       } else if (typeof redacted[key] === 'object') {
-        redacted[key] = this.redactObject(redacted[key]);
+        redacted[key] = this.redactObject(redacted[key], seen);
       }
     }
     return redacted;

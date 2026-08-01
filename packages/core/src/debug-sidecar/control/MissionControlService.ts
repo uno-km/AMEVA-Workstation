@@ -24,10 +24,12 @@ export class MissionControlService {
     this.activeMissions.set(options.missionId, harness);
 
     // Fire and forget
-    harness.start().finally(() => {
-      this.activeMissions.delete(options.missionId);
-      harness.dispose().catch(console.error);
-    });
+    harness.start()
+      .catch(err => console.error(`[MissionControl] Mission ${options.missionId} failed:`, err))
+      .finally(() => {
+        this.activeMissions.delete(options.missionId);
+        harness.dispose().catch(console.error);
+      });
   }
 
   public async pauseMission(missionId: string): Promise<void> {

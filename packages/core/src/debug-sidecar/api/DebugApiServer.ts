@@ -4,6 +4,7 @@
  */
 
 import * as http from 'node:http';
+import * as crypto from 'node:crypto';
 import { MissionControlService } from '../control/MissionControlService';
 import { SseEventBroker } from '../streaming/SseEventBroker';
 import { MissionLogManager } from '../logging/MissionLogManager';

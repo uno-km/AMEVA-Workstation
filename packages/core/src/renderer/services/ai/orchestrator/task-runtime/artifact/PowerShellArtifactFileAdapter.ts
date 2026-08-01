@@ -77,14 +77,15 @@ export class PowerShellArtifactFileAdapter implements IFileSystemAdapter {
 
   public async write(path: string, content: string): Promise<void> {
     this.validatePath(path);
-    const escapedContent = content.replace(/'/g, "''");
+    const base64Content = Buffer.from(content, 'utf-8').toString('base64');
     const script = `
       $path = "${path}"
       $dir = [System.IO.Path]::GetDirectoryName($path)
       if (-not [System.IO.Directory]::Exists($dir)) {
         [System.IO.Directory]::CreateDirectory($dir) | Out-Null
       }
-      Set-Content -Path $path -Value '${escapedContent}' -Encoding UTF8
+      $bytes = [Convert]::FromBase64String("${base64Content}")
+      [System.IO.File]::WriteAllBytes($path, $bytes)
     `;
     const b64 = Buffer.from(script, 'utf-8').toString('base64');
     const res = await executeTerminal(`powershell -NoProfile -EncodedCommand ${b64}`);
@@ -132,11 +133,14 @@ export class PowerShellArtifactFileAdapter implements IFileSystemAdapter {
       $path = "${path}"
       if ([System.IO.File]::Exists($path)) {
         $stream = [System.IO.File]::OpenRead($path)
-        $sha = [System.Security.Cryptography.SHA256]::Create()
-        $hashBytes = $sha.ComputeHash($stream)
-        $stream.Close()
-        $hashString = [System.BitConverter]::ToString($hashBytes).Replace('-', '').ToLower()
-        Write-Output $hashString
+        try {
+          $sha = [System.Security.Cryptography.SHA256]::Create()
+          $hashBytes = $sha.ComputeHash($stream)
+          $hashString = [System.BitConverter]::ToString($hashBytes).Replace('-', '').ToLower()
+          Write-Output $hashString
+        } finally {
+          $stream.Close()
+        }
       } else {
         Write-Error "File not found"
       }

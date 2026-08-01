@@ -44,9 +44,16 @@ export class JsonlLogWriter {
         const chunk = eventsToProcess.map(e => JSON.stringify(e) + '\n').join('');
         
         await new Promise<void>((resolve, reject) => {
+          const onError = (err: any) => reject(err);
+          this.stream!.once('error', onError);
+          
           if (!this.stream!.write(chunk)) {
-            this.stream!.once('drain', resolve);
+            this.stream!.once('drain', () => {
+              this.stream!.removeListener('error', onError);
+              resolve();
+            });
           } else {
+            this.stream!.removeListener('error', onError);
             resolve();
           }
         });

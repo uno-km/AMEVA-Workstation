@@ -73,9 +73,9 @@
                 } else {
                    throw new Error('Target field string and patch required for FIELD scope.');
                 }
-             } catch (e: any) {
-                if (e.message.includes('AMBIGUOUS_REPAIR_TARGET')) throw e;
-                throw new Error(`Invalid JSON format after patch: ${e.message}`);
+             } catch (e: unknown) {
+                if (e instanceof Error && e.message.includes('AMBIGUOUS_REPAIR_TARGET')) throw e;
+                throw new Error(`Invalid JSON format after patch: ${e instanceof Error ? e.message : String(e)}`);
              }
           } else if (retryScope === 'FUNCTION') {
              if (!targetSection || !patchContent) throw new Error('Both replacement and targetSection are required for FUNCTION scope.');

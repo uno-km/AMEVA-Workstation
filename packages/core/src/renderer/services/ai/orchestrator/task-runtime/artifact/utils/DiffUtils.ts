@@ -153,9 +153,9 @@ export class DiffUtils {
         else if (nLen === 0) cType = 'DELETE';
 
         hunks.push({
-          oldStartLine: oLen > 0 ? offset + startOld + 1 : offset + startOld,
+          oldStartLine: oLen > 0 ? offset + startOld + 1 : Math.max(1, offset + startOld),
           oldEndLine: oLen > 0 ? offset + curOld : 0,
-          newStartLine: nLen > 0 ? offset + startNew + 1 : offset + startNew,
+          newStartLine: nLen > 0 ? offset + startNew + 1 : Math.max(1, offset + startNew),
           newEndLine: nLen > 0 ? offset + curNew : 0,
           changeType: cType
         });

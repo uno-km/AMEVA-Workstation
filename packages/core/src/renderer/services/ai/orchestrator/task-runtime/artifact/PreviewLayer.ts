@@ -4,7 +4,6 @@
  */
 
 import type { IFileSystemAdapter } from './IFileSystemAdapter';
-import * as path from 'path';
 
 export interface FilePreview {
   path: string;
@@ -32,7 +31,8 @@ export class PreviewLayer {
     fsAdapter: IFileSystemAdapter,
     maxSize: number = 3000
   ): Promise<FilePreview> {
-    const ext = path.extname(filePath).toLowerCase();
+    const lastDotIndex = filePath.lastIndexOf('.');
+    const ext = lastDotIndex !== -1 && lastDotIndex !== 0 ? filePath.substring(lastDotIndex).toLowerCase() : '';
     const isBinary = this.BINARY_EXTENSIONS.has(ext);
     
     let mimeType = isBinary ? 'application/octet-stream' : 'text/plain';

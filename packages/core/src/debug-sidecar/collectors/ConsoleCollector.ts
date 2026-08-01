@@ -34,7 +34,17 @@ export class ConsoleCollector {
 
         // 2. If in context, capture the log for the sidecar
         if (ctx && ctx.mission_id) {
-          const msg = args.map(a => typeof a === 'object' ? JSON.stringify(SecretRedactor.redactObject(a)) : String(a)).join(' ');
+          const msg = args.map(a => {
+            if (a === null) return 'null';
+            if (typeof a === 'object') {
+               try {
+                 return JSON.stringify(SecretRedactor.redactObject(a));
+               } catch (e) {
+                 return `[Unserializable Object: ${e instanceof Error ? e.message : String(e)}]`;
+               }
+            }
+            return String(a);
+          }).join(' ');
           const event = EventNormalizer.create(
             level,
             'SYSTEM',

@@ -1,17 +1,17 @@
-﻿import { BaseTool } from '../base/BaseTool';
+import { BaseTool } from '../base/BaseTool';
 import type { ToolCallResult, ToolExecutionContext } from '../../types';
 import type { IFileSystemAdapter } from '../../task-runtime/artifact/IFileSystemAdapter';
 import { PathSanitizer, PathSanitizationError } from '../../task-runtime/policy/PathSanitizer';
 
 export class WriteFileTool extends BaseTool {
   public readonly name = 'write_file';
-  public readonly description = '吏?뺣맂 寃쎈줈???댁슜???뚯씪濡???ν빀?덈떎. 肄붾뱶 ?앹꽦, ?ㅼ젙 ?뚯씪 ?묒꽦 ?깆뿉 ?ъ슜?섏꽭??';
+  public readonly description = '지정된 경로에 내용을 파일로 저장합니다. 코드 생성, 설정 파일 작성 등에 사용하세요.';
   
   public readonly parameters = {
     type: 'object' as const,
     properties: {
-      path: { type: 'string', description: '??ν븷 ?뚯씪???덈? 寃쎈줈 ?먮뒗 ?곷? 寃쎈줈' },
-      content: { type: 'string', description: '?뚯씪????ν븷 ?댁슜' }
+      path: { type: 'string', description: '저장할 파일의 절대 경로 또는 상대 경로' },
+      content: { type: 'string', description: '파일에 저장할 내용' }
     },
     required: ['path', 'content']
   };
@@ -49,14 +49,24 @@ export class WriteFileTool extends BaseTool {
       };
     }
 
-    await this.fileAdapter.write(safePath, content);
-    
-    const stat = await this.fileAdapter.stat(safePath);
-    const hash = await this.fileAdapter.hash(safePath);
+    let stat;
+    let hash;
+    try {
+      await this.fileAdapter.write(safePath, content);
+      stat = await this.fileAdapter.stat(safePath);
+      hash = await this.fileAdapter.hash(safePath);
+    } catch (e: unknown) {
+      return {
+        success: false,
+        error: `파일 쓰기 실패: ${e instanceof Error ? e.message : String(e)}`,
+        toolName: this.name,
+        toolArgs: args
+      };
+    }
 
     return {
       success: true,
-      result: `?뚯씪 ????꾨즺: ${safePath}`,
+      result: `파일 저장 완료: ${safePath}`,
       toolName: this.name,
       toolArgs: args,
       artifactId: context?.artifactId,

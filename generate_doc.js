@@ -275,5 +275,9 @@ flowchart TB
 </html>
 `;
 
-fs.writeFileSync('AMEVA_Enterprise_Architecture.doc', htmlContent);
-console.log('Successfully generated clean AMEVA_Enterprise_Architecture.doc');
+try {
+  fs.writeFileSync('AMEVA_Enterprise_Architecture.doc', htmlContent);
+  console.log('Successfully generated clean AMEVA_Enterprise_Architecture.doc');
+} catch (error) {
+  console.error('Failed to write AMEVA_Enterprise_Architecture.doc:', error.message);
+}

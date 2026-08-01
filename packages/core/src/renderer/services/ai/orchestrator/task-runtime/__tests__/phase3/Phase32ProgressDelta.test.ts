@@ -70,6 +70,7 @@ describe('Phase 3.2: Progress Delta & NO_PROGRESS detection', () => {
     assert.equal(requests[0].progressDelta?.repeatedDefectCount, 2); // (1 + 1)
 
     const updatedTask = store.getTask(missionId, taskId);
+    assert.ok(updatedTask, 'updatedTask should not be undefined');
     assert.equal(updatedTask.state.sameDefectRepeatCount, 2);
     // Because repeatedDefectCount >= 2, action should be WAIT_FOR_USER
     assert.equal(updatedTask.state.status, 'WAITING_USER');
