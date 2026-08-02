@@ -40,33 +40,18 @@ import ExcelJS from 'exceljs'
  * [CONTRACT - ArrayBuffer to Base64 String]
  * - Rationale: 이진 바이트 스트림을 웹브라우저 btoa 규격의 base64 텍스트로 안전하게 변환한다.
  */
-export function arrayBufferToBase64(buffer: ArrayBuffer): string {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `binary`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const binary = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  let binary = ''
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `bytes`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bytes = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const bytes = new Uint8Array(buffer)
-      /*
-       * [LOOP CONTROL ITERATION]
-       * - 루프 조건: `for (let i = 0; i < bytes.byteLength; i++) {`
-       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
-       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
-       */
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i])
-  }
-  return window.btoa(binary)
+export async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([buffer]);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(',')[1] || '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 /**

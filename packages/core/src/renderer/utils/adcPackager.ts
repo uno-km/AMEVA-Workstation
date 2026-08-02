@@ -1,37 +1,17 @@
 /**
- * @file adcPackager.ts
- * @system AMEVA OS Desktop Workstation - Utilities
- * @location src/renderer/utils/adcPackager.ts
- * @role Media-embedded Markdown integration package (.adc) packer/unpacker
- * 
- * [설계 의도 - DESIGN INTENT / ADR / PERFORMANCE CRITICAL]
- * - 마크다운 본문에 대용량 오디오/비디오 및 이미지를 base64 Data URL로 주입해 버리면,
- *   네트워크 전송 및 일반 텍스트 렌더링 파이프라인에서 수십 메가바이트의 JSON 버퍼 렉이 유발된다.
- * - 이를 해결하기 위해 **Ameva Document Container (.adc) 압축 패키징 기법**을 제안함.
- * - 내장 정규식(`dataUrlRegex`) 매칭을 돌려 base64로 박힌 비디오/오디오/이미지를 추출한 후 
- *   **`media/file_N.ext` 형태의 바이너리 개별 파일**로 분리하여 JSZip 아카이브 스레드에 격리 기입하고, 
- *   원문 마크다운에는 미디어 상대경로(media/file_N.ext)만 맵핑 기재함으로써 파일 용량 최적화 및 렌더 가속을 구현한다.
- * 
- * [책임 범위 - RESPONSIBILITY]
- * - 평문 텍스트 내 dataurl 데이터들을 바이너리 버퍼(`base64ToArrayBuffer`)로 복원하여 jszip 아카이브에 압축 기입(`packMarkdownToADC`)한다.
- * - 룸에 로드할 때 .adc zip 압축을 풀어 `document.md` 원문을 획득하고, 미디어 상대 경로들을 다시 브라우저가 다이렉트 렌더 가능한 dataurl base64로 환원(`unpackADCToMarkdown`) 주입한다.
- 
- * [소비처 - CONSUMERS / USAGE CONTEXT]
- * - 소비처 A (src/renderer/hooks/): 관련 비즈니스 훅 내부 연산 시 순수 함수 유틸리티로 수입 소비.
- * - 소비처 B (src/renderer/components/): 렌더링 전 데이터 정제 단계에서 포맷터 유틸리티로 소비.
- */
-
-/* 
- * [IMPORT SEGMENTATION & DEPS]
- * - JSZip: 브라우저 가상 zip 아카이빙 처리 라이브러리.
- */
-import JSZip from 'jszip'
-
-/**
- * [CONTRACT - ArrayBuffer to Base64 String]
- * - Rationale: 압축 해제 시 zip 내 이진 버퍼를 브라우저가 출력 가능한 base64 String으로 디코딩한다.
- */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
+ * @file adcPackager.tsasync function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const blob = new Blob([buffer]);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(',')[1] || '';
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}function arrayBufferToBase64(buffer: ArrayBuffer): string {
       /*
        * [RUN-TIME STATE / INVARIANT]
        * - 변수 명: `binary`
@@ -225,7 +205,7 @@ export async function unpackADCToMarkdown(arrayBuffer: ArrayBuffer): Promise<str
       if (hasElectronIO) {
         // Electron 환경: 임시 폴더에 디스크 저장 후 media:// 복원
         try {
-          const base64 = arrayBufferToBase64(buffer)
+          const base64 = await arrayBufferToBase64(buffer)
           const relativeTarget = `temp_media/${sessionUuid}/${path.split('/').pop()}`
           const res = await window.electronAPI!.writeBinary(relativeTarget, base64) as any
           if (res.success && res.path) {
@@ -236,7 +216,7 @@ export async function unpackADCToMarkdown(arrayBuffer: ArrayBuffer): Promise<str
           }
         } catch (err) {
           console.error(`[unpackADCToMarkdown] Electron 로컬 복원 실패, DataURL 폴백 작동: ${path}`, err)
-          const base64 = arrayBufferToBase64(buffer)
+          const base64 = await arrayBufferToBase64(buffer)
           const ext = path.split('.').pop()?.toLowerCase() || ''
           const mime = getMimeType(ext)
           const dataUrl = `data:${mime};base64,${base64}`
@@ -244,7 +224,7 @@ export async function unpackADCToMarkdown(arrayBuffer: ArrayBuffer): Promise<str
         }
       } else {
         // 일반 브라우저 환경: 기존 DataURL 변환 폴백
-        const base64 = arrayBufferToBase64(buffer)
+        const base64 = await arrayBufferToBase64(buffer)
         const ext = path.split('.').pop()?.toLowerCase() || ''
         const mime = getMimeType(ext)
         const dataUrl = `data:${mime};base64,${base64}`
