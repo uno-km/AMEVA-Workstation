@@ -87,7 +87,7 @@ export function InlineYoutubeRenderer({ code }: { code: string }) {
              * [FIX-YOUTUBE-001] youtube-nocookie.com 도메인 사용으로 Electron 내 X-Frame-Options 차단 우회.
              * - 뷰모드(미리보기)에서는 클릭 이벤트 전파가 원활하지 않을 수 있으므로, 즉시 자동 재생 대기 iframe을 마운트함.
              */
-            src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1`}
+            src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
             title="YouTube video player"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

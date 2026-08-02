@@ -136,10 +136,10 @@ export function blocksToHTML(rawBlocks: any): string {
        * - 예시 코드: `const css = ...` 형태로 안전 캐싱 후 가공 기동.
        */
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', -apple-system, sans-serif; background: #fff; color: #1f2937; line-height: 1.7; font-size: 15px; }
-    .doc-container { max-width: 780px; margin: 0 auto; padding: 48px 56px; }
+    body { font-family: 'Pretendard', -apple-system, sans-serif; background: #f8fafc; color: #1e293b; line-height: 1.7; font-size: 15px; }
+    .doc-container { max-width: 820px; margin: 40px auto; padding: 56px 64px; background: #fff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.06); }
     h1 { font-size: 2.2rem; font-weight: 800; color: #111827; margin: 2rem 0 1rem; border-bottom: 2px solid #e5e7eb; padding-bottom: 0.5rem; }
     h2 { font-size: 1.6rem; font-weight: 700; color: #1f2937; margin: 1.8rem 0 0.8rem; }
     h3 { font-size: 1.2rem; font-weight: 600; color: #374151; margin: 1.4rem 0 0.6rem; }

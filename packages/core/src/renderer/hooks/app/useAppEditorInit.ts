@@ -242,6 +242,7 @@ CREATE TABLE IF NOT EXISTS developers (
   role TEXT,
   level TEXT
 );
+DELETE FROM developers;
 
 INSERT INTO developers (name, role, level) VALUES 
 ('Antigravity', 'AI Assistant', 'Legendary'),
@@ -257,7 +258,7 @@ SELECT * FROM developers;
 ### 📝 다채로운 서식 도구들 (Basic Blocks)
 AMEVA 에디터는 단순한 텍스트 편집을 넘어 다양한 서식을 제공합니다. 슬래시(\`/\`) 키를 눌러 메뉴를 열어보세요.
 
-> **인용구 (Quote)**: 중요한 문구나 강조하고 싶은 텍스트를 인용구 블록으로 표시할 수 있습니다. 👑 Pro (유료전용) 기능과 조합하면 더욱 강력합니다.
+> **인용구 (Quote)**: 중요한 문구나 강조하고 싶은 텍스트를 인용구 블록으로 표시할 수 있습니다. 템플릿이나 캔버스 등 다른 서식과 조합해 더욱 다채롭게 작성해보세요!
 
 - [x] 할 일 관리 (Check List) 1단계 완료
 - [ ] 다음 목표: 프리미엄 플러그인 구독 활성화
@@ -265,14 +266,14 @@ AMEVA 에디터는 단순한 텍스트 편집을 넘어 다양한 서식을 제�
 
 ---
 
-### 📈 칸반 보드 (Kanban Board) 👑 Pro (유료전용)
+### 📈 칸반 보드 (Kanban Board)
 지라(Jira) 스타일의 AI 협업 칸반 보드를 삽입하여 팀의 워크플로우를 시각화하고 업무를 관리할 수 있습니다.
 
 \`\`\`ameva-kanban
 {"columns":[{"id":"col-1","title":"To Do","cards":[{"id":"card-1","title":"기획안 작성"},{"id":"card-2","title":"디자인 시안 검토"}]},{"id":"col-2","title":"In Progress","cards":[{"id":"card-3","title":"프론트엔드 개발"}]},{"id":"col-3","title":"Done","cards":[{"id":"card-4","title":"서버 인프라 구축"}]}]}
 \`\`\`
 
-### 📊 엑셀 시트 (Excel Spreadsheet) 👑 Pro (유료전용)
+### 📊 엑셀 시트 (Excel Spreadsheet)
 강력한 스프레드시트 편집기를 문서 내에 삽입하여 재무 관리, 데이터 분석, 표 작업을 수행할 수 있습니다.
 
 \`\`\`ameva-excel

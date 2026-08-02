@@ -206,7 +206,7 @@ export const YoutubeBlockComponent = ({ block, editor }: YoutubeBlockComponentPr
              * - autoplay=1&mute=1: 클릭 시 즉시 자동재생, 브라우저 autoplay 정책 회피를 위해 mute=1로 시작.
              * - sandbox 속성은 명시하지 않아야 allow-scripts가 동작한다.
              */
-            src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&rel=0&modestbranding=1`}
+            src={`https://www.youtube.com/embed/${videoId}?rel=0&modestbranding=1`}
             title="YouTube video player"
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"

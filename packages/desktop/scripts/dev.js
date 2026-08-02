@@ -10,14 +10,15 @@ setTimeout(() => {
   const marketPath = path.resolve(__dirname, '../../../../AMEVA-Workstation-Market-Place/server.js');
   marketProcess = spawn('node', [marketPath], {
     stdio: 'inherit',
-    shell: true
+    shell: false
   });
 }, 3000); // 3초 뒤 실행하여 에디터 윈도우 팝업을 최우선으로 보장
 
 // Start Vite
-const viteProcess = spawn('npx', ['vite'], {
+const isWindows = process.platform === 'win32';
+const viteProcess = spawn(isWindows ? 'npx.cmd' : 'npx', ['vite'], {
   stdio: 'inherit',
-  shell: true
+  shell: false
 });
 
 viteProcess.on('close', (code) => {

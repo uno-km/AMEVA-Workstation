@@ -1,5 +1,10 @@
+import JSZip from 'jszip';
+
 /**
- * @file adcPackager.tsasync function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+ * @file adcPackager.ts
+ */
+
+async function arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
   return new Promise((resolve, reject) => {
     const blob = new Blob([buffer]);
     const reader = new FileReader();
@@ -11,41 +16,6 @@
     reader.onerror = reject;
     reader.readAsDataURL(blob);
   });
-}function arrayBufferToBase64(buffer: ArrayBuffer): string {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `binary`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const binary = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  let binary = ''
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `bytes`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bytes = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const bytes = new Uint8Array(buffer)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `len`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const len = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const len = bytes.byteLength
-      /*
-       * [LOOP CONTROL ITERATION]
-       * - 루프 조건: `for (let i = 0; i < len; i++) {`
-       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
-       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
-       */
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i])
-  }
-  return window.btoa(binary)
 }
 
 /**
@@ -53,40 +23,13 @@
  * - Rationale: 아카이빙 시 base64 텍스트를 zip 라이브러리가 이해할 수 있는 ArrayBuffer 이진 포맷으로 복원한다.
  */
 function base64ToArrayBuffer(base64: string): ArrayBuffer {
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `binaryString`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const binaryString = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const binaryString = window.atob(base64)
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `len`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const len = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const len = binaryString.length
-      /*
-       * [RUN-TIME STATE / INVARIANT]
-       * - 변수 명: `bytes`
-       * - 자료형 / 예상 값: 우변 식 계산 결과에 따라 런타임 할당되는 적격 데이터 타입 (예: string, number, boolean, Object 등).
-       * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
-       * - 예시 코드: `const bytes = ...` 형태로 안전 캐싱 후 가공 기동.
-       */
-  const bytes = new Uint8Array(len)
-      /*
-       * [LOOP CONTROL ITERATION]
-       * - 루프 조건: `for (let i = 0; i < len; i++) {`
-       * - 예상 시나리오: 지정된 조건 한계 도달 시점까지 콜렉션 항목의 순차 매핑, 변환 및 동기 적재 처리를 수행함.
-       * - 예시: `for (const item of list)` 루프 실행 시 모든 개별 블록의 html 포맷 정제 완료 후 스택 종결.
-       */
+  const binaryString = window.atob(base64);
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i)
+    bytes[i] = binaryString.charCodeAt(i);
   }
-  return bytes.buffer
+  return bytes.buffer;
 }
 
 /**
@@ -99,7 +42,6 @@ export async function packMarkdownToADC(markdown: string, metadata?: any): Promi
   let processedMarkdown = markdown
   let mediaIndex = 0
   
-  // 1) Electron 환경에서의 모든 로컬 미디어 절대 경로 (media://, file:///, 그리고 C:/ 등 절대경로) 감지 및 파일 바인딩
   const localMediaRegex = /(media:\/\/|file:\/\/\/|[a-zA-Z]:[\\/])([^\s"'()#?,]+)/g
   const mediaMatches: { full: string; absolutePath: string; zipPath: string }[] = []
   let mediaMatch

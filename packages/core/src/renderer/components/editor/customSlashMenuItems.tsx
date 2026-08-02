@@ -213,7 +213,7 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
        */
   const drawingItems = drawingSubscribed ? [
     {
-      title: 'Drawing Board (유료전용) 👑 Pro',
+      title: 'Drawing Board',
       onItemClick: insertDrawingBlock,
       aliases: ['drawing', 'draw', 'sketch', 'paint', 'canvas', 'pro', 'premium'],
       group: 'Drawing',
@@ -288,7 +288,7 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
 
   const kanbanItems = isKanbanEnabled ? [
     {
-      title: 'Kanban Board (유료전용) 👑 Pro',
+      title: 'Kanban Board',
       onItemClick: insertKanbanBlock,
       aliases: ['kanban', 'board', 'jira', '칸반', '보드', 'pro', 'premium'],
       group: 'Workflow',
@@ -325,7 +325,7 @@ export function getCustomSlashMenuItems(editorInstance: AmevaEditor, installedPl
 
   const excelItems = isExcelSubscribed ? [
     {
-      title: 'Excel Sheet (유료전용) 👑 Pro',
+      title: 'Excel Sheet',
       onItemClick: insertExcelBlock,
       aliases: ['excel', 'sheet', 'spreadsheet', '엑셀', '시트', 'ce', 'pro', 'premium'],
       group: 'Office',
