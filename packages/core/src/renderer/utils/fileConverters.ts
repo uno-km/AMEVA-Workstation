@@ -35,6 +35,14 @@ import {
 } from './exporters'
 import JSZip from 'jszip'
 import ExcelJS from 'exceljs'
+import * as pdfjsLib from 'pdfjs-dist'
+// @ts-ignore
+import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.mjs?url'
+
+// Worker CSP 대응 (Blob Module Worker)
+const workerBlob = new Blob([`import '${pdfWorkerUrl}';`], { type: 'application/javascript' })
+const workerBlobUrl = URL.createObjectURL(workerBlob)
+pdfjsLib.GlobalWorkerOptions.workerPort = new Worker(workerBlobUrl, { type: 'module' })
 
 /**
  * [CONTRACT - ArrayBuffer to Base64 String]
@@ -355,7 +363,7 @@ export async function convertMarkdownToBinary(editorInstance: any, filePath: str
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const html = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-    const html = blocksToHTML(rawBlocks)
+    const html = await blocksToHTML(rawBlocks)
       /*
        * [ALGORITHM BRANCH / DECISION]
        * - 조건 식: `ipc.isElectronEnv()`
@@ -557,7 +565,11 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
   // base64 이진 파일 디코딩 복원 시도
   let binaryString = ''
   try {
-    binaryString = window.atob(content.replace(/\s/g, ''))
+    let base64Content = content.replace(/\s/g, '')
+    if (base64Content.includes(',')) {
+      base64Content = base64Content.split(',')[1]
+    }
+    binaryString = window.atob(base64Content)
   } catch (e) {
     console.warn('[parseFileToMarkdown] atob 디코딩 실패, 원본 텍스트 폴백 사용:', e)
     return content
@@ -589,6 +601,11 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
        */
   const arrayBuffer = bytes.buffer
   
+  // PPTX 파일의 경우 텍스트 파싱을 시도하지 않고 안내 메시지 반환
+  if (['pptx', 'ppt'].includes(ext)) {
+    return 'PowerPoint 파일은 인라인 뷰어로 표시됩니다. 에디터에서 `/ppt` 명령어를 사용하거나 화면에 끌어다 놓으세요.'
+  }
+
   // 1) DOCX Mammoth 디코더 + XML 태그 백업 복원 라우팅
   if (ext === 'docx') {
     try {
@@ -710,8 +727,8 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
        * - 시나리오: 본 함수 영역 내에서 상태 생명주기를 유지하며 데이터 보존 및 후속 분기 연산에 소비됨.
        * - 예시 코드: `const markdown = ...` 형태로 안전 캐싱 후 가공 기동.
        */
-      const markdown = await unpackADCToMarkdown(arrayBuffer)
-      return markdown
+      const unpacked = await unpackADCToMarkdown(arrayBuffer)
+      return unpacked as any
     } catch (err: any) {
       return `Error unpacking Ameva Document: ${err.message}`
     }
@@ -892,7 +909,77 @@ export async function parseFileToMarkdown(content: string, filePath: string, isB
       return `Error parsing Excel: ${err.message}`
     }
   }
-  
+  // 5) 브라우저 호환(pdfjs-dist) PDF 텍스트 추출 로직
+  if (ext === 'pdf') {
+    try {
+      // bytes (Uint8Array)를 pdf.js 다큐먼트로 로드
+      const loadingTask = pdfjsLib.getDocument({ 
+        data: bytes,
+        standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/standard_fonts/`,
+        cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+        cMapPacked: true
+      })
+      const pdf = await loadingTask.promise
+      const numPages = pdf.numPages
+      const mdLines: string[] = []
+      
+      for (let i = 1; i <= numPages; i++) {
+        const page = await pdf.getPage(i)
+        const textContent = await page.getTextContent()
+        
+        // 아이템 위치(X, Y) 기반 텍스트 정렬 및 테이블 형태 복원 휴리스틱
+        const items = textContent.items.filter((item: any) => item.str.trim().length > 0)
+        const rows: { y: number; items: any[] }[] = []
+        const Y_TOLERANCE = 5 // 5px 오차 이내는 같은 줄로 취급
+
+        items.forEach((item: any) => {
+          const y = item.transform[5]
+          let row = rows.find(r => Math.abs(r.y - y) < Y_TOLERANCE)
+          if (!row) {
+            row = { y, items: [] }
+            rows.push(row)
+          }
+          row.items.push(item)
+        })
+
+        // Y 좌표 내림차순 정렬 (페이지 상단 -> 하단)
+        rows.sort((a, b) => b.y - a.y)
+
+        // 각 행 내부 X 좌표 오름차순 정렬 (좌 -> 우)
+        const pageText = rows.map(row => {
+          row.items.sort((a, b) => a.transform[4] - b.transform[4])
+          let rowText = ''
+          for (let j = 0; j < row.items.length; j++) {
+            const item = row.items[j]
+            rowText += item.str
+            if (j < row.items.length - 1) {
+              const nextItem = row.items[j+1]
+              // 현재 항목 끝과 다음 항목 시작의 X 좌표 간격 계산
+              const gap = nextItem.transform[4] - (item.transform[4] + item.width)
+              if (gap > 15) {
+                rowText += ' | '
+              } else {
+                rowText += ' '
+              }
+            }
+          }
+          return rowText.trim()
+        }).join('\n')
+        
+        if (pageText.trim()) {
+          mdLines.push(`## Page ${i}`)
+          mdLines.push('')
+          mdLines.push(pageText.trim())
+          mdLines.push('')
+        }
+      }
+      return mdLines.join('\n')
+    } catch (err: any) {
+      console.error('[parseFileToMarkdown] PDF Parsing failed:', err)
+      return `Error parsing PDF: ${err.message}`
+    }
+  }
+
   return `Binary file loaded. Content size: ${bytes.length} bytes.`
 }
 

@@ -122,6 +122,7 @@ import { getCustomSlashMenuItems } from './editor/customSlashMenuItems'
 import { WelcomeBanner } from './editor/WelcomeBanner'
 import { RichStyleToolbar } from './editor/RichStyleToolbar'
 import { ImageLightbox } from './ImageLightbox'
+import { PdfViewer } from './PdfViewer'
 
 /* 
  * [INTERACTION HOOKS]
@@ -321,7 +322,7 @@ export function MarkdownEditor({
    * - handleStartWelcomeEdit: 웰컴 화면 종료 및 에디터 로드 콜백.
    * - handleStartNewDocument: 새 문서 생성 콜백.
    */
-  const { editor, editorMode, peers, settings, handleOpenFile, handleStartWelcomeEdit, handleStartNewDocument } = useAppContext()
+  const { editor, editorMode, peers, settings, handleOpenFile, handleStartWelcomeEdit, handleStartNewDocument, loadMarkdownIntoEditor } = useAppContext()
   
   /*
    * [ZUSTAND STORE PROPERTIES]
@@ -329,10 +330,10 @@ export function MarkdownEditor({
    * - setCurrentContent: 원문 텍스트 변경 세터.
    * - tabs: 다중 문서 탭 정보 목록.
    */
-  const { currentContent, setCurrentContent, tabs } = useWorkspaceStore()
+  const { currentContent, setCurrentContent, tabs, filePath, pdfData, pdfFileName } = useWorkspaceStore()
   
   const hasPermission = useProcessStore((s) => s.hasPermission)
-  const canUseAITagging = hasPermission('ai:unlimited')
+  const canUseAITagging = false
   
   /*
    * [LOCAL CONFIG VARIABLES]
@@ -548,8 +549,22 @@ export function MarkdownEditor({
           )
         })}
 
-        {/* 에디터 모드 전환 분기 렌더 */}
-        {editorMode === 'welcome' ? (
+        {/* PDF 뷰어 모드: pdfData가 있는 경우 Canvas 직접 렌더링 (모드 전환 후에도 pdfData로 보존) */}
+        {pdfData ? (
+          <div style={{ position: 'absolute', inset: 0, zIndex: 10, background: 'var(--bg-deep)' }}>
+            <PdfViewer
+              pdfData={pdfData}
+              fileName={pdfFileName || filePath?.split(/[\\/]/).pop() || 'document.pdf'}
+              onConvertToAmeva={async () => {
+                if (!editor) return
+                // loadMarkdownIntoEditor 내부에서 pdfData(rawContent)를 파싱하여 에디터에 주입하고 모드를 전환함
+                await loadMarkdownIntoEditor(editor, pdfData, true, pdfFileName || filePath || 'document.pdf')
+                setPdfData(null)
+                setPdfFileName(null)
+              }}
+            />
+          </div>
+        ) : editorMode === 'welcome' ? (
           <WelcomeBanner
             onStartWelcomeEdit={handleStartWelcomeEdit}
             onStartNewDocument={handleStartNewDocument}

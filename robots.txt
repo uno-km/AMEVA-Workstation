@@ -1,0 +1,53 @@
+# Robots.txt for AMEVA Workstation
+# Explicitly grants access to all Search Engines, LLM Scrapers, AI Crawlers, and Research Indexers.
+
+User-agent: *
+Allow: /
+
+# Top AI & LLM Indexers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Googlebot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: cohere-ai
+Allow: /
+
+# Sitemap & LLMs Index Reference
+Sitemap: https://uno-km.github.io/AMEVA-Workstation/sitemap.xml
+LLMs-Txt: https://uno-km.github.io/AMEVA-Workstation/llms.txt
+LLMs-Full-Txt: https://uno-km.github.io/AMEVA-Workstation/llms-full.txt

@@ -149,10 +149,10 @@ export const MapBlockSpec = createReactBlockSpec(
             position: 'relative',
             width: '100%',
             height: '480px',
-            backgroundColor: '#000',
+            backgroundColor: '#1a1a2e',
             overflow: 'hidden'
           }}>
-            <webview
+            <iframe
               src={(() => {
                 const latNum = parseFloat(lat)
                 const lngNum = parseFloat(lng)
@@ -182,10 +182,12 @@ export const MapBlockSpec = createReactBlockSpec(
                 left: 0,
                 width: '100%',
                 height: 'calc(100% + 50px)',
-                border: 0,
+                border: 'none',
                 filter: 'invert(0.9) hue-rotate(180deg)'
               }}
               title={`지도: ${locationName}`}
+              loading="lazy"
+              referrerPolicy="no-referrer"
             />
           </div>
 
